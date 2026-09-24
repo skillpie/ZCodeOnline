@@ -444,3 +444,78 @@ export function getPlainTextPatchFallbackLines(patch: string): string[] | null {
 
   return normalizePlainTextPreviewLines(collectPlainTextPreviewLines(lines));
 }
+
+/**
+ * 计算轻量 diff 预览每一行对应的新文件行号（git blame 悬停用）。
+ * 行过滤/截断语义必须与 getPlainTextPatchFallbackLines 完全一致：
+ * 返回与预览行等长的数组——删除行与截断标记行为 null；patch 不含 @@ hunk
+ * （rename/mode-only 元信息）时返回 null，调用方据此禁用 blame。
+ */
+export function getPatchPreviewNewFileLineNumbers(patch: string): Array<number | null> | null {
+  const lines = patch.split(/\r?\n/);
+  const previewLines: string[] = [];
+  const mapping: Array<number | null> = [];
+  let inHunk = false;
+  let newLine = 0;
+  let sawHunk = false;
+
+  for (const line of lines) {
+    if (!inHunk) {
+      if (isPatchHunkHeaderLine(line)) {
+        inHunk = true;
+        sawHunk = true;
+        newLine = parseHunkNewStart(line) ?? newLine;
+      }
+      continue;
+    }
+    if (isPatchHunkHeaderLine(line)) {
+      newLine = parseHunkNewStart(line) ?? newLine;
+      continue;
+    }
+    previewLines.push(line);
+    // 与 getLightweightDiffLineParts 的增删判定一致：`-` 前缀是旧文件行，blame 无对应行
+    if (line.startsWith("-")) {
+      mapping.push(null);
+      continue;
+    }
+    mapping.push(newLine);
+    newLine += 1;
+  }
+
+  if (!sawHunk) {
+    return null;
+  }
+
+  // 下面与 normalizePlainTextPreviewLines 相同的截断/收尾语义，平行作用于映射
+  let limitedLines = previewLines;
+  let limitedMapping = mapping;
+  if (previewLines.length > MAX_PLAIN_TEXT_FALLBACK_RENDER_LINES) {
+    const keepCount = MAX_PLAIN_TEXT_FALLBACK_RENDER_LINES - 1;
+    const headCount = Math.ceil(keepCount / 2);
+    const tailCount = keepCount - headCount;
+    const omittedCount = previewLines.length - keepCount;
+    limitedLines = [
+      ...previewLines.slice(0, headCount),
+      buildTruncatedMarkerLine(omittedCount),
+      ...previewLines.slice(previewLines.length - tailCount),
+    ];
+    limitedMapping = [
+      ...mapping.slice(0, headCount),
+      null,
+      ...mapping.slice(mapping.length - tailCount),
+    ];
+  }
+  while (limitedLines.length > 0 && limitedLines.at(-1) === "") {
+    limitedLines.pop();
+    limitedMapping.pop();
+  }
+  if (limitedLines.length === 0) {
+    return null;
+  }
+  return limitedMapping;
+}
+
+function parseHunkNewStart(line: string): number | null {
+  const match = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+  return match ? Number(match[1]) : null;
+}

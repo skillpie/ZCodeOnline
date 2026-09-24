@@ -3,6 +3,7 @@ import type {
   ZCodeTaskMeta,
   ZCodeTaskChangeSummary,
   EditorInfo,
+  GitChangeSourceId,
   GitRepositorySummary,
   RemoteTarget,
   UserInfo,
@@ -46,6 +47,8 @@ export function WorkspaceHeader({
   workspaceHeaderState,
   gitSummary,
   gitDirtyFileCount,
+  gitWorktreeChangeSummary,
+  gitWorktreeReviewSourceId,
   isMacDesktop,
   isMacFullscreen,
   isWindowsDesktop,
@@ -56,6 +59,7 @@ export function WorkspaceHeader({
   isTerminalOpen,
   isSidePaneOpen,
   onRefreshGit,
+  onOpenGitReview,
   onToggleTerminal,
   onToggleSidePane,
   toggleSidePaneShortcutLabel,
@@ -89,6 +93,8 @@ export function WorkspaceHeader({
   workspaceHeaderState: WorkspaceHeaderState;
   gitSummary: GitRepositorySummary;
   gitDirtyFileCount: number;
+  gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   isMacDesktop?: boolean;
   isMacFullscreen?: boolean;
   isWindowsDesktop?: boolean;
@@ -100,6 +106,7 @@ export function WorkspaceHeader({
   isTerminalOpen: boolean;
   isSidePaneOpen: boolean;
   onRefreshGit: () => void;
+  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   onToggleTerminal: () => void;
   onToggleBrowser: () => void;
   onToggleSidePane: () => void;
@@ -217,6 +224,13 @@ export function WorkspaceHeader({
           showWindowControls={usesInlineWindowControls}
           // 面板操作按钮沿用 macOS 紧凑样式，Windows/Linux 窗控跟随最右侧 Header。
           onSelectedEditorChange={setSelectedEditor}
+          gitSummary={gitSummary}
+          gitDirtyFileCount={gitDirtyFileCount}
+          gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+          activeTaskChangeSummary={activeTaskChangeSummary}
+          gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+          onRefreshGit={onRefreshGit}
+          onOpenGitReview={onOpenGitReview}
         />
       </div>
     </header>

@@ -227,6 +227,10 @@ export function createGitService(options?: {
       return await repo.getDiff(params);
     },
 
+    async getBlame(params) {
+      return await repo.getBlame(params);
+    },
+
     async getBranchComparison(params): Promise<GitBranchComparison> {
       const comparison = await repo.getBranchComparison(params.workspacePath);
       return {
@@ -312,6 +316,10 @@ export function createGitService(options?: {
     async push(params) {
       const result = await repo.push(params.workspacePath);
       return result;
+    },
+
+    async pull(params) {
+      return await repo.pull(params.workspacePath);
     },
 
     async getIdentity(params) {

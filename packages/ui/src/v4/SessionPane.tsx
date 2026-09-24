@@ -26,10 +26,8 @@ import {
 } from "@zcode/shared";
 import type {
   ConversationShareAccessMode,
-  GitChangeSourceId,
   GitRepositorySummary,
   ZCodeProvider,
-  ZCodeTaskChangeSummary,
 } from "@zcode/shared";
 import type {
   AttachmentRef,
@@ -335,13 +333,9 @@ export interface SessionPaneProps {
   onDropTargetControllerChange?: (controller: ConversationDropTargetController | null) => void;
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
-  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
-  activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
   summaryPanelVariantOverride?: ChatViewSummaryPanelVariant | null;
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
-  onRefreshGit?: () => void;
-  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   onOpenBrowserUrl?: (url: string) => void;
   onOpenAutomationsMain?: OpenAutomationsMain;
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
@@ -511,13 +505,9 @@ export function SessionPane({
   onDropTargetControllerChange,
   gitSummary,
   gitDirtyFileCount,
-  gitWorktreeReviewSourceId,
   gitWorktreeChangeSummary,
-  activeTaskChangeSummary,
   summaryPanelVariantOverride,
   onSummaryPanelVariantOverrideChange,
-  onRefreshGit,
-  onOpenGitReview,
   onOpenBrowserUrl,
   onOpenAutomationsMain,
   onOpenCodeViewer,
@@ -4641,12 +4631,9 @@ export function SessionPane({
         {!isDraft ? (
           <ConversationStatusPanel
             workspacePath={workspacePath}
-            workspaceIdentity={workspaceIdentity}
             gitSummary={gitSummary}
             gitDirtyFileCount={gitDirtyFileCount}
-            gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
             gitWorktreeChangeSummary={gitWorktreeChangeSummary}
-            activeTaskChangeSummary={activeTaskChangeSummary}
             goal={selectionSideChat ? null : (snapshot?.goal ?? null)}
             sessionPlans={state.sessionPlans}
             plan={snapshot?.plan ?? null}
@@ -4665,8 +4652,6 @@ export function SessionPane({
             onAgentSectionOpenChange={setAgentSectionOpen}
             workflowSectionOpen={workflowSectionOpen}
             onWorkflowSectionOpenChange={setWorkflowSectionOpen}
-            onRefreshGit={onRefreshGit}
-            onOpenGitReview={onOpenGitReview}
             onPauseGoal={
               !readOnly && !selectionSideChat && snapshot?.availability.pauseGoal.allowed
                 ? handlePauseGoal

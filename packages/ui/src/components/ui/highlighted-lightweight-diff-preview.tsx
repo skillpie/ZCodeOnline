@@ -3,6 +3,7 @@ import type { BundledTheme, ThemedToken } from "shiki";
 import {
   getLightweightDiffLineParts,
   LightweightDiffPreview,
+  type LightweightDiffBlameInfo,
 } from "@/components/ui/lightweight-diff-preview.js";
 import {
   highlightCode,
@@ -127,6 +128,9 @@ export interface HighlightedLightweightDiffPreviewProps extends Omit<
   lines: readonly string[];
   path?: string;
   theme: BundledTheme;
+  /** 透传给 LightweightDiffPreview 的 git blame 悬停（与 lines 等长的新文件行号映射） */
+  blameLineNumbers?: readonly (number | null)[];
+  resolveBlameLine?: (line: number) => Promise<LightweightDiffBlameInfo | null>;
 }
 
 export function HighlightedLightweightDiffPreview({

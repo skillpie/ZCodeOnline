@@ -1,12 +1,14 @@
-import { Plus, X } from "lucide-react";
+/* eslint-disable max-lines -- 终端 tab/拆分分组编排、PTY 生命周期回调与布局推导共用同一份 panelState，拆文件会引入跨文件状态同步。 */
+import { Plus, SplitSquareHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { IServiceAccessor } from "@zcode/services";
-import { TID_TERMINAL, TID_TERMINAL_CLOSE_BUTTON } from "@zcode/shared";
+import { TID_TERMINAL, TID_TERMINAL_CLOSE_BUTTON, TID_TERMINAL_SPLIT_BUTTON } from "@zcode/shared";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { logger } from "@/logger.js";
 import { Button } from "@/components/ui/button.js";
-import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs.js";
+import { Tabs, TabsList } from "@/components/ui/tabs.js";
+import { cn } from "@/components/lib/utils.js";
 import { getPathLeaf } from "@/lib/path.js";
 import { TerminalTabTrigger } from "@/terminal/TerminalTabTrigger.js";
 import { TerminalSession } from "@/terminal/TerminalSession.js";
@@ -19,6 +21,7 @@ import {
   formatTerminalTabTitle,
   getNextTerminalSessionIndex,
   getTerminalSessionCloseAction,
+  splitTerminalSession,
   type TerminalPanelState,
   type TerminalSessionDescriptor,
 } from "@/terminal/terminalPanelState.js";
@@ -181,9 +184,34 @@ export function Terminal({
           [workspaceKey]: {
             sessionIds: [...workspace.sessionIds, session.id],
             activeSessionId: session.id,
+            // 新终端归入自己的单窗口组：既有拆分组的成员关系保持不变，
+            // 切回组内任一 tab 即恢复整组拆分布局。
+            splitGroups: [...workspace.splitGroups, [session.id]],
           },
         },
       };
+    });
+  }, [cwd, services, workspaceKey]);
+
+  const handleSplitSession = useCallback(() => {
+    setPanelState((current) => {
+      const next = splitTerminalSession(current, {
+        workspaceKey,
+        services,
+        cwd,
+      });
+      if (next === current) {
+        return current;
+      }
+
+      const workspace = next.workspaces[workspaceKey];
+      logger.info("[Terminal] split terminal pane", {
+        cwd,
+        splitGroups: workspace?.splitGroups,
+        terminalTabId: workspace?.activeSessionId,
+        workspaceKey,
+      });
+      return next;
     });
   }, [cwd, services, workspaceKey]);
 
@@ -260,6 +288,8 @@ export function Terminal({
         return current;
       }
 
+      // 只切换焦点；可见布局由焦点终端所在 splitGroups 组推导，
+      // 切回拆分组成员会整组恢复拆分布局，不破坏组关系。
       return {
         ...current,
         workspaces: {
@@ -283,6 +313,14 @@ export function Terminal({
     currentSessions[0] ??
     null;
   const allSessions = Object.values(panelState.sessions);
+  // 可见集合 = 焦点终端所在分组；组内 ≥2 个成员即为拆分布局（等宽均分）。
+  const activeGroup =
+    activeSession && workspace
+      ? (workspace.splitGroups.find((group) => group.includes(activeSession.id)) ?? [
+          activeSession.id,
+        ])
+      : [];
+  const isSplitView = activeGroup.length > 1;
 
   // 修复说明：关闭面板只收起 UI，不 dispose tab。真正关闭某个终端由 tab 上的关闭按钮负责，
   // 这样 workspace/task 切换或面板收起都不会中断正在运行的命令。
@@ -334,6 +372,19 @@ export function Terminal({
                 type="button"
                 size="icon-md"
                 variant="ghost"
+                onClick={handleSplitSession}
+                data-testid={TID_TERMINAL_SPLIT_BUTTON}
+                title={intl.formatMessage({ id: "terminal.split" })}
+                aria-label={intl.formatMessage({ id: "terminal.split" })}
+              >
+                <SplitSquareHorizontal className="h-4 w-4" />
+              </Button>
+            )}
+            {!isOfficeMode && (
+              <Button
+                type="button"
+                size="icon-md"
+                variant="ghost"
                 onClick={handleCreateSession}
                 title={intl.formatMessage({ id: "terminal.new" })}
                 aria-label={intl.formatMessage({ id: "terminal.new" })}
@@ -355,31 +406,38 @@ export function Terminal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {allSessions.map((session) => (
-            <TabsContent
-              key={session.id}
-              value={session.id}
-              forceMount
-              className="h-full min-h-0 flex-1 data-[state=inactive]:hidden"
-            >
-              <TerminalSession
-                sessionId={session.id}
-                services={session.services}
-                cwd={session.cwd}
-                isVisible={
-                  isVisible &&
-                  session.workspaceKey === workspaceKey &&
-                  session.id === activeSession?.id
-                }
-                isPanelResizing={isPanelResizing}
-                isWindowsDesktop={isWindowsDesktop}
-                onShellLabelChange={handleShellLabelChange}
-                onExit={handleSessionExit}
-                onOpenBrowserUrl={onOpenBrowserUrl}
-              />
-            </TabsContent>
-          ))}
+        {/* 布局由焦点终端所在 splitGroups 组推导：组成员按左→右等宽展示，其余（含其他 workspace）隐藏不卸载，
+            PTY 与 scrollback 不中断。 */}
+        <div className={cn("flex min-h-0 flex-1 overflow-hidden", isSplitView && "gap-2")}>
+          {allSessions.map((session) => {
+            const visible =
+              session.workspaceKey === workspaceKey && activeGroup.includes(session.id);
+            return (
+              <div
+                key={session.id}
+                data-state={visible ? "active" : "inactive"}
+                onFocus={visible ? () => handleActivateSession(session.id) : undefined}
+                className={cn(
+                  "min-w-0 overflow-hidden",
+                  visible ? "flex-1" : "hidden",
+                  visible && isSplitView && "rounded-lg border border-border",
+                )}
+              >
+                <TerminalSession
+                  sessionId={session.id}
+                  services={session.services}
+                  cwd={session.cwd}
+                  isVisible={isVisible && visible}
+                  isFocused={isVisible && visible && session.id === activeSession?.id}
+                  isPanelResizing={isPanelResizing}
+                  isWindowsDesktop={isWindowsDesktop}
+                  onShellLabelChange={handleShellLabelChange}
+                  onExit={handleSessionExit}
+                  onOpenBrowserUrl={onOpenBrowserUrl}
+                />
+              </div>
+            );
+          })}
         </div>
       </Tabs>
     </section>

@@ -80,11 +80,11 @@ export function splitSqlStatements(sql: string): string[] {
   return out;
 }
 
-interface DriverClient {
+export interface DriverClient {
   query(sql: string, params?: unknown[]): Promise<unknown>;
 }
 
-async function withClient<T>(
+export async function withClient<T>(
   source: ResolvedDataSource,
   fn: (client: DriverClient) => Promise<T>,
 ): Promise<T> {
@@ -272,5 +272,65 @@ export async function executeBatch(
     data_source: source.view,
     results,
     duration_ms: Date.now() - started,
+  };
+}
+
+// ============================================================
+// Export helpers（MySQL only，与 db_cli 的导出范围一致）
+// ============================================================
+
+/** 基表清单（不含视图），按表名排序。 */
+export async function listBaseTables(
+  source: ResolvedDataSource,
+  client: DriverClient,
+): Promise<string[]> {
+  if (source.config.type !== "mysql") {
+    throw new Error("Export currently supports MySQL data sources only.");
+  }
+  const connection = client as mysql.Connection;
+  // mysql2 query 返回 [rows, fields] 元组，必须先解构
+  const [rows] = (await connection.query(
+    "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = ? AND table_type = 'BASE TABLE' ORDER BY table_name",
+    [source.config.database],
+  )) as [Array<{ name: string }>, unknown];
+  return rows.map((row) => row.name);
+}
+
+/** SHOW CREATE TABLE 的建表语句（含字符集/引擎）。表名做反引号转义。 */
+export async function showCreateTable(
+  source: ResolvedDataSource,
+  client: DriverClient,
+  table: string,
+): Promise<string> {
+  const connection = client as mysql.Connection;
+  const quoted = `\`${table.replace(/`/g, "``")}\``;
+  const [rows] = (await connection.query(`SHOW CREATE TABLE ${quoted}`)) as [
+    Array<{ "Create Table"?: string }>,
+    unknown,
+  ];
+  const ddl = rows[0]?.["Create Table"];
+  if (!ddl) throw new Error(`SHOW CREATE TABLE returned nothing for ${table}`);
+  return ddl;
+}
+
+/** 读一张表的全部数据（LIMIT 封顶），返回行列数组以便逐行转 INSERT。 */
+export async function selectTableRows(
+  source: ResolvedDataSource,
+  client: DriverClient,
+  table: string,
+  maxRows: number,
+): Promise<{ columns: string[]; rows: unknown[][]; truncated: boolean }> {
+  const connection = client as mysql.Connection;
+  const quoted = `\`${table.replace(/`/g, "``")}\``;
+  const [rows, fields] = (await connection.query(
+    `SELECT * FROM ${quoted} LIMIT ${Math.floor(maxRows) + 1}`,
+  )) as [Record<string, unknown>[], mysql.FieldPacket[]];
+  const columns = (fields ?? []).map((field) => field.name);
+  const truncated = rows.length > maxRows;
+  const bounded = truncated ? rows.slice(0, maxRows) : rows;
+  return {
+    columns,
+    rows: bounded.map((row) => columns.map((column) => row[column])),
+    truncated,
   };
 }

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { GitDiffResult } from "@zcode/shared";
 import { ChevronDownIcon, CopyIcon, FolderOpenIcon, ListTreeIcon } from "lucide-react";
 import { DiffViewer } from "@/components/ui/diff-viewer.js";
+import { useGitBlameLineResolver } from "@/hooks/useGitBlame.js";
 import { cn } from "@/components/lib/utils.js";
 import {
   ContextMenu,
@@ -32,6 +33,7 @@ export function GitPaneChangeCard({
   onOpenChange,
   onRevealInFileManager,
   onRevealInFileTree,
+  workspacePath,
 }: {
   change: GitPaneFileChange;
   contextMenuLabels: {
@@ -51,8 +53,10 @@ export function GitPaneChangeCard({
   onOpenChange: (change: GitPaneFileChange, nextOpen: boolean) => void;
   onRevealInFileManager: (change: GitPaneFileChange) => void;
   onRevealInFileTree?: (change: GitPaneFileChange) => void;
+  workspacePath?: string;
 }) {
   const { intl } = useZCodeIntl();
+  const createBlameResolver = useGitBlameLineResolver();
   const diffPreviewPlan = useMemo(() => getGitPaneDiffPreviewPlan(diffState), [diffState]);
   const multiFileDiffFiles = useMemo(() => {
     if (diffState?.availability !== "patch" || diffState.afterContent === null) {
@@ -175,6 +179,11 @@ export function GitPaneChangeCard({
                 fontSizePx={codePreviewSettings.fontSizePx}
                 lightTheme={codePreviewSettings.lightTheme}
                 darkTheme={codePreviewSettings.darkTheme}
+                resolveBlameLine={
+                  workspacePath
+                    ? createBlameResolver(workspacePath, change.path)
+                    : undefined
+                }
                 themeType={resolvedTheme}
               />
             </div>
@@ -191,6 +200,11 @@ export function GitPaneChangeCard({
                 fontSizePx={codePreviewSettings.fontSizePx}
                 lightTheme={codePreviewSettings.lightTheme}
                 darkTheme={codePreviewSettings.darkTheme}
+                resolveBlameLine={
+                  workspacePath
+                    ? createBlameResolver(workspacePath, change.path)
+                    : undefined
+                }
                 themeType={resolvedTheme}
               />
             </div>

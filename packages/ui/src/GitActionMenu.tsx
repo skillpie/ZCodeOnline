@@ -1311,7 +1311,9 @@ export function GitActionMenu({
           // 在 header 容器变窄时只隐藏主按钮文字，保留图标入口，避免丢失核心 Git 操作。
           // transition-all 会把 scrollbar-color 等非合成属性也启动动画，
           // 进而触发整页 UpdateLayoutTree；Git 入口只需要颜色反馈，不动画尺寸和滚动条属性。
-          "flex h-7 items-center overflow-hidden rounded-lg border border-border bg-input transition-colors hover:border-border-hover @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:justify-center",
+          // 与「拉取」等头部按钮统一为无边框 ghost 形态：不带 border/bg-input，
+          // 悬停反馈由内层 ghost Button 自身提供。
+          "flex h-7 items-center overflow-hidden rounded-lg @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:justify-center",
           triggerIconOnly && "w-7 justify-center",
           isStatusRowTrigger &&
             "h-8 w-full justify-start rounded-lg border-0 bg-transparent hover:border-transparent hover:bg-hover @max-[560px]/workspace-header:w-full @max-[560px]/workspace-header:justify-start",
@@ -1325,7 +1327,11 @@ export function GitActionMenu({
           size="default"
           disabled={primaryActionDisabled}
           aria-label={intl.formatMessage({
-            id: "git.actionMenu.trigger.ariaLabel",
+            // 主动作是推送（已提交未推送）时按钮叫「推送」，与图标、行为一致。
+            id:
+              primaryActionId === "push"
+                ? "git.actionMenu.push"
+                : "git.actionMenu.trigger.ariaLabel",
           })}
           className={cn(
             "h-7 rounded-lg border-0 gap-1 px-1.5 @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0 @max-[560px]/workspace-header:[&>span]:hidden",
@@ -1343,8 +1349,11 @@ export function GitActionMenu({
           ) : (
             <GitCommitIcon className="size-4 text-foreground" />
           )}
-          <span className={cn(isStatusRowTrigger && "min-w-0 truncate")}>
-            {intl.formatMessage({ id: "git.actionMenu.trigger" })}
+          {/* 头部形态与「拉取」/分支切换器同档（text-ui-sm）；状态面板行保持 text-ui-base。 */}
+          <span className={cn(isStatusRowTrigger ? "min-w-0 truncate" : "text-ui-sm")}>
+            {intl.formatMessage({
+              id: primaryActionId === "push" ? "git.actionMenu.push" : "git.actionMenu.trigger",
+            })}
           </span>
         </Button>
       </div>

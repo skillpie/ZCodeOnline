@@ -4,9 +4,11 @@ import type { CSSProperties, HTMLAttributes } from "react";
 import { memo, useMemo } from "react";
 import type { BundledTheme } from "shiki";
 import type { FileContents, FileDiffOptions } from "@pierre/diffs";
+import type { GitBlameHoverInfo } from "@/components/ui/gitBlameHover.js";
 import { MultiFileDiff, PatchDiff } from "@pierre/diffs/react";
 
 import { cn } from "@/components/lib/utils.js";
+import { useGitBlameHoverTooltip } from "@/components/ui/gitBlameHover.js";
 import { DIFFS_PREFERRED_HIGHLIGHTER } from "@/lib/diffsHighlighterEngine.js";
 
 type DiffViewerStyle = CSSProperties & {
@@ -41,6 +43,8 @@ export type DiffViewerProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> &
     darkTheme?: BundledTheme;
     themeType?: "light" | "dark";
     selectedLines?: DiffViewerSelectedLineRange | null;
+    /** git blame 悬停解析（按新文件行号）；缺省时悬停提示不启用 */
+    resolveBlameLine?: (line: number) => Promise<GitBlameHoverInfo | null>;
   };
 
 export interface DiffViewerSelectedLineRange {
@@ -62,7 +66,10 @@ function DiffViewerComponent(props: DiffViewerProps) {
     selectedLines,
     className,
     style,
+    resolveBlameLine,
   } = props;
+  const { containerRef: blameContainerRef, tooltip: blameTooltip } =
+    useGitBlameHoverTooltip(resolveBlameLine);
   const viewerStyle = useMemo<DiffViewerStyle>(
     () => ({
       "--diffs-bg": "var(--color-background)",
@@ -126,7 +133,9 @@ function DiffViewerComponent(props: DiffViewerProps) {
   const divProps = rendersPatch ? omitPatchDiffProps(props) : omitMultiFileDiffProps(props);
 
   return (
+    <>
     <div
+      ref={blameContainerRef}
       className={cn("h-full w-full overflow-auto", className)}
       data-diff-viewer=""
       style={viewerStyle}
@@ -134,6 +143,8 @@ function DiffViewerComponent(props: DiffViewerProps) {
     >
       {diffNode}
     </div>
+    {blameTooltip}
+    </>
   );
 }
 

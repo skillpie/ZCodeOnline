@@ -15,6 +15,7 @@ import { PreviewPaneMediaContent } from "@/previewPaneMediaContent.js";
 import { PdfPreviewContent } from "@/previewPanePdfContent.js";
 import { PptxPreviewContent } from "@/previewPanePptxContent.js";
 import { PatchFallbackContent } from "@/previewPanePatchFallbackContent.js";
+import { useGitBlameLineResolver } from "@/hooks/useGitBlame.js";
 import { DiffViewer } from "@/components/ui/diff-viewer.js";
 import type { PdfViewerLabels, PdfViewerSource } from "@/components/ui/pdf-viewer.js";
 import type { PptxPreviewViewerLabels } from "@/components/ui/pptx-preview-viewer.js";
@@ -131,6 +132,7 @@ export function PreviewPaneContent({
   onScroll,
   scrollContainerRef,
 }: PreviewPaneContentProps) {
+  const createBlameResolver = useGitBlameLineResolver();
   const { intl } = useZCodeIntl();
   const fileMissingMessage = intl.formatMessage({ id: "codeViewer.fileMissing" });
   const mediaLabels = {
@@ -174,6 +176,7 @@ export function PreviewPaneContent({
         resolvedTheme={resolvedTheme}
         sourcePath={source.path}
         sourceTitle={source.title}
+        workspacePath={workspacePath}
       />
     );
   }
@@ -187,6 +190,9 @@ export function PreviewPaneContent({
         fontSizePx={codePreviewSettings.fontSizePx}
         lightTheme={codePreviewSettings.lightTheme}
         darkTheme={codePreviewSettings.darkTheme}
+        resolveBlameLine={
+          workspacePath && source.path ? createBlameResolver(workspacePath, source.path) : undefined
+        }
         themeType={resolvedTheme}
       />
     );
@@ -234,6 +240,9 @@ export function PreviewPaneContent({
         onDeleteCodeComment={onDeleteCodeComment}
         onScroll={onScroll}
         scrollContainerRef={scrollContainerRef}
+        resolveBlameLine={
+          workspacePath && source.path ? createBlameResolver(workspacePath, source.path) : undefined
+        }
       />
     );
   }
@@ -408,9 +417,28 @@ export function PreviewPaneContent({
     source.type === "code-review"
       ? resolveCodeReviewContentProjection(source, filePreview.content)
       : null;
+  // 内容搜索命中跳转：file source 携带 initialLine 时聚焦目标行（CodeViewer
+  // 的 focusRequestId 变化会重跑滚动 effect，重复点击同一结果也能重新定位）。
+  const fileInitialLine =
+    source.type === "file" && source.initialLine && source.initialLine > 0
+      ? source.initialLine
+      : null;
+  const fileFocusedRange = fileInitialLine
+    ? { startLine: fileInitialLine, endLine: fileInitialLine }
+    : null;
+  const fileFocusRequestId =
+    fileInitialLine && source.type === "file"
+      ? (source.initialLineFocusKey ?? `file:${source.path}:${fileInitialLine}`)
+      : undefined;
   const isMarkdownFile = fileLanguage === "markdown";
   const isSvgFile = isSvgPath(source.path);
-  if (source.type !== "code-review" && isMarkdownFile && markdownViewMode === "preview") {
+  // 行定位语义优先于富预览：markdown/SVG 预览没有行概念，带 initialLine 时直接走代码视图。
+  if (
+    source.type !== "code-review" &&
+    !fileFocusedRange &&
+    isMarkdownFile &&
+    markdownViewMode === "preview"
+  ) {
     return (
       <MarkdownPreviewContent
         selectionTarget={markdownSelectionTarget}
@@ -424,7 +452,12 @@ export function PreviewPaneContent({
     );
   }
 
-  if (source.type !== "code-review" && isSvgFile && svgViewMode === "preview") {
+  if (
+    source.type !== "code-review" &&
+    !fileFocusedRange &&
+    isSvgFile &&
+    svgViewMode === "preview"
+  ) {
     return <SvgPreviewContent title={source.title} svgContent={filePreview.content} />;
   }
 
@@ -444,8 +477,8 @@ export function PreviewPaneContent({
           ? intl.formatMessage({ id: "codeViewer.review.targetLineMissing" })
           : undefined
       }
-      focusedRange={codeReviewProjection?.focusedRange}
-      focusRequestId={source.type === "code-review" ? source.review.requestId : undefined}
+      focusedRange={codeReviewProjection?.focusedRange ?? fileFocusedRange}
+      focusRequestId={source.type === "code-review" ? source.review.requestId : fileFocusRequestId}
       enableLineSelection={source.type === "code-review" ? false : enableCodeLineSelection}
       enableGutterUtility={source.type === "code-review" ? false : enableCodeGutterUtility}
       labels={codeCommentLabels}

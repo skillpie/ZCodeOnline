@@ -6,13 +6,7 @@ import { TID_GIT_PANE } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { FileTextIcon, RefreshCw } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.js";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { type GitPaneFileChange, type GitPaneRepositoryState } from "@/hooks/useGitRepository.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
@@ -98,7 +92,7 @@ export function GitPane({
   const defaultSourceOption = gitState.sourceOptions[0]!;
   const currentSourceOption =
     gitState.sourceOptions.find((option) => option.id === selectedSourceId) ?? defaultSourceOption;
-  const currentDataset = gitState.datasets[currentSourceOption.id] ?? gitState.datasets.unstaged;
+  const currentDataset = gitState.datasets[currentSourceOption.id];
   const currentChanges = useMemo(
     () => currentDataset.sections.flatMap((section) => section.changes),
     [currentDataset],
@@ -106,15 +100,6 @@ export function GitPane({
   const normalizedFileChangeFindQuery = fileChangeFindQuery.trim();
 
   const emptyStateCopy = useMemo(() => {
-    if (currentSourceOption.id === "last-turn") {
-      return {
-        title: intl.formatMessage({ id: "git.empty.lastTurnTitle" }),
-        description: intl.formatMessage({
-          id: "git.empty.lastTurnDescription",
-        }),
-      };
-    }
-
     if (gitState.loading) {
       return {
         title: intl.formatMessage({ id: "common.loading" }),
@@ -155,7 +140,6 @@ export function GitPane({
       description: intl.formatMessage({ id: "git.empty.description" }),
     };
   }, [
-    currentSourceOption.id,
     gitState.error,
     gitState.loading,
     gitState.summary.isGitAvailable,
@@ -181,7 +165,7 @@ export function GitPane({
 
   const loadDiffForChange = useCallback(
     (change: GitPaneFileChange, sourceId: GitChangeSourceId) => {
-      if (sourceId === "last-turn" || change.diff) {
+      if (change.diff) {
         return;
       }
 
@@ -439,10 +423,18 @@ export function GitPane({
 
   const contextMenuLabels = useMemo(
     () => ({
-      copyAbsolutePath: intl.formatMessage({ id: "fileActions.copyAbsolutePath" }),
-      copyRelativePath: intl.formatMessage({ id: "fileActions.copyRelativePath" }),
-      revealInFileManager: intl.formatMessage({ id: "git.changeContext.revealInFileManager" }),
-      revealInFileTree: intl.formatMessage({ id: "git.changeContext.revealInFileTree" }),
+      copyAbsolutePath: intl.formatMessage({
+        id: "fileActions.copyAbsolutePath",
+      }),
+      copyRelativePath: intl.formatMessage({
+        id: "fileActions.copyRelativePath",
+      }),
+      revealInFileManager: intl.formatMessage({
+        id: "git.changeContext.revealInFileManager",
+      }),
+      revealInFileTree: intl.formatMessage({
+        id: "git.changeContext.revealInFileTree",
+      }),
     }),
     [intl],
   );
@@ -450,18 +442,16 @@ export function GitPane({
   return (
     <section data-testid={TID_GIT_PANE} className="flex h-full min-h-0 flex-col bg-background">
       <div className="flex items-center justify-between gap-3 p-3">
-        <Select value={currentSourceOption.id} onValueChange={handleSelectSource}>
-          <SelectTrigger className="max-w-full" size="lg">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="start">
+        {/* 来源切换为 未暂存/已暂存/已提交 三段（specs/git-review-pane.md），用分段控件左右切换。 */}
+        <Tabs value={currentSourceOption.id} onValueChange={handleSelectSource} className="min-w-0">
+          <TabsList>
             {gitState.sourceOptions.map((option) => (
-              <SelectItem key={option.id} value={option.id} disabled={option.disabled}>
+              <TabsTrigger key={option.id} value={option.id} disabled={option.disabled}>
                 {intl.formatMessage({ id: getSourceMessageId(option.id) })}
-              </SelectItem>
+              </TabsTrigger>
             ))}
-          </SelectContent>
-        </Select>
+          </TabsList>
+        </Tabs>
 
         <div className="flex items-center gap-2">
           <Button
@@ -510,6 +500,7 @@ export function GitPane({
                   >
                     <GitPaneChangeCard
                       change={change}
+                      workspacePath={workspacePath}
                       contextMenuLabels={contextMenuLabels}
                       diffState={diffState}
                       isDiffLoading={isDiffLoading}

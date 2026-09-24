@@ -73,6 +73,7 @@ import { resumeWorkflowRunToolEntry } from "./resume-workflow-run.js";
 import { dbQueryToolEntry } from "./db/db-query.js";
 import { dbSchemaToolEntry } from "./db/db-schema.js";
 import { dbExecuteToolEntry } from "./db/db-execute.js";
+import { dbExportToolEntry } from "./db/db-export.js";
 import { createToolRuleNameSet } from "../tool-visibility.js";
 
 // direct 分支保留 Glob/Grep 工具实现；embedded search 分支由 registerBuiltInTools
@@ -142,6 +143,7 @@ export const builtInTools: ToolEntry[] = [
   dbQueryToolEntry,
   dbSchemaToolEntry,
   dbExecuteToolEntry,
+  dbExportToolEntry,
   // workflowToolEntry,
 ];
 

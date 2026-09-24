@@ -1,5 +1,6 @@
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/components/lib/utils.js";
+import { useGitBlameHoverTooltip } from "@/components/ui/gitBlameHover.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
   getPatchPreviewLineContent,
@@ -22,6 +23,13 @@ type LightweightDiffLineStyles = {
   rowStyle?: CSSProperties;
 };
 
+/** blame 悬停单行解析结果；committed=false 表示该行尚未提交。 */
+export interface LightweightDiffBlameInfo {
+  author: string;
+  time: number;
+  committed: boolean;
+}
+
 export interface LightweightDiffPreviewProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   "children"
@@ -32,6 +40,12 @@ export interface LightweightDiffPreviewProps extends Omit<
   >;
   lines: readonly string[];
   renderLineContent?: (line: LightweightDiffLineParts, index: number) => ReactNode;
+  /** 与 lines 等长的新文件行号映射（无法映射的行为 null）；提供后才启用 blame 悬停 */
+  blameLineNumbers?: readonly (number | null)[];
+  /** 按新文件行号解析 blame；由调用方注入（内部走 gitService 并整文件缓存） */
+  resolveBlameLine?: (
+    line: number,
+  ) => Promise<LightweightDiffBlameInfo | null>;
 }
 
 export function getLightweightDiffLineParts(line: string): LightweightDiffLineParts {
@@ -115,12 +129,21 @@ export function LightweightDiffPreview({
   codePreviewSettings,
   lines,
   renderLineContent,
+  blameLineNumbers,
+  resolveBlameLine,
   ...props
 }: LightweightDiffPreviewProps) {
   const { intl } = useZCodeIntl();
+  // blame 悬停：data-blame-row 存的是新文件行号（blameLineNumbers 映射得到，删除行为 null）
+  const blameEnabled = Boolean(blameLineNumbers && resolveBlameLine);
+  const { containerRef, tooltip } = useGitBlameHoverTooltip(
+    blameEnabled ? resolveBlameLine : undefined,
+  );
 
   return (
+    <>
     <div
+      ref={containerRef}
       className={cn("w-full min-w-0 overflow-auto bg-background", className)}
       data-lightweight-diff-preview
       {...props}
@@ -151,7 +174,12 @@ export function LightweightDiffPreview({
           const lineStyles = getLightweightDiffLineStyles(lineParts.kind);
 
           return (
-            <div className="flex min-w-full w-full" key={index} style={lineStyles.rowStyle}>
+            <div
+              className="flex min-w-full w-full"
+              key={index}
+              style={lineStyles.rowStyle}
+              data-blame-row={blameLineNumbers?.[index] ?? null}
+            >
               {/* 不换行时由内层滚动面统一计算 max-content 宽度。
               如果每行各自 w-max，横向滚动到右侧时短行背景会提前结束，产生黑色断层。 */}
               {codePreviewSettings.showLineNumbers ? (
@@ -183,5 +211,7 @@ export function LightweightDiffPreview({
         })}
       </div>
     </div>
+    {tooltip}
+    </>
   );
 }

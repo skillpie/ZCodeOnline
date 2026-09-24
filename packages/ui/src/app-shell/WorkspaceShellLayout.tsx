@@ -1164,9 +1164,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     },
     [handleSelectTask, workspaceAbsPath, workspaceIdentity],
   );
-  // 草稿态 composer contextHeader：workspace 切换菜单 +
-  // Git 分支切换器，与旧 ChatView 空态 contextHeaderContent 同构。壳级能力
-  // （workspaceTabs / 远程连接回调）在此闭合，pane 只收 ReactNode。
+  // 草稿态 composer contextHeader：workspace 切换菜单 + 项目名右侧的分支切换器
+  //（用户明确要求保留；工作区头部的 Git 三件套是另一条常驻入口，见 specs/workspace-header-git-tools.md）。
   // onSelectWorkspace 语义与旧版一致：切到目标 workspace 的新草稿。
   const draftComposerHeader = useMemo(
     () => (
@@ -1728,6 +1727,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                           workspaceHeaderState={workspaceShellZCodeState}
                           gitSummary={gitState.summary}
                           gitDirtyFileCount={gitDirtyFileCount}
+                          gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+                          gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+                          onOpenGitReview={handleOpenGitReview}
                           isMacDesktop={isMacDesktop}
                           isMacFullscreen={isMacFullscreen}
                           isWindowsDesktop={isWindowsDesktop}
@@ -1880,15 +1882,11 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                               }
                               gitSummary={gitState.summary}
                               gitDirtyFileCount={gitDirtyFileCount}
-                              activeTaskChangeSummary={activeTaskChangeSummary}
-                              gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
                               gitWorktreeChangeSummary={gitWorktreeChangeSummary}
                               summaryPanelVariantOverride={summaryPanelVariantOverride}
                               onSummaryPanelVariantOverrideChange={
                                 onSummaryPanelVariantOverrideChange
                               }
-                              onRefreshGit={handleRefreshGit}
-                              onOpenGitReview={handleOpenGitReview}
                               onPaneActiveSessionChange={handlePaneActiveSessionChange}
                               onOpenBrowserUrl={handleOpenBrowserUrl}
                               onOpenAutomationsMain={handleOpenAutomations}

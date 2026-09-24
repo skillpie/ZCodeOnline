@@ -6,6 +6,8 @@ import type {
   GitChangeKind,
   GitDiffResult,
   GitHeadRefType,
+  GitBlameLine,
+  GitBlameResult,
 } from "@zcode/shared";
 import {
   GIT_UNTRACKED_STAT_CHUNK_BYTES,
@@ -714,4 +716,40 @@ export function ensureRepositoryAvailable(
   }
 
   return resolution;
+}
+
+/**
+ * 解析 `git blame --line-porcelain` 输出。
+ * 每个提交块以 `<hash> <origLine> <finalLine> [<count>]` 开头，随后是 author/author-time
+ * 等元数据行；同一提交块内多行共享同一份元数据（仅首行记录到结果，按 finalLine 去重）。
+ */
+export function parseBlamePorcelain(stdout: string, repoRelativePath: string): GitBlameResult {
+  const lines: GitBlameLine[] = [];
+  const linesByNumber = new Map<number, GitBlameLine>();
+  let current: GitBlameLine | null = null;
+
+  for (const rawLine of stdout.split("\n")) {
+    const header = /^([0-9a-f]{40}) (\d+) (\d+)(?: (\d+))?$/.exec(rawLine);
+    if (header) {
+      const finalLine = Number(header[3]);
+      const existing = linesByNumber.get(finalLine);
+      if (existing) {
+        current = existing;
+        continue;
+      }
+      current = { line: finalLine, hash: header[1]!, author: "", time: 0 };
+      linesByNumber.set(finalLine, current);
+      lines.push(current);
+      continue;
+    }
+    if (!current) continue;
+    if (rawLine.startsWith("author ") && !current.author) {
+      current.author = rawLine.slice("author ".length);
+    } else if (rawLine.startsWith("author-time ") && current.time === 0) {
+      current.time = Number(rawLine.slice("author-time ".length));
+    }
+  }
+
+  lines.sort((a, b) => a.line - b.line);
+  return { path: repoRelativePath, lines };
 }

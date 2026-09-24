@@ -3,6 +3,7 @@ import type { Ref, UIEventHandler } from "react";
 import { cn } from "@/components/lib/utils.js";
 import { MermaidBlock } from "@/components/ai-elements/mermaid-block.js";
 import { CodeViewer } from "@/components/ui/code-viewer.js";
+import type { LightweightDiffBlameInfo } from "@/components/ui/lightweight-diff-preview.js";
 import type { CodeCommentLabels } from "@/components/ui/code-viewer.js";
 import type { CodePreviewSettings } from "@/store/index.js";
 import type { CodeCommentPreview, CodeCommentRange } from "@/lib/codeCommentContext.js";
@@ -35,6 +36,8 @@ interface CodeContentProps {
   onDeleteCodeComment?: (commentId: string) => void;
   onScroll?: UIEventHandler<HTMLDivElement>;
   scrollContainerRef?: Ref<HTMLDivElement>;
+  /** git blame 悬停解析（纯文件视图行号即真实行号） */
+  resolveBlameLine?: (line: number) => Promise<LightweightDiffBlameInfo | null>;
   className?: string;
 }
 
@@ -59,6 +62,7 @@ export function CodeContent({
   onDeleteCodeComment,
   onScroll,
   scrollContainerRef,
+  resolveBlameLine,
   className,
 }: CodeContentProps) {
   if (isMermaidLanguage(language)) {
@@ -99,6 +103,7 @@ export function CodeContent({
       onDeleteCodeComment={onDeleteCodeComment}
       onScroll={onScroll}
       scrollContainerRef={scrollContainerRef}
+      resolveBlameLine={resolveBlameLine}
       className={className}
     />
   );

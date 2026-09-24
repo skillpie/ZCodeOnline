@@ -1,9 +1,5 @@
-/* eslint-disable max-lines */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
-  ZCodePersistedFileChange,
-  ZCodePersistedFileSnapshot,
-  ZCodeTaskChangeSummary,
   GitBranchComparison,
   GitChangeSectionId,
   GitChangeSourceId,
@@ -12,13 +8,16 @@ import type {
   GitIdentity,
   GitRepositorySummary,
 } from "@zcode/shared";
-import { buildTurnChangeSummary, toWorkspaceRelativePath } from "@/lib/taskChangeSummary.js";
 import { logger } from "@/logger.js";
 import { shouldEnableWorkspaceRpc } from "@/lib/workspaceRpcAvailability.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useResolvedRemoteWorkspaceSessionId } from "@/hooks/useResolvedRemoteWorkspaceSessionId.js";
 
-type GitRepositorySourceId = Extract<GitChangeSourceId, "unstaged" | "staged" | "branch">;
+// 2026-09 产品决策：Git 审阅面板来源为 未暂存/已暂存/已提交 三段（分段切换）。
+// branch 数据集承载「已提交未推送」语义（git diff <upstream>...HEAD），
+// last-turn 快照来源已随 specs/git-review-pane.md 移除；
+// 共享协议里的 GitChangeSourceId 仍含四个值（服务契约不动），UI 层不再生产 last-turn。
+export type GitRepositorySourceId = Extract<GitChangeSourceId, "unstaged" | "staged" | "branch">;
 
 interface RepositoryDatasets {
   unstaged: GitPaneDataset;
@@ -51,7 +50,7 @@ export interface GitPaneSection {
 }
 
 export interface GitPaneDataset {
-  id: GitChangeSourceId;
+  id: GitRepositorySourceId;
   readonly: boolean;
   sections: GitPaneSection[];
   comparisonLabel?: string | null;
@@ -59,7 +58,7 @@ export interface GitPaneDataset {
 }
 
 export interface GitPaneSourceOption {
-  id: GitChangeSourceId;
+  id: GitRepositorySourceId;
   count: number;
   readonly: boolean;
   disabled: boolean;
@@ -77,7 +76,7 @@ export interface GitPaneRepositoryState {
   error: string | null;
   revision: number;
   sourceOptions: GitPaneSourceOption[];
-  datasets: Record<GitChangeSourceId, GitPaneDataset>;
+  datasets: Record<GitRepositorySourceId, GitPaneDataset>;
 }
 
 const SECTION_ORDER_BY_SOURCE: Record<GitRepositorySourceId, readonly GitChangeSectionId[]> = {
@@ -113,18 +112,6 @@ function sumSectionCount(sections: readonly GitPaneSection[]): number {
   return sections.reduce((count, section) => count + section.changes.length, 0);
 }
 
-function inferGitKind(added: number, removed: number): GitFileChange["kind"] {
-  if (added > 0 && removed === 0) {
-    return "added";
-  }
-
-  if (removed > 0 && added === 0) {
-    return "deleted";
-  }
-
-  return "modified";
-}
-
 function createEmptySummary(workspacePath: string): GitRepositorySummary {
   return {
     workspacePath,
@@ -142,7 +129,7 @@ function createEmptySummary(workspacePath: string): GitRepositorySummary {
   };
 }
 
-function createEmptyDataset(id: GitChangeSourceId, readonly: boolean): GitPaneDataset {
+function createEmptyDataset(id: GitRepositorySourceId, readonly: boolean): GitPaneDataset {
   return {
     id,
     readonly,
@@ -152,17 +139,16 @@ function createEmptyDataset(id: GitChangeSourceId, readonly: boolean): GitPaneDa
   };
 }
 
-function createEmptyDatasets(): Record<GitChangeSourceId, GitPaneDataset> {
+function createEmptyDatasets(): Record<GitRepositorySourceId, GitPaneDataset> {
   return {
     unstaged: createEmptyDataset("unstaged", false),
     staged: createEmptyDataset("staged", false),
     branch: createEmptyDataset("branch", true),
-    "last-turn": createEmptyDataset("last-turn", true),
   };
 }
 
 function buildSourceOptions(
-  datasets: Record<GitChangeSourceId, GitPaneDataset>,
+  datasets: Record<GitRepositorySourceId, GitPaneDataset>,
 ): GitPaneSourceOption[] {
   return [
     {
@@ -183,12 +169,6 @@ function buildSourceOptions(
       readonly: true,
       disabled: false,
       comparisonLabel: datasets.branch.comparisonLabel,
-    },
-    {
-      id: "last-turn",
-      count: sumSectionCount(datasets["last-turn"].sections),
-      readonly: true,
-      disabled: false,
     },
   ];
 }
@@ -283,65 +263,6 @@ function buildRepositoryDatasets(options: {
   };
 }
 
-function createLastTurnChange(
-  workspacePath: string,
-  snapshotByPath: Map<string, ZCodePersistedFileSnapshot>,
-  file: ZCodeTaskChangeSummary["files"][number],
-): GitPaneFileChange {
-  const relativePath = toWorkspaceRelativePath(workspacePath, file.path);
-  const snapshot = snapshotByPath.get(file.path);
-
-  return {
-    path: file.path,
-    repoRelativePath: relativePath,
-    workspaceRelativePath: relativePath,
-    kind: inferGitKind(file.added, file.removed),
-    section: "last-turn",
-    added: file.added,
-    removed: file.removed,
-    isStaged: false,
-    isUntracked: false,
-    isConflicted: false,
-    diff: {
-      path: file.path,
-      availability: snapshot ? "patch" : "unavailable",
-      patch: null,
-      beforeContent: snapshot?.beforeContent ?? null,
-      afterContent: snapshot?.afterContent ?? null,
-      summary: null,
-    },
-  };
-}
-
-function buildLastTurnDataset(options: {
-  workspacePath: string;
-  turnIndex: number | null;
-  fileChange: ZCodePersistedFileChange | null;
-  summary: ZCodeTaskChangeSummary | null;
-}): GitPaneDataset {
-  const snapshotByPath = new Map<string, ZCodePersistedFileSnapshot>(
-    options.fileChange?.snapshots.map((snapshot) => [snapshot.path, snapshot]) ?? [],
-  );
-
-  return {
-    id: "last-turn",
-    readonly: true,
-    turnIndex: options.turnIndex,
-    // 关键业务逻辑：上一轮更改继续优先复用 ZCode Agent 已持久化的单轮文件快照，
-    // 这样 Git pane 接入真实仓库数据后，agent 视角的只读审阅链路仍然保持独立稳定。
-    sections: options.summary
-      ? [
-          {
-            id: "last-turn",
-            changes: options.summary.files.map((file) =>
-              createLastTurnChange(options.workspacePath, snapshotByPath, file),
-            ),
-          },
-        ]
-      : [],
-  };
-}
-
 function shouldRefreshLiveGitData(
   previous: GitLiveDataRefreshInput | null,
   next: GitLiveDataRefreshInput,
@@ -366,14 +287,13 @@ function shouldRefreshLiveGitData(
     return true;
   }
 
-  // 关键业务逻辑：Git pane 关闭时不应该因为“少拿 branch/identity”反向触发一轮真实 Git。
-  // 只有从关闭 -> 打开时，才补拉扩展数据；task/last-turn 的切换则只走本地数据重组。
+  // 关键业务逻辑：Git pane 关闭时不应该因为“少拿 identity/branch 对比”反向触发一轮真实 Git。
+  // 只有从关闭 -> 打开时，才补拉扩展数据；task 的切换则只走本地数据重组。
   return !previous.includeExtendedData && next.includeExtendedData;
 }
 
 export function useGitRepository(options: {
   workspacePath: string;
-  activeTaskId: string | null;
   includeExtendedData?: boolean;
   refreshToken?: string | number | boolean | null;
   remoteSessionId?: string | null;
@@ -401,16 +321,11 @@ export function useGitRepository(options: {
     remoteTarget,
   });
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
-  // store 收尾：per-turn 变更摘要 map（setPerTurnSummaries/setPerTurnFileChanges）
-  // 的写入链路随旧 ChatView 流订阅删除，store 不再保存该派生态（删除前也恒为空）。
-  // "last-turn" 数据集保留空态骨架，待 v4 投影的 per-turn 变更面接入后回填。
   const [repositoryState, setRepositoryState] = useState<GitPaneRepositoryState>(() =>
     createInitialState(workspacePath, { workspaceKey }),
   );
   const requestVersionRef = useRef(0);
   const lastLiveRefreshInputRef = useRef<GitLiveDataRefreshInput | null>(null);
-  const lastFileChangeEntry = null;
-  const lastSummaryEntry = null;
 
   useEffect(() => {
     const nextRefreshInput: GitLiveDataRefreshInput = {
@@ -466,26 +381,24 @@ export function useGitRepository(options: {
     const refreshPromise = gitService.refresh({
       workspacePath,
       includeIdentity: includeExtendedData,
+      // 「已提交」段（specs/git-review-pane.md）依赖 upstream...HEAD 对比，
+      // 只在真正展开 Git pane 后随扩展数据一起拉取，header 常驻态不做这次 git diff。
       includeBranchComparison: includeExtendedData,
     });
 
     // 关键业务逻辑：header 常驻时只需要 summary + staged/unstaged 统计；
-    // branch comparison 与 identity 只在真正展开 Git pane 后再拉取，避免首屏预取整套 Git pane 数据。
+    // identity 与 branch 对比只在真正展开 Git pane 后再拉取，避免首屏预取额外 Git 数据。
     void refreshPromise
       .then(({ summary, identity, unstagedChanges, stagedChanges, branchComparison }) => {
         if (disposed || requestVersionRef.current !== requestVersion) {
           return;
         }
 
-        const repositoryDatasets = buildRepositoryDatasets({
+        const datasets = buildRepositoryDatasets({
           unstagedChanges,
           stagedChanges,
           branchComparison: branchComparison ?? EMPTY_BRANCH_COMPARISON,
         });
-        const datasets: Record<GitChangeSourceId, GitPaneDataset> = {
-          ...repositoryDatasets,
-          "last-turn": createEmptyDataset("last-turn", true),
-        };
 
         setRepositoryState({
           workspaceKey,
@@ -537,28 +450,8 @@ export function useGitRepository(options: {
   return useMemo(() => {
     // useEffect 在 workspace 切换后的 commit 才会清理旧状态。render 阶段先按
     // workspaceKey 投影为空状态，避免旧机器的 Git 路径通过新远端 fileWatcherService 注册。
-    const currentRepositoryState =
-      repositoryState.workspaceKey === workspaceKey
-        ? repositoryState
-        : createInitialState(workspacePath, { workspaceKey });
-    const datasets = {
-      ...currentRepositoryState.datasets,
-    };
-    const lastTurnIndex = lastFileChangeEntry?.[0] ?? lastSummaryEntry?.[0] ?? null;
-    const lastFileChange = lastFileChangeEntry?.[1] ?? null;
-    const lastTurnSummary = buildTurnChangeSummary(lastFileChange) ?? lastSummaryEntry?.[1] ?? null;
-
-    datasets["last-turn"] = buildLastTurnDataset({
-      workspacePath,
-      turnIndex: lastTurnIndex,
-      fileChange: lastFileChange,
-      summary: lastTurnSummary,
-    });
-
-    return {
-      ...currentRepositoryState,
-      sourceOptions: buildSourceOptions(datasets),
-      datasets,
-    };
-  }, [lastFileChangeEntry, lastSummaryEntry, repositoryState, workspaceKey, workspacePath]);
+    return repositoryState.workspaceKey === workspaceKey
+      ? repositoryState
+      : createInitialState(workspacePath, { workspaceKey });
+  }, [repositoryState, workspaceKey, workspacePath]);
 }

@@ -94,6 +94,7 @@ export function TerminalSession({
   onShellLabelChange,
   onExit,
   onOpenBrowserUrl,
+  isFocused,
   persistentKey,
   workspaceKey,
 }: {
@@ -101,6 +102,11 @@ export function TerminalSession({
   services: IServiceAccessor;
   cwd?: string;
   isVisible: boolean;
+  /**
+   * 拆分视图下「可见」与「聚焦」分离：可见 pane 都要 fit/resize，但只有焦点 pane 抢占键盘焦点。
+   * 缺省等于 isVisible，单窗口路径（下侧 terminal tab、side pane）行为保持不变。
+   */
+  isFocused?: boolean;
   isPanelResizing?: boolean;
   isWindowsDesktop?: boolean;
   onShellLabelChange: (sessionId: string, shellLabel: string | null) => void;
@@ -127,6 +133,7 @@ export function TerminalSession({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const terminalIdRef = useRef<string | undefined>(undefined);
   const isVisibleRef = useRef(isVisible);
+  const isFocusedRef = useRef(isFocused ?? isVisible);
   const resizeRAFRef = useRef(0);
   const resizeThrottleTimerRef = useRef<number | null>(null);
   const isPanelResizingRef = useRef(isPanelResizing);
@@ -296,12 +303,13 @@ export function TerminalSession({
     focusRAFRef.current = requestAnimationFrame(() => {
       focusRAFRef.current = 0;
       const term = termRef.current;
-      if (!isVisibleRef.current || !term) {
+      // 拆分视图下多个 pane 同时可见，只有焦点 pane（isFocused）允许抢占键盘焦点。
+      if (!isFocusedRef.current || !term) {
         return;
       }
 
       // 打开/新建/切换终端时 React 只更新了可见 tab，焦点仍停在按钮或输入框。
-      // xterm 的 textarea 会在 open 后创建，所以要等下一帧确认当前 session 仍可见再聚焦。
+      // xterm 的 textarea 会在 open 后创建，所以要等下一帧确认当前 session 仍聚焦再聚焦。
       term.focus();
       logger.debug("[Terminal] focused visible terminal", {
         terminalId: terminalIdRef.current,
@@ -312,11 +320,14 @@ export function TerminalSession({
 
   useEffect(() => {
     isVisibleRef.current = isVisible;
+    isFocusedRef.current = isFocused ?? isVisible;
     if (isVisible) {
       scheduleFitAndResize("visible");
+    }
+    if (isFocusedRef.current) {
       requestFocus();
     }
-  }, [isVisible, requestFocus, scheduleFitAndResize]);
+  }, [isVisible, isFocused, requestFocus, scheduleFitAndResize]);
 
   useEffect(() => {
     const wasResizing = isPanelResizingRef.current;
@@ -366,7 +377,7 @@ export function TerminalSession({
         } catch (error) {
           logger.warn("[Terminal] persistent reuse fit failed:", error);
         }
-        if (isVisibleRef.current) {
+        if (isFocusedRef.current) {
           requestFocus();
         }
         logger.debug("[Terminal] persistent reuse", {
@@ -431,7 +442,7 @@ export function TerminalSession({
           logger.warn("[Terminal] persistent initial fit failed:", error);
         }
       }
-      if (isVisibleRef.current) {
+      if (isFocusedRef.current) {
         requestFocus();
       }
 
@@ -800,7 +811,7 @@ export function TerminalSession({
         logger.warn("[Terminal] initial fit failed:", error);
       }
     }
-    if (isVisibleRef.current) {
+    if (isFocusedRef.current) {
       requestFocus();
     }
 
@@ -915,7 +926,7 @@ export function TerminalSession({
         });
         onShellLabelChange(sessionId, nextShellLabel);
         scheduleFitAndResize("init");
-        if (isVisibleRef.current) {
+        if (isFocusedRef.current) {
           requestFocus();
         }
 

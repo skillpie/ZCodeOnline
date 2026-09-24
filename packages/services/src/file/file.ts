@@ -18,9 +18,35 @@ export interface WorkspaceFileSearchParams {
   refresh?: boolean;
 }
 
+export interface WorkspaceContentSearchParams {
+  rootPath: string;
+  workspaceIdentity?: string;
+  query: string;
+  /** 全局匹配上限，缺省 100，clamp [1, 100]。 */
+  limit?: number;
+}
+
+export interface WorkspaceContentSearchMatch {
+  path: string;
+  relativePath: string;
+  name: string;
+  /** 1-based 行号。 */
+  line: number;
+  /** 匹配行 trim 后内容（≤240 字符）。 */
+  text: string;
+}
+
 export interface IFileService {
   /** Host 匹配并返回有界候选，避免 Renderer 下载完整文件索引。 */
   searchWorkspaceFiles(params: WorkspaceFileSearchParams): Promise<WorkspaceFileEntry[]>;
+  /**
+   * 内容搜索（命令中心「内容」范围）：Host 有界扫描 workspace 文本文件。
+   * 与 searchWorkspaceFiles 共用同一份 .zcodeignore 索引；扫描边界见
+   * specs/command-center.md §3。无状态、无取消通道，成本靠扫描边界兜底。
+   */
+  searchWorkspaceContent(
+    params: WorkspaceContentSearchParams,
+  ): Promise<WorkspaceContentSearchMatch[]>;
   readdir(params: { path: string; includeHidden?: boolean }): Promise<FileEntry[]>;
   stat(params: { path: string }): Promise<FileStat>;
   checkFilesExist(params: { paths: string[] }): Promise<Array<{ path: string; exists: boolean }>>;

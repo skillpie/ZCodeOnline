@@ -8,11 +8,14 @@ import type {
   GitBranchMutationResult,
   GitCommitGraphCommit,
   GitCommitGraphRef,
+  GitBlameQuery,
+  GitBlameResult,
   GitDiffQuery,
   GitDiffResult,
   GitIdentity,
   GitLocalBranch,
   GitLocalBranchListResult,
+  GitPullResult,
   GitWorkspaceRepositoryInfo,
   GitPushResult,
 } from "@zcode/shared";
@@ -44,6 +47,7 @@ import {
   normalizeInputPath,
   parseGitBranchMutationIssues,
   parseGitConfigValue,
+  parseBlamePorcelain,
   parseNumstat,
   parseStatusPorcelain,
   toInvalidBranchNameIssue,
@@ -1368,6 +1372,35 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       });
     },
 
+    async getBlame(params: GitBlameQuery): Promise<GitBlameResult | null> {
+      const resolution = await this.resolveRepository(params.workspacePath);
+      if (!resolution.isGitAvailable || !resolution.isRepository) {
+        return null;
+      }
+      const repoRelativePath = await normalizeInputPath(resolution, params.path);
+      const result = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["blame", "--line-porcelain", "--", repoRelativePath],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      if (result.exitCode !== 0) {
+        // 未跟踪的新文件（尚未 commit）blame 必然失败；返回空行集让 UI 整体按「未提交」提示，
+        // 与「不在仓库/取数失败」的 null 区分开
+        const tracked = await commandProvider.run({
+          cwd: resolution.repoRoot,
+          args: ["ls-files", "--", repoRelativePath],
+          timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+          maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+        });
+        if (tracked.exitCode === 0 && tracked.stdout.trim().length === 0) {
+          return { path: repoRelativePath, lines: [] };
+        }
+        return null;
+      }
+      return parseBlamePorcelain(result.stdout, repoRelativePath);
+    },
+
     async getBranchComparison(workspacePath: string): Promise<GitBranchComparisonSnapshot> {
       const status = await this.getStatus(workspacePath);
       if (
@@ -1668,6 +1701,40 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         trackingBranchName: nextStatus.summary.trackingBranchName,
         remoteName: remoteName ?? parseTrackingRemoteName(nextStatus.summary.trackingBranchName),
         setUpstream: !hasTrackingBranch,
+        summary: nextStatus.summary,
+      };
+    },
+
+    async pull(workspacePath: string): Promise<GitPullResult> {
+      const status = await this.getStatus(workspacePath);
+      const resolution = ensureRepositoryAvailable(status.resolution, "pull changes");
+      const branchName = status.summary.branchName?.trim() ?? "";
+      if (status.summary.headRefType !== "branch" || branchName.length === 0) {
+        throw new Error("Cannot pull while HEAD is detached.");
+      }
+      const trackingBranchName = status.summary.trackingBranchName ?? "";
+      if (!trackingBranchName) {
+        throw new Error("Cannot pull without an upstream branch.");
+      }
+
+      // 关键业务逻辑：快进式拉取（--ff-only）。分叉时直接报错让用户手动处理，
+      // 不在 agent 工作区里悄悄生成 merge commit 或进入冲突态。
+      const pullResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["pull", "--ff-only"],
+        // 关键业务逻辑：pull 是显式用户动作，网络慢或 post-merge hook 拖长时
+        // 沿用 push 的长超时与大输出上限，避免被前端误判成失败。
+        timeoutMs: DEFAULT_GIT_PUSH_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_PUSH_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git pull", pullResult);
+      invalidate(workspacePath);
+
+      const nextStatus = await this.getStatus(workspacePath);
+      return {
+        branchName,
+        trackingBranchName: nextStatus.summary.trackingBranchName,
+        remoteName: parseTrackingRemoteName(trackingBranchName),
         summary: nextStatus.summary,
       };
     },

@@ -1,4 +1,9 @@
-export type CommandCenterSearchScope = "all" | "commands" | "conversations" | "files";
+import {
+  isCommandCenterSearchScope,
+  type CommandCenterSearchScope,
+} from "@/command-center/commandCenterScopes.js";
+
+export type { CommandCenterSearchScope } from "@/command-center/commandCenterScopes.js";
 
 export interface CommandCenterSearchHistoryEntry {
   query: string;
@@ -36,10 +41,7 @@ function isCommandCenterSearchHistoryEntry(
   return (
     typeof entry.query === "string" &&
     typeof entry.updatedAt === "number" &&
-    (entry.scope === "all" ||
-      entry.scope === "commands" ||
-      entry.scope === "conversations" ||
-      entry.scope === "files")
+    isCommandCenterSearchScope(entry.scope)
   );
 }
 
@@ -86,7 +88,7 @@ export function pushCommandCenterSearchHistory(params: {
   scope: CommandCenterSearchScope;
 }): CommandCenterSearchHistoryEntry[] {
   const query = params.query.trim();
-  if (!query || query === ">" || query === "#" || query === "@") {
+  if (!query || query === ">" || query === "#" || query === "@" || query === "$") {
     return readCommandCenterSearchHistory(params.workspaceKey);
   }
 

@@ -6,9 +6,12 @@ import type {
   GitDiffResult,
   GitIdentity,
   GitLocalBranchListResult,
+  GitPullResult,
   GitPushResult,
   GitRepositorySummary,
   GitWorkspaceRepositoryInfo,
+  GitBlameQuery,
+  GitBlameResult,
 } from "@zcode/shared";
 
 export interface GitLineStat {
@@ -87,6 +90,7 @@ export interface GitCliRepo {
     startPoint?: string,
   ): Promise<GitBranchMutationResult>;
   getDiff(params: GitDiffQuery): Promise<GitDiffResult>;
+  getBlame(params: GitBlameQuery): Promise<GitBlameResult | null>;
   getBranchComparison(workspacePath: string): Promise<GitBranchComparisonSnapshot>;
   stage(workspacePath: string, paths: string[]): Promise<void>;
   unstage(workspacePath: string, paths: string[]): Promise<void>;
@@ -98,6 +102,7 @@ export interface GitCliRepo {
     options?: { stagedOnly?: boolean },
   ): Promise<{ commitHash: string }>;
   push(workspacePath: string): Promise<GitPushResult>;
+  pull(workspacePath: string): Promise<GitPullResult>;
   getIdentity(workspacePath: string): Promise<GitIdentity>;
 }
 

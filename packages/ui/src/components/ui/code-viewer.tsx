@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trash2Icon } from "lucide-react";
 import type { FileContents, LineAnnotation, SupportedLanguages } from "@pierre/diffs";
 import { File, type FileOptions } from "@pierre/diffs/react";
+import { useGitBlameHoverTooltip } from "@/components/ui/gitBlameHover.js";
+import type { LightweightDiffBlameInfo } from "@/components/ui/lightweight-diff-preview.js";
 import type { BundledTheme } from "shiki";
 
 import { cn } from "@/components/lib/utils.js";
@@ -44,6 +46,8 @@ export interface CodeViewerProps extends HTMLAttributes<HTMLDivElement> {
   wrapLongLines?: boolean;
   fontSizePx?: number;
   firstLineNumber?: number;
+  /** git blame 悬停解析（按行号）；缺省时悬停提示不启用 */
+  resolveBlameLine?: (line: number) => Promise<LightweightDiffBlameInfo | null>;
   comments?: readonly CodeCommentPreview[];
   topComment?: CodeCommentPreview | null;
   topCommentShowRange?: boolean;
@@ -464,6 +468,7 @@ export function CodeViewer({
   onSubmitCodeComment,
   onDeleteCodeComment,
   scrollContainerRef,
+  resolveBlameLine,
   className,
   style,
   ...props
@@ -734,10 +739,18 @@ export function CodeViewer({
     },
     [scrollContainerRef],
   );
+  // git blame 悬停提示：行元素在 Shadow DOM 内带 data-line，经 composedPath 穿透识别
+  const { containerRef: blameContainerRef, tooltip: blameTooltip } =
+    useGitBlameHoverTooltip(resolveBlameLine);
 
   return (
+    <>
+    {blameTooltip}
     <div
-      ref={assignCodeViewerScrollContainerRef}
+      ref={(node) => {
+        blameContainerRef.current = node;
+        assignCodeViewerScrollContainerRef(node);
+      }}
       className={cn("h-full w-full overflow-auto", className)}
       data-language={language}
       style={viewerStyle}
@@ -786,5 +799,6 @@ export function CodeViewer({
         }
       />
     </div>
+    </>
   );
 }

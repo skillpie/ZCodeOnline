@@ -5,6 +5,7 @@ import { cn } from "@/components/lib/utils.js";
 import type { WorkspaceHeaderActionSectionProps } from "@/WorkspaceHeaderSections/shared.js";
 import { WorkspaceHelpMenuButton } from "@/WorkspaceHelpMenuButton.js";
 import { ConversationShareMenu } from "@/ConversationShareMenu.js";
+import { WorkspaceHeaderGitTools } from "@/WorkspaceHeaderGitTools.js";
 import { DesktopWindowControls } from "@/DesktopWindowControls.js";
 
 export type { WorkspaceHeaderActionSectionProps } from "@/WorkspaceHeaderSections/shared.js";
@@ -28,6 +29,13 @@ export function WorkspaceHeaderActionSection({
   hideHelpMenu = false,
   showWindowControls = false,
   useWindowsCaptionSpacing = false,
+  gitSummary,
+  gitDirtyFileCount = 0,
+  gitWorktreeChangeSummary,
+  activeTaskChangeSummary,
+  gitWorktreeReviewSourceId,
+  onRefreshGit,
+  onOpenGitReview,
 }: WorkspaceHeaderActionSectionProps) {
   return (
     <div
@@ -45,6 +53,21 @@ export function WorkspaceHeaderActionSection({
           workspaceIdentity={workspaceIdentity}
           remoteTarget={remoteTarget}
           onSelectedEditorChange={onSelectedEditorChange}
+        />
+      ) : null}
+      {/* Git 常驻工具组（更改 / 分支 / 提交）位于分享按钮左侧；远程移动端头部过窄，
+          与终端入口同规则整体隐藏，非 Git 工作区由组件自身返回 null。 */}
+      {!simplifyForNarrowRemote && gitSummary && onRefreshGit ? (
+        <WorkspaceHeaderGitTools
+          workspaceAbsPath={workspaceAbsPath}
+          workspaceIdentity={workspaceIdentity}
+          gitSummary={gitSummary}
+          gitDirtyFileCount={gitDirtyFileCount}
+          gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+          activeTaskChangeSummary={activeTaskChangeSummary}
+          gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+          onRefreshGit={onRefreshGit}
+          onOpenGitReview={onOpenGitReview}
         />
       ) : null}
       {/* 分享发布接口依赖登录态；未登录时隐藏入口，避免用户打开后只能得到鉴权失败。 */}

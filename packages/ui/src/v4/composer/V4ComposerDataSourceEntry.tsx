@@ -54,11 +54,11 @@ function DataSourceEntryInner() {
               data-testid="composer-data-source-entry"
               data-composer-collapse-priority="1"
               aria-label={label}
-              className="h-7 w-fit justify-center gap-1 rounded-lg px-1.5 py-1.5 text-ui-base"
+              className="group/data-source h-7 w-fit justify-center gap-1 rounded-lg px-1.5 py-1.5 text-ui-base data-[composer-compact=true]:w-7 data-[composer-compact=true]:gap-0 data-[composer-compact=true]:px-0"
             >
               <Database className="size-4 shrink-0" aria-hidden />
               <span
-                className="hidden max-w-28 truncate whitespace-nowrap @xl/composer:inline-flex"
+                className="max-w-28 truncate whitespace-nowrap group-data-[composer-compact=true]/data-source:hidden"
                 data-data-source-caption
               >
                 {caption}
@@ -70,7 +70,7 @@ function DataSourceEntryInner() {
                 />
               ) : (
                 <ChevronDownIcon
-                  className="pointer-events-none size-3.5 shrink-0 text-foreground-subtle"
+                  className="pointer-events-none size-3.5 shrink-0 text-foreground-subtle group-data-[composer-compact=true]/data-source:hidden"
                   aria-hidden
                 />
               )}

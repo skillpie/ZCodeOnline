@@ -22,7 +22,11 @@ type GitPaneDiffPreviewPlan =
       lines: string[];
     };
 
-export function getSourceMessageId(sourceId: GitChangeSourceId): string {
+// 审阅面板来源为 未暂存/已暂存/已提交 三段（specs/git-review-pane.md）；入参收窄到存活来源，
+// 避免已下线的 last-turn 值重新流入 UI。branch 段展示「已提交未推送」文件。
+export function getSourceMessageId(
+  sourceId: Extract<GitChangeSourceId, "unstaged" | "staged" | "branch">,
+): string {
   switch (sourceId) {
     case "unstaged":
       return "git.source.unstaged";
@@ -30,10 +34,6 @@ export function getSourceMessageId(sourceId: GitChangeSourceId): string {
       return "git.source.staged";
     case "branch":
       return "git.source.branch";
-    case "last-turn":
-      return "git.source.lastTurn";
-    default:
-      return "git.source.unstaged";
   }
 }
 

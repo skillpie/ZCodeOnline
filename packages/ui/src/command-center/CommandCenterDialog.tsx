@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- 聚合命令、任务、文件三类搜索结果，后续可按 result section 拆分。 */
+/* eslint-disable max-lines -- 聚合命令、任务、文件与内容四类搜索结果，后续可按 result section 拆分。 */
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { unpackWorkspaceFileEntries } from "@zcode/shared/workspaceFileEntriesCodec";
 import { fetchWorkspaceFileEntriesPacked } from "@/workspace-file-search/fetchWorkspaceFileEntries.js";
@@ -11,9 +11,11 @@ import {
   MessagesSquareIcon,
   RocketIcon,
   SearchIcon,
+  TextSearchIcon,
   Trash2Icon,
 } from "lucide-react";
 import type { WorkspaceFileEntry, ZCodeTaskChangeSummary, ZCodeTaskMeta } from "@zcode/shared";
+import type { WorkspaceContentSearchMatch } from "@zcode/services";
 import {
   Command,
   CommandDialog,
@@ -54,6 +56,7 @@ import {
   type CommandCenterSearchHistoryEntry,
   type CommandCenterSearchScope,
 } from "@/command-center/commandCenterSearchHistory.js";
+import { resolveQueryScope, scopeToPrefix } from "@/command-center/commandCenterScopes.js";
 
 const EMPTY_QUICK_PICK_COMMANDS: QuickPickCommand[] = [];
 const EMPTY_COMMAND_CENTER_WORKSPACE_TABS: WorkspaceTabState[] = [];
@@ -61,6 +64,8 @@ const COMMAND_CENTER_SECTION_LIMIT = 3;
 const COMMAND_CENTER_CONTEXT_SECTION_LIMIT = 3;
 const COMMAND_CENTER_FILE_RESULT_LIMIT = 80;
 const COMMAND_CENTER_TASK_RESULT_LIMIT = 80;
+/** 内容搜索输入防抖：Host 扫描有界但不免费，停顿后才发起 RPC。 */
+const COMMAND_CENTER_CONTENT_SEARCH_DEBOUNCE_MS = 250;
 const commandCenterDialogClassName = cn(
   quickPickDialogClassName,
   // Linux 桌面端的通用 DialogContent 会给居中弹窗补偿自绘标题栏高度。
@@ -74,7 +79,7 @@ const commandCenterListClassName = cn(
   "max-h-[min(440px,calc(100dvh-15rem))]",
 );
 
-type CommandCenterSectionId = "commands" | "conversations" | "files";
+type CommandCenterSectionId = "commands" | "conversations" | "files" | "contents";
 type TaskSearchResultItem = ZCodeTaskMeta & {
   searchSnippet?: string;
   searchSnippets?: string[];
@@ -87,7 +92,7 @@ type TaskSearchResultRow = {
   snippetIndex?: number;
 };
 
-function getWorkspaceFileDirectory(entry: WorkspaceFileEntry): string {
+function getWorkspaceFileDirectory(entry: { relativePath: string }): string {
   const slashIndex = entry.relativePath.lastIndexOf("/");
   return slashIndex === -1 ? "" : entry.relativePath.slice(0, slashIndex);
 }
@@ -113,6 +118,11 @@ function filterWorkspaceFileEntries(
       return parts.every((part) => searchText.includes(part));
     })
     .slice(0, COMMAND_CENTER_FILE_RESULT_LIMIT);
+}
+
+/** 内容搜索结果的确定性 key（同一文件多行命中需要区分）。 */
+function getContentMatchKey(match: WorkspaceContentSearchMatch): string {
+  return `${match.relativePath}:${match.line}:${match.text}`;
 }
 
 function normalizeSnippetForDedupe(snippet: string): string {
@@ -157,26 +167,6 @@ function compareRecentChangedFiles(left: TaskChangedFileSummary, right: TaskChan
     return right.writeCount - left.writeCount;
   }
   return left.path.localeCompare(right.path);
-}
-
-function resolveQueryScope(rawQuery: string): {
-  query: string;
-  scope: CommandCenterSearchScope;
-  explicitScope: boolean;
-} {
-  const trimmed = rawQuery.trimStart();
-  const prefix = trimmed[0];
-  if (prefix === ">") {
-    return { query: trimmed.slice(1).trimStart(), scope: "commands", explicitScope: true };
-  }
-  if (prefix === "#") {
-    return { query: trimmed.slice(1).trimStart(), scope: "conversations", explicitScope: true };
-  }
-  if (prefix === "@") {
-    return { query: trimmed.slice(1).trimStart(), scope: "files", explicitScope: true };
-  }
-
-  return { query: rawQuery.trim(), scope: "all", explicitScope: false };
 }
 
 function matchesCommand(command: QuickPickCommand, title: string, query: string): boolean {
@@ -268,23 +258,6 @@ function CommandCenterScopeButton({
       <span>{label}</span>
     </button>
   );
-}
-
-/**
- * 搜索历史 chip 的 scope 前缀（如 commands → ">"）。
- * 提取为独立函数以便 CommandCenterSearchHistory 组件复用。
- */
-function scopeToPrefix(scope: CommandCenterSearchScope): string {
-  switch (scope) {
-    case "commands":
-      return ">";
-    case "conversations":
-      return "#";
-    case "files":
-      return "@";
-    default:
-      return "";
-  }
 }
 
 /**
@@ -441,6 +414,9 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
   const [workspaceFilesLoading, setWorkspaceFilesLoading] = useState(false);
   const [workspaceFilesError, setWorkspaceFilesError] = useState<string | null>(null);
   const [loadedWorkspaceKey, setLoadedWorkspaceKey] = useState<string | null>(null);
+  const [contentMatches, setContentMatches] = useState<WorkspaceContentSearchMatch[]>([]);
+  const [contentSearchLoading, setContentSearchLoading] = useState(false);
+  const [contentSearchError, setContentSearchError] = useState<string | null>(null);
   // 性能修复：Command Center 关闭时不需要跟随 chat streaming 重算命令、任务和 recent changes。
   // 保留 hooks 顺序，但把关闭态输入降为空，避免隐藏弹窗在每个 token 批次重建结果区。
   const effectiveCommands = open ? commands : EMPTY_QUICK_PICK_COMMANDS;
@@ -453,6 +429,8 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
   const searchConversations =
     open && hasSearchQuery && (activeScope === "all" || activeScope === "conversations");
   const searchFiles = open && hasSearchQuery && (activeScope === "all" || activeScope === "files");
+  const searchContents =
+    open && hasSearchQuery && (activeScope === "all" || activeScope === "contents");
   const searchWorkspaceTabs = useMemo(
     () => (searchConversations ? effectiveWorkspaceTabs : []),
     [effectiveWorkspaceTabs, searchConversations],
@@ -597,6 +575,50 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
     };
   }, [fileService, loadedWorkspaceKey, searchFiles, workspaceAbsPath, workspaceKey]);
 
+  // 内容搜索：Host 侧有界扫描（见 specs/command-center.md），renderer 负责
+  // 250ms debounce + cancelled 丢弃过期响应；查询为空/范围不含内容时清空残留结果。
+  useEffect(() => {
+    if (!searchContents) {
+      setContentMatches([]);
+      setContentSearchError(null);
+      setContentSearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setContentSearchLoading(true);
+    const timer = setTimeout(() => {
+      fileService
+        .searchWorkspaceContent({
+          rootPath: workspaceAbsPath,
+          query: searchQuery,
+          ...(workspaceIdentity ? { workspaceIdentity } : {}),
+        })
+        .then((matches) => {
+          if (!cancelled) {
+            setContentMatches(matches);
+            setContentSearchError(null);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setContentMatches([]);
+            setContentSearchError(error instanceof Error ? error.message : String(error));
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setContentSearchLoading(false);
+          }
+        });
+    }, COMMAND_CENTER_CONTENT_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [fileService, searchContents, searchQuery, workspaceAbsPath, workspaceIdentity]);
+
   const rememberSearch = useCallback(
     (scope: CommandCenterSearchScope = activeScope) => {
       if (!hasSearchQuery) {
@@ -670,6 +692,22 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
     [closeDialog, onOpenCodeViewer, rememberSearch],
   );
 
+  const selectContentMatch = useCallback(
+    (match: WorkspaceContentSearchMatch) => {
+      rememberSearch("contents");
+      onOpenCodeViewer({
+        type: "file",
+        title: match.name,
+        path: match.path,
+        initialLine: match.line,
+        // 每次点击生成新键，让同一 tab 重复点击时也重新滚动定位（spec §4）。
+        initialLineFocusKey: `content-search:${match.relativePath}:${match.line}:${Date.now().toString(36)}`,
+      });
+      closeDialog();
+    },
+    [closeDialog, onOpenCodeViewer, rememberSearch],
+  );
+
   const selectRecentChange = useCallback(
     (file: TaskChangedFileSummary) => {
       closeDialog();
@@ -704,6 +742,7 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
   const shouldShowCommandSection = activeScope === "all" || activeScope === "commands";
   const shouldShowConversationSection = activeScope === "all" || activeScope === "conversations";
   const shouldShowFileSection = activeScope === "all" || activeScope === "files";
+  const shouldShowContentSection = activeScope === "all" || activeScope === "contents";
   const showHistory = !hasSearchQuery && historyEntries.length > 0;
 
   const renderMoreRow = (sectionId: CommandCenterSectionId, count: number) => {
@@ -949,14 +988,81 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
     );
   };
 
+  const renderContentSection = () => {
+    if (!hasSearchQuery || !shouldShowContentSection) {
+      return null;
+    }
+
+    if (contentSearchLoading && contentMatches.length === 0) {
+      return (
+        <CommandGroup heading={intl.formatMessage({ id: "commandCenter.section.contents" })}>
+          <CommandEmpty className="px-4 py-5 text-foreground-subtle">
+            {intl.formatMessage({ id: "taskSearch.loading" })}
+          </CommandEmpty>
+        </CommandGroup>
+      );
+    }
+
+    if (contentSearchError) {
+      return (
+        <CommandGroup heading={intl.formatMessage({ id: "commandCenter.section.contents" })}>
+          <CommandEmpty className="px-4 py-5 text-destructive">{contentSearchError}</CommandEmpty>
+        </CommandGroup>
+      );
+    }
+
+    if (contentMatches.length === 0) {
+      return null;
+    }
+
+    const visibleRows =
+      activeScope === "contents" || expandedSections.has("contents")
+        ? contentMatches
+        : contentMatches.slice(0, COMMAND_CENTER_SECTION_LIMIT);
+    return (
+      <CommandGroup heading={intl.formatMessage({ id: "commandCenter.section.contents" })}>
+        {visibleRows.map((match) => {
+          const descriptor = resolveFileDisplayDescriptor(match.path);
+          const directory = getWorkspaceFileDirectory(match);
+          return (
+            <CommandItem
+              key={getContentMatchKey(match)}
+              value={`${match.name} ${match.relativePath} ${match.text}`}
+              className={quickPickItemClassName}
+              onSelect={() => selectContentMatch(match)}
+            >
+              <FileDisplayIcon src={descriptor.fileIconSrc} size={14} className="shrink-0" />
+              <span className="flex min-w-0 flex-1 flex-col justify-center py-0.5">
+                <span className="truncate text-ui-base leading-5 font-normal text-foreground">
+                  <HighlightedMatchText text={match.name} query={searchQuery} />
+                  {directory ? <span className="text-foreground-subtle"> {directory}</span> : null}
+                </span>
+                <span className="min-w-0 truncate text-ui-base leading-4 text-foreground-subtle">
+                  <HighlightedMatchText text={match.text} query={searchQuery} />
+                </span>
+              </span>
+              <CommandShortcut className={quickPickMetadataClassName}>
+                L{match.line}
+              </CommandShortcut>
+            </CommandItem>
+          );
+        })}
+        {activeScope === "all" ? renderMoreRow("contents", contentMatches.length) : null}
+      </CommandGroup>
+    );
+  };
+
   const hasAnySearchResults =
     (shouldShowCommandSection && commandOptions.length > 0) ||
     (shouldShowConversationSection && conversationRows.length > 0) ||
-    (shouldShowFileSection && fileRows.length > 0);
+    (shouldShowFileSection && fileRows.length > 0) ||
+    (shouldShowContentSection && contentMatches.length > 0);
   const hasSearchStatus =
     taskList.loading ||
     workspaceFilesLoading ||
-    (shouldShowFileSection && Boolean(workspaceFilesError));
+    contentSearchLoading ||
+    (shouldShowFileSection && Boolean(workspaceFilesError)) ||
+    (shouldShowContentSection && Boolean(contentSearchError));
 
   const renderDefaultSections = () => {
     switch (activeScope) {
@@ -966,6 +1072,12 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
         return renderRecentTasksSection({ rows: recentTaskRows, showEmpty: true });
       case "files":
         return renderRecentChangesSection({ rows: recentChangeRows, showEmpty: true });
+      case "contents":
+        return (
+          <CommandEmpty className="px-4 py-5 text-foreground-subtle">
+            {intl.formatMessage({ id: "commandCenter.empty.contentHint" })}
+          </CommandEmpty>
+        );
       default:
         return (
           <>
@@ -1029,6 +1141,13 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
             >
               <FileIcon className="size-3" />
             </CommandCenterScopeButton>
+            <CommandCenterScopeButton
+              active={activeScope === "contents"}
+              label={intl.formatMessage({ id: "commandCenter.scope.contents" })}
+              onClick={() => setScope("contents")}
+            >
+              <TextSearchIcon className="size-3" />
+            </CommandCenterScopeButton>
           </div>
         </div>
         <CommandList className={commandCenterListClassName}>
@@ -1039,6 +1158,7 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
               {renderCommandSections()}
               {renderConversationSection()}
               {renderFileSection()}
+              {renderContentSection()}
             </>
           ) : (
             <CommandEmpty className="px-4 py-5 text-foreground-subtle">

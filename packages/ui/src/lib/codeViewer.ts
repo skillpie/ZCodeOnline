@@ -27,6 +27,13 @@ export interface FileCodeViewerSource extends CodeViewerWorkspaceScope {
   type: "file";
   title: string;
   path: string;
+  /** 打开时滚动定位到的 1-based 行号（命令中心内容搜索命中跳转）。 */
+  initialLine?: number;
+  /**
+   * 行定位请求的去重键：每次点击生成新值，驱动 CodeViewer 的滚动 effect 重跑，
+   * 让"同一 tab 已打开时再次点击同一结果"也能重新定位。
+   */
+  initialLineFocusKey?: string;
 }
 
 export interface CodeReviewAnchor {

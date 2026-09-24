@@ -166,3 +166,72 @@ export const DbSchemaOutputSchema = z
 export type DbSchemaOutput = z.infer<typeof DbSchemaOutputSchema>;
 
 export const DbSchemaOutputJsonSchema = toToolJsonSchema(DbSchemaOutputSchema);
+
+// -----------------------------------------------
+// DBExport —— 表结构 / 数据导出为 SQL 文件
+// -----------------------------------------------
+
+export const DB_EXPORT_TOOL_NAME = "DBExport";
+
+export const DbExportInputSchema = z.object({
+  data_source: z.string().optional().describe(DB_TARGET_DESCRIPTION),
+  scope: z
+    .enum(["ddl", "dml"])
+    .describe("ddl = table structures (CREATE TABLE); dml = table data (INSERT statements)"),
+  tables: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Tables to export. Required for dml. For ddl, omit to export every base table (minus exclude_tables).",
+    ),
+  exclude_tables: z
+    .array(z.string())
+    .optional()
+    .describe("ddl only: tables to skip. Default excludes schema_migrations."),
+  output_dir: z
+    .string()
+    .optional()
+    .describe("Target directory, relative to the working directory (default sql/export) or absolute."),
+  max_rows_per_table: z
+    .number()
+    .int()
+    .min(1)
+    .max(500_000)
+    .optional()
+    .describe("dml only: row cap per table (default 50000); truncated beyond that."),
+});
+
+export type DbExportInput = z.infer<typeof DbExportInputSchema>;
+
+export const DbExportInputJsonSchema = toToolJsonSchema(DbExportInputSchema);
+
+export const DbExportOutputSchema = z
+  .object({
+    data_source: DbTargetViewSchema,
+    scope: z.enum(["ddl", "dml"]),
+    output_dir: z.string(),
+    files: z.array(
+      z
+        .object({
+          table: z.string(),
+          path: z.string(),
+          rows: z.number().int().nonnegative(),
+          truncated: z.boolean(),
+        })
+        .strict(),
+    ),
+    skipped: z.array(
+      z
+        .object({
+          table: z.string(),
+          reason: z.string(),
+        })
+        .strict(),
+    ),
+    duration_ms: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type DbExportOutput = z.infer<typeof DbExportOutputSchema>;
+
+export const DbExportOutputJsonSchema = toToolJsonSchema(DbExportOutputSchema);

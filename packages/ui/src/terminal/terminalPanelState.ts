@@ -13,6 +13,13 @@ export interface TerminalSessionDescriptor {
 export interface TerminalWorkspaceState {
   sessionIds: string[];
   activeSessionId: string;
+  /**
+   * 终端分组（含单窗口组）：每组内成员按左→右排序，每个 session 恰好属于一个组。
+   * 可见集合 = activeSessionId 所在组的成员；长度 ≥2 的组即拆分组，整组等宽展示。
+   * 组关系跨「+」新建与 tab 切换持久保持（切回组内任一成员即恢复整组布局），
+   * 只有关闭成员才会收缩组；组顺序与创建顺序一致（拆分目标恒为最后打开的组尾成员）。
+   */
+  splitGroups: string[][];
 }
 
 export interface TerminalPanelState {
@@ -56,6 +63,7 @@ export function createWorkspaceTerminalState(params: {
     workspace: {
       sessionIds: [session.id],
       activeSessionId: session.id,
+      splitGroups: [[session.id]],
     },
   };
 }
@@ -120,7 +128,23 @@ export function closeTerminalSession(
 
   const closingIndex = workspace.sessionIds.indexOf(sessionId);
   const nextSessionIds = workspace.sessionIds.filter((id) => id !== sessionId);
-  const fallbackSessionId = nextSessionIds[Math.max(0, closingIndex - 1)] ?? nextSessionIds[0];
+  // 关闭成员从所在组移除；组内剩余 ≥2 才保持拆分展示（单成员组保留为普通单窗口组）。
+  const nextSplitGroups = workspace.splitGroups
+    .map((group) => group.filter((id) => id !== sessionId))
+    .filter((group) => group.length > 0);
+
+  // 焦点终端被关闭时，落点优先取同组相邻窗口（左邻优先，其次右邻），符合拆分布局的视觉相邻关系；
+  // 同组无邻居（单成员组）时沿用 sessionIds 相邻规则。
+  let fallbackSessionId = nextSessionIds[Math.max(0, closingIndex - 1)] ?? nextSessionIds[0];
+  if (workspace.activeSessionId === sessionId) {
+    const closingGroup = workspace.splitGroups.find((group) => group.includes(sessionId));
+    const rowIndex = closingGroup?.indexOf(sessionId) ?? -1;
+    const groupNeighbor =
+      rowIndex >= 0 ? (closingGroup?.[rowIndex - 1] ?? closingGroup?.[rowIndex + 1]) : undefined;
+    if (groupNeighbor) {
+      fallbackSessionId = groupNeighbor;
+    }
+  }
   if (!fallbackSessionId) {
     return state;
   }
@@ -132,6 +156,7 @@ export function closeTerminalSession(
       ...state.workspaces,
       [session.workspaceKey]: {
         sessionIds: nextSessionIds,
+        splitGroups: nextSplitGroups,
         activeSessionId:
           workspace.activeSessionId === sessionId ? fallbackSessionId : workspace.activeSessionId,
       },
@@ -192,6 +217,66 @@ export function ensureWorkspaceTerminalState(
     workspaces: {
       ...state.workspaces,
       [params.workspaceKey]: workspace,
+    },
+  };
+}
+
+export function splitTerminalSession(
+  state: TerminalPanelState,
+  params: {
+    workspaceKey: string;
+    services: IServiceAccessor;
+    cwd?: string;
+  },
+): TerminalPanelState {
+  const ensured = ensureWorkspaceTerminalState(state, params);
+  const workspace = ensured.workspaces[params.workspaceKey];
+  // 拆分目标固定为「最后打开」的存活终端（创建顺序最后一个）；连续拆分时上一轮的新窗口
+  // 就是本轮目标，形成从左到右逐段均分的链。目标缺失说明 workspace 记录异常，保持原状态。
+  const targetSessionId = workspace?.sessionIds[workspace.sessionIds.length - 1];
+  if (!workspace || !targetSessionId) {
+    return ensured;
+  }
+
+  const newSession = createTerminalSession({
+    workspaceKey: params.workspaceKey,
+    services: params.services,
+    cwd: params.cwd,
+    index: getNextTerminalSessionIndex(ensured, params.workspaceKey),
+  });
+
+  // 新窗口插到目标所在组、目标的右侧；目标不在任何组（正常写入路径不可达）时以 [target, new] 新建一组兜底。
+  const targetGroupIndex = workspace.splitGroups.findIndex((group) =>
+    group.includes(targetSessionId),
+  );
+  const splitGroups =
+    targetGroupIndex >= 0
+      ? workspace.splitGroups.map((group, groupIndex) => {
+          if (groupIndex !== targetGroupIndex) {
+            return group;
+          }
+          const targetIndex = group.indexOf(targetSessionId);
+          return [
+            ...group.slice(0, targetIndex + 1),
+            newSession.id,
+            ...group.slice(targetIndex + 1),
+          ];
+        })
+      : [...workspace.splitGroups, [targetSessionId, newSession.id]];
+
+  return {
+    sessions: {
+      ...ensured.sessions,
+      [newSession.id]: newSession,
+    },
+    workspaces: {
+      ...ensured.workspaces,
+      [params.workspaceKey]: {
+        ...workspace,
+        sessionIds: [...workspace.sessionIds, newSession.id],
+        activeSessionId: newSession.id,
+        splitGroups,
+      },
     },
   };
 }

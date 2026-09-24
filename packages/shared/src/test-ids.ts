@@ -46,6 +46,8 @@ export const TID_TERMINAL_TOGGLE = "terminal-toggle";
 export const TID_SIDE_PANE_TOGGLE = "side-pane-toggle";
 /** 终端面板关闭按钮 */
 export const TID_TERMINAL_CLOSE_BUTTON = "terminal-close-button";
+/** 终端面板拆分按钮 */
+export const TID_TERMINAL_SPLIT_BUTTON = "terminal-split-button";
 /** 浏览器显隐切换按钮 */
 export const TID_BROWSER_TOGGLE = "browser-toggle";
 /** Git 显隐切换按钮 */

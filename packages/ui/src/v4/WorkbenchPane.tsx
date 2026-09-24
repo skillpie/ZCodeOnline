@@ -12,12 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { TID_V4_PANE_SHELL, testId } from "@zcode/shared";
-import type {
-  GitChangeSourceId,
-  GitRepositorySummary,
-  ZCodeProvider,
-  ZCodeTaskChangeSummary,
-} from "@zcode/shared";
+import type { GitRepositorySummary, ZCodeProvider } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { useServices } from "@/hooks/useServices.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
@@ -271,13 +266,9 @@ export interface WorkbenchShellBinding {
   ) => void;
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
-  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
-  activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
   summaryPanelVariantOverride?: ChatViewSummaryPanelVariant | null;
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
-  onRefreshGit?: () => void;
-  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   onOpenBrowserUrl?: (url: string) => void;
   onOpenAutomationsMain?: OpenAutomationsMain;
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
@@ -575,21 +566,15 @@ export function WorkbenchLeafPane({
           }
           gitSummary={shouldUseShellStatusPanel ? shell.gitSummary : undefined}
           gitDirtyFileCount={shouldUseShellStatusPanel ? shell.gitDirtyFileCount : undefined}
-          gitWorktreeReviewSourceId={
-            shouldUseShellStatusPanel ? shell.gitWorktreeReviewSourceId : undefined
-          }
           gitWorktreeChangeSummary={
             shouldUseShellStatusPanel ? shell.gitWorktreeChangeSummary : undefined
           }
-          activeTaskChangeSummary={isPrimary ? shell.activeTaskChangeSummary : undefined}
           summaryPanelVariantOverride={
             shouldUseShellStatusPanel ? shell.summaryPanelVariantOverride : undefined
           }
           onSummaryPanelVariantOverrideChange={
             shouldUseShellStatusPanel ? shell.onSummaryPanelVariantOverrideChange : undefined
           }
-          onRefreshGit={shouldUseShellStatusPanel ? shell.onRefreshGit : undefined}
-          onOpenGitReview={shouldUseShellStatusPanel ? shell.onOpenGitReview : undefined}
           onOpenBrowserUrl={shell.onOpenBrowserUrl}
           onOpenAutomationsMain={shell.onOpenAutomationsMain}
           onOpenCodeViewer={shell.onOpenCodeViewer}

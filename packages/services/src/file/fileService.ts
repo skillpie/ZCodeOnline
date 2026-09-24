@@ -7,12 +7,18 @@ import type {
   FileBinaryPreview,
   FileEntry,
   FileMediaPreview,
+  FileStat,
   FileTextSlice,
   WorkspaceFileEntry,
 } from "@zcode/shared";
 import { getMediaPreviewFormat } from "@zcode/shared";
 import { packWorkspaceFileEntries } from "@zcode/shared/workspaceFileEntriesCodec";
-import type { IFileService, WorkspaceFileSearchParams } from "./file.js";
+import type {
+  IFileService,
+  WorkspaceContentSearchParams,
+  WorkspaceContentSearchMatch,
+  WorkspaceFileSearchParams,
+} from "./file.js";
 import { WORKSPACE_FILE_SEARCH_DISPLAY_CAP } from "@zcode/shared/workspaceFileSearch";
 import { buildHostFileSearchCandidates, searchHostFileCandidates } from "./workspaceFileSearch.js";
 import {
@@ -194,6 +200,94 @@ async function resolveReaddirEntryType(
   }
 }
 
+/**
+ * 以首个命中词为中心截取行摘要：长行（如压缩产物）截断后关键词必须仍在摘要内，
+ * 否则 UI 的高亮与定位语义失效。
+ */
+function buildContentSearchLineText(line: string, queryParts: string[]): string {
+  const trimmed = line.trim();
+  if (trimmed.length <= WORKSPACE_CONTENT_SEARCH_LINE_TEXT_MAX_CHARS) {
+    return trimmed;
+  }
+
+  const lowerTrimmed = trimmed.toLocaleLowerCase();
+  let hitIndex = -1;
+  for (const part of queryParts) {
+    const at = lowerTrimmed.indexOf(part);
+    if (at !== -1 && (hitIndex === -1 || at < hitIndex)) {
+      hitIndex = at;
+    }
+  }
+
+  const windowStart = hitIndex === -1 ? 0 : Math.max(0, hitIndex - 80);
+  const windowEnd = Math.min(
+    trimmed.length,
+    windowStart + WORKSPACE_CONTENT_SEARCH_LINE_TEXT_MAX_CHARS,
+  );
+  return `${windowStart > 0 ? "..." : ""}${trimmed.slice(windowStart, windowEnd)}${
+    windowEnd < trimmed.length ? "..." : ""
+  }`;
+}
+
+/**
+ * 在单个文件内容中查找查询词（行内 AND、大小写不敏感），返回有界匹配行。
+ * 超过大小上限或疑似二进制的文件整只跳过；返回 bytesRead 供调用方累计扫描预算。
+ */
+async function searchContentInFile(params: {
+  path: string;
+  relativePath: string;
+  name: string;
+  queryParts: string[];
+  matchLimit: number;
+}): Promise<{ matches: WorkspaceContentSearchMatch[]; bytesRead: number }> {
+  const fileStat = await stat(params.path).catch(() => null);
+  if (!fileStat?.isFile() || fileStat.size > WORKSPACE_CONTENT_SEARCH_MAX_FILE_BYTES) {
+    return { matches: [], bytesRead: 0 };
+  }
+
+  const handle = await open(params.path, "r").catch(() => null);
+  if (!handle) {
+    return { matches: [], bytesRead: 0 };
+  }
+
+  try {
+    const readLength = Math.min(fileStat.size, WORKSPACE_CONTENT_SEARCH_MAX_FILE_BYTES);
+    const buffer = Buffer.allocUnsafe(readLength);
+    const { bytesRead } = await handle.read(buffer, 0, readLength, 0);
+    const chunk = buffer.subarray(0, bytesRead);
+    if (isProbablyBinary(chunk)) {
+      return { matches: [], bytesRead };
+    }
+
+    const lines = chunk.toString("utf-8").split(/\r?\n/);
+    const matches: WorkspaceContentSearchMatch[] = [];
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (line === undefined) {
+        continue;
+      }
+      const lowerLine = line.toLocaleLowerCase();
+      if (!params.queryParts.every((part) => lowerLine.includes(part))) {
+        continue;
+      }
+
+      matches.push({
+        path: params.path,
+        relativePath: params.relativePath,
+        name: params.name,
+        line: index + 1,
+        text: buildContentSearchLineText(line, params.queryParts),
+      });
+      if (matches.length >= params.matchLimit) {
+        break;
+      }
+    }
+    return { matches, bytesRead };
+  } finally {
+    await handle.close();
+  }
+}
+
 export interface CreateFileServiceOptions {
   workspaceFileSearchFilter?: WorkspaceFileSearchFilter;
 }
@@ -209,6 +303,18 @@ export interface CreateFileServiceOptions {
 const WORKSPACE_FILE_LIST_CACHE_TTL_MS = 60_000;
 const WORKSPACE_FILE_LIST_SCAN_CONCURRENCY = 8;
 const WORKSPACE_FILE_LIST_CACHE_MAX_ENTRIES = 4;
+/**
+ * 内容搜索（searchWorkspaceContent）的有界扫描边界，见 specs/command-center.md §3。
+ * Host 不提供取消通道，单次查询的成本上限完全由这些常量兜底：
+ * 命中上限/预算耗尽即早停，无命中查询最多读 32MB、扫 2 万个文件后返回空结果。
+ */
+const WORKSPACE_CONTENT_SEARCH_MATCH_LIMIT = 100;
+const WORKSPACE_CONTENT_SEARCH_FILE_MATCH_LIMIT = 5;
+const WORKSPACE_CONTENT_SEARCH_MAX_FILE_BYTES = 256 * 1024;
+const WORKSPACE_CONTENT_SEARCH_TOTAL_BYTES_BUDGET = 32 * 1024 * 1024;
+const WORKSPACE_CONTENT_SEARCH_MAX_FILE_SCANS = 20_000;
+const WORKSPACE_CONTENT_SEARCH_SCAN_CONCURRENCY = 4;
+const WORKSPACE_CONTENT_SEARCH_LINE_TEXT_MAX_CHARS = 240;
 interface WorkspaceFileIndex {
   at: number;
   signature: string;
@@ -603,6 +709,72 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       );
       index.candidates ??= buildHostFileSearchCandidates(index.packed, params.rootPath);
       return searchHostFileCandidates(await index.candidates, params.query, limit);
+    },
+    async searchWorkspaceContent(
+      params: WorkspaceContentSearchParams,
+    ): Promise<WorkspaceContentSearchMatch[]> {
+      const requestedLimit = params.limit ?? WORKSPACE_CONTENT_SEARCH_MATCH_LIMIT;
+      if (!Number.isFinite(requestedLimit) || typeof params.query !== "string") {
+        throw new Error("Invalid workspace content search query or limit");
+      }
+      const limit = Math.min(
+        WORKSPACE_CONTENT_SEARCH_MATCH_LIMIT,
+        Math.max(0, Math.trunc(requestedLimit)),
+      );
+      const queryParts = params.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+      if (limit === 0 || queryParts.length === 0) {
+        return [];
+      }
+
+      const index = await ensureWorkspaceFileIndex(params.rootPath, params.workspaceIdentity);
+      index.candidates ??= buildHostFileSearchCandidates(index.packed, params.rootPath);
+      const files = (await index.candidates).filter((candidate) => candidate.type === "file");
+
+      // 受限并发扫描；结果先落槽位数组再按游标顺序展平，保证确定性排序。
+      // 单文件失败（权限/竞态删除）静默跳过，不阻断整体搜索。
+      const slotMatches: WorkspaceContentSearchMatch[][] = [];
+      let cursor = 0;
+      let matchCount = 0;
+      let filesScanned = 0;
+      let bytesScanned = 0;
+      const scanWorker = async (): Promise<void> => {
+        for (;;) {
+          if (
+            matchCount >= limit ||
+            filesScanned >= WORKSPACE_CONTENT_SEARCH_MAX_FILE_SCANS ||
+            bytesScanned >= WORKSPACE_CONTENT_SEARCH_TOTAL_BYTES_BUDGET
+          ) {
+            return;
+          }
+          const current = cursor++;
+          if (current >= files.length) {
+            return;
+          }
+          filesScanned += 1;
+          const file = files[current];
+          if (!file) {
+            return;
+          }
+          try {
+            const result = await searchContentInFile({
+              path: file.path,
+              relativePath: file.relativePath,
+              name: file.name,
+              queryParts,
+              matchLimit: Math.min(WORKSPACE_CONTENT_SEARCH_FILE_MATCH_LIMIT, limit - matchCount),
+            });
+            slotMatches[current] = result.matches;
+            matchCount += result.matches.length;
+            bytesScanned += result.bytesRead;
+          } catch {
+            // 单个文件不可读不阻断整体搜索。
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: WORKSPACE_CONTENT_SEARCH_SCAN_CONCURRENCY }, () => scanWorker()),
+      );
+      return slotMatches.flat().slice(0, limit);
     },
     async listWorkspaceFilesLength(params: { rootPath: string }): Promise<number> {
       const { packed } = await ensureWorkspaceFileIndex(params.rootPath);

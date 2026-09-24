@@ -155,6 +155,25 @@ export interface GitIgnoredPathsRequest extends GitRepositoryRequest {
 
 export interface GitDiffQuery extends GitRepositoryRequest, GitDiffRequest {}
 
+export interface GitBlameQuery extends GitRepositoryRequest {
+  path: string;
+}
+
+export interface GitBlameLine {
+  /** 新文件中的行号（1 起） */
+  line: number;
+  /** 40 位提交哈希；未提交行为全 0 */
+  hash: string;
+  author: string;
+  /** 作者提交时间（Unix 秒） */
+  time: number;
+}
+
+export interface GitBlameResult {
+  path: string;
+  lines: GitBlameLine[];
+}
+
 export interface GitBranchComparison {
   baseRef: string | null;
   headRef: string | null;
@@ -244,6 +263,13 @@ export interface GitPushResult {
   trackingBranchName: string | null;
   remoteName: string | null;
   setUpstream: boolean;
+  summary: GitRepositorySummary;
+}
+
+export interface GitPullResult {
+  branchName: string | null;
+  trackingBranchName: string | null;
+  remoteName: string | null;
   summary: GitRepositorySummary;
 }
 

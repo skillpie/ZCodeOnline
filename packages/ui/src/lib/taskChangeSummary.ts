@@ -138,7 +138,8 @@ export function buildTaskChangeSummary(
   };
 }
 
-export function buildTurnChangeSummary(
+// Git 审阅面板的 last-turn 来源下线后不再有外部消费者，仅供同文件 buildPerTurnChangeSummaries 复用。
+function buildTurnChangeSummary(
   turn: ZCodePersistedFileChange | null | undefined,
 ): ZCodeTaskChangeSummary | null {
   if (!turn || turn.snapshots.length === 0) {

@@ -3,6 +3,7 @@ import type {
   ZCodeProvider,
   ZCodeTaskChangeSummary,
   EditorInfo,
+  GitChangeSourceId,
   GitRepositorySummary,
   RemoteTarget,
   UserInfo,
@@ -75,4 +76,12 @@ export interface WorkspaceHeaderActionSectionProps {
   hideHelpMenu?: boolean;
   showWindowControls?: boolean;
   useWindowsCaptionSpacing?: boolean;
+  /** 头部 Git 工具组（更改 / 分支 / 提交）的宿主投影与回调；非 Git 工作区由组件自身隐藏。 */
+  gitSummary?: GitRepositorySummary | null;
+  gitDirtyFileCount?: number;
+  gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
+  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
+  onRefreshGit?: () => void;
+  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
 }
