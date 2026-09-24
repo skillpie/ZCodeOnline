@@ -11,6 +11,7 @@ import type {
 import type { DesktopTitleBarTheme, Locale } from "@zcode/shared";
 import {
   DEFAULT_LOCALE,
+  DEFAULT_SKILL_MARKET_URL,
   desktopMenuMessageIds,
   getDesktopMenuMessage,
   isTrustedCodingPlanWebviewOrigin,
@@ -55,6 +56,33 @@ const embeddedBrowserJavaScriptDialogPreloadPath = join(
 );
 // Coding Plan 官网页专用 preload：挂 window.zcodeBridge 供官网回传购买完成信号。
 const codingPlanWebviewPreloadPath = join(import.meta.dirname, "../preload/codingPlanWebview.cjs");
+// 技能市场 webview 专用 preload：桥接 ZCode → SkillPie 免登握手（ipc sendToHost/on）。
+const skillMarketWebviewPreloadPath = join(import.meta.dirname, "../preload/skillMarketWebview.cjs");
+
+function resolveSkillMarketWebviewOrigin(): string {
+  // 主进程读不到 Vite 注入的 shared defines，运行时用环境变量覆盖测试部署。
+  const override = process.env.SKILL_MARKET_ORIGIN?.trim();
+  if (override) {
+    try {
+      return new URL(override).origin;
+    } catch {
+      // 非法 override 回退默认值，不阻塞窗口创建。
+    }
+  }
+  return new URL(DEFAULT_SKILL_MARKET_URL).origin;
+}
+
+/** 技能市场 webview（SkillPie 免登握手）需要专用 preload；其余 webview 用 Dialog 桥。 */
+function isSkillMarketWebviewSrc(src: string | undefined): boolean {
+  if (!src) return false;
+  try {
+    const url = new URL(src);
+    if (url.protocol !== "https:") return false;
+    return url.origin === resolveSkillMarketWebviewOrigin();
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 判断 webview 是否加载 Coding Plan 官网购买页（/coding-plan?...&embedded=app）。
@@ -644,11 +672,15 @@ export function createBrowserWindow(options: {
     //
     // Coding Plan 官网页例外：它需要 window.zcodeBridge 回传购买完成信号，
     // 改用专用 preload（codingPlanWebview.ts），其余 webview 保持原生 Dialog 桥。
+    // 技能市场 webview（SkillPie）同理：专用 preload 桥接 ZCode → SkillPie 免登握手。
     const targetUrl = params.src ?? "about:blank";
     const isCodingPlanWebview = isCodingPlanEmbeddedWebviewSrc(targetUrl);
+    const isSkillMarketWebview = isSkillMarketWebviewSrc(targetUrl);
     webPreferences.preload = isCodingPlanWebview
       ? codingPlanWebviewPreloadPath
-      : embeddedBrowserJavaScriptDialogPreloadPath;
+      : isSkillMarketWebview
+        ? skillMarketWebviewPreloadPath
+        : embeddedBrowserJavaScriptDialogPreloadPath;
     webPreferences.contextIsolation = true;
     webPreferences.nodeIntegration = false;
     webPreferences.nodeIntegrationInSubFrames = true;

@@ -159,6 +159,7 @@ function RootInner({
   supportsEmbeddedBrowser: explicitSupportsEmbeddedBrowser,
   allowRemoteWorkspace = true,
   initialWorkspaceLoadingFallback,
+  loadZcodeSsoJwtToken,
 }: RootProps) {
   useEffect(() => {
     setMcpStorePlatform(platform);
@@ -1070,6 +1071,7 @@ function RootInner({
             isMacDesktop={isMacDesktop}
             isWindowsDesktop={isWindowsDesktop}
             supportsEmbeddedBrowser={supportsEmbeddedBrowser}
+            loadZcodeSsoJwtToken={loadZcodeSsoJwtToken}
           />
         )}
         <ScopedErrorBoundary

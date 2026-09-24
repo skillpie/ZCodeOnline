@@ -326,6 +326,7 @@ import { ICommandsService } from "./commands/commands.js";
 import { IHooksService } from "./hooks/hooks.js";
 import { IMemoryService } from "./memory/memory.js";
 import { ISettingsSyncService } from "./settings-sync/settingsSync.js";
+import { IDataSourceService } from "./data-source/dataSource.js";
 import { IFeedbackService } from "./feedback/feedback.js";
 import { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import { createFileService } from "./file/fileService.js";
@@ -413,6 +414,7 @@ import { createCommandsService } from "./commands/commandsService.js";
 import { createHooksService } from "./hooks/hooksService.js";
 import { createMemoryService } from "./memory/memoryService.js";
 import { createSettingsSyncService } from "./settings-sync/settingsSyncService.js";
+import { createDataSourceService } from "./data-source/dataSourceService.js";
 import {
   createFeedbackService,
   type CreateFeedbackServiceOptions,
@@ -2587,6 +2589,8 @@ export function createLocalServices(options: {
     )
     .register(IMemoryService, createMemoryService())
     .register(ISettingsSyncService, createSettingsSyncService({ settingService }))
+    // 数据源管理（MySQL/PG 连接、读写模式、表结构同步）：附加式新功能，spec 见 specs/data-source.md
+    .register(IDataSourceService, createDataSourceService())
     .register(
       IFeedbackService,
       createFeedbackService({

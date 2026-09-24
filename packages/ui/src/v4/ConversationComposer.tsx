@@ -152,6 +152,7 @@ import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import { useConversationSelectionReferences } from "@/v4/composer/useConversationSelectionReferences.js";
 import { ConversationBackgroundWorkTrigger } from "@/v4/composer/ConversationBackgroundWorkTrigger.js";
 import { V4ComposerCuaEntry } from "@/v4/composer/V4ComposerCuaEntry.js";
+import { V4ComposerDataSourceEntry } from "@/v4/composer/V4ComposerDataSourceEntry.js";
 import {
   V4ComposerModeSwitch,
   V4ComposerModelControls,
@@ -2157,6 +2158,8 @@ function ConversationComposerImpl({
           remoteSessionId={remoteSessionId}
           currentSessionBusy={canStop}
         />
+        {/* 数据源入口（附加式新功能）：自管服务可用性与面板状态，不在 composer 重复判定。 */}
+        <V4ComposerDataSourceEntry />
         <ConversationBackgroundWorkTrigger
           backgroundWorks={snapshot?.backgroundWorks ?? []}
           runningSubagentCount={runningSubagentCount}

@@ -110,6 +110,8 @@ export interface AppProps {
   isMacDesktop?: boolean;
   isWindowsDesktop?: boolean;
   supportsEmbeddedBrowser?: boolean;
+  /** Web 入口注入的 zcode JWT 读取器（浏览器 localStorage）；桌面端 App 内回落凭据库。 */
+  loadZcodeSsoJwtToken?: () => Promise<string | null>;
 }
 
 export interface GitChangeSummary {
@@ -117,7 +119,7 @@ export interface GitChangeSummary {
   removed: number;
 }
 
-export type WorkspaceMainView = "chat" | "automations" | "plugin-store";
+export type WorkspaceMainView = "chat" | "automations" | "plugin-store" | "skill-market";
 
 export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackService"> {
   workspaceReadOnlyReason?: string;
@@ -129,7 +131,13 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   onOpenAutomationConsumed: () => void;
   handleOpenAutomations: OpenAutomationsMain;
   handleOpenPluginStore: () => void;
+  handleOpenSkillMarket: () => void;
   handleManageInstalledPlugins: () => void;
+  /**
+   * 读取 zcode 平台 JWT 的最终通路（技能市场免登用）。
+   * App 内已按平台归一：显式注入（Web localStorage）→ 桌面宿主凭据库 → null。
+   */
+  loadSkillMarketSsoJwt?: () => Promise<string | null>;
   workspaceShellZCodeState: WorkspaceShellZCodeState;
   theme: Theme;
   isMacFullscreen: boolean;

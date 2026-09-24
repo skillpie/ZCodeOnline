@@ -38,6 +38,12 @@ export interface RootProps {
   initialWorkspaceLoadingFallback?: ReactNode;
   /** Assistant code-comment 卡片灰度；默认关闭，关闭时保留原始 directive。 */
   assistantCodeCommentCardsEnabled?: boolean;
+  /**
+   * 读取 zcode 平台 JWT（zcodejwttoken），供技能市场免登握手使用。
+   * Web 入口注入浏览器 localStorage 版本；桌面端缺省回落到宿主凭据库，
+   * 两者都拿不到时技能市场按未登录处理（回空 JWT，skillpie 走自身登录）。
+   */
+  loadZcodeSsoJwtToken?: () => Promise<string | null>;
 }
 
 export interface WorkspaceSettingsLayerProps {

@@ -46,6 +46,10 @@ export const SERVER_HTTP_EXTERNAL_DEPENDENCIES = [
   // 云内容 ZIP 解包链路引入 yauzl，其 CommonJS require("fs") 在 ESM
   // bundle 加载时崩溃；与 desktop 相同，外置后交给 Node 原生加载。
   "yauzl",
+  // 数据源服务引入 mysql2 / pg（纯 JS 但为 CJS），其依赖（如 sql-escaper）在 ESM
+  // bundle 加载时命中动态 require("buffer") 直接崩溃；与 yazl/yauzl 同策略外置。
+  "mysql2",
+  "pg",
 ];
 
 export default defineConfig({

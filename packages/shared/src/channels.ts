@@ -149,6 +149,8 @@ export const ServiceChannels = {
   OffPeakTask: "off-peak-task",
   /** Onboarding 完成记录服务（本地持久化，后续上传服务器） */
   OnboardingRecord: "onboarding-record",
+  /** 数据源管理（MySQL / PostgreSQL 连接、读写模式与表结构同步） */
+  DataSource: "data-source",
 } as const;
 
 export type ServiceChannelName = (typeof ServiceChannels)[keyof typeof ServiceChannels];

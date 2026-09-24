@@ -46,6 +46,7 @@ import type {
 } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
 import { AutomationsMainBreadcrumbFrame } from "@/settings/AutomationsMainBreadcrumbFrame.js";
 import { PluginStorePage } from "@/settings/PluginStorePage.js";
+import { SkillMarketEmbeddedView } from "@/SkillMarketEmbeddedView.js";
 import { TaskFindDialog } from "@/quickpick/TaskFindDialog.js";
 import { WorkspaceHeader } from "@/WorkspaceHeader.js";
 import { WorkspaceSidebar, type SidebarFileTreeOpenRequest } from "@/WorkspaceSidebar.js";
@@ -198,7 +199,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   onOpenAutomationConsumed,
   handleOpenAutomations,
   handleOpenPluginStore,
+  handleOpenSkillMarket,
   handleManageInstalledPlugins,
+  loadSkillMarketSsoJwt,
   onConnectRemote,
   onSelectRemoteProject,
   onCancelRemoteProject,
@@ -1492,7 +1495,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   // 与 Task Header 分叉。桌面端统一复用 WorkspaceHeader，只由 variant 裁剪 task 专属内容；
   // 手机远控无 active task 时仍不渲染桌面 chrome，继续遵守 replayable overlay 边界。
   const shouldRenderMainViewHeader =
-    workspaceMainView !== "automations" && workspaceMainView !== "plugin-store";
+    workspaceMainView !== "automations" &&
+    workspaceMainView !== "plugin-store" &&
+    workspaceMainView !== "skill-market";
   const shouldRenderWorkspaceHeader =
     shouldRenderMainViewHeader && (activeTaskId !== null || isDesktop);
   // ErrorBoundary resetKeys 的数组如果每次 render 都重新创建，
@@ -1600,6 +1605,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                     automationsActive={workspaceMainView === "automations"}
                     onOpenPluginStore={handleOpenPluginStore}
                     pluginStoreActive={workspaceMainView === "plugin-store"}
+                    onOpenSkillMarket={handleOpenSkillMarket}
+                    skillMarketActive={workspaceMainView === "skill-market"}
                     onFileTreeOpenChange={setIsSidebarFileTreeOpen}
                   />
                 </WorkflowRunOpenProvider>
@@ -1821,6 +1828,25 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                             </div>
                           </AutomationsMainBreadcrumbFrame>
                         </main>
+                      ) : workspaceMainView === "skill-market" ? (
+                        <main className="flex h-full min-h-0 flex-1 flex-col bg-background">
+                          <AutomationsMainBreadcrumbFrame
+                            isDesktop={Boolean(isDesktop)}
+                            sectionLabel={intl.formatMessage({
+                              id: "workspace.openSkillMarket",
+                            })}
+                            ariaLabel={intl.formatMessage({
+                              id: "settings.breadcrumbLabel",
+                            })}
+                          >
+                            <div className="min-h-0 flex-1">
+                              <SkillMarketEmbeddedView
+                                isDesktop={Boolean(isDesktop)}
+                                loadSsoJwtToken={loadSkillMarketSsoJwt}
+                              />
+                            </div>
+                          </AutomationsMainBreadcrumbFrame>
+                        </main>
                       ) : (
                         <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                           {renderChatFindDialog()}
@@ -1899,7 +1925,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                     </div>
                   </section>
                 </ResizablePanel>
-                {workspaceMainView !== "automations" && workspaceMainView !== "plugin-store" ? (
+                {workspaceMainView !== "automations" &&
+                workspaceMainView !== "plugin-store" &&
+                workspaceMainView !== "skill-market" ? (
                   <AnimatedTerminalPanel
                     frameClassName={cn(
                       isSidePaneVisible

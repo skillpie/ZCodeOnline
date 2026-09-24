@@ -122,6 +122,7 @@ export function App({
   isMacDesktop,
   isWindowsDesktop,
   supportsEmbeddedBrowser: explicitSupportsEmbeddedBrowser,
+  loadZcodeSsoJwtToken,
 }: AppProps) {
   // 展示 label 统一从快捷键生效表取（用户改键后 tooltip 同步更新），不再硬编码键位。
   const toggleSidebarShortcutLabel = useShortcutCommandLabel("toggleSidebar");
@@ -851,6 +852,25 @@ export function App({
     preserveNextSettingsExit();
     setWorkspaceMainView("plugin-store");
   }, [preserveNextSettingsExit]);
+  const handleNavigateToSkillMarketMain = useCallback(() => {
+    // 技能市场与 automations 同级：纯主视图切换，不进任务导航历史。
+    setWorkspaceMainView("skill-market");
+  }, []);
+  // 技能市场免登凭据通路：显式注入（Web localStorage）优先，桌面回落宿主凭据库；
+  // 都没有（如远程窗口）返回 null，握手回空 JWT，skillpie 走自身登录。
+  const loadSkillMarketSsoJwt = useCallback(async (): Promise<string | null> => {
+    if (loadZcodeSsoJwtToken) {
+      return loadZcodeSsoJwtToken();
+    }
+    if (isDesktop) {
+      try {
+        return (await services.credentialService.load("zcodejwttoken"))?.trim() || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [isDesktop, loadZcodeSsoJwtToken, services]);
   const handleOpenAutomationConsumed = useCallback(() => {
     setOpenAutomationId(null);
     setOpenAutomationTab(null);
@@ -1133,6 +1153,8 @@ export function App({
         onOpenAutomationConsumed={handleOpenAutomationConsumed}
         handleOpenAutomations={handleOpenAutomations}
         handleOpenPluginStore={handleOpenPluginStoreForScope}
+        handleOpenSkillMarket={handleNavigateToSkillMarketMain}
+        loadSkillMarketSsoJwt={loadSkillMarketSsoJwt}
         handleManageInstalledPlugins={handleManageInstalledPlugins}
         onConnectRemote={onConnectRemote}
         onSelectRemoteProject={onSelectRemoteProject}

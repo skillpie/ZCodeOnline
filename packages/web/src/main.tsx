@@ -466,6 +466,7 @@ async function bootstrapWebApp() {
             preferDirectoryBrowser
             supportsEmbeddedBrowser={false}
             allowRemoteWorkspace={false}
+            loadZcodeSsoJwtToken={async () => webAuthService.getZCodeJwtToken()}
           />
         </ZCodeIntlProvider>
       </AppErrorBoundary>,

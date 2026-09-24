@@ -75,6 +75,10 @@ export { ISettingService } from "./setting/setting.js";
 // Credential service — ICredentialService is both a type (interface) and value (descriptor)
 export { ICredentialService } from "./credential/credential.js";
 
+// Data source service — IDataSourceService is both a type (interface) and value (descriptor).
+// 实现文件依赖 mysql2/pg（Node 链），工厂 createDataSourceService 由 host 侧 node.ts 直接导入。
+export { IDataSourceService } from "./data-source/dataSource.js";
+
 // Broadcast service — IBroadcastService is both a type (interface) and value (descriptor)
 export { IBroadcastService } from "./broadcast/broadcast.js";
 

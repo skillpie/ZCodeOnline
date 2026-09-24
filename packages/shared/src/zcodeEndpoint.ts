@@ -5,6 +5,8 @@ export const DEFAULT_BIGMODEL_API_ORIGIN = "https://bigmodel.cn";
 export const DEFAULT_ZAI_OAUTH_ORIGIN = "https://chat.z.ai";
 export const DEFAULT_ZAI_BUSINESS_BASE_URL = "https://api.z.ai";
 export const DEFAULT_ZAI_OAUTH_CLIENT_ID = "client_P8X5CMWmlaRO9gyO-KSqtg";
+/** 技能市场（SkillPie）唯一线上地址；UI 内嵌视图与桌面 preload 注入判断共用。 */
+export const DEFAULT_SKILL_MARKET_URL = "https://skillpie.cn/";
 
 // 构建仅注入公开链接；Node 调用方仍可显式传 env，避免读取另一进程的配置。
 declare const __ZCODE_ENDPOINT_ENV__: Record<string, string | undefined> | undefined;

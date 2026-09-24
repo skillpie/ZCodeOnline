@@ -75,6 +75,8 @@ declare global {
     reload(): void;
     openDevTools(): void;
     setZoomFactor(factor: number): void;
+    /** 宿主 → guest 单向消息；与 preload 里 ipcRenderer.on 配对（guest → 宿主用 sendToHost + ipc-message）。 */
+    send(channel: string, ...args: unknown[]): void;
     addEventListener(
       type: ElectronWebviewSimpleEventName,
       listener: (event: Event) => void,

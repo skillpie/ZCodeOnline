@@ -125,6 +125,10 @@ const desktopNodeRuntimeExternals = [
   "node-forge",
   // ZIP 解包器内部依赖 CommonJS require("fs")，不能内联到 ESM main/host 产物。
   "yauzl",
+  // 数据源服务引入 mysql2 / pg（CJS 包），内联进 ESM main/host 产物后命中
+  // 动态 require("buffer") 直接崩溃；与 server 构建同策略外置。
+  "mysql2",
+  "pg",
 ];
 
 function createDevReadyMarkerHook(target: "main" | "host" | "preload"): string {
@@ -184,6 +188,7 @@ export default defineConfig([
     entry: {
       "preload/embeddedBrowserJavaScriptDialog": "src/preload/embeddedBrowserJavaScriptDialog.ts",
       "preload/codingPlanWebview": "src/preload/codingPlanWebview.ts",
+      "preload/skillMarketWebview": "src/preload/skillMarketWebview.ts",
       "preload/browserVideoRecorder": "src/preload/browserVideoRecorder.ts",
       "preload/index": "src/preload/index.ts",
       "preload/resourceManager": "src/preload/resourceManager.ts",

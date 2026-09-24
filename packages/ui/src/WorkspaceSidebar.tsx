@@ -27,6 +27,7 @@ import {
   Minimize2,
   Plus,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -259,8 +260,10 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenCommandCenter,
   onOpenAutomations,
   onOpenPluginStore,
+  onOpenSkillMarket,
   automationsActive = false,
   pluginStoreActive = false,
+  skillMarketActive = false,
   onFileTreeOpenChange,
 }: {
   workspacePath: string;
@@ -311,8 +314,10 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenCommandCenter: () => void;
   onOpenAutomations?: () => void;
   onOpenPluginStore?: () => void;
+  onOpenSkillMarket?: () => void;
   automationsActive?: boolean;
   pluginStoreActive?: boolean;
+  skillMarketActive?: boolean;
   onFileTreeOpenChange?: (open: boolean) => void;
 }) {
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
@@ -752,6 +757,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const handleOpenPluginStoreMain = useCallback(() => {
     onOpenPluginStore?.();
   }, [onOpenPluginStore]);
+  const handleOpenSkillMarketMain = useCallback(() => {
+    onOpenSkillMarket?.();
+  }, [onOpenSkillMarket]);
   const handleOpenAutomationsMain = useCallback(() => {
     onOpenAutomations?.();
   }, [onOpenAutomations]);
@@ -1345,6 +1353,21 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
             >
               <Blocks className="size-4" />
               {intl.formatMessage({ id: "workspace.openPluginsSettings" })}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={handleOpenSkillMarketMain}
+              data-icon="inline-start"
+              data-testid="skill-market-sidebar-open"
+              size="lg"
+              aria-pressed={skillMarketActive}
+              className={cn(
+                "w-full justify-start gap-2 text-foreground hover:bg-surface-hover hover:text-foreground",
+                skillMarketActive && "bg-selected text-foreground",
+              )}
+            >
+              <Sparkles className="size-4" />
+              {intl.formatMessage({ id: "workspace.openSkillMarket" })}
             </Button>
           </div>
 

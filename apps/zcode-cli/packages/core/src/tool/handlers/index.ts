@@ -68,6 +68,11 @@ import { listWorkflowRunsToolEntry } from "./list-workflow-runs.js";
 import { getWorkflowRunToolEntry } from "./get-workflow-run.js";
 import { resumeWorkflowRunToolEntry } from "./resume-workflow-run.js";
 // import { workflowToolEntry } from "./workflow.js";
+// 数据源三工具（附加式新功能，spec 见仓库 specs/data-source.md）：
+// DBQuery/DBSchema 只读自动放行；DBExecute 写入 alwaysAsk 强确认。
+import { dbQueryToolEntry } from "./db/db-query.js";
+import { dbSchemaToolEntry } from "./db/db-schema.js";
+import { dbExecuteToolEntry } from "./db/db-execute.js";
 import { createToolRuleNameSet } from "../tool-visibility.js";
 
 // direct 分支保留 Glob/Grep 工具实现；embedded search 分支由 registerBuiltInTools
@@ -133,6 +138,10 @@ export const builtInTools: ToolEntry[] = [
   // `subagent_model`。不进 WORKFLOW_CHILD_DISALLOWED_TOOLS
   // ——那条禁令的理由是 alwaysAsk 在 child 里无窗可弹，只读查询不适用。
   listModelsToolEntry,
+  // 数据源三工具：无条件注册（与 WebSearch 同档；无灰度门）。
+  dbQueryToolEntry,
+  dbSchemaToolEntry,
+  dbExecuteToolEntry,
   // workflowToolEntry,
 ];
 
