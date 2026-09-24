@@ -6,7 +6,7 @@
  * 面板内的「新建 / 管理」统一走同一个管理弹窗（open 状态在本组件持有）。
  */
 import { memo, useState } from "react";
-import { Check, CircleAlert, Database, Loader2, RefreshCw, Settings2 } from "lucide-react";
+import { Check, ChevronDownIcon, CircleAlert, Database, Loader2, RefreshCw, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Badge } from "@/components/ui/badge.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
@@ -68,16 +68,21 @@ function DataSourceEntryInner() {
                   className="size-3 shrink-0 animate-spin text-foreground-subtle"
                   aria-hidden
                 />
-              ) : null}
+              ) : (
+                <ChevronDownIcon
+                  className="pointer-events-none size-3.5 shrink-0 text-foreground-subtle"
+                  aria-hidden
+                />
+              )}
             </Button>
           </PopoverTrigger>
           <PopoverContent
             align="start"
             side="top"
-            className="w-80 rounded-xl p-1"
+            className="w-80 gap-1 rounded-xl p-1"
             data-testid="composer-data-source-panel"
           >
-            <div className="flex items-center justify-between px-2 py-1.5">
+            <div className="flex items-center justify-between px-2 py-1">
               <span className="text-ui-base font-medium text-foreground">{label}</span>
               <span className="text-ui-sm text-foreground-subtlest">
                 {intl.formatMessage(
@@ -86,7 +91,7 @@ function DataSourceEntryInner() {
                 )}
               </span>
             </div>
-            <div className="max-h-64 overflow-y-auto" role="listbox" aria-label={label}>
+            <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto" role="listbox" aria-label={label}>
               {dataSources.length === 0 && !loading ? (
                 <div className="px-3 py-6 text-center text-ui-base text-foreground-subtle">
                   {intl.formatMessage({ id: "chat.toolbar.dataSource.empty" })}
@@ -107,7 +112,7 @@ function DataSourceEntryInner() {
                       if (!isActive) void activate(source.id);
                     }}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-ui-base hover:bg-menu-hover",
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-ui-base hover:bg-menu-hover",
                       isActive && "bg-menu-hover",
                     )}
                   >

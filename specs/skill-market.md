@@ -19,7 +19,7 @@
   - 握手协议（双端字面量，以本 spec 为契约）：
     1. 子页 → 宿主：`{ type: "skillpie:sso-request" }`（iframe postMessage 到 parent；webview 由 preload 在加载时 `sendToHost` 主动发起）。
     2. 宿主 → 子页：`{ type: "zcode:sso-response", jwt: string | null, profile: { displayName?: string } }`（iframe 按 `targetOrigin = https://skillpie.cn` 严格回包；webview 走 `webview.send`，preload 转投 `window.postMessage`）。JWT 仅由真正持有它的 ZCode 宿主提供，恶意页面嵌入 skillpie 只能拿到空 JWT。
-  - ZCode 侧 JWT 通路：Web 入口注入 `RootProps.loadZcodeSsoJwtToken`（浏览器 localStorage）；桌面端回落宿主凭据库 `credentialService.load("zcodejwttoken")`。都取不到时回空 JWT，页面降级为 skillpie 自身登录。
+  - ZCode 侧 JWT 通路（与 UI 登录态同源）：统一先读 `credentialService.load("zcodejwttoken")`——Web 模式登录态/凭据都在 server 端（经 WebSocket RPC），桌面是宿主本地凭据库；再回落 `RootProps.loadZcodeSsoJwtToken`（浏览器 localStorage，仅 share/remote 等浏览器本地登录场景）。都取不到时回空 JWT，页面降级为 skillpie 自身登录。
   - 桌面 webview 需要专用 preload（`skillMarketWebview`），注入判断在主进程 `will-attach-webview`，origin 可用 `SKILL_MARKET_ORIGIN` 环境变量覆盖（测试部署）。
   - 旧 auth-center OAuth（`/api/oauth/*`、`lib/oauth/*`）已移除；skillpie 登录页保留账号密码与 CLI `login_code` 流（与 auth-center 无关）。
 
@@ -53,4 +53,5 @@ App（workspaceMainView: "chat" | "automations" | "plugin-store" | "skill-market
 5. 桌面断网打开 → 错误态；「重试」可恢复；「打开浏览器访问」走系统浏览器。
 6. Web 端（5173/3030）点击「技能市场」→ 主区 iframe 呈现 skillpie.cn，不跳出新标签。
 7. ZCode 已登录用户首次进入 → 自动在 skillpie 注册并登录（免手动输入）；未登录 ZCode → skillpie 正常展示自身登录入口。
-8. en-US 界面下入口与面包屑显示 "Skill Marketplace"。
+8. 站内「安装/分享」点击复制安装文案：iframe 需宿主 `allow="clipboard-write"` 委托；桌面 webview 对 `clipboard-sanitize-write` 等权限请求予以批准。
+9. en-US 界面下入口与面包屑显示 "Skill Marketplace"。

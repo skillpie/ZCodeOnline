@@ -60,6 +60,12 @@ declare global {
     };
   }
 
+  interface ElectronWebviewPermissionRequestEvent extends Event {
+    permission: string;
+    /** 批准后必须调用，否则 guest 侧请求永久挂起。 */
+    request: { approve(): void; deny(): void };
+  }
+
   interface ElectronWebviewTag extends HTMLElement {
     src: string;
     getURL(): string;
@@ -112,6 +118,11 @@ declare global {
       listener: (event: ElectronWebviewRenderProcessGoneEvent) => void,
       options?: boolean | AddEventListenerOptions,
     ): void;
+    addEventListener(
+      type: "permissionrequest",
+      listener: (event: ElectronWebviewPermissionRequestEvent) => void,
+      options?: boolean | AddEventListenerOptions,
+    ): void;
     removeEventListener(
       type: ElectronWebviewSimpleEventName,
       listener: (event: Event) => void,
@@ -145,6 +156,11 @@ declare global {
     removeEventListener(
       type: "render-process-gone",
       listener: (event: ElectronWebviewRenderProcessGoneEvent) => void,
+      options?: boolean | EventListenerOptions,
+    ): void;
+    removeEventListener(
+      type: "permissionrequest",
+      listener: (event: ElectronWebviewPermissionRequestEvent) => void,
       options?: boolean | EventListenerOptions,
     ): void;
   }

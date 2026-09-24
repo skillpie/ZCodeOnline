@@ -11,7 +11,7 @@
 // 由 skillMarketWebview preload 在 guest 侧转投页面。
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLinkIcon, RefreshCwIcon } from "lucide-react";
-import { DEFAULT_SKILL_MARKET_URL } from "@zcode/shared";
+import { DEFAULT_SKILL_MARKET_URL, resolveJwtExpiration } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
@@ -86,6 +86,14 @@ export function SkillMarketEmbeddedView({
         });
       }
     }
+    // UI 登录展示态与 token 有效期是解耦的（过期仍显示已登录）；
+    // 过期 JWT 提前回空，避免 skillpie 侧无意义的 401 往返。
+    if (jwt && resolveJwtExpiration(jwt).kind === "expired") {
+      logger.info("[SkillMarketEmbeddedView] SSO 凭据已过期，回空 JWT（请重新登录 ZCode）");
+      jwt = null;
+    }
+    // 免登链路的静默失败（未登录/凭据过期）只能靠这条日志定位，jwt 不落日志只报有无。
+    logger.info("[SkillMarketEmbeddedView] SSO 握手应答", { hasJwt: Boolean(jwt) });
     return {
       type: SSO_RESPONSE_TYPE,
       jwt,
@@ -167,16 +175,24 @@ export function SkillMarketEmbeddedView({
           }
         });
       };
+      // skillpie 的安装/分享要写入剪贴板；webview 的权限请求未处理默认会被拒。
+      const handlePermissionRequest = (event: ElectronWebviewPermissionRequestEvent) => {
+        if (event.permission === "clipboard-sanitize-write" || event.permission === "clipboard-read") {
+          event.request.approve();
+        }
+      };
 
       element.addEventListener("did-start-loading", handleDidStartLoading);
       element.addEventListener("did-fail-load", handleDidFailLoad);
       element.addEventListener("render-process-gone", handleRenderProcessGone);
       element.addEventListener("ipc-message", handleIpcMessage);
+      element.addEventListener("permissionrequest", handlePermissionRequest);
       webviewCleanupRef.current = () => {
         element.removeEventListener("did-start-loading", handleDidStartLoading);
         element.removeEventListener("did-fail-load", handleDidFailLoad);
         element.removeEventListener("render-process-gone", handleRenderProcessGone);
         element.removeEventListener("ipc-message", handleIpcMessage);
+        element.removeEventListener("permissionrequest", handlePermissionRequest);
       };
     },
     [buildSsoResponse],
@@ -229,6 +245,9 @@ export function SkillMarketEmbeddedView({
         <iframe
           src={SKILL_MARKET_URL}
           title={intl.formatMessage({ id: "workspace.openSkillMarket" })}
+          // skillpie 的安装/分享依赖写入剪贴板；跨源 iframe 需宿主通过
+          // Permissions Policy 显式委托 clipboard-write，否则 navigator.clipboard 被拦。
+          allow="clipboard-write"
           className="min-h-0 flex-1 border-0 bg-background"
           data-testid="skill-market-embedded-iframe"
         />

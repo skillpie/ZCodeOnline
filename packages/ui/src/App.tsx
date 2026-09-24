@@ -856,21 +856,21 @@ export function App({
     // 技能市场与 automations 同级：纯主视图切换，不进任务导航历史。
     setWorkspaceMainView("skill-market");
   }, []);
-  // 技能市场免登凭据通路：显式注入（Web localStorage）优先，桌面回落宿主凭据库；
-  // 都没有（如远程窗口）返回 null，握手回空 JWT，skillpie 走自身登录。
+  // 技能市场免登凭据通路：必须与 UI 登录态同源——credentialService。
+  // Web 模式登录态/凭据都在 server 端（经 WebSocket RPC 读取），桌面是宿主本地凭据库；
+  // 显式注入的读取器（浏览器 localStorage）只服务 share/remote 等浏览器本地登录场景，
+  // 作为回落。两者都取不到返回 null，握手回空 JWT，skillpie 走自身登录。
   const loadSkillMarketSsoJwt = useCallback(async (): Promise<string | null> => {
-    if (loadZcodeSsoJwtToken) {
-      return loadZcodeSsoJwtToken();
-    }
-    if (isDesktop) {
-      try {
-        return (await services.credentialService.load("zcodejwttoken"))?.trim() || null;
-      } catch {
-        return null;
+    try {
+      const jwt = (await services.credentialService.load("zcodejwttoken"))?.trim();
+      if (jwt) {
+        return jwt;
       }
+    } catch {
+      // 凭据服务不可达时继续尝试浏览器本地来源。
     }
-    return null;
-  }, [isDesktop, loadZcodeSsoJwtToken, services]);
+    return loadZcodeSsoJwtToken ? loadZcodeSsoJwtToken() : null;
+  }, [loadZcodeSsoJwtToken, services]);
   const handleOpenAutomationConsumed = useCallback(() => {
     setOpenAutomationId(null);
     setOpenAutomationTab(null);
