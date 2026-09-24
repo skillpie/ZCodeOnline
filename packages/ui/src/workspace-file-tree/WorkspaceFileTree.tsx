@@ -336,7 +336,8 @@ export function WorkspaceFileTree({
       areWorkspaceFilePathsEqual(row.path, previewPath),
     );
     if (activeRowIndex >= 0) {
-      rowVirtualizer.scrollToIndex(activeRowIndex, { align: "auto" });
+      // 定位到文件树视口中部：align auto 只做最小滚动（贴边），观感上文件总在边缘
+      rowVirtualizer.scrollToIndex(activeRowIndex, { align: "center" });
       pendingActivePreviewRevealPathRef.current = null;
     }
   }, [activePreviewPath, revealPath, rowVirtualizer, visibleRows, workspacePath]);

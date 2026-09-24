@@ -19,6 +19,7 @@ import {
   ExternalLinkIcon,
   FileCode2Icon,
   CopyIcon,
+  LocateFixed,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { Button } from "@/components/ui/button.js";
@@ -481,6 +482,7 @@ export function PreviewPane({
   source: rawSource,
   workspacePath,
   onOpenBrowserUrl,
+  onRevealFileInTree,
   onOpenCodeViewer,
   renderHeavyContent = true,
   markdownSelectionTarget,
@@ -489,6 +491,8 @@ export function PreviewPane({
   onClose: () => void;
   workspacePath?: string;
   onOpenBrowserUrl?: (url: string) => void;
+  /** 在左侧项目文件树中定位并聚焦当前文件（宿主提供文件树 reveal 能力时才有值） */
+  onRevealFileInTree?: (path: string) => void;
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   renderHeavyContent?: boolean;
   markdownSelectionTarget?: MarkdownSelectionTarget;
@@ -1587,6 +1591,21 @@ export function PreviewPane({
                   id: "codeViewer.openSourcePreview",
                 })}
               </span>
+            </Button>
+          ) : null}
+          {/* 定位按钮：在左侧项目文件树中展开并聚焦当前文件 */}
+          {source.path && onRevealFileInTree ? (
+            <Button
+              type="button"
+              size="icon-md"
+              variant="ghost"
+              className="shrink-0 text-foreground-subtle hover:text-foreground"
+              data-testid="preview-pane-reveal-in-file-tree"
+              title={intl.formatMessage({ id: "git.changeContext.revealInFileTree" })}
+              aria-label={intl.formatMessage({ id: "git.changeContext.revealInFileTree" })}
+              onClick={() => onRevealFileInTree(source.path!)}
+            >
+              <LocateFixed className="size-3.5" />
             </Button>
           ) : null}
           {/* 图片和 patch 这类预览没有任何显示选项，继续渲染触发器会打开空菜单，所以只在存在菜单项时显示更多按钮。*/}

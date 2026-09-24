@@ -119,6 +119,23 @@ export function GitPaneChangeCard({
                 <span className="text-diff-added">+{change.added}</span>
                 <span className="ml-2 text-diff-removed">-{change.removed}</span>
               </div>
+              {/* 在文件树中定位该文件：span[role=button] 而非嵌套 button（整行已是 button）；
+                  stopPropagation 避免触发整行的展开/收起。 */}
+              {onRevealInFileTree ? (
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label={contextMenuLabels.revealInFileTree}
+                  title={contextMenuLabels.revealInFileTree}
+                  className="shrink-0 rounded-md p-0.5 text-foreground-subtle transition-colors hover:bg-hover hover:text-foreground"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRevealInFileTree(change);
+                  }}
+                >
+                  <ListTreeIcon className="size-4 shrink-0" />
+                </span>
+              ) : null}
               <ChevronDownIcon
                 className={cn(
                   "size-4 shrink-0 text-foreground-subtle transition-transform",

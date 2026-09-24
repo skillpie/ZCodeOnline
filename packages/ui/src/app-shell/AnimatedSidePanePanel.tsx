@@ -1191,6 +1191,7 @@ export function AnimatedSidePanePanel({
                             workspacePath={workspaceAbsPath}
                             onOpenBrowserUrl={onOpenBrowserUrl}
                             onOpenCodeViewer={onOpenCodeViewer}
+                            onRevealFileInTree={onRevealGitFileInTree}
                             // inactive/窄条/resize 中的 code preview 不应继续让
                             // @pierre/diffs 的千行 Shadow DOM 参与布局；这里只裁剪 body，保留 tab/source/file state。
                             renderHeavyContent={shouldRenderPreviewPaneHeavyContent({
