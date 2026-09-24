@@ -1271,7 +1271,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
           )}
           aria-hidden={isFileTreeOpen}
         >
-          <div className={cn("flex flex-col gap-1 px-2", isWindowsDesktop ? "py-2" : "py-3")}>
+          {/* 顶部「新建任务」离窗口顶过远：非 Windows 平台顶距收到 0（用户指定），
+              底距保持 12px，不影响下方按钮组间距。 */}
+          <div className={cn("flex flex-col gap-1 px-2", isWindowsDesktop ? "py-2" : "pb-3")}>
             <WorkspaceNewTaskTooltip disabledReason={workspaceReadOnlyReason}>
               <NewTaskButtonGroup
                 disabled={workspaceReadOnly}

@@ -486,6 +486,9 @@ export function PreviewPaneContent({
       onDeleteCodeComment={source.type === "code-review" ? undefined : onDeleteCodeComment}
       onScroll={onScroll}
       scrollContainerRef={scrollContainerRef}
+      resolveBlameLine={
+        workspacePath && source.path ? createBlameResolver(workspacePath, source.path) : undefined
+      }
     />
   );
 }

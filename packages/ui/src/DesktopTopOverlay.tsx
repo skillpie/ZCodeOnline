@@ -125,6 +125,11 @@ export function DesktopTopOverlay({
           usesCustomCaptionArea && "pl-3 ml-px",
           isMacDesktop &&
             (isMacFullscreen ? (!isSidebarVisible ? "pl-5 pt-1" : "pl-3 pt-1") : "pt-1"),
+          // Web 无自绘标题栏偏移也无交通灯留白，按钮组此前贴死窗口左缘（收起/展开都一样）；
+          // 与 Windows/Linux 桌面工具组对齐，补 12px 左边距。
+          // 浮层外层是 h-14，而 WorkspaceHeader 是 h-12：Web 内层同款 h-12，
+          // 让按钮中心线落在 header 中心（24px），否则整体比 header 行低 4px、视觉上离顶过远。
+          !isMacDesktop && !usesCustomCaptionArea && "h-12 pl-3",
         )}
       >
         <div

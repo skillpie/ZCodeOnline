@@ -1,5 +1,5 @@
 /**
- * useGitBlameHoverTooltip —— 代码视图的 git blame 悬停提示（悬停 1 秒后弹出）。
+ * useGitBlameHoverTooltip —— 代码视图的 git blame 悬停提示（悬停 0.3 秒后弹出）。
  *
  * 实现要点：@pierre/diffs 在 Shadow DOM 内部有自己的行悬停处理，可能在 bubble 阶段
  * stopPropagation，React 合成事件（挂在外层根节点）会收不到事件。因此这里用
@@ -28,7 +28,7 @@ export interface GitBlameHoverInfo {
 
 export type ResolveGitBlameLine = (line: number) => Promise<GitBlameHoverInfo | null>;
 
-const BLAME_HOVER_DELAY_MS = 1000;
+const BLAME_HOVER_DELAY_MS = 300;
 
 interface BlameTooltipState {
   x: number;
@@ -107,7 +107,7 @@ export function useGitBlameHoverTooltip(resolveBlameLine: ResolveGitBlameLine | 
             x: clientX,
             y: clientY,
             text: info.committed
-              ? `${info.author} · ${new Date(info.time * 1000).toLocaleDateString()}`
+              ? `${info.author} · ${new Date(info.time * 1000).toLocaleString()}`
               : intl.formatMessage({ id: "git.blame.notCommitted" }),
           });
         });
