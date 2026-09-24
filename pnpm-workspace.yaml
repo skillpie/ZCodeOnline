@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/zcode-cli
+  - apps/zcode-relay
   - apps/zcode-cli/packages/*
   - apps/zcode-cli/tools/*
 supportedArchitectures:

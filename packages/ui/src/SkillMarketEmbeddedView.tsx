@@ -9,7 +9,7 @@
 // iframe 走 window postMessage；<webview> 的 guest 与宿主是独立 frame 树，
 // 走 ipc-message（skillpie:sso-request）/ webview.send（zcode:sso-response），
 // 由 skillMarketWebview preload 在 guest 侧转投页面。
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLinkIcon, RefreshCwIcon } from "lucide-react";
 import { DEFAULT_SKILL_MARKET_URL, resolveJwtExpiration } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
@@ -29,8 +29,8 @@ interface SkillMarketViewImportMetaEnv {
 }
 
 function readImportMetaEnv(): SkillMarketViewImportMetaEnv {
-  return ((import.meta as ImportMeta & { env?: SkillMarketViewImportMetaEnv }).env ?? {}) as
-    SkillMarketViewImportMetaEnv;
+  return ((import.meta as ImportMeta & { env?: SkillMarketViewImportMetaEnv }).env ??
+    {}) as SkillMarketViewImportMetaEnv;
 }
 
 function resolveSkillMarketUrl(): string {
@@ -50,6 +50,12 @@ interface SkillMarketEmbeddedViewProps {
   /** 是否为 Electron 桌面端：决定渲染 <webview>（桌面）还是 <iframe>（Web）。 */
   isDesktop: boolean;
   /**
+   * 初始路径（如 /skills?skill=<normalizedName>）：从付费技能详情弹窗「前往技能市场」
+   * 深链到技能详情页；undefined = 市场首页。内嵌元素随视图切换卸载/重挂，
+   * 挂载时读一次即可。
+   */
+  initialPath?: string;
+  /**
    * 读取 zcode 平台 JWT：桌面端由宿主凭据库（zcodejwttoken）提供，
    * Web 端由入口注入（浏览器 localStorage）。返回 null 表示当前未登录，
    * 握手会回空 JWT，skillpie 页面降级为自身登录。
@@ -59,6 +65,7 @@ interface SkillMarketEmbeddedViewProps {
 
 export function SkillMarketEmbeddedView({
   isDesktop,
+  initialPath,
   loadSsoJwtToken,
 }: SkillMarketEmbeddedViewProps) {
   const { intl } = useZCodeIntl();
@@ -67,6 +74,10 @@ export function SkillMarketEmbeddedView({
   const webviewRef = useRef<ElectronWebviewTag | null>(null);
   const webviewCleanupRef = useRef<(() => void) | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const initialSrc = useMemo(
+    () => (initialPath ? new URL(initialPath, SKILL_MARKET_URL).toString() : SKILL_MARKET_URL),
+    [initialPath],
+  );
 
   // 桌面 webview 加载失败后的兜底：交给系统浏览器打开同一地址。
   const handleOpenWebsite = useCallback(() => {
@@ -177,7 +188,10 @@ export function SkillMarketEmbeddedView({
       };
       // skillpie 的安装/分享要写入剪贴板；webview 的权限请求未处理默认会被拒。
       const handlePermissionRequest = (event: ElectronWebviewPermissionRequestEvent) => {
-        if (event.permission === "clipboard-sanitize-write" || event.permission === "clipboard-read") {
+        if (
+          event.permission === "clipboard-sanitize-write" ||
+          event.permission === "clipboard-read"
+        ) {
           event.request.approve();
         }
       };
@@ -221,11 +235,7 @@ export function SkillMarketEmbeddedView({
               <ExternalLinkIcon className="size-3.5" />
               {intl.formatMessage({ id: "skillMarket.embedded.openWebsite" })}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => webviewRef.current?.reload()}
-            >
+            <Button size="sm" variant="ghost" onClick={() => webviewRef.current?.reload()}>
               <RefreshCwIcon className="size-3.5" />
               {intl.formatMessage({ id: "common.retry" })}
             </Button>
@@ -237,13 +247,13 @@ export function SkillMarketEmbeddedView({
           ref={handleWebviewRef}
           allowpopups={"" as unknown as boolean}
           partition="persist:zcode-skill-market"
-          src={SKILL_MARKET_URL}
+          src={initialSrc}
           className={cn("min-h-0 flex-1 bg-background", loadError && "hidden")}
           data-testid="skill-market-embedded-webview"
         />
       ) : (
         <iframe
-          src={SKILL_MARKET_URL}
+          src={initialSrc}
           title={intl.formatMessage({ id: "workspace.openSkillMarket" })}
           // skillpie 的安装/分享依赖写入剪贴板；跨源 iframe 需宿主通过
           // Permissions Policy 显式委托 clipboard-write，否则 navigator.clipboard 被拦。

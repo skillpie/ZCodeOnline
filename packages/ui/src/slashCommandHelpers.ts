@@ -6,6 +6,11 @@ import type { AgentSummary, Locale, SkillSummary, ZCodeSlashCommand } from "@zco
 import type { MentionItem } from "@/mentions/mentionTypes.js";
 import { mapSubagentsToMentionItemsForTest } from "@/mentions/providers/subagentsMentionProvider.js";
 import { mapSkillsToMentionItemsForTest } from "@/mentions/providers/skillsMentionProvider.js";
+import {
+  SKILL_MARKET_ITEM_ID_PREFIX,
+  getSkillMarketMentionNormalizedName,
+  isSkillMarketMentionItem,
+} from "@/mentions/providers/skillMarketMentionProvider.js";
 import type { PromptInputSuggestionItem } from "./lib/promptInputTriggers.js";
 
 export interface SlashCommandPluginProps {
@@ -133,6 +138,59 @@ export function buildSkillSuggestions(
     keywords: [...new Set([...(item.keywords ?? []), "skill", "skills", item.value])],
     data: item.data,
   }));
+}
+
+const SKILL_MARKET_SUGGESTION_ID_PREFIX = SKILL_MARKET_ITEM_ID_PREFIX;
+
+/** SkillPie 市场搜索结果 → `/` 面板候选；选中不插入 mention，而是打开原生详情弹窗。 */
+export function buildSkillMarketSuggestions(
+  results: ReadonlyArray<{
+    normalizedName: string;
+    name: string;
+    description: string;
+    category: string | null;
+    ownerDisplayName: string;
+  }>,
+): PromptInputSuggestionItem[] {
+  return results.flatMap((result) => {
+    const value = result.normalizedName.trim();
+    if (!value) {
+      return [];
+    }
+    return [
+      {
+        id: `${SKILL_MARKET_SUGGESTION_ID_PREFIX}${value}`,
+        trigger: "/",
+        value,
+        label: result.name || value,
+        description: result.description,
+        // 服务端已按 query 过滤，keywords 里带上名称/分类/描述，避免本地模糊过滤把
+        // 命中描述但未命中名称的结果错误丢掉。
+        keywords: [
+          ...new Set([
+            value,
+            result.name,
+            result.category ?? "",
+            result.ownerDisplayName,
+            result.description,
+            "skill market",
+            "技能市场",
+          ]),
+        ],
+        data: { source: "skill-market" },
+      },
+    ];
+  });
+}
+
+export function isSkillMarketSuggestion(suggestion: PromptInputSuggestionItem): boolean {
+  return isSkillMarketMentionItem(suggestion);
+}
+
+export function getSkillMarketSuggestionNormalizedName(
+  suggestion: PromptInputSuggestionItem,
+): string {
+  return getSkillMarketMentionNormalizedName(suggestion.id);
 }
 
 function mapSubagentMentionItemToSuggestion(item: MentionItem): PromptInputSuggestionItem {

@@ -3,7 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import type { ZCodeProvider } from "@zcode/shared";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { createPortal } from "react-dom";
-import { PaletteIcon, WandSparkles } from "lucide-react";
+import { PaletteIcon, StoreIcon, WandSparkles } from "lucide-react";
 import {
   $createTextNode,
   $getSelection,
@@ -49,6 +49,13 @@ import { usePluginsMentionProvider } from "./providers/pluginsMentionProvider.js
 import { useSessionsMentionProvider } from "./providers/sessionsMentionProvider.js";
 import { useSkillsMentionProvider } from "./providers/skillsMentionProvider.js";
 import { useWhiteboardMentionProvider } from "./providers/whiteboardMentionProvider.js";
+import {
+  getSkillMarketMentionNormalizedName,
+  isSkillMarketMentionItem,
+  mapSkillMarketResultsToMentionItems,
+} from "./providers/skillMarketMentionProvider.js";
+import { useSkillMarketSearch } from "@/hooks/useSkillMarketSearch.js";
+import { useSkillMarketStore } from "@/store/skillMarketStore.js";
 import type { MentionItem } from "./mentionTypes.js";
 import {
   getActivePromptInputTokenReplacementRange,
@@ -177,6 +184,17 @@ export function MentionPlugin({
     intl.formatMessage({ id: "chat.mention.skills.empty" }),
     intl.formatMessage({ id: "chat.mention.skills.title" }),
   );
+  // 技能市场分组：仅在 $ 面板有非空查询时搜索（specs/skill-market.md §5）。
+  const skillMarketSearch = useSkillMarketSearch({
+    workspacePath,
+    workspaceIdentity,
+    query: deferredActiveQuery,
+    enabled: Boolean(isOpen && isSkillTrigger),
+  });
+  const skillMarketItems = useMemo(
+    () => mapSkillMarketResultsToMentionItems(skillMarketSearch.results),
+    [skillMarketSearch.results],
+  );
   const fileDefaultPreviewLimit = !hasActiveQuery
     ? MENTION_FILES_ONLY_DEFAULT_PREVIEW_LIMIT
     : MENTION_DEFAULT_GROUP_PREVIEW_LIMIT;
@@ -253,6 +271,16 @@ export function MentionPlugin({
         errorText: skillsResult.error?.message ?? null,
         emptyText: skillsResult.emptyText,
       },
+      "skill-market": {
+        id: "skill-market",
+        title: intl.formatMessage({ id: "chat.mention.market.title" }),
+        items: skillMarketItems,
+        loading: skillMarketSearch.loading,
+        errorText: skillMarketSearch.error,
+        emptyText: skillMarketSearch.error
+          ? intl.formatMessage({ id: "chat.mention.market.error" })
+          : intl.formatMessage({ id: "chat.mention.market.empty" }),
+      },
       whiteboards: {
         id: "whiteboards",
         title: whiteboardResult.title,
@@ -263,10 +291,12 @@ export function MentionPlugin({
       },
     } satisfies Record<MentionPanelGroupId, MentionResultGroup<MentionItem>>;
 
-    // 产品约束：@ 固定为 Plugin → 文件 → 对话 → 画板；旧 # / $ 面板继续走
-    // 原单分组 provider。这里仅重排发现入口，候选自身的 canonical markdown 不变。
+    // 产品约束：@ 固定为 Plugin → 文件 → 对话 → 画板；旧 # 面板继续走原单分组 provider。
+    // 市场分组只属于 $ 面板，且无查询时不出现（specs/skill-market.md §5.1）。
     return buildVisibleMentionGroups(
-      getMentionPanelGroupOrder(activeTrigger?.trigger).map((groupId) => groupsById[groupId]),
+      getMentionPanelGroupOrder(activeTrigger?.trigger)
+        .filter((groupId) => groupId !== "skill-market" || hasActiveQuery)
+        .map((groupId) => groupsById[groupId]),
     );
   }, [
     fileResult.emptyText,
@@ -275,6 +305,7 @@ export function MentionPlugin({
     fileResult.loading,
     fileResult.title,
     activeTrigger?.trigger,
+    hasActiveQuery,
     pluginsResult.emptyText,
     pluginsResult.error,
     pluginsResult.items,
@@ -290,6 +321,9 @@ export function MentionPlugin({
     whiteboardResult.items,
     whiteboardResult.loading,
     whiteboardResult.title,
+    skillMarketItems,
+    skillMarketSearch.error,
+    skillMarketSearch.loading,
     skillsResult.emptyText,
     skillsResult.error,
     skillsResult.items,
@@ -316,6 +350,19 @@ export function MentionPlugin({
           content:
             item.category === "files" ? (
               <ContextMentionOptionContent item={item} workspacePath={workspacePath} />
+            ) : item.category === "skills" && isSkillMarketMentionItem(item) ? (
+              <span className="min-w-0 flex flex-1 items-center gap-2">
+                <StoreIcon className="size-3.5 shrink-0 text-foreground" />
+                <span className="shrink-0 whitespace-nowrap text-ui-base font-medium text-foreground">
+                  {item.label}
+                </span>
+                <span className="min-w-0 truncate text-ui-xs text-foreground-subtlest">
+                  {item.description}
+                </span>
+                <span className="ml-auto shrink-0 rounded-sm bg-muted px-1 py-px text-ui-xs text-foreground-subtle">
+                  {intl.formatMessage({ id: "chat.mention.market.badge" })}
+                </span>
+              </span>
             ) : item.category === "skills" ? (
               <span className="min-w-0 flex flex-1 items-center gap-2">
                 {/* skills 候选项需要和命令类项保持一致的主次信息密度，
@@ -454,6 +501,58 @@ export function MentionPlugin({
 
   const insertMentionItem = useCallback(
     (item: MentionItem) => {
+      if (isSkillMarketMentionItem(item)) {
+        // 市场技能未安装：移除触发 token（同 whiteboard 的"选中不插入 mention"路径），
+        // 打开原生详情弹窗，由用户决定是否安装。
+        editor.update(() => {
+          const selectionState = getCurrentTextNodeSelection();
+          if (!selectionState) {
+            return;
+          }
+
+          const snapshotRange = getActivePromptInputTokenReplacementRange(
+            activeTokenRef.current,
+            selectionState,
+          );
+          const activeMentionTrigger = snapshotRange
+            ? activeTokenRef.current
+            : extractActivePromptInputTrigger(selectionState.textBeforeCursor);
+          if (!activeMentionTrigger || activeMentionTrigger.trigger !== "$") {
+            return;
+          }
+
+          const tokenStart =
+            snapshotRange?.start ??
+            selectionState.cursorOffset - activeMentionTrigger.query.length - 1;
+          const tokenEnd =
+            snapshotRange?.end ??
+            selectionState.cursorOffset +
+              getActivePromptInputTokenTailLength(
+                activeMentionTrigger,
+                selectionState.textAfterCursor,
+                [item.label, item.value, item.markdown],
+              );
+          selectionState.selection.setTextNodeRange(
+            selectionState.node,
+            tokenStart,
+            selectionState.node,
+            tokenEnd,
+          );
+          selectionState.selection.insertText("");
+        });
+
+        dismissedSignatureRef.current = null;
+        activeTokenRef.current = null;
+        setActiveTrigger(null);
+        setSelectedIndex(0);
+        useSkillMarketStore.getState().openDetail({
+          normalizedName: getSkillMarketMentionNormalizedName(item.id),
+          workspacePath,
+          workspaceIdentity,
+        });
+        return;
+      }
+
       if (item.category === "whiteboards" && onWhiteboardMentionSelected) {
         editor.update(() => {
           const selectionState = getCurrentTextNodeSelection();
@@ -569,7 +668,7 @@ export function MentionPlugin({
         editor.focus();
       });
     },
-    [editor, onWhiteboardMentionSelected],
+    [editor, onWhiteboardMentionSelected, workspaceIdentity, workspacePath],
   );
 
   const selectOption = useCallback(

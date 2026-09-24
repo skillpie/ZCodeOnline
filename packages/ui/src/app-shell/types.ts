@@ -132,6 +132,12 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   handleOpenAutomations: OpenAutomationsMain;
   handleOpenPluginStore: () => void;
   handleOpenSkillMarket: () => void;
+  /**
+   * 技能市场内嵌视图的初始路径（如 /skills?skill=<normalizedName>）。
+   * 付费技能「前往技能市场」深链到详情页；侧边栏入口为 null（市场首页）。
+   * App 拥有该状态，随 workspaceMainView 切换一起更新。
+   */
+  skillMarketInitialPath?: string | null;
   handleManageInstalledPlugins: () => void;
   /**
    * 读取 zcode 平台 JWT 的最终通路（技能市场免登用）。

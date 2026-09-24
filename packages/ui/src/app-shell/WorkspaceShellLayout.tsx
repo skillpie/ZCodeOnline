@@ -200,6 +200,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   handleOpenAutomations,
   handleOpenPluginStore,
   handleOpenSkillMarket,
+  skillMarketInitialPath,
   handleManageInstalledPlugins,
   loadSkillMarketSsoJwt,
   onConnectRemote,
@@ -1844,6 +1845,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                             <div className="min-h-0 flex-1">
                               <SkillMarketEmbeddedView
                                 isDesktop={Boolean(isDesktop)}
+                                initialPath={skillMarketInitialPath ?? undefined}
                                 loadSsoJwtToken={loadSkillMarketSsoJwt}
                               />
                             </div>

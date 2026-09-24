@@ -121,6 +121,8 @@ export const ServiceChannels = {
   Skills: "skills",
   /** SSH 远程 skills 同步服务 */
   SkillSync: "skill-sync",
+  /** SkillPie 技能市场搜索/详情/安装服务 */
+  SkillMarket: "skill-market",
   /** SSH 远程 MCP 同步服务 */
   McpSync: "mcp-sync",
   /** SSH 远程 plugin 同步服务 */

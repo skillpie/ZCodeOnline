@@ -55,6 +55,10 @@ modules:
   - id: zcode-cli
     roots: [apps/zcode-cli]
     managed: false
+  - id: zcode-relay
+    roots: [apps/zcode-relay/src]
+    managed: false
+    requires: [shared]
 
 global:
   maxFileLines: 400

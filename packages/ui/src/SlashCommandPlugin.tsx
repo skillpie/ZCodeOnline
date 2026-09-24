@@ -24,6 +24,8 @@ import {
 } from "lexical";
 import { useSubagents } from "@/hooks/useSubagents.js";
 import { useSkills } from "@/hooks/useSkills.js";
+import { useSkillMarketSearch } from "@/hooks/useSkillMarketSearch.js";
+import { useSkillMarketStore } from "@/store/skillMarketStore.js";
 import { buildSlashApplyMentionPayload } from "@/lib/slashApplyMentionPayload.js";
 import { filterSkillsForProvider } from "@/lib/skillSourceFilter.js";
 import { useZCodeIntl } from "./i18n/IntlProvider.js";
@@ -41,11 +43,14 @@ import {
 import { MentionPanel } from "./mentions/components/MentionPanel.js";
 import {
   buildAppSlashCommandSuggestions,
+  buildSkillMarketSuggestions,
   buildSkillSuggestions,
   buildSubagentSuggestions,
   buildSlashSuggestions,
+  getSkillMarketSuggestionNormalizedName,
   getTextAroundCursor,
   isAppSlashCommandSuggestion,
+  isSkillMarketSuggestion,
   normalizeSlashCommandValue,
   type SlashCommandPluginProps,
 } from "./slashCommandHelpers.js";
@@ -114,6 +119,32 @@ export function SlashCommandPlugin({
       ),
     [locale, provider, skills],
   );
+  const slashQuery = activeTrigger?.query ?? "";
+  // 市场搜索仅在面板展开且有非空查询时发起（specs/skill-market.md §5.1）。
+  const skillMarketSearch = useSkillMarketSearch({
+    workspacePath,
+    workspaceIdentity,
+    query: slashQuery,
+    enabled: activeTrigger?.trigger === "/",
+  });
+  const marketSuggestions = useMemo(
+    () => buildSkillMarketSuggestions(skillMarketSearch.results),
+    [skillMarketSearch.results],
+  );
+  const marketResultsByName = useMemo(
+    () =>
+      new Map(
+        skillMarketSearch.results.map((result) => [
+          result.normalizedName,
+          {
+            category: result.category,
+            ownerDisplayName: result.ownerDisplayName,
+            downloadCount: result.downloadCount,
+          },
+        ]),
+      ),
+    [skillMarketSearch.results],
+  );
   const filteredCommandSuggestions = useMemo(
     () => filterPromptInputSuggestions(commandSuggestions, activeTrigger?.query ?? null),
     [commandSuggestions, activeTrigger?.query],
@@ -126,13 +157,23 @@ export function SlashCommandPlugin({
     () => filterPromptInputSuggestions(skillSuggestions, activeTrigger?.query ?? null),
     [skillSuggestions, activeTrigger?.query],
   );
+  const filteredMarketSuggestions = useMemo(
+    () => filterPromptInputSuggestions(marketSuggestions, activeTrigger?.query ?? null),
+    [marketSuggestions, activeTrigger?.query],
+  );
   const filteredSuggestions = useMemo(
     () => [
       ...filteredCommandSuggestions,
       ...filteredSkillSuggestions,
       ...filteredSubagentSuggestions,
+      ...filteredMarketSuggestions,
     ],
-    [filteredCommandSuggestions, filteredSkillSuggestions, filteredSubagentSuggestions],
+    [
+      filteredCommandSuggestions,
+      filteredSkillSuggestions,
+      filteredSubagentSuggestions,
+      filteredMarketSuggestions,
+    ],
   );
   const activeSignature = useMemo(
     () => getPromptInputTriggerSignature(activeTrigger),
@@ -246,6 +287,7 @@ export function SlashCommandPlugin({
   const applySuggestion = useCallback(
     (suggestion: PromptInputSuggestionItem) => {
       const isAppCommand = isAppSlashCommandSuggestion(suggestion);
+      const isMarketSkill = isSkillMarketSuggestion(suggestion);
       editor.update(() => {
         const selectionState = getCurrentTextNodeSelection();
         if (!selectionState) {
@@ -286,6 +328,12 @@ export function SlashCommandPlugin({
           return;
         }
 
+        if (isMarketSkill) {
+          // 市场技能未安装：移除 token，不插入 mention，改为打开原生详情弹窗。
+          selectionState.selection.removeText();
+          return;
+        }
+
         const mentionNode = $createPromptMentionNode(buildSlashApplyMentionPayload(suggestion));
         const trailingWhitespace = $createTextNode(" ");
         selectionState.selection.insertNodes([mentionNode, trailingWhitespace]);
@@ -302,11 +350,19 @@ export function SlashCommandPlugin({
           ?.run();
         return;
       }
+      if (isMarketSkill) {
+        useSkillMarketStore.getState().openDetail({
+          normalizedName: getSkillMarketSuggestionNormalizedName(suggestion),
+          workspacePath,
+          workspaceIdentity,
+        });
+        return;
+      }
       requestAnimationFrame(() => {
         editor.focus();
       });
     },
-    [appCommands, editor],
+    [appCommands, editor, workspaceIdentity, workspacePath],
   );
 
   const selectSuggestion = useCallback(
@@ -429,6 +485,23 @@ export function SlashCommandPlugin({
     ? ""
     : intl.formatMessage({ id: "chat.slash.searchHint" });
 
+  const marketSectionInput = useMemo(
+    () => ({
+      hasQuery: hasActiveQuery,
+      suggestions: filteredMarketSuggestions,
+      resultsByName: marketResultsByName,
+      loading: skillMarketSearch.loading,
+      error: skillMarketSearch.error,
+    }),
+    [
+      filteredMarketSuggestions,
+      hasActiveQuery,
+      marketResultsByName,
+      skillMarketSearch.error,
+      skillMarketSearch.loading,
+    ],
+  );
+
   const panelSections = useSlashCommandMentionPanelSections(
     intl,
     commands.length,
@@ -439,6 +512,7 @@ export function SlashCommandPlugin({
     filteredSubagentSuggestions,
     subagentsLoading,
     subagentsError,
+    marketSectionInput,
   );
 
   if (!isOpen || !container) {

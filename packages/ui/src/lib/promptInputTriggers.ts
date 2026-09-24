@@ -21,7 +21,7 @@ export interface PromptInputSuggestionItem {
   data?: {
     path?: string;
     scope?: "built-in" | "workspace" | "user" | "plugin";
-    source?: "built-in" | "user" | "plugin";
+    source?: "built-in" | "user" | "plugin" | "skill-market";
     model?: string;
   };
 }

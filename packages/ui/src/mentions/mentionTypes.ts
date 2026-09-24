@@ -13,7 +13,7 @@ export interface MentionItemData {
   relativePath?: string;
   boardId?: string;
   scope?: "built-in" | "workspace" | "user" | "plugin";
-  source?: "built-in" | "user" | "plugin";
+  source?: "built-in" | "user" | "plugin" | "skill-market";
   model?: string;
   /** Plugin 引用的稳定身份（`name@marketplace`），canonical 链接目标；label 不参与身份。 */
   pluginId?: string;

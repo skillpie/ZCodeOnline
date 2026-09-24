@@ -28,6 +28,7 @@ import {
   IOffPeakTaskService,
   ISkillsService,
   ISkillSyncService,
+  ISkillMarketService,
   IMcpSyncService,
   IPluginSyncService,
   IPluginsService,
@@ -82,6 +83,7 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly offPeakTaskService: IOffPeakTaskService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
+  readonly skillMarketService: ISkillMarketService;
   readonly mcpSyncService: IMcpSyncService;
   readonly pluginSyncService: IPluginSyncService;
   readonly pluginsService: IPluginsService;
@@ -187,6 +189,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.skillSyncService = ProxyChannel.toService<ISkillSyncService>(
       channelClient.getChannel(ISkillSyncService.channelName),
+    );
+    this.skillMarketService = ProxyChannel.toService<ISkillMarketService>(
+      channelClient.getChannel(ISkillMarketService.channelName),
     );
     this.mcpSyncService = ProxyChannel.toService<IMcpSyncService>(
       channelClient.getChannel(IMcpSyncService.channelName),

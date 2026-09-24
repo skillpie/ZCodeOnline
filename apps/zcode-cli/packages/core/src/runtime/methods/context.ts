@@ -77,10 +77,15 @@ export async function getSkillCatalog(
   this: AgentRuntimeInternal,
   traceContext: TraceContext,
 ): Promise<SkillLoadOutcome> {
-  // Composer 曾独立扫描磁盘，所以运行中的 Session 会看到 AgentRuntime
-  // 尚未加载的新 Skill。先经过 runtime 唯一的 context 初始化门，再返回防御性副本，
-  // 让 UI 与本 Session 实际可用的 Skill 保持同一快照；新 runtime 会自然重新发现。
+  // Composer 的 Skill 面板每次打开都读取当前磁盘 catalog（草稿路径本就如此扫描），
+  // 会话路径也要重新发现：否则运行中安装/删除的 Skill（如技能市场安装）永远进不了
+  // 面板与 skillLoadOutcome。loadSkill 本身每次调用都重新扫描，因此重新发现不会
+  // 造成"面板可见但模型不可加载"的分裂；系统提示词里的技能清单仍以会话初始化为准。
   await this.ensureContextInitialized(traceContext);
+  const rediscovered = await this.discoverSkillsForContext(traceContext);
+  if (rediscovered) {
+    this.skillLoadOutcome = rediscovered;
+  }
   const outcome = this.skillLoadOutcome ?? {
     skills: [],
     diagnostics: [],

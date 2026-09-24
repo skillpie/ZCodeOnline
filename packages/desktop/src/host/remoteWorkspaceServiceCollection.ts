@@ -25,6 +25,7 @@ import {
   IClientScenesService,
   ISkillsService,
   ISkillSyncService,
+  ISkillMarketService,
   IMcpSyncService,
   IPluginSyncService,
   IPluginsService,
@@ -365,6 +366,8 @@ export function createRemoteWorkspaceServiceCollection(params: {
     // 这里必须透出远端服务，避免本机服务拿远端 workspacePath 去本机目录扫描。
     .register(ISkillsService, params.connectionServices.skillsService)
     .register(ISkillSyncService, params.connectionServices.skillSyncService)
+    // 市场安装与 skills 同语义：远程 workspace 装到远端主机用户技能根，agent 下一轮扫描可见。
+    .register(ISkillMarketService, params.connectionServices.skillMarketService)
     .register(IMcpSyncService, params.connectionServices.mcpSyncService)
     .register(IPluginSyncService, params.connectionServices.pluginSyncService)
     .register(IPluginsService, params.connectionServices.pluginsService)

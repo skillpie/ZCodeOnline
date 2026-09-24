@@ -35,6 +35,7 @@ import {
 import { createQuickPickCommands } from "@/quickpick/quickPickCommands.js";
 import { CommandCenterDialog } from "@/command-center/CommandCenterDialog.js";
 import { FeedbackHost } from "@/feedback/FeedbackHost.js";
+import { SkillMarketDetailDialog } from "@/skill-market/SkillMarketDetailDialog.js";
 import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 import {
   resolveQuickPickConversationNavigation,
@@ -824,6 +825,8 @@ export function App({
   );
   useTestActions(testActions);
   const [workspaceMainView, setWorkspaceMainView] = useState<WorkspaceMainView>("chat");
+  // 技能市场内嵌视图的深链路径（如 /skills/<name>）；App 与 workspaceMainView 同为唯一所有者。
+  const [skillMarketInitialPath, setSkillMarketInitialPath] = useState<string | null>(null);
   const [openAutomationId, setOpenAutomationId] = useState<string | null>(null);
   const [openAutomationTab, setOpenAutomationTab] = useState<NonNullable<
     AutomationsNavigationTarget["automationTab"]
@@ -853,6 +856,14 @@ export function App({
   }, [preserveNextSettingsExit]);
   const handleNavigateToSkillMarketMain = useCallback(() => {
     // 技能市场与 automations 同级：纯主视图切换，不进任务导航历史。
+    // 侧边栏入口不携带参数，清掉可能残留的技能详情深链。
+    setSkillMarketInitialPath(null);
+    setWorkspaceMainView("skill-market");
+  }, []);
+  // 付费技能详情弹窗「前往技能市场」：深链到该技能的详情页（specs/skill-market.md §5.1）。
+  // 链接格式用 skillpie 站内既有约定：/skills?skill=<normalizedName>。
+  const handleOpenSkillMarketSkill = useCallback((normalizedName: string) => {
+    setSkillMarketInitialPath(`/skills?skill=${encodeURIComponent(normalizedName)}`);
     setWorkspaceMainView("skill-market");
   }, []);
   // 技能市场免登凭据通路：必须与 UI 登录态同源——credentialService。
@@ -1141,6 +1152,8 @@ export function App({
       {/* 反馈是应用级能力，必须固定走本机 base host；SSH session 连接中或断开时，
           workspace-scoped services 会切成断连代理，不能让反馈提交跟随远程 session 失效。 */}
       <FeedbackHost feedbackService={baseFeedbackService} platform={platform} />
+      {/* 技能市场原生详情弹窗宿主：`/`、`$` 面板选中市场项后经 skillMarketStore 打开。 */}
+      <SkillMarketDetailDialog onOpenSkillMarket={handleOpenSkillMarketSkill} />
       <WorkspaceShellLayout
         services={services}
         workspaceReadOnlyReason={workspaceReadOnlyReason}
@@ -1153,6 +1166,7 @@ export function App({
         handleOpenAutomations={handleOpenAutomations}
         handleOpenPluginStore={handleOpenPluginStoreForScope}
         handleOpenSkillMarket={handleNavigateToSkillMarketMain}
+        skillMarketInitialPath={skillMarketInitialPath}
         loadSkillMarketSsoJwt={loadSkillMarketSsoJwt}
         handleManageInstalledPlugins={handleManageInstalledPlugins}
         onConnectRemote={onConnectRemote}
