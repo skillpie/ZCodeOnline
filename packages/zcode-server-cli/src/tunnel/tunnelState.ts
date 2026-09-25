@@ -4,11 +4,18 @@ import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { generateTunnelSecret } from "@zcode/shared";
 
+export interface TunnelAssistState {
+  code: string;
+  psk: string;
+}
+
 export interface TunnelHostState {
   hostId: string;
   hostCredential: string;
   displayName: string;
   psk: string;
+  /** 持久机器码（specs/web-tunnel.md §5.9）：跨重启稳定，是本机的可分享地址。 */
+  assist?: TunnelAssistState;
 }
 
 export interface TunnelStateStore {
@@ -41,11 +48,22 @@ export function createTunnelStateStore(serverRoot: string): TunnelStateStore {
         ) {
           return null;
         }
+        const assist =
+          typeof data.assist === "object" &&
+          data.assist !== null &&
+          typeof (data.assist as Record<string, unknown>).code === "string" &&
+          typeof (data.assist as Record<string, unknown>).psk === "string"
+            ? {
+                code: (data.assist as { code: string }).code,
+                psk: (data.assist as { psk: string }).psk,
+              }
+            : undefined;
         return {
           hostId: data.hostId,
           hostCredential: data.hostCredential,
           displayName: data.displayName,
           psk: data.psk,
+          ...(assist ? { assist } : {}),
         };
       } catch {
         return null;

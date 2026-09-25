@@ -13,7 +13,9 @@ import {
   type HostControlFrame,
   type TunnelErrorCode,
 } from "@zcode/shared";
+import { createRelayLogger, type RelayLogger } from "./relayLog.js";
 import {
+  AssistInvitationStore,
   BindingStore,
   ConnectTokenStore,
   HostRegistry,
@@ -51,6 +53,8 @@ export interface RelayChannelsOptions {
   connectTokens: ConnectTokenStore;
   bindings: BindingStore;
   hosts: HostRegistry;
+  assistInvitations: AssistInvitationStore;
+  log?: RelayLogger;
 }
 
 function sendJson(ws: WebSocket, frame: unknown): void {
@@ -64,6 +68,7 @@ function closeWithHostError(ws: WebSocket, code: TunnelErrorCode, message?: stri
 
 export function createRelayChannels(options: RelayChannelsOptions): RelayChannels {
   const now = options.now ?? Date.now;
+  const log = options.log ?? createRelayLogger("relay-channels");
   const routes = new RouteTable<WebSocket>();
   const lastSeen = new Map<WebSocket, number>();
   const pendingStreams = new Map<string, PendingStream>();
@@ -113,12 +118,33 @@ export function createRelayChannels(options: RelayChannelsOptions): RelayChannel
           sendJson(socket, { type: "pong", sentAt: frame.sentAt });
           return;
         }
+        if (frame.type === "assistRegister") {
+          if (hostId === null) {
+            socket.close(1003, "Host must send hostHello first");
+            return;
+          }
+          options.assistInvitations.register(
+            frame.assistCodeHash,
+            { hostId, maskedPsk: frame.maskedPsk },
+            frame.expiresAt,
+            now(),
+          );
+          log.info("assist invitation registered", {
+            hostId,
+            expiresInMs: frame.expiresAt - now(),
+          });
+          return;
+        }
         if (frame.type === "pairingTokenRegister") {
           if (hostId === null) {
             socket.close(1003, "Host must send hostHello first");
             return;
           }
           options.pairingTokens.register(frame.pairingTokenHash, hostId, frame.expiresAt, now());
+          log.info("pairing token registered", {
+            hostId,
+            expiresInMs: frame.expiresAt - now(),
+          });
           return;
         }
         // hostHello：首连凭证为空 = 注册并签发；否则校验哈希。
@@ -128,6 +154,12 @@ export function createRelayChannels(options: RelayChannelsOptions): RelayChannel
         }
         let issuedCredential = "";
         if (frame.hostCredential === "") {
+          // fail-closed：空凭证仅可注册未知 hostId。合法场景 = relay 重启清空注册表后
+          // 宿主以空凭证重注册（自愈）；已知 hostId 拒绝空凭证，防止抢注顶替真实宿主。
+          if (options.hosts.get(frame.hostId)) {
+            closeWithHostError(socket, "invalidHostCredential");
+            return;
+          }
           issuedCredential = generateTunnelSecret();
           options.hosts.register({
             hostId: frame.hostId,
@@ -142,6 +174,10 @@ export function createRelayChannels(options: RelayChannelsOptions): RelayChannel
             return;
           }
         }
+        log.info("host registered", {
+          hostId: frame.hostId,
+          freshRegistration: issuedCredential !== "",
+        });
         hostId = frame.hostId;
         const previous = routes.setRoute(hostId, socket);
         if (previous && previous !== socket)
@@ -192,10 +228,43 @@ export function createRelayChannels(options: RelayChannelsOptions): RelayChannel
       sendJson(pending.browserWs, { type: "tunnelConnected", streamId });
       forwardBinary(pending.browserWs, ws);
       forwardBinary(ws, pending.browserWs);
-      pending.browserWs.on("close", () => teardownAttachedStream(streamId, ws));
-      pending.browserWs.on("error", () => teardownAttachedStream(streamId, ws));
-      ws.on("close", () => teardownAttachedStream(streamId, pending.browserWs));
-      ws.on("error", () => teardownAttachedStream(streamId, pending.browserWs));
+
+      // 流级 keepalive：喂饱 nginx/中间设备的空闲定时器（对端 ws 自动回 pong）。
+      const streamKeepalive = setInterval(() => {
+        for (const socket of [pending.browserWs, ws]) {
+          if (socket.readyState === socket.OPEN) socket.ping();
+        }
+      }, 20_000);
+      streamKeepalive.unref();
+      const clearKeepalive = (): void => clearInterval(streamKeepalive);
+      pending.browserWs.once("close", clearKeepalive);
+      ws.once("close", clearKeepalive);
+      pending.browserWs.on("close", (code, reason) => {
+        log.warn("assist/tunnel stream closed", {
+          streamId,
+          side: "browser",
+          code,
+          reason: String(reason).slice(0, 60),
+        });
+        teardownAttachedStream(streamId, ws);
+      });
+      pending.browserWs.on("error", (error: Error) => {
+        log.warn("stream browser error", { streamId, error: error.message });
+        teardownAttachedStream(streamId, ws);
+      });
+      ws.on("close", (code, reason) => {
+        log.warn("assist/tunnel stream closed", {
+          streamId,
+          side: "host",
+          code,
+          reason: String(reason).slice(0, 60),
+        });
+        teardownAttachedStream(streamId, pending.browserWs);
+      });
+      ws.on("error", (error: Error) => {
+        log.warn("stream host error", { streamId, error: error.message });
+        teardownAttachedStream(streamId, pending.browserWs);
+      });
     },
 
     handleBrowserConnection(ws: WebSocket, hostId: string): void {

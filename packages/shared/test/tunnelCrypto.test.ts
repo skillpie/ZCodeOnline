@@ -61,8 +61,13 @@ test("密文被篡改时 GCM 校验失败", async () => {
   await assert.rejects(() => host.decrypt(frame));
 });
 
-test("超限帧在加密侧即拒绝", async () => {
+test("超限帧在加密侧即拒绝（上限需宽松于直连 ws 路径）", async () => {
   const keys = await deriveTunnelKeys(generateTunnelSecret(), "host-a");
   const client = new TunnelCipher(keys.clientToHost, "clientToHost");
-  await assert.rejects(() => client.encrypt(new Uint8Array(1024 * 1024 + 1)), /exceeds/);
+  await assert.rejects(() => client.encrypt(new Uint8Array(64 * 1024 * 1024 + 1)), /exceeds/);
+  // 大帧（如文件/快照响应）必须能正常加解密——直连 ws 无上限，隧道不得更严。
+  const big = new Uint8Array(2 * 1024 * 1024);
+  const frame = await client.encrypt(big);
+  const host = new TunnelCipher(keys.clientToHost, "clientToHost");
+  assert.deepEqual(await host.decrypt(frame), big);
 });

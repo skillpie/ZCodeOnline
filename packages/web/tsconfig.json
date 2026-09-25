@@ -3,10 +3,26 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "lib": ["es2025", "dom", "dom.iterable"],
+    "lib": [
+      "es2025",
+      "dom",
+      "dom.iterable"
+    ],
     "jsx": "react-jsx",
     "noEmit": true
   },
-  "include": ["src"],
-  "references": [{ "path": "../ui" }, { "path": "../client" }]
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../ui"
+    },
+    {
+      "path": "../client"
+    },
+    {
+      "path": "../rpc"
+    }
+  ]
 }

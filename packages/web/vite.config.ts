@@ -63,6 +63,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: true,
         },
+        // 隧道 relay REST（/pair、/connect-token）在 dev 下是跨源请求，
+        // 经 vite 代理到线上 relay 避免 CORS（生产为同源，无需此代理）。
+        "/relay": {
+          target: "https://zcode.skillpie.cn",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/relay/u, ""),
+        },
         // 将 /ws 和 /api 请求代理到 server（默认 3030 端口）
         "/ws": { target: "ws://localhost:3030", ws: true },
         "/api": { target: "http://localhost:3030" },

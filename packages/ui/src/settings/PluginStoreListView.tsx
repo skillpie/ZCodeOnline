@@ -307,8 +307,9 @@ export function SegmentPill({
       aria-pressed={active}
       className={cn(
         "rounded-full px-3 py-1 text-ui-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused",
+        /* 选中=实心主色胶囊、行动=渐变 CTA 的双强调体系（SkillPie 市场同款语言）。 */
         active
-          ? "bg-selected text-foreground"
+          ? "bg-primary text-primary-foreground"
           : "text-foreground-subtle hover:bg-hover hover:text-foreground",
       )}
       onClick={onClick}
@@ -322,15 +323,20 @@ function StoreSection({
   title,
   children,
   className,
+  titleClassName,
 }: {
   title: string;
   children: React.ReactNode;
   className?: string;
+  /** 覆盖节标题的强调样式；未传时保持常规前景色（精选区用品牌渐变字）。 */
+  titleClassName?: string;
 }) {
   return (
     <section className={className}>
       <div className="pb-2">
-        <h2 className="text-ui-lg font-semibold text-foreground">{title}</h2>
+        <h2 className={cn("text-ui-lg font-semibold", titleClassName ?? "text-foreground")}>
+          {title}
+        </h2>
       </div>
       <div aria-hidden="true" className="h-px bg-surface" />
       <div className="mt-2">{children}</div>
@@ -342,15 +348,24 @@ function CardGrid({
   items,
   actions,
   locale,
+  featuredIds,
 }: {
   items: StorePluginItem[];
   actions: PluginStoreActions;
   locale: string;
+  /** 精选区块传入目录 featured 集合；命中的卡片渲染渐变精选徽章。 */
+  featuredIds?: ReadonlySet<string>;
 }) {
   return (
-    <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+    <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
       {items.map((item) => (
-        <PluginStoreCard key={item.id} item={item} actions={actions} locale={locale} />
+        <PluginStoreCard
+          key={item.id}
+          item={item}
+          actions={actions}
+          locale={locale}
+          featured={featuredIds?.has(item.id) ?? false}
+        />
       ))}
     </div>
   );
@@ -469,8 +484,15 @@ function PublicSegment({
         <StoreSection
           title={intl.formatMessage({ id: "settings.plugins.store.featured" })}
           className="py-4 first:pt-0 last:pb-0"
+          /* 精选是目录策展的品牌区块：标题用渐变字与普通分类节区分。 */
+          titleClassName="text-brand-gradient"
         >
-          <CardGrid items={featuredItems} actions={actions} locale={locale} />
+          <CardGrid
+            items={featuredItems}
+            actions={actions}
+            locale={locale}
+            featuredIds={new Set(featuredItems.map((item) => item.id))}
+          />
         </StoreSection>
       ) : null}
       {categoryGroups.map((group) => (

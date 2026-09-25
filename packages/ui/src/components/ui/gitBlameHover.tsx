@@ -9,14 +9,7 @@
  * - 轻量 diff：行元素带 `data-blame-row`（映射后的新文件行号，删除行为 null 不渲染属性）
  * 提示浮层通过 portal 渲染在 document.body，跟随鼠标位置。
  */
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 

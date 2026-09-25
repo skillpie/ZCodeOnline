@@ -160,6 +160,7 @@ function RootInner({
   allowRemoteWorkspace = true,
   initialWorkspaceLoadingFallback,
   loadZcodeSsoJwtToken,
+  suppressJwtInvalidReload,
 }: RootProps) {
   useEffect(() => {
     setMcpStorePlatform(platform);
@@ -696,6 +697,7 @@ function RootInner({
   }, [platform]);
 
   useRootOAuthEffects({
+    suppressJwtInvalidReload,
     accountIntentKey: JSON.stringify([
       user?.id,
       appSettings?.providerFamilyDomain,

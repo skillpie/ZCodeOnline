@@ -3,7 +3,8 @@
  * 附加式新功能，spec 见 specs/data-source.md；数据一律来自 useDataSourceManager 投影。
  */
 import { useEffect, useState } from "react";
-import { Check, CircleAlert, Loader2, Plus, RefreshCw } from "lucide-react";import type { DataSourceView } from "@zcode/shared";
+import { Check, CircleAlert, Loader2, Plus, RefreshCw } from "lucide-react";
+import type { DataSourceView } from "@zcode/shared";
 import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -61,7 +62,11 @@ export function DataSourceManagerDialog({
         <div className="flex min-h-0 flex-1">
           <DataSourceListSidebar selection={selection} onSelect={setSelection} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <DataSourceFormArea source={selectedSource} onDeleted={() => setSelection(NEW_SELECTION)} onSaved={(id) => setSelection(id)} />
+            <DataSourceFormArea
+              source={selectedSource}
+              onDeleted={() => setSelection(NEW_SELECTION)}
+              onSaved={(id) => setSelection(id)}
+            />
           </div>
         </div>
       </DialogContent>
@@ -152,13 +157,7 @@ function DataSourceFormArea({
 }
 
 /** 选中数据源的表结构快照视图：同步状态 + 表数量 + 表清单。 */
-function DataSourceSchemaPanel({
-  sourceId,
-  onResync,
-}: {
-  sourceId: string;
-  onResync: () => void;
-}) {
+function DataSourceSchemaPanel({ sourceId, onResync }: { sourceId: string; onResync: () => void }) {
   const { intl } = useZCodeIntl();
   const { snapshots, syncStatus, ensureSnapshot } = useDataSourceManager();
   const snapshot = snapshots[sourceId];
@@ -205,7 +204,10 @@ function DataSourceSchemaPanel({
         </Button>
       </div>
       {snapshot ? (
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2" data-testid="data-source-table-list">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-3 pb-2"
+          data-testid="data-source-table-list"
+        >
           <div className="mb-1 text-ui-sm text-foreground-subtlest">
             {intl.formatMessage(
               { id: "chat.toolbar.dataSource.tablesCount" },

@@ -46,6 +46,8 @@ import type {
   UpdateCheckResultPayload,
   UpdateStatePayload,
   OpenInEditorOptions,
+  TunnelManagerPairing,
+  TunnelManagerStatus,
 } from "@zcode/shared";
 
 /**
@@ -320,6 +322,11 @@ declare global {
       getSystemLocale?(): Promise<Locale>;
       /** 同步标题栏亮暗色 */
       setTitleBarTheme(theme: DesktopTitleBarTheme): Promise<void>;
+      /** Web 隧道管理（specs/web-tunnel.md §5.5 路线 B） */
+      tunnelStatus?(): Promise<TunnelManagerStatus>;
+      tunnelEnable?(relayUrl: string): Promise<TunnelManagerStatus>;
+      tunnelDisable?(): Promise<TunnelManagerStatus>;
+      tunnelPair?(): Promise<TunnelManagerPairing>;
     };
   }
 }

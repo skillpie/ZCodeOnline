@@ -92,6 +92,7 @@ async function handleOAuthCallbackSuccess(params: {
 }
 
 export function useRootOAuthEffects({
+  suppressJwtInvalidReload = false,
   accountIntentKey,
   platform,
   services,
@@ -117,6 +118,8 @@ export function useRootOAuthEffects({
   setOAuthPollingActive: (active: boolean) => void;
   markOAuthSuccess: (provider?: OAuthProviderId) => void;
   onReauthenticationRequired: () => void;
+  /** 隧道/远程会话：模型登录态在被控机器上，浏览器刷新无意义——禁止 JWT 失效触发整页 reload。 */
+  suppressJwtInvalidReload?: boolean;
 }) {
   useAccountConnectionLossNotification(services, accountIntentKey, refreshAppSettings);
   const requestAlert = useAlertDialog();
@@ -192,6 +195,7 @@ export function useRootOAuthEffects({
   }, [
     intl,
     onReauthenticationRequired,
+    suppressJwtInvalidReload,
     refreshAppSettings,
     refreshProviderState,
     requestAlert,
@@ -217,6 +221,13 @@ export function useRootOAuthEffects({
         }
         if (!confirmed) {
           onReauthenticationRequired();
+          return;
+        }
+        if (suppressJwtInvalidReload) {
+          // 隧道/远程会话：登录态属于被控机器的宿主，浏览器刷新解决不了也切不断它。
+          logger.warn(
+            "[Root] ZCode JWT invalid broadcast received; reload suppressed (remote session)",
+          );
           return;
         }
         markZcodeJwtInvalidRestart();

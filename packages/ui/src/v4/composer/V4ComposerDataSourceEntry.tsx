@@ -6,7 +6,15 @@
  * 面板内的「新建 / 管理」统一走同一个管理弹窗（open 状态在本组件持有）。
  */
 import { memo, useState } from "react";
-import { Check, ChevronDownIcon, CircleAlert, Database, Loader2, RefreshCw, Settings2 } from "lucide-react";
+import {
+  Check,
+  ChevronDownIcon,
+  CircleAlert,
+  Database,
+  Loader2,
+  RefreshCw,
+  Settings2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Badge } from "@/components/ui/badge.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
@@ -91,7 +99,11 @@ function DataSourceEntryInner() {
                 )}
               </span>
             </div>
-            <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto" role="listbox" aria-label={label}>
+            <div
+              className="flex max-h-64 flex-col gap-0.5 overflow-y-auto"
+              role="listbox"
+              aria-label={label}
+            >
               {dataSources.length === 0 && !loading ? (
                 <div className="px-3 py-6 text-center text-ui-base text-foreground-subtle">
                   {intl.formatMessage({ id: "chat.toolbar.dataSource.empty" })}
@@ -126,7 +138,9 @@ function DataSourceEntryInner() {
                           variant="outline"
                           className={cn(
                             "h-4 shrink-0 px-1 text-ui-xs",
-                            source.readOnly ? "text-foreground-subtle" : "text-[var(--color-warning)]",
+                            source.readOnly
+                              ? "text-foreground-subtle"
+                              : "text-[var(--color-warning)]",
                           )}
                         >
                           {intl.formatMessage({
@@ -151,7 +165,10 @@ function DataSourceEntryInner() {
                         aria-hidden
                       />
                     ) : isActive ? (
-                      <Check className="size-3.5 shrink-0 text-[var(--color-success)]" aria-hidden />
+                      <Check
+                        className="size-3.5 shrink-0 text-[var(--color-success)]"
+                        aria-hidden
+                      />
                     ) : null}
                   </button>
                 );

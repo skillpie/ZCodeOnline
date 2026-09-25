@@ -120,6 +120,33 @@ Default light and dark CSS variables still exist as fallback foundations, but ne
 
 Use semantic colors only for actual semantic states. Do not borrow success, warning, or destructive colors just to make a block feel louder.
 
+### Brand gradient tokens
+
+The brand gradient is the SkillPie-derived brand language (`135deg, #6a6dff → #8b7fff → #b85eff`) reserved for **brand moments**: marketing, welcome, and marketplace surfaces. It is a bounded exception to the neutral-first workspace, not a new default.
+
+- **Gradient**: `--gradient-brand`. Utilities: `.bg-brand-gradient` for fills, `.text-brand-gradient` for text clip.
+- **Brand accent**: `--color-brand-accent` (`#6a6dff` on light faces, `#8b7fff` on dark faces) for brand-colored text, icons, and borders. `--color-brand-accent-foreground` (fixed white) for text on gradient fills.
+- **Soft surface / border**: `--color-brand-accent-soft`, `--color-brand-accent-border` for weak brand chips, category tags, and card hover tints.
+- **Glow**: `--shadow-brand-glow`, `--shadow-brand-glow-strong`. Reserve for the primary CTA of a brand surface; at most one glowing element per view.
+- **Button**: the `brand` variant in `packages/ui/src/components/ui/button.tsx` is the gradient CTA. Use it for the single primary action of a brand surface (store install). Do not promote ordinary form or secondary actions to it.
+
+### Brand gradient usage rules
+
+Allowed surfaces (extend this list in this file before adding a new one):
+
+- Welcome / login brand art (`WelcomeScreen` logo shell).
+- Conversation draft empty state accent (`ConversationDraftEmptyState`).
+- Plugin store brand actions: install CTA, Featured badge and section accent, card hover tint (`PluginStoreCard`, `PluginStoreListView`).
+- About / onboarding brand art.
+
+Rules:
+
+- Brand moments keep the colored gradient in all four theme faces (light, dark, zai-light, zai-dark); only `--color-brand-accent` and its soft/border derivatives adapt per theme. Precedent: `ThemeHeroVisual` keeps colored hero art in the Zai themes.
+- Operational surfaces (chat, tool output, diff, terminal, file tree, menus, forms) never consume the gradient, the glow, or the brand accent fills.
+- Never use the gradient as a full-page or full-section background; marketing washes stay inside hero surfaces such as `ThemeHeroVisual`.
+- The gradient decorates hierarchy (badges, CTAs, hover tints); it must not inflate spacing, radius, or density. Radius still follows the container hierarchy.
+- Validate every change against light, dark, zai-light, and zai-dark, and preserve `prefers-reduced-motion` behavior.
+
 ### Blocking interaction colors
 
 - **Ask Interaction**: `--color-interaction-ask-surface`, `--color-interaction-ask-foreground`, `--color-interaction-ask-fill`

@@ -45,6 +45,7 @@ import { useZCodeStore } from "@/store/StoreProvider.js";
 import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
 import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
+import { WorkspaceTunnelAccessTrigger } from "@/WorkspaceTunnelAccessTrigger.js";
 import {
   WorkspaceSidebarFooterPlanBadge,
   WorkspaceSidebarFooterUsageSummaryContent,
@@ -377,6 +378,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               compact
             />
           ) : null}
+          {isDesktop ? <WorkspaceTunnelAccessTrigger compact /> : null}
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button
               type="button"

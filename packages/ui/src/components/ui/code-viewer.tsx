@@ -745,60 +745,60 @@ export function CodeViewer({
 
   return (
     <>
-    {blameTooltip}
-    <div
-      ref={(node) => {
-        blameContainerRef.current = node;
-        assignCodeViewerScrollContainerRef(node);
-      }}
-      className={cn("h-full w-full overflow-auto", className)}
-      data-language={language}
-      style={viewerStyle}
-      {...props}
-    >
-      {topCommentNotice ? (
-        <div data-code-review-target-warning className="px-3 pt-3 text-ui-sm text-warning">
-          {topCommentNotice}
-        </div>
-      ) : null}
-      {topComment ? (
-        <CodeCommentAnnotation
-          comment={topComment}
-          labels={labels}
-          showRange={topCommentShowRange}
-        />
-      ) : null}
-      <File
-        key={file.cacheKey}
-        file={file}
-        options={options}
-        lineAnnotations={lineAnnotations}
-        selectedLines={selectedLines}
-        className="min-h-full w-full"
+      {blameTooltip}
+      <div
+        ref={(node) => {
+          blameContainerRef.current = node;
+          assignCodeViewerScrollContainerRef(node);
+        }}
+        className={cn("h-full w-full overflow-auto", className)}
+        data-language={language}
         style={viewerStyle}
-        renderAnnotation={(annotation) =>
-          annotation.metadata.kind === "draft" ? (
-            <CommentDraft
-              range={annotation.metadata.range}
-              labels={labels}
-              value={draftText}
-              onValueChange={setDraftText}
-              onSubmit={handleSubmitDraft}
-              onCancel={() => {
-                setActiveDraftRange(null);
-                setDraftText("");
-              }}
-            />
-          ) : (
-            <CodeCommentAnnotation
-              comment={annotation.metadata.comment}
-              labels={labels}
-              onDelete={onDeleteCodeComment}
-            />
-          )
-        }
-      />
-    </div>
+        {...props}
+      >
+        {topCommentNotice ? (
+          <div data-code-review-target-warning className="px-3 pt-3 text-ui-sm text-warning">
+            {topCommentNotice}
+          </div>
+        ) : null}
+        {topComment ? (
+          <CodeCommentAnnotation
+            comment={topComment}
+            labels={labels}
+            showRange={topCommentShowRange}
+          />
+        ) : null}
+        <File
+          key={file.cacheKey}
+          file={file}
+          options={options}
+          lineAnnotations={lineAnnotations}
+          selectedLines={selectedLines}
+          className="min-h-full w-full"
+          style={viewerStyle}
+          renderAnnotation={(annotation) =>
+            annotation.metadata.kind === "draft" ? (
+              <CommentDraft
+                range={annotation.metadata.range}
+                labels={labels}
+                value={draftText}
+                onValueChange={setDraftText}
+                onSubmit={handleSubmitDraft}
+                onCancel={() => {
+                  setActiveDraftRange(null);
+                  setDraftText("");
+                }}
+              />
+            ) : (
+              <CodeCommentAnnotation
+                comment={annotation.metadata.comment}
+                labels={labels}
+                onDelete={onDeleteCodeComment}
+              />
+            )
+          }
+        />
+      </div>
     </>
   );
 }

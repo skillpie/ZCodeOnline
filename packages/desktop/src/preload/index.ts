@@ -754,6 +754,11 @@ contextBridge.exposeInMainWorld("zcode", {
   setAutoDownloadAndInstallUpdates: (enabled: boolean) =>
     ipcRenderer.invoke(PlatformChannels.SetAutoDownloadAndInstallUpdates, enabled),
   getDesktopSessionActivity: () => ipcRenderer.invoke(PlatformChannels.GetDesktopSessionActivity),
+  /** Web 隧道管理（specs/web-tunnel.md §5.5）：转发 daemon 控制 socket */
+  tunnelStatus: () => ipcRenderer.invoke(PlatformChannels.TunnelStatus),
+  tunnelEnable: (relayUrl: string) => ipcRenderer.invoke(PlatformChannels.TunnelEnable, relayUrl),
+  tunnelDisable: () => ipcRenderer.invoke(PlatformChannels.TunnelDisable),
+  tunnelPair: () => ipcRenderer.invoke(PlatformChannels.TunnelPair),
   /** 注册自动更新持续状态变化，返回 disposer */
   onUpdateStateChanged: (callback: (payload: UpdateStatePayload) => void): (() => void) => {
     updateStateCallbacks.add(callback);

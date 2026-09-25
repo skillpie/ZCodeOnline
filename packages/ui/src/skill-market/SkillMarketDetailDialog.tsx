@@ -135,11 +135,10 @@ function SkillMarketDetailDialogBody({ onOpenSkillMarket }: SkillMarketDetailDia
   const isPaid = detail !== null && !detail.isFree;
   // 触发词来自技能作者写在 description 末尾的约定段（如 kdocs-skill）；
   // $token 是本产品的显式引用方式，两者都必须在弹窗里一眼可见。
-  const { text: descriptionText, triggers } =
-    useMemo(
-      () => (detail ? splitSkillTriggerWords(detail.description) : { text: "", triggers: [] }),
-      [detail],
-    );
+  const { text: descriptionText, triggers } = useMemo(
+    () => (detail ? splitSkillTriggerWords(detail.description) : { text: "", triggers: [] }),
+    [detail],
+  );
 
   return (
     <Dialog open onOpenChange={(next) => (next ? undefined : handleClose())}>

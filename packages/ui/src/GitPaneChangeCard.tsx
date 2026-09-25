@@ -197,9 +197,7 @@ export function GitPaneChangeCard({
                 lightTheme={codePreviewSettings.lightTheme}
                 darkTheme={codePreviewSettings.darkTheme}
                 resolveBlameLine={
-                  workspacePath
-                    ? createBlameResolver(workspacePath, change.path)
-                    : undefined
+                  workspacePath ? createBlameResolver(workspacePath, change.path) : undefined
                 }
                 themeType={resolvedTheme}
               />
@@ -218,9 +216,7 @@ export function GitPaneChangeCard({
                 lightTheme={codePreviewSettings.lightTheme}
                 darkTheme={codePreviewSettings.darkTheme}
                 resolveBlameLine={
-                  workspacePath
-                    ? createBlameResolver(workspacePath, change.path)
-                    : undefined
+                  workspacePath ? createBlameResolver(workspacePath, change.path) : undefined
                 }
                 themeType={resolvedTheme}
               />

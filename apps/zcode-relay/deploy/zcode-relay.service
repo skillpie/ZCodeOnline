@@ -1,0 +1,29 @@
+# /etc/systemd/system/zcode-relay.service
+# 隧道 relay 常驻单元（skillpie 服务器 106.53.164.221 环境）。
+# 部署物 = 单文件 entry.js（esbuild 全量打包，无需 node_modules）；node 位于 /usr/local/bin/node。
+[Unit]
+Description=ZCode Tunnel Relay (zcode.skillpie.cn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/zcode-relay
+ExecStart=/usr/local/bin/node /opt/zcode-relay/entry.js
+Environment=ZCODE_RELAY_PORT=8787
+# 只绑回环：公网入口一律走 nginx TLS 反代
+Environment=ZCODE_RELAY_HOST=127.0.0.1
+# 配对鉴权：none = 配对码（32B 随机 + 2min TTL + 一次性）即唯一凭证。
+# 取舍：zcode.skillpie.cn 无 OAuth 回调，登录链路不可用；关闭账号门禁后，
+# 唯一风险面是"配对链接泄露"（2 分钟窗口）。宿主侧配对确认在 M2 补齐（specs/web-tunnel.md）。
+Environment=ZCODE_RELAY_PAIRING_AUTH=none
+# 安全红线：ZCODE_RELAY_DEV_ACCEPT_ANY 仅为本地联调别名，生产一律不设置
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zcode-relay
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

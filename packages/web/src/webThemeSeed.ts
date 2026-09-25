@@ -1,6 +1,6 @@
 type WebThemeSeed = "light" | "dark" | "zai-light" | "zai-dark" | "system";
 
-export const WEB_DEFAULT_THEME: WebThemeSeed = "zai-dark";
+export const WEB_DEFAULT_THEME: WebThemeSeed = "system";
 
 function isWebThemeSeed(value: unknown): value is WebThemeSeed {
   return (

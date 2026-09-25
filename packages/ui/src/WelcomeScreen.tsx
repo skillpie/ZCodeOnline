@@ -474,9 +474,10 @@ function LoginPanelHeader({
 
 function LoginPanelLogo() {
   return (
-    // 登录 logo 壳是固定深色底，边框不能跟随浅色主题 token，否则浅色主题下边框过重。
+    // 登录 logo 壳改用固定品牌渐变底（DESIGN.md「Brand gradient usage rules」允许的
+    // 欢迎页品牌时刻）；白色内描边不跟随主题 token，浅色主题下也不会过重。
     <div
-      className="relative mb-1 flex size-16 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#000000_0%,#151718_100%)] text-[#ffffff] shadow-lg/20 before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:border before:border-[rgba(255,255,255,0.1)]"
+      className="relative mb-1 flex size-16 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-brand-glow before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:border before:border-[rgba(255,255,255,0.2)]"
       aria-label="ZCode"
       role="img"
     >

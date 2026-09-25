@@ -43,9 +43,7 @@ export interface LightweightDiffPreviewProps extends Omit<
   /** 与 lines 等长的新文件行号映射（无法映射的行为 null）；提供后才启用 blame 悬停 */
   blameLineNumbers?: readonly (number | null)[];
   /** 按新文件行号解析 blame；由调用方注入（内部走 gitService 并整文件缓存） */
-  resolveBlameLine?: (
-    line: number,
-  ) => Promise<LightweightDiffBlameInfo | null>;
+  resolveBlameLine?: (line: number) => Promise<LightweightDiffBlameInfo | null>;
 }
 
 export function getLightweightDiffLineParts(line: string): LightweightDiffLineParts {
@@ -142,76 +140,76 @@ export function LightweightDiffPreview({
 
   return (
     <>
-    <div
-      ref={containerRef}
-      className={cn("w-full min-w-0 overflow-auto bg-background", className)}
-      data-lightweight-diff-preview
-      {...props}
-    >
       <div
-        className={cn(
-          "min-w-full font-mono leading-relaxed text-foreground",
-          !codePreviewSettings.wrapLongLines && "w-max",
-        )}
-        data-lightweight-diff-scroll-content
-        style={{ fontSize: codePreviewSettings.fontSizePx }}
+        ref={containerRef}
+        className={cn("w-full min-w-0 overflow-auto bg-background", className)}
+        data-lightweight-diff-preview
+        {...props}
       >
-        {lines.map((line, index) => {
-          const omittedLineCount = parseTruncatedMarkerOmittedLineCount(line);
+        <div
+          className={cn(
+            "min-w-full font-mono leading-relaxed text-foreground",
+            !codePreviewSettings.wrapLongLines && "w-max",
+          )}
+          data-lightweight-diff-scroll-content
+          style={{ fontSize: codePreviewSettings.fontSizePx }}
+        >
+          {lines.map((line, index) => {
+            const omittedLineCount = parseTruncatedMarkerOmittedLineCount(line);
 
-          if (omittedLineCount !== null) {
+            if (omittedLineCount !== null) {
+              return (
+                <div className="px-3 py-1 text-foreground-subtle" key={index}>
+                  {intl.formatMessage(
+                    { id: "diff.preview.truncatedLines" },
+                    { count: String(omittedLineCount) },
+                  )}
+                </div>
+              );
+            }
+
+            const lineParts = getLightweightDiffLineParts(line);
+            const lineStyles = getLightweightDiffLineStyles(lineParts.kind);
+
             return (
-              <div className="px-3 py-1 text-foreground-subtle" key={index}>
-                {intl.formatMessage(
-                  { id: "diff.preview.truncatedLines" },
-                  { count: String(omittedLineCount) },
-                )}
+              <div
+                className="flex min-w-full w-full"
+                key={index}
+                style={lineStyles.rowStyle}
+                data-blame-row={blameLineNumbers?.[index] ?? null}
+              >
+                {/* 不换行时由内层滚动面统一计算 max-content 宽度。
+              如果每行各自 w-max，横向滚动到右侧时短行背景会提前结束，产生黑色断层。 */}
+                {codePreviewSettings.showLineNumbers ? (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "sticky left-0 z-[1] w-12 shrink-0 select-none border-r border-border px-2 text-right tabular-nums",
+                      lineStyles.lineNumberClassName,
+                    )}
+                    style={lineStyles.gutterStyle}
+                  >
+                    {index + 1}
+                  </span>
+                ) : null}
+                <code
+                  className={cn(
+                    "block flex-1 px-3",
+                    codePreviewSettings.wrapLongLines
+                      ? "whitespace-pre-wrap break-words"
+                      : "whitespace-pre",
+                  )}
+                >
+                  {/* 轻量 diff 只用行背景、状态条和行号颜色表达增删，和富 DiffViewer 保持一致；
+                不能把 unified diff 的 `+/-/空格` 协议 marker 当成代码内容显示出来。 */}
+                  {renderLineContent?.(lineParts, index) ?? (lineParts.content || " ")}
+                </code>
               </div>
             );
-          }
-
-          const lineParts = getLightweightDiffLineParts(line);
-          const lineStyles = getLightweightDiffLineStyles(lineParts.kind);
-
-          return (
-            <div
-              className="flex min-w-full w-full"
-              key={index}
-              style={lineStyles.rowStyle}
-              data-blame-row={blameLineNumbers?.[index] ?? null}
-            >
-              {/* 不换行时由内层滚动面统一计算 max-content 宽度。
-              如果每行各自 w-max，横向滚动到右侧时短行背景会提前结束，产生黑色断层。 */}
-              {codePreviewSettings.showLineNumbers ? (
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "sticky left-0 z-[1] w-12 shrink-0 select-none border-r border-border px-2 text-right tabular-nums",
-                    lineStyles.lineNumberClassName,
-                  )}
-                  style={lineStyles.gutterStyle}
-                >
-                  {index + 1}
-                </span>
-              ) : null}
-              <code
-                className={cn(
-                  "block flex-1 px-3",
-                  codePreviewSettings.wrapLongLines
-                    ? "whitespace-pre-wrap break-words"
-                    : "whitespace-pre",
-                )}
-              >
-                {/* 轻量 diff 只用行背景、状态条和行号颜色表达增删，和富 DiffViewer 保持一致；
-                不能把 unified diff 的 `+/-/空格` 协议 marker 当成代码内容显示出来。 */}
-                {renderLineContent?.(lineParts, index) ?? (lineParts.content || " ")}
-              </code>
-            </div>
-          );
-        })}
+          })}
+        </div>
       </div>
-    </div>
-    {tooltip}
+      {tooltip}
     </>
   );
 }

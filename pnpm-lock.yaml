@@ -639,6 +639,12 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.9.0)
       tsx:
         specifier: ^4.19.4
         version: 4.21.0
@@ -715,6 +721,9 @@ importers:
       '@zcode/server':
         specifier: workspace:*
         version: link:../server
+      '@zcode/server-cli':
+        specifier: workspace:*
+        version: link:../zcode-server-cli
       '@zcode/services':
         specifier: workspace:*
         version: link:../services
@@ -1305,6 +1314,9 @@ importers:
       '@zcode/client':
         specifier: workspace:*
         version: link:../client
+      '@zcode/rpc':
+        specifier: workspace:*
+        version: link:../rpc
       '@zcode/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1327,6 +1339,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.14)
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.9.0))

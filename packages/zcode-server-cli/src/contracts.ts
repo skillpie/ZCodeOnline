@@ -91,6 +91,11 @@ export const controlRequestSchema = z.discriminatedUnion("command", [
   requestBase.extend({ command: z.literal("apply-update"), force: z.boolean().optional() }),
   requestBase.extend({ command: z.literal("prepare-uninstall") }),
   requestBase.extend({ command: z.literal("confirm-uninstall"), confirmation: z.string() }),
+  // Web 隧道（specs/web-tunnel.md §3.2）：经 Supervisor 转发给 Core 的隧道运行时。
+  requestBase.extend({ command: z.literal("tunnel-status") }),
+  requestBase.extend({ command: z.literal("tunnel-enable"), relayUrl: z.string().url() }),
+  requestBase.extend({ command: z.literal("tunnel-disable") }),
+  requestBase.extend({ command: z.literal("tunnel-pair") }),
 ]);
 export type ControlRequest = z.infer<typeof controlRequestSchema>;
 
@@ -131,11 +136,26 @@ export const coreMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("shutdown-ack") }),
   z.object({ type: z.literal("fatal"), message: z.string().max(500) }),
   z.object({ type: z.literal("exit"), reason: z.string().max(500) }),
+  // 隧道控制命令的关联应答：requestId 由 Supervisor 生成，与待起的 control 请求一一对应。
+  z.object({
+    type: z.literal("tunnel-control-result"),
+    requestId: z.string().min(1).max(128),
+    ok: z.boolean(),
+    result: z.unknown().optional(),
+    error: z.string().max(500).optional(),
+  }),
 ]);
 export type CoreMessage = z.infer<typeof coreMessageSchema>;
 
 export const coreCommandSchema = z.discriminatedUnion("command", [
   z.object({ command: z.literal("shutdown") }),
+  // Supervisor → Core 的隧道控制转发；结果经 tunnel-control-result 关联回来。
+  z.object({
+    command: z.literal("tunnel-control"),
+    requestId: z.string().min(1).max(128),
+    action: z.enum(["status", "enable", "disable", "pair"]),
+    relayUrl: z.string().url().optional(),
+  }),
 ]);
 export type CoreCommand = z.infer<typeof coreCommandSchema>;
 

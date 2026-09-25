@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
+import { basename, resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
@@ -24,6 +25,7 @@ import {
   ZCODE_RPC_HOST_CAPABILITY_HEADER,
   ZCODE_VERSION,
   type ServerRemoteInfo,
+  type ServerRemoteWorkspaceInfo,
 } from "@zcode/shared";
 import { createHostCapabilityStore, type HostCapabilityStore } from "./hostCapability.js";
 
@@ -51,6 +53,20 @@ async function closeWebSocketServer(wss: WebSocketServer): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     wss.close((error?: Error) => (error ? reject(error) : resolve()));
   });
+}
+
+/**
+ * Core 的初始工作区解析（specs/web-tunnel.md §5.7）：ZCODE_SERVER_WORKSPACE 指向项目目录，
+ * 未设置时回退进程 cwd——与 packages/server 的语义一致。浏览器经隧道 bootstrap 帧据此
+ * 注入 initialWorkspace；多工作区注册留后续。
+ */
+export function resolveCoreServerWorkspaces(
+  env: Record<string, string | undefined>,
+  cwd: string,
+): ServerRemoteWorkspaceInfo[] {
+  const workspacePath = env.ZCODE_SERVER_WORKSPACE?.trim() || cwd;
+  const resolved = resolve(workspacePath);
+  return [{ path: resolved, label: basename(resolved) || resolved }];
 }
 
 function isLoopbackHost(host: string): boolean {
@@ -135,7 +151,7 @@ export async function createCoreHttpServer(
     version: ZCODE_VERSION,
     protocolVersion: SERVER_REMOTE_PROTOCOL_VERSION,
     authRequired: false,
-    workspaces: [],
+    workspaces: resolveCoreServerWorkspaces(process.env, process.cwd()),
     capabilities: {
       desktopContinuous: true,
       websocketRpc: true,

@@ -137,6 +137,41 @@ test("配对成功：一次性 token 换会话凭证，重放被拒", async () =
   hostSock.close();
 });
 
+test("空凭证不能顶替已注册宿主（防抢注）；未知 hostId 可注册", async () => {
+  // 先注册 h-squat
+  const first = new WebSocket(`${wsBase}/ws/host`);
+  await waitOpen(first);
+  first.send(
+    JSON.stringify({
+      type: "hostHello",
+      hostId: "h-squat",
+      hostCredential: "",
+      displayName: "real",
+      protocolVersion: TUNNEL_PROTOCOL_VERSION,
+    }),
+  );
+  const ready = JSON.parse((await nextMessage(first)).raw);
+  assert.equal(ready.type, "hostReady");
+
+  // 空凭证同 hostId 再连 → 必须拒绝
+  const squatter = new WebSocket(`${wsBase}/ws/host`);
+  await waitOpen(squatter);
+  squatter.send(
+    JSON.stringify({
+      type: "hostHello",
+      hostId: "h-squat",
+      hostCredential: "",
+      displayName: "evil",
+      protocolVersion: TUNNEL_PROTOCOL_VERSION,
+    }),
+  );
+  const denied = JSON.parse((await nextMessage(squatter)).raw);
+  assert.equal(denied.type, "error");
+  assert.equal(denied.code, "invalidHostCredential");
+  first.close();
+  squatter.close();
+});
+
 test("全链路：票据 → 拼接 → 端到端密文互通", async () => {
   const pairingToken = generateTunnelSecret();
   const credentialRef = { credential: "" };

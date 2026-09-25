@@ -105,7 +105,8 @@ export function DataSourceForm({
             }
           : {
               kind: "error",
-              text: outcome.error ??
+              text:
+                outcome.error ??
                 intl.formatMessage({ id: "chat.toolbar.dataSource.form.testFailed" }),
             },
       );
@@ -121,8 +122,20 @@ export function DataSourceForm({
       const result = await onSave(toInput(state, source));
       setMessage(
         result.syncError
-          ? { kind: "error", text: intl.formatMessage({ id: "chat.toolbar.dataSource.syncFailed" }, { message: result.syncError }) }
-          : { kind: "ok", text: intl.formatMessage({ id: "chat.toolbar.dataSource.syncDone" }, { count: result.schema?.tables.length ?? 0 }) },
+          ? {
+              kind: "error",
+              text: intl.formatMessage(
+                { id: "chat.toolbar.dataSource.syncFailed" },
+                { message: result.syncError },
+              ),
+            }
+          : {
+              kind: "ok",
+              text: intl.formatMessage(
+                { id: "chat.toolbar.dataSource.syncDone" },
+                { count: result.schema?.tables.length ?? 0 },
+              ),
+            },
       );
       onSaved(result.dataSource.id);
     } catch (error) {
@@ -311,9 +324,18 @@ export function DataSourceForm({
       ) : null}
 
       <div className="flex items-center gap-2">
-        <Button type="button" variant="outline" disabled={busyTesting} onClick={() => void handleTest()}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busyTesting}
+          onClick={() => void handleTest()}
+        >
           {busyTesting ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
-          {intl.formatMessage({ id: busyTesting ? "chat.toolbar.dataSource.form.testing" : "chat.toolbar.dataSource.form.test" })}
+          {intl.formatMessage({
+            id: busyTesting
+              ? "chat.toolbar.dataSource.form.testing"
+              : "chat.toolbar.dataSource.form.test",
+          })}
         </Button>
         <div className="ml-auto flex items-center gap-2">
           {source ? (

@@ -34,6 +34,8 @@ import {
   unregisterInstalledService,
   unregisterLegacyServiceForRoot,
 } from "./runtime/serviceInstallation.js";
+import { runTunnelCommand } from "./tunnel/tunnelCommand.js";
+import { createTunnelStateStore } from "./tunnel/tunnelState.js";
 
 export interface CliIO {
   stdout?: { write(value: string): void };
@@ -86,7 +88,18 @@ export async function runServerCli(
     }
     // 同一物理 data-root 的符号链接别名会派生不同 control endpoint 和 OS service
     // identity。生命周期命令统一在 IO 前收敛 root，避免第二个 Supervisor 绕过探测重复注册。
-    const layout = ["serve", "status", "stop", "restart", "update", "uninstall"].includes(command)
+    const layout = [
+      "serve",
+      "status",
+      "stop",
+      "restart",
+      "update",
+      "uninstall",
+      "tunnel-status",
+      "tunnel-enable",
+      "tunnel-disable",
+      "tunnel-pair",
+    ].includes(command)
       ? await resolveCanonicalServerLayout(parsed.layout.serverRoot)
       : parsed.layout;
     switch (command) {
@@ -102,6 +115,20 @@ export async function runServerCli(
         );
       case "uninstall":
         return await runUninstall(io, json, layout);
+      case "tunnel-status":
+        return await runControl("tunnel-status", io, json, {}, layout);
+      case "tunnel-enable": {
+        // relay 缺省走产品部署入口（DEFAULT_TUNNEL_RELAY_URL，Core 侧同样兜底）。
+        const relayUrlIndex = parsed.argv.indexOf("--relay-url");
+        const relayUrl = relayUrlIndex !== -1 ? parsed.argv[relayUrlIndex + 1] : undefined;
+        return await runControl("tunnel-enable", io, json, { relayUrl }, layout);
+      }
+      case "tunnel-disable":
+        return await runControl("tunnel-disable", io, json, {}, layout);
+      case "tunnel-pair":
+        return await runControl("tunnel-pair", io, json, {}, layout);
+      case "tunnel":
+        return await runTunnelCommand(parsed.argv.slice(1), io, layout);
       default:
         return await (io.legacyDelegate?.(parsed.argv) ?? delegateLegacyCli(parsed.argv, io));
     }
@@ -233,6 +260,12 @@ async function runServe(
     );
     if (json) stdout(io, started);
     else stdout(io, `ZCode Server ${started.state} at ${started.host ?? ""}:${started.port ?? ""}`);
+    // 打印本机远程链接（specs/web-tunnel.md §5.9）：机器码持久化，链接长期有效。
+    const tunnelState = await createTunnelStateStore(layout.serverRoot).load();
+    const assistCode = tunnelState?.assist?.code;
+    if (assistCode && !json) {
+      stdout(io, `Remote access: https://zcode.skillpie.cn/${assistCode}`);
+    }
     process.stdin.pause();
     process.stdin.destroy();
     return 0;
@@ -509,6 +542,19 @@ async function delegateLegacyCli(argv: readonly string[], io: CliIO): Promise<nu
   try {
     await access(candidate);
   } catch {
+    // login 等交互命令依赖 agent CLI（发行版内与 server-cli 同目录的 zcode.cjs）；
+    // dev 直跑 dist 时缺失，须给出可操作的指引而非笼统 Unknown command。
+    if (argv[0] === "login" || argv[0] === "logout") {
+      stderr(
+        io,
+        new Error(
+          `${argv[0]} requires the full release bundle (zcode.cjs not found next to server-cli.js). ` +
+            "Install the staged release (deploy/install-zcode-server.sh), " +
+            "or point ZCODE_LEGACY_CLI_ENTRY at the agent CLI entry.",
+        ),
+      );
+      return 1;
+    }
     stdout(io, argv.length ? `Unknown command: ${argv[0]}` : "ZCode TUI");
     return argv.length ? 1 : 0;
   }

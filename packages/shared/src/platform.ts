@@ -5,6 +5,7 @@ import type {
   SSHConnectOptions,
   WSLConnectOptions,
 } from "./remoteTarget.js";
+import type { TunnelManagerPairing, TunnelManagerStatus } from "./tunnel.js";
 import type {
   LoadCliMcpFromUserDirectoryRequest,
   LoadCliMcpFromUserDirectoryResult,
@@ -926,6 +927,14 @@ export interface IPlatformService {
   getDesktopSessionActivity?(): Promise<{
     runningAgentSessionCount: number;
   }>;
+
+  /** Web 隧道管理（specs/web-tunnel.md §5.5 路线 B）；非桌面平台可不实现 */
+  tunnelStatus?(): Promise<TunnelManagerStatus>;
+  /** 启用隧道并持久化意图；daemon 未运行时抛错 */
+  tunnelEnable?(relayUrl: string): Promise<TunnelManagerStatus>;
+  tunnelDisable?(): Promise<TunnelManagerStatus>;
+  /** 生成一次性配对链接（短 TTL）；未启用时抛错 */
+  tunnelPair?(): Promise<TunnelManagerPairing>;
 
   /** 开发环境 stdio tap proxy 开关状态；非桌面平台可不实现 */
   getZCodeStdioTapDevState?(): Promise<ZCodeStdioTapDevState>;

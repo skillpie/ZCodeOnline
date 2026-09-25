@@ -8,6 +8,7 @@ import type {
   SaveCliMcpToUserDirectoryRequest,
 } from "./index.js";
 import type { OAuthStateRegistration } from "./oauth.js";
+import type { TunnelManagerPairing, TunnelManagerStatus } from "./tunnel.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { StorageCleanRequest, StorageCleanResult, StorageUsageSnapshot } from "./storage.js";
 import type {
@@ -394,6 +395,11 @@ export const PlatformChannels = {
   SetAutoDownloadAndInstallUpdates: "zcode:set-auto-download-and-install-updates",
   /** Renderer → Main：查询桌面端正在运行的会话数量 */
   GetDesktopSessionActivity: "zcode:get-desktop-session-activity",
+  /** Renderer → Main：Web 隧道管理（状态/启用/停用/配对） */
+  TunnelStatus: "zcode:tunnel-status",
+  TunnelEnable: "zcode:tunnel-enable",
+  TunnelDisable: "zcode:tunnel-disable",
+  TunnelPair: "zcode:tunnel-pair",
   /** Renderer → Main：读取当前窗口页面缩放档位 */
   GetDesktopZoomLevel: "zcode:get-desktop-zoom-level",
   /** Main → Renderer：当前窗口页面缩放档位变化 */
@@ -1116,6 +1122,22 @@ export interface PlatformChannelMap {
     response: {
       runningAgentSessionCount: number;
     };
+  };
+  [PlatformChannels.TunnelStatus]: {
+    request: void;
+    response: TunnelManagerStatus;
+  };
+  [PlatformChannels.TunnelEnable]: {
+    request: string;
+    response: TunnelManagerStatus;
+  };
+  [PlatformChannels.TunnelDisable]: {
+    request: void;
+    response: TunnelManagerStatus;
+  };
+  [PlatformChannels.TunnelPair]: {
+    request: void;
+    response: TunnelManagerPairing;
   };
   [PlatformChannels.GetDesktopZoomLevel]: {
     request: void;

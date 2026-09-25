@@ -12,6 +12,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        /* 品牌渐变 CTA：仅限 DESIGN.md「Brand gradient tokens」允许的品牌时刻表面，
+         * 且一个视图只保留一个渐变主行动；阴影不做过渡（基础类刻意只用 transition-colors）。 */
+        brand:
+          "bg-brand-gradient text-brand-accent-foreground shadow-brand-glow hover:shadow-brand-glow-strong focus-visible:ring-2 focus-visible:ring-brand-accent/40",
         outline:
           "border-border text-foreground hover:border-border-hover hover:bg-input/50 hover:text-foreground aria-expanded:bg-input/50 aria-expanded:text-foreground",
         secondary:

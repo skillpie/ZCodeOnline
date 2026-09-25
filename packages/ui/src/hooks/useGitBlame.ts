@@ -15,7 +15,10 @@ export function useGitBlameLineResolver() {
   const { gitService } = useServices();
 
   return useCallback(
-    (workspacePath: string, filePath: string): ((line: number) => Promise<LightweightDiffBlameInfo | null>) => {
+    (
+      workspacePath: string,
+      filePath: string,
+    ): ((line: number) => Promise<LightweightDiffBlameInfo | null>) => {
       const key = `${workspacePath}\u0000${filePath}`;
       let cached = cache.get(key);
       if (!cached) {

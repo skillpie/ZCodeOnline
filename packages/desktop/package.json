@@ -44,6 +44,7 @@
     "@zcode/provider-node": "workspace:*",
     "@zcode/rpc": "workspace:*",
     "@zcode/server": "workspace:*",
+    "@zcode/server-cli": "workspace:*",
     "@zcode/services": "workspace:*",
     "@zcode/shared": "workspace:*",
     "@zcode/ui": "workspace:*",

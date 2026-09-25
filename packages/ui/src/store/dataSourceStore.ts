@@ -51,15 +51,16 @@ function applyMutationResult(
 ): Partial<DataSourceStoreState> {
   const exists = state.dataSources.some((item) => item.id === result.dataSource.id);
   const dataSources = exists
-    ? state.dataSources.map((item) =>
-        item.id === result.dataSource.id ? result.dataSource : item,
-      )
+    ? state.dataSources.map((item) => (item.id === result.dataSource.id ? result.dataSource : item))
     : [...state.dataSources, result.dataSource];
   return {
     dataSources,
     activeId: result.activeId,
     snapshots: { ...state.snapshots, [result.dataSource.id]: result.schema },
-    syncStatus: { ...state.syncStatus, [result.dataSource.id]: result.syncError ? "error" : "idle" },
+    syncStatus: {
+      ...state.syncStatus,
+      [result.dataSource.id]: result.syncError ? "error" : "idle",
+    },
     syncError: { ...state.syncError, [result.dataSource.id]: result.syncError },
   };
 }

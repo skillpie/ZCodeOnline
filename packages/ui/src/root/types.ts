@@ -44,6 +44,8 @@ export interface RootProps {
    * 两者都拿不到时技能市场按未登录处理（回空 JWT，skillpie 走自身登录）。
    */
   loadZcodeSsoJwtToken?: () => Promise<string | null>;
+  /** 隧道/远程会话：抑制 JWT 失效触发的整页 reload（登录态在宿主机器上）。 */
+  suppressJwtInvalidReload?: boolean;
 }
 
 export interface WorkspaceSettingsLayerProps {

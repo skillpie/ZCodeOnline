@@ -159,6 +159,15 @@ body {
   --color-background-alt: color-mix(in oklab, var(--color-neutral-100) 60%, transparent);
   --color-background-win-alt: var(--color-neutral-200);
   --color-brand: var(--color-sky-400);
+  /* 品牌渐变（源自 SkillPie 市场）：仅供 DESIGN.md「Brand gradient tokens」
+   * 列出的品牌时刻表面使用，操作面（聊天/Diff/终端/表单）不得引用。 */
+  --gradient-brand: linear-gradient(135deg, #6a6dff 0%, #8b7fff 50%, #b85eff 100%);
+  --color-brand-accent: #6a6dff;
+  --color-brand-accent-foreground: #ffffff;
+  --color-brand-accent-soft: rgba(106, 109, 255, 0.08);
+  --color-brand-accent-border: rgba(106, 109, 255, 0.28);
+  --shadow-brand-glow: 0 4px 20px rgba(106, 109, 255, 0.25);
+  --shadow-brand-glow-strong: 0 6px 28px rgba(106, 109, 255, 0.35);
   --color-icon-blue: var(--color-terminal-bright-blue);
   --color-trajectory-user: #2563eb;
   --color-trajectory-assistant: #0f766e;
@@ -308,6 +317,11 @@ body {
 .dark {
   --animated-gradient-text-strong: rgba(255, 255, 255, 1);
   --animated-gradient-text-soft: rgba(255, 255, 255, 0.2);
+  /* 品牌渐变本身保持彩色不变（品牌时刻在四主题下同源），只把派生的
+   * 强调色提到更亮的 #8b7fff，保证暗底上的文字/描边对比度。 */
+  --color-brand-accent: #8b7fff;
+  --color-brand-accent-soft: rgba(139, 127, 255, 0.14);
+  --color-brand-accent-border: rgba(139, 127, 255, 0.34);
   --color-background: var(--color-neutral-900);
   --color-background-alt: color-mix(in oklab, var(--color-neutral-800) 60%, transparent);
   --color-background-win-alt: var(--color-neutral-800);
@@ -606,6 +620,10 @@ body {
 .theme-zai-dark {
   --animated-gradient-text-strong: rgba(255, 255, 255, 1);
   --animated-gradient-text-soft: rgba(255, 255, 255, 0.22);
+  /* 与 .dark 同理：渐变保持彩色，派生强调色在暗底下提亮。 */
+  --color-brand-accent: #8b7fff;
+  --color-brand-accent-soft: rgba(139, 127, 255, 0.14);
+  --color-brand-accent-border: rgba(139, 127, 255, 0.34);
   --color-background: #161616;
   --color-background-win-alt: #2b2b2b;
   --color-background-alt: color-mix(in oklab, var(--color-background-win-alt) 60%, transparent);
@@ -811,6 +829,19 @@ body {
 }
 
 @layer utilities {
+  /* 品牌渐变工具类：只在 DESIGN.md「Brand gradient tokens」允许的品牌时刻表面使用。 */
+  .bg-brand-gradient {
+    background-image: var(--gradient-brand);
+  }
+
+  .text-brand-gradient {
+    background-image: var(--gradient-brand);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
   .button-gradient {
     background-image: linear-gradient(to bottom right, #191a1d, #747689);
   }

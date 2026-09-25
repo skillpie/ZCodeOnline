@@ -3,11 +3,16 @@
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import type { WebSocket, WebSocketServer } from "ws";
 import {
   TUNNEL_CONSTANTS,
+  TUNNEL_DISCOVERY_ALLOWED_ORIGINS,
+  assistConnectRequestSchema,
+  assistConnectResultSchema,
+  normalizeAssistCode,
   connectTokenRequestSchema,
   connectTokenResultSchema,
   generateTunnelSecret,
@@ -16,12 +21,15 @@ import {
   pairResultSchema,
 } from "@zcode/shared";
 import { createReferenceAccountTokenVerifier, type VerifyAccountToken } from "./accountToken.js";
+import { createRelayLogger } from "./relayLog.js";
 import { createRelayChannels, type RelayChannels } from "./relayChannels.js";
 import {
+  AssistInvitationStore,
   BindingStore,
   ConnectTokenStore,
   HostRegistry,
   PairingTokenStore,
+  RateLimiter,
   SessionStore,
 } from "./tunnelStore.js";
 
@@ -63,8 +71,10 @@ function closeWebSocketServer(wss: WebSocketServer): Promise<void> {
 
 export async function startRelayServer(options: RelayServerOptions = {}): Promise<RelayServer> {
   const now = options.now ?? Date.now;
+  const log = createRelayLogger("relay");
   const verifyAccountToken = options.verifyAccountToken ?? createReferenceAccountTokenVerifier(now);
   const stores = {
+    assistInvitations: new AssistInvitationStore(),
     pairingTokens: new PairingTokenStore(),
     connectTokens: new ConnectTokenStore(),
     sessions: new SessionStore(),
@@ -76,18 +86,35 @@ export async function startRelayServer(options: RelayServerOptions = {}): Promis
   const app = new Hono();
   const { injectWebSocket, upgradeWebSocket, wss } = createNodeWebSocket({ app });
 
+  // 控制面 CORS：生产页为同源，但 dev（localhost:5173）与自建部署是跨源——
+  // 白名单 origin 放行（配对仍需账号 token 或一次性配对码，CORS 只防读取不防滥用）。
+  app.use(
+    "/api/v1/*",
+    cors({
+      origin: [...TUNNEL_DISCOVERY_ALLOWED_ORIGINS],
+      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+      allowHeaders: ["content-type", "authorization"],
+      maxAge: 600,
+    }),
+  );
+
   app.post("/api/v1/pair", async (context) => {
     const identity = await verifyAccountToken(bearerToken(context.req.header("authorization")));
     if (!identity) return context.json({ error: "unauthorized" }, 401);
     const body = pairRequestSchema.safeParse(await context.req.json().catch(() => null));
     if (!body.success) return context.json({ error: "invalid request" }, 400);
-    const hostId = stores.pairingTokens.consume(
-      await hashTunnelSecret(body.data.pairingToken),
-      now(),
-    );
-    if (!hostId) return context.json({ error: "pairingTokenInvalid" }, 401);
+    const tokenHash = await hashTunnelSecret(body.data.pairingToken);
+    const hostId = stores.pairingTokens.consume(tokenHash, now());
+    if (!hostId) {
+      log.warn("pair rejected", { reason: "tokenInvalidOrExpired" });
+      return context.json({ error: "pairingTokenInvalid" }, 401);
+    }
     const host = stores.hosts.get(hostId);
-    if (!host) return context.json({ error: "pairingTokenInvalid" }, 401);
+    if (!host) {
+      log.warn("pair rejected", { reason: "hostUnknown", hostId });
+      return context.json({ error: "pairingTokenInvalid" }, 401);
+    }
+    log.info("pair accepted", { hostId, user: identity.userId });
     const credential = generateTunnelSecret();
     stores.sessions.issue(
       await hashTunnelSecret(credential),
@@ -127,6 +154,39 @@ export async function startRelayServer(options: RelayServerOptions = {}): Promis
       connectTokenResultSchema.parse({
         connectToken,
         expiresAt: now() + TUNNEL_CONSTANTS.connectTokenTtlMs,
+      }),
+    );
+  });
+
+  // 远程协助兑换（specs/web-tunnel.md §5.9）：码 = 一次性能力；单码单用户 + 每 IP 限流。
+  const assistRateLimiter = new RateLimiter(60_000, 20);
+  app.post("/api/v1/assist/connect", async (context) => {
+    const ip =
+      context.req.header("x-real-ip")?.trim() ||
+      context.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+      "unknown";
+    if (!assistRateLimiter.allow(ip, now())) {
+      return context.json({ error: "rate limited" }, 429);
+    }
+    const body = assistConnectRequestSchema.safeParse(await context.req.json().catch(() => null));
+    if (!body.success) return context.json({ error: "invalid request" }, 400);
+    const normalized = normalizeAssistCode(body.data.code);
+    const codeHash = normalized ? await hashTunnelSecret(normalized) : "";
+    const invitation = normalized ? stores.assistInvitations.verify(codeHash, now()) : null;
+    if (!invitation) return context.json({ error: "assistCodeInvalid" }, 401);
+    const connectToken = generateTunnelSecret();
+    stores.connectTokens.register(
+      await hashTunnelSecret(connectToken),
+      { user: `assist:${invitation.hostId}`, hostId: invitation.hostId },
+      now() + TUNNEL_CONSTANTS.connectTokenTtlMs,
+      now(),
+    );
+    log.info("assist accepted", { hostId: invitation.hostId });
+    return context.json(
+      assistConnectResultSchema.parse({
+        hostId: invitation.hostId,
+        connectToken,
+        maskedPsk: invitation.maskedPsk,
       }),
     );
   });

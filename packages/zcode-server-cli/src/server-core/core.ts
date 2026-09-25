@@ -7,10 +7,14 @@ import {
 } from "@zcode/services/node";
 import { IZCodeAgentService } from "@zcode/services";
 import { ZCODE_VERSION } from "@zcode/shared";
+import { coreCommandSchema } from "../contracts.js";
 import { createCoreHttpServer } from "./http.js";
 import { installParentDisconnectHandler } from "./parentDisconnect.js";
 import { resolveCoreServerId } from "./serverIdentity.js";
 import { createTaskActivityTracker } from "./taskActivityTracker.js";
+import { resolveServerLayout } from "../runtime/paths.js";
+import { startTunnelDiscoveryServer } from "../tunnel/tunnelDiscovery.js";
+import { createTunnelRuntime } from "../tunnel/tunnelRuntime.js";
 
 declare const __ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__: string | undefined;
 
@@ -43,6 +47,40 @@ export async function runServerCore(generation: number): Promise<void> {
   });
   const taskActivityTracker = createTaskActivityTracker(services.getOptional(IZCodeAgentService));
   const http = await createCoreHttpServer(services, { serverId: await resolveCoreServerId() });
+  // 隧道运行时归 Core 所有（specs/web-tunnel.md §3.2）：与 loopback server 同进程，
+  // 拼接流直连本机 /ws；serverRoot 与 Supervisor 同 env，按同一公式解析。
+  const tunnel = createTunnelRuntime({
+    serverRoot: resolveServerLayout().serverRoot,
+    loopbackPort: http.port,
+  });
+  // 本地配对发现端点（specs/web-tunnel.md §5.8）：浏览器打开网站即自动探测配对。
+  // 端口被占/失败非致命（手动配对仍可用）；core 无专用 logger，stderr 结构化输出随
+  // supervisor journal 采集。
+  const tunnelDiscovery = await startTunnelDiscoveryServer({
+    pair: async () => {
+      const result = await tunnel.handle("pair");
+      return {
+        pairingUrl: result.pairingUrl ?? "",
+        expiresAt: result.expiresAt ?? 0,
+        status: { hostId: result.status.hostId, displayName: result.status.displayName },
+      };
+    },
+    assist: {
+      ensure: async () => {
+        const result = await tunnel.handle("assist-code");
+        return { code: result.pairingUrl ?? "", expiresAt: result.expiresAt ?? 0 };
+      },
+      refresh: async () => {
+        const result = await tunnel.handle("assist-refresh");
+        return { code: result.pairingUrl ?? "", expiresAt: result.expiresAt ?? 0 };
+      },
+    },
+  }).catch(() => null);
+  if (tunnelDiscovery) {
+    process.stderr.write(
+      `${JSON.stringify({ level: "info", message: "tunnel discovery listening", port: tunnelDiscovery.port })}\n`,
+    );
+  }
   const send = (message: unknown): Promise<void> => {
     if (typeof process.send !== "function" || process.connected === false) return Promise.resolve();
     return new Promise((resolve) => {
@@ -96,6 +134,7 @@ export async function runServerCore(generation: number): Promise<void> {
     clearInterval(heartbeat);
     activitySubscription.dispose();
     taskActivityTracker.dispose();
+    tunnel.dispose();
     await http.close().catch(() => undefined);
     await disposeServiceResourcesAndWait(services).catch(() => undefined);
     await send({ type: "shutdown-ack" });
@@ -111,14 +150,27 @@ export async function runServerCore(generation: number): Promise<void> {
   };
   if (parentDisconnected) void shutdown("parent-disconnected");
   process.on("message", (message: unknown) => {
-    if (
-      typeof message === "object" &&
-      message !== null &&
-      "command" in message &&
-      message.command === "shutdown"
-    ) {
+    const parsed = coreCommandSchema.safeParse(message);
+    if (!parsed.success) return;
+    if (parsed.data.command === "shutdown") {
       void shutdown("requested");
+      return;
     }
+    // tunnel-control：转发自 Supervisor 的控制命令，结果按 requestId 关联回去。
+    const { requestId, action, relayUrl } = parsed.data;
+    tunnel
+      .handle(action, relayUrl)
+      .then((result) => {
+        void send({ type: "tunnel-control-result", requestId, ok: true, result });
+      })
+      .catch((error: unknown) => {
+        void send({
+          type: "tunnel-control-result",
+          requestId,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
   });
   process.once("SIGTERM", () => void shutdown("SIGTERM"));
   process.once("SIGINT", () => void shutdown("SIGINT"));

@@ -5,11 +5,17 @@
 import { randomBytes } from "node:crypto";
 import WebSocket from "ws";
 import {
+  TUNNEL_ASSIST_TTL_MS,
   TUNNEL_CONSTANTS,
   TUNNEL_PROTOCOL_VERSION,
   deriveTunnelKeys,
   e2eHelloFrameSchema,
+  generateAssistCode,
+  generateTunnelSecret,
+  hashTunnelSecret,
+  maskAssistPsk,
   relayHostFrameSchema,
+  tunnelBootstrapFrameSchema,
   TunnelCipher,
   type RelayHostFrame,
 } from "@zcode/shared";
@@ -33,6 +39,12 @@ export interface TunnelConnectorOptions {
   /** 拼接流的明文业务去向：本机 loopback 业务服务的 ws 地址。 */
   loopbackWsUrl: string;
   onCredentialIssued?: (credential: string) => void;
+  /** relay 侧凭证失效（relay 重启清空注册表）：调用方应清掉持久化凭证，连接器将以空凭证重注册。 */
+  onCredentialInvalid?: () => void;
+  /** 持久机器码初值（来自 state.json）：跨重启稳定，链接长期有效。 */
+  initialAssist?: { code: string; psk: string };
+  /** 远程码生成/轮换时回存（调用方持久化到 state.json）。 */
+  onAssistChange?: (assist: { code: string; psk: string; expiresAt: number }) => void;
   onEvent?: (event: TunnelConnectorEvent) => void;
 }
 
@@ -49,6 +61,13 @@ interface PendingPairingToken {
   expiresAt: number;
 }
 
+interface ActiveAssistInvitation {
+  code: string;
+  codeHash: string;
+  maskedPsk: string;
+  expiresAt: number;
+}
+
 export class TunnelConnector {
   private control: WebSocket | null = null;
   private stopped = false;
@@ -58,7 +77,10 @@ export class TunnelConnector {
   private reconnectAttempt = 0;
   private streams = new Map<string, ActiveStream>();
   private pendingPairingToken: PendingPairingToken | null = null;
+  private activeAssist: ActiveAssistInvitation | null = null;
   private credential: string;
+  /** 每次成功 hostReady 前最多自愈一次：避免对端持续拒绝时空转清凭证。 */
+  private reregisterPending = false;
 
   constructor(private readonly options: TunnelConnectorOptions) {
     this.credential = options.hostCredential;
@@ -98,6 +120,32 @@ export class TunnelConnector {
 
   clearPairingToken(): void {
     this.pendingPairingToken = null;
+  }
+
+  /** 远程协助：取当前机器码（持久化，无则生成并登记）；宿主重连自动补登记。 */
+  async ensureAssistCode(): Promise<{ code: string; expiresAt: number }> {
+    if (!this.activeAssist) {
+      await this.regenerateAssistCode();
+    }
+    return { code: this.activeAssist!.code, expiresAt: this.activeAssist!.expiresAt };
+  }
+
+  /** 轮换：作废旧码，生成新码（新 PSK）重新登记并持久化。 */
+  async regenerateAssistCode(): Promise<{ code: string; expiresAt: number }> {
+    const code = generateAssistCode();
+    const psk = generateTunnelSecret();
+    const maskedPsk = await maskAssistPsk(psk, code);
+    const expiresAt = Date.now() + TUNNEL_ASSIST_TTL_MS;
+    const codeHash = await hashTunnelSecret(code);
+    this.activeAssist = { code, codeHash, maskedPsk, expiresAt };
+    this.options.onAssistChange?.({ code, psk, expiresAt });
+    this.sendControl({
+      type: "assistRegister",
+      assistCodeHash: codeHash,
+      maskedPsk,
+      expiresAt,
+    });
+    return { code, expiresAt };
   }
 
   private sendControl(frame: Record<string, unknown>): void {
@@ -172,7 +220,11 @@ export class TunnelConnector {
       this.handleControlFrame(frame.data);
     });
 
-    ws.on("close", () => {
+    ws.on("close", (code, reason) => {
+      this.emit({
+        kind: "error",
+        message: `control closed: code=${code} reason=${String(reason).slice(0, 80)}`,
+      });
       if (this.control === ws) this.control = null;
       this.clearTimers();
       for (const [streamId, stream] of this.streams) {
@@ -202,6 +254,7 @@ export class TunnelConnector {
   private handleControlFrame(frame: RelayHostFrame): void {
     if (frame.type === "hostReady") {
       this.reconnectAttempt = 0;
+      this.reregisterPending = false;
       if (frame.issuedHostCredential) {
         this.credential = frame.issuedHostCredential;
         this.options.onCredentialIssued?.(frame.issuedHostCredential);
@@ -215,6 +268,26 @@ export class TunnelConnector {
           expiresAt: this.pendingPairingToken.expiresAt,
         });
       }
+      // 远程协助机器码随 hostReady 补登记（relay 重启后码不变 = 链接长期有效）。
+      void (async () => {
+        if (!this.activeAssist && this.options.initialAssist) {
+          const { code, psk } = this.options.initialAssist;
+          this.activeAssist = {
+            code,
+            codeHash: await hashTunnelSecret(code),
+            maskedPsk: await maskAssistPsk(psk, code),
+            expiresAt: Date.now() + TUNNEL_ASSIST_TTL_MS,
+          };
+        }
+        if (this.activeAssist) {
+          this.sendControl({
+            type: "assistRegister",
+            assistCodeHash: this.activeAssist.codeHash,
+            maskedPsk: this.activeAssist.maskedPsk,
+            expiresAt: this.activeAssist.expiresAt,
+          });
+        }
+      })();
       this.emit({ kind: "connected", serverTime: frame.serverTime });
       return;
     }
@@ -237,6 +310,19 @@ export class TunnelConnector {
         kind: "error",
         message: `relay: ${frame.code}${frame.message ? ` ${frame.message}` : ""}`,
       });
+      if (
+        frame.code === "invalidHostCredential" &&
+        this.credential !== "" &&
+        !this.reregisterPending
+      ) {
+        // relay 重启清空注册表后，持久化凭证必然失效：清凭证、以空凭证重注册自愈。
+        // relay 侧 fail-closed 保证这只会发生在 hostId 未被抢注时。
+        this.reregisterPending = true;
+        this.credential = "";
+        this.reconnectAttempt = 0;
+        this.options.onCredentialInvalid?.();
+        this.control?.terminate();
+      }
     }
   }
 
@@ -256,41 +342,47 @@ export class TunnelConnector {
     const loopback = new WebSocket(this.options.loopbackWsUrl);
     const stream: ActiveStream = { streamId, relayStream, loopback, handshakeDone: false };
 
-    const teardown = (): void => {
-      if (!this.streams.delete(streamId)) return;
-      this.emit({ kind: "streamClosed", streamId });
-      if (relayStream.readyState === WebSocket.OPEN) relayStream.close(1000);
-      if (loopback.readyState <= WebSocket.OPEN) loopback.close(1000);
+    // 双向接线挂在拨号时而非 open 之后：服务器的 Initialize 帧与 WS open 在同一数据块/
+    // 同一宏任务里到达，Promise.all 的微任务续体永远晚于它——晚挂的监听器会永久丢帧，
+    // 浏览器 RPC 状态机等不到 Initialize（所有请求挂在 whenInitialized，应用白屏）。
+    // loopback 侧先入缓冲，bootstrap 帧发出后按序 flush，保证帧序 = e2e-hello → bootstrap → 业务帧。
+    // 加密异步完成顺序不定：两个方向都必须按帧到达序串行化，乱序帧会被对端
+    // 序号守卫拒绝（或字节流错乱）。outbound 缓冲期的 pendingOut flush 同样按序。
+    const pendingOut: Buffer[] = [];
+    let outboundOpen = false;
+    let outboundChain: Promise<void> = Promise.resolve();
+    const sendOutbound = (plain: Uint8Array): void => {
+      outboundChain = outboundChain
+        .then(async () => {
+          const frame = await hostSend.encrypt(plain);
+          if (relayStream.readyState === WebSocket.OPEN) {
+            relayStream.send(Buffer.from(frame), { binary: true });
+          }
+        })
+        .catch(teardown);
     };
-    relayStream.on("close", teardown);
-    relayStream.on("error", () => relayStream.terminate());
-    loopback.on("close", teardown);
-    loopback.on("error", () => loopback.terminate());
-
-    try {
-      await Promise.all([onceOpen(relayStream), onceOpen(loopback)]);
-    } catch {
-      relayStream.terminate();
-      loopback.terminate();
-      this.emit({ kind: "error", message: `stream ${streamId} dial failed` });
-      return;
-    }
-    this.streams.set(streamId, stream);
-    this.emit({ kind: "streamOpened", streamId });
-
+    loopback.on("message", (data) => {
+      const bytes = new Uint8Array(data as Buffer);
+      if (outboundOpen) {
+        sendOutbound(bytes);
+      } else {
+        pendingOut.push(Buffer.from(bytes));
+      }
+    });
     const handleRelayMessage = async (
       cipherBytes: Uint8Array,
       isBinary: boolean,
     ): Promise<void> => {
       if (!isBinary) {
+        this.emit({ kind: "error", message: `DBG stream ${streamId} TEXT frame from browser (contract break)` });
         teardown();
         return;
       }
       let plaintext: Uint8Array;
       try {
         plaintext = await hostRecv.decrypt(cipherBytes);
-      } catch {
-        this.emit({ kind: "error", message: `stream ${streamId} decrypt failed (psk mismatch?)` });
+      } catch (error) {
+        this.emit({ kind: "error", message: `DBG stream ${streamId} decrypt failed: ${String(error).slice(0, 100)}` });
         teardown();
         return;
       }
@@ -306,8 +398,76 @@ export class TunnelConnector {
         stream.handshakeDone = true;
         return;
       }
+      this.emit({
+        kind: "error",
+        message: `DBG ${new Date().toISOString()} browser->loopback ${plaintext.byteLength}B`,
+      });
       if (loopback.readyState === WebSocket.OPEN) loopback.send(plaintext, { binary: true });
     };
+    let inboundChain: Promise<void> = Promise.resolve();
+    relayStream.on("message", (data, isBinary) => {
+      this.emit({
+        kind: "error",
+        message: `DBG ${new Date().toISOString()} relay->loopback ${(data as Buffer).length}B bin=${isBinary}`,
+      });
+      inboundChain = inboundChain
+        .then(() => handleRelayMessage(new Uint8Array(data as Buffer), isBinary))
+        .catch((error: unknown) => {
+          this.emit({
+            kind: "error",
+            message: `DBG ${new Date().toISOString()} inbound chain threw: ${String(error).slice(0, 120)}`,
+          });
+          return undefined;
+        });
+    });
+
+    const teardown = (): void => {
+      if (!this.streams.delete(streamId)) return;
+      this.emit({ kind: "streamClosed", streamId });
+      if (relayStream.readyState === WebSocket.OPEN) relayStream.close(1000);
+      if (loopback.readyState <= WebSocket.OPEN) loopback.close(1000);
+    };
+    relayStream.on("close", (code, reason) => {
+      this.emit({
+        kind: "error",
+        message: `DBG stream ${streamId} relayStream closed: code=${code} reason=${String(reason).slice(0, 80)}`,
+      });
+      teardown();
+    });
+    relayStream.on("error", (error: Error) => {
+      this.emit({ kind: "error", message: `DBG stream ${streamId} relayStream error: ${error.message}` });
+      relayStream.terminate();
+    });
+    loopback.on("close", (code, reason) => {
+      this.emit({
+        kind: "error",
+        message: `DBG stream ${streamId} loopback closed: code=${code} reason=${String(reason).slice(0, 80)}`,
+      });
+      teardown();
+    });
+    loopback.on("error", (error: Error) => {
+      this.emit({ kind: "error", message: `DBG stream ${streamId} loopback error: ${error.message}` });
+      loopback.terminate();
+    });
+
+    try {
+      await Promise.all([onceOpen(relayStream), onceOpen(loopback)]);
+    } catch {
+      relayStream.terminate();
+      loopback.terminate();
+      this.emit({ kind: "error", message: `stream ${streamId} dial failed` });
+      return;
+    }
+    this.streams.set(streamId, stream);
+    this.emit({ kind: "streamOpened", streamId });
+
+    // 流级 keepalive：空闲期 nginx send/read 定时器与中间设备会静默切断 TCP（1006），
+    // 协议层 ping 喂饱两侧定时器（relay 的 ws 服务端自动回 pong）。
+    const keepalive = setInterval(() => {
+      if (relayStream.readyState === WebSocket.OPEN) relayStream.ping();
+    }, 20_000);
+    keepalive.unref();
+    relayStream.once("close", () => clearInterval(keepalive));
 
     // E2E 握手：宿主先发 e2e-hello，浏览器回 e2e-hello 后才放行业务帧。
     const hello = new TextEncoder().encode(
@@ -315,20 +475,52 @@ export class TunnelConnector {
     );
     relayStream.send(Buffer.from(await hostSend.encrypt(hello)), { binary: true });
 
-    relayStream.on("message", (data, isBinary) => {
-      void handleRelayMessage(new Uint8Array(data as Buffer), isBinary);
-    });
+    // bootstrap：隧道只承载 WS RPC，浏览器拿不到同源 /api/server-info（workspace 注入依赖它）。
+    await sendBootstrapFrame(this.options.loopbackWsUrl, relayStream, hostSend);
+    outboundOpen = true;
+    while (pendingOut.length > 0) {
+      sendOutbound(new Uint8Array(pendingOut.shift()!));
+    }
+  }
+}
 
-    loopback.on("message", (data) => {
-      void hostSend
-        .encrypt(new Uint8Array(data as Buffer))
-        .then((frame) => {
-          if (relayStream.readyState === WebSocket.OPEN) {
-            relayStream.send(Buffer.from(frame), { binary: true });
-          }
-        })
-        .catch(teardown);
+/**
+ * 取本机 loopback server 的 /api/server-info 并作为 bootstrap 帧下发。
+ * 失败/超时不阻塞隧道（浏览器按无 bootstrap 继续，与旧版宿主兼容）。
+ */
+async function sendBootstrapFrame(
+  loopbackWsUrl: string,
+  relayStream: WebSocket,
+  hostSend: TunnelCipher,
+): Promise<void> {
+  try {
+    // loopbackWsUrl 形如 ws://127.0.0.1:3030/ws；server-info 在同一 HTTP 源上。
+    const httpOrigin = new URL(loopbackWsUrl).origin.replace(/^ws/u, "http");
+    const response = await fetch(`${httpOrigin}/api/server-info`, {
+      signal: AbortSignal.timeout(TUNNEL_CONSTANTS.bootstrapFetchTimeoutMs),
+      cache: "no-store",
     });
+    if (!response.ok) return;
+    const info = (await response.json()) as {
+      workspaces?: Array<{ path?: unknown; workspaceIdentity?: unknown }>;
+    };
+    const workspaces = (Array.isArray(info.workspaces) ? info.workspaces : [])
+      .filter(
+        (entry): entry is { path: string; workspaceIdentity?: string } =>
+          typeof entry?.path === "string" && entry.path.length > 0,
+      )
+      .slice(0, 16)
+      .map((entry) => ({
+        path: entry.path,
+        ...(typeof entry.workspaceIdentity === "string"
+          ? { workspaceIdentity: entry.workspaceIdentity }
+          : {}),
+      }));
+    const frame = tunnelBootstrapFrameSchema.parse({ type: "tunnelBootstrap", workspaces });
+    const cipherBytes = await hostSend.encrypt(new TextEncoder().encode(JSON.stringify(frame)));
+    relayStream.send(Buffer.from(cipherBytes), { binary: true });
+  } catch {
+    // server-info 不可达 / 形状不符：跳过 bootstrap，浏览器侧按超时继续。
   }
 }
 

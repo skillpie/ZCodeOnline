@@ -1,9 +1,11 @@
 /* oxlint-disable eslint(max-lines) -- Supervisor 集中维护生命周期、Core 代际和更新回滚状态机，启动恢复锁边界修复不应拆散其原子流程。 */
 
 import { type ChildProcess } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { createServiceLogger } from "@zcode/services/node";
 import {
+  coreCommandSchema,
   coreMessageSchema,
   SERVER_CLI_PROTOCOL_VERSION,
   type ControlRequest,
@@ -422,6 +424,15 @@ export class Supervisor {
       return;
     }
     const message = parsed.data;
+    if (message.type === "tunnel-control-result") {
+      const waiter = this.tunnelWaiters.get(message.requestId);
+      if (waiter) {
+        this.tunnelWaiters.delete(message.requestId);
+        clearTimeout(waiter.timer);
+        waiter.resolve(message);
+      }
+      return;
+    }
     if (message.type === "ready") {
       // ready 只对当前 starting 的 Core 有效；stopping/stopped/stop-failed 阶段的迟到消息
       // 不能复活已经收口或进入不确定终态的 Supervisor。
@@ -471,6 +482,11 @@ export class Supervisor {
         return { protocolVersion: SERVER_CLI_PROTOCOL_VERSION };
       case "status":
         return this.status();
+      case "tunnel-status":
+      case "tunnel-enable":
+      case "tunnel-disable":
+      case "tunnel-pair":
+        return await this.forwardTunnelControl(request);
       case "stop":
         this.startAcknowledgedLifecycleOperation("stop", () =>
           this.stopInternal("control request"),
@@ -512,6 +528,61 @@ export class Supervisor {
         this.startAcknowledgedLifecycleOperation("uninstall", () => this.stopInternal("uninstall"));
         return { uninstalled: true };
     }
+  }
+
+  /** 隧道控制转发：requestId → 待起的 Core 关联应答（Core 重启时靠超时收口）。 */
+  private tunnelWaiters = new Map<
+    string,
+    {
+      resolve: (message: { ok: boolean; result?: unknown; error?: string }) => void;
+      timer: NodeJS.Timeout;
+    }
+  >();
+
+  private async forwardTunnelControl(request: ControlRequest): Promise<unknown> {
+    if (this.state !== "ready" || !this.core) {
+      throw new Error("Server core is not running; start the server first (zcode serve)");
+    }
+    const action =
+      request.command === "tunnel-enable"
+        ? ("enable" as const)
+        : request.command === "tunnel-disable"
+          ? ("disable" as const)
+          : request.command === "tunnel-pair"
+            ? ("pair" as const)
+            : ("status" as const);
+    const relayUrl = request.command === "tunnel-enable" ? request.relayUrl : undefined;
+    const requestId = randomUUID();
+    const command = coreCommandSchema.parse({
+      command: "tunnel-control",
+      requestId,
+      action,
+      relayUrl,
+    });
+    const reply = await new Promise<{ ok: boolean; result?: unknown; error?: string }>(
+      (resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.tunnelWaiters.delete(requestId);
+          reject(new Error("Tunnel control request timed out"));
+        }, 10_000);
+        this.tunnelWaiters.set(requestId, { resolve, timer });
+        try {
+          this.core?.send(command, (sendError) => {
+            if (sendError) {
+              clearTimeout(timer);
+              this.tunnelWaiters.delete(requestId);
+              reject(new Error("Failed to forward tunnel control to server core"));
+            }
+          });
+        } catch (sendError) {
+          clearTimeout(timer);
+          this.tunnelWaiters.delete(requestId);
+          reject(sendError instanceof Error ? sendError : new Error(String(sendError)));
+        }
+      },
+    );
+    if (!reply.ok) throw new Error(reply.error ?? "tunnel control failed");
+    return reply.result;
   }
 
   private runLifecycleOperation<T>(

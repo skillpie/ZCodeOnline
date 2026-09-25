@@ -138,6 +138,25 @@ export function createDesktopPlatform(options: {
     getDesktopSessionActivity: () =>
       window.zcode.getDesktopSessionActivity?.() ??
       Promise.resolve({ runningAgentSessionCount: 0 }),
+    tunnelStatus: () =>
+      window.zcode.tunnelStatus?.() ??
+      Promise.resolve({
+        daemonReachable: false,
+        enabled: false,
+        connected: false,
+        relayUrl: null,
+        hostId: "",
+        displayName: "",
+      }),
+    tunnelEnable: (relayUrl) =>
+      window.zcode.tunnelEnable?.(relayUrl) ??
+      Promise.reject(new Error("Tunnel management requires the desktop app")),
+    tunnelDisable: () =>
+      window.zcode.tunnelDisable?.() ??
+      Promise.reject(new Error("Tunnel management requires the desktop app")),
+    tunnelPair: () =>
+      window.zcode.tunnelPair?.() ??
+      Promise.reject(new Error("Tunnel management requires the desktop app")),
     getZCodeStdioTapDevState: () =>
       window.zcode.getZCodeStdioTapDevState?.() ??
       Promise.resolve({ enabled: false, visible: false, logDir: "", statePath: "" }),

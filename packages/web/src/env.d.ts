@@ -15,6 +15,8 @@ interface ImportMetaEnv {
   readonly VITE_ZCODE_BASE_URL?: string;
   readonly VITE_ZCODE_ENDPOINT_ORIGIN?: string;
   readonly VITE_ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL?: string;
+  // 部署在自有域名时默认进入隧道模式（specs/web-tunnel.md），无需带 ?tunnel=1。
+  readonly VITE_TUNNEL_ENTRY?: string;
 }
 
 interface ImportMeta {

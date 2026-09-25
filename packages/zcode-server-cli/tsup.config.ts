@@ -25,7 +25,9 @@ export default defineConfig({
   sourcemap: true,
   splitting: false,
   banner: {
-    js: 'import { fileURLToPath as __zcodeFileURLToPath } from "node:url"; import { dirname as __zcodeDirname } from "node:path"; const __filename = __zcodeFileURLToPath(import.meta.url); const __dirname = __zcodeDirname(__filename);',
+    // __filename/__dirname 供打包后代码定位资源；createRequire 兜住 ws 等 CJS 依赖在
+    // ESM 产物里的动态 require（否则 dist/server-cli.js 直接运行即抛错）。
+    js: 'import { fileURLToPath as __zcodeFileURLToPath } from "node:url"; import { dirname as __zcodeDirname } from "node:path"; import { createRequire as __zcodeCreateRequire } from "node:module"; const __filename = __zcodeFileURLToPath(import.meta.url); const __dirname = __zcodeDirname(__filename); const require = __zcodeCreateRequire(import.meta.url);',
   },
   noExternal: ["@zcode/shared", "@zcode/rpc", "@zcode/services"],
   define: SERVER_CLI_DEFINES,

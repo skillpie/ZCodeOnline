@@ -205,6 +205,12 @@ export function ConversationDraftEmptyState({ className }: { className?: string 
         </span>
         <span>{greeting}</span>
       </p>
+      {/* 问候语下的品牌渐变细线（SkillPie hero 标题底部渐变线同款）：
+          品牌时刻点缀，见 DESIGN.md「Brand gradient usage rules」。 */}
+      <div
+        aria-hidden="true"
+        className="relative z-10 -mt-3 h-1 w-12 shrink-0 rounded-full bg-brand-gradient"
+      />
     </div>
   );
 }

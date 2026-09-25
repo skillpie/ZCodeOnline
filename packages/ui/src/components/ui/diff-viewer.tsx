@@ -134,16 +134,16 @@ function DiffViewerComponent(props: DiffViewerProps) {
 
   return (
     <>
-    <div
-      ref={blameContainerRef}
-      className={cn("h-full w-full overflow-auto", className)}
-      data-diff-viewer=""
-      style={viewerStyle}
-      {...divProps}
-    >
-      {diffNode}
-    </div>
-    {blameTooltip}
+      <div
+        ref={blameContainerRef}
+        className={cn("h-full w-full overflow-auto", className)}
+        data-diff-viewer=""
+        style={viewerStyle}
+        {...divProps}
+      >
+        {diffNode}
+      </div>
+      {blameTooltip}
     </>
   );
 }

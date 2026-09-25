@@ -107,7 +107,16 @@ async function createFakeRelay(): Promise<FakeRelay> {
 }
 
 async function createEchoBusinessServer(): Promise<{ url: string; close(): Promise<void> }> {
-  const server: Server = createServer();
+  const server: Server = createServer((request, response) => {
+    // 隧道 bootstrap 帧依赖 loopback server 的 /api/server-info（specs/web-tunnel.md §3.2）。
+    if (new URL(request.url ?? "/", "http://localhost").pathname === "/api/server-info") {
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ workspaces: [{ path: "/tmp/demo-workspace" }] }));
+      return;
+    }
+    response.statusCode = 404;
+    response.end();
+  });
   const wss = new WebSocketServer({ server });
   wss.on("connection", (ws) => {
     ws.on("message", (data, isBinary) => {
@@ -224,7 +233,7 @@ test("拼接流：E2E 握手 + 业务帧经解密桥接到回声服务", async (
     true,
   );
 
-  // 浏览器回 e2e-hello，随后业务帧应经连接器解密 → 回声服务 → 加密返回。
+  // 浏览器回 e2e-hello；随后应收到 bootstrap 帧（server-info 摘要），再之后才是业务帧。
   await browserSend
     .encrypt(
       new TextEncoder().encode(
@@ -232,6 +241,24 @@ test("拼接流：E2E 握手 + 业务帧经解密桥接到回声服务", async (
       ),
     )
     .then((frame) => browserSide.send(Buffer.from(frame), { binary: true }));
+
+  const bootstrapFrame = await new Promise<Buffer>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("no bootstrap frame")), 3_000);
+    const onMessage = (data: unknown, isBinary: boolean) => {
+      if (!isBinary) return;
+      clearTimeout(timer);
+      browserSide.off("message", onMessage);
+      resolve(data as Buffer);
+    };
+    browserSide.on("message", onMessage);
+  });
+  const bootstrapPlaintext = await browserRecv.decrypt(new Uint8Array(bootstrapFrame));
+  const bootstrap = JSON.parse(Buffer.from(bootstrapPlaintext).toString()) as {
+    type: string;
+    workspaces: Array<{ path: string }>;
+  };
+  assert.equal(bootstrap.type, "tunnelBootstrap");
+  assert.equal(bootstrap.workspaces[0]?.path, "/tmp/demo-workspace");
 
   const businessPayload = Buffer.from(`v4-business-frame-${randomUUID()}`);
   const reply = await new Promise<Buffer>((resolve, reject) => {
@@ -249,6 +276,80 @@ test("拼接流：E2E 握手 + 业务帧经解密桥接到回声服务", async (
   });
   const decrypted = await browserRecv.decrypt(new Uint8Array(reply));
   assert.ok(Buffer.from(decrypted).equals(businessPayload), "回声内容必须与业务帧一致");
+});
+
+test("relay 重启后凭证失效：清凭证重注册自愈", async () => {
+  // 独立 fake relay：模拟"重启后注册表为空"——拒绝一切非空凭证，记录收到的凭证序列。
+  const { createServer } = await import("node:http");
+  const { WebSocketServer } = await import("ws");
+  const typeServer = createServer();
+  const typeWss = new WebSocketServer({ noServer: true });
+  const receivedCredentials: string[] = [];
+  let hostControl: WsSocket | null = null;
+  typeServer.on("upgrade", (request, socket, head) => {
+    const { pathname } = new URL(request.url ?? "/", "http://localhost");
+    if (pathname !== "/ws/host") {
+      socket.destroy();
+      return;
+    }
+    typeWss.handleUpgrade(request, socket, head, (ws) => {
+      hostControl = ws;
+      ws.on("message", (data) => {
+        const frame = JSON.parse(String(data)) as Record<string, unknown>;
+        if (frame.type === "hostHello") {
+          receivedCredentials.push(String(frame.hostCredential));
+          if (frame.hostCredential !== "") {
+            ws.send(JSON.stringify({ type: "error", code: "invalidHostCredential" }));
+            ws.close();
+            return;
+          }
+          ws.send(
+            JSON.stringify({
+              type: "hostReady",
+              issuedHostCredential: `cred-${randomUUID()}`,
+              serverTime: Date.now(),
+            }),
+          );
+        }
+      });
+    });
+  });
+  await new Promise<void>((resolve) => typeServer.listen(0, "127.0.0.1", resolve));
+  const address = typeServer.address() as AddressInfo;
+  const invalidEvents: number[] = [];
+
+  const recoveryEvents: TunnelConnectorEvent[] = [];
+  const connectedPromise = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("recovery connector never connected")), 5_000);
+    const check = setInterval(() => {
+      if (recoveryEvents.some((event) => event.kind === "connected")) {
+        clearTimeout(timer);
+        clearInterval(check);
+        resolve();
+      }
+    }, 10);
+  });
+  const recoveryConnector = new TunnelConnector({
+    relayUrl: `ws://127.0.0.1:${address.port}`,
+    hostId: HOST_ID,
+    hostCredential: "stale-credential",
+    displayName: "recovery",
+    psk,
+    loopbackWsUrl: business.url,
+    onCredentialInvalid: () => invalidEvents.push(1),
+    onEvent: (event) => recoveryEvents.push(event),
+  });
+  // 失败也必须停连接器，否则重连定时器挂住整个测试进程。
+  try {
+    recoveryConnector.start();
+    await connectedPromise;
+    assert.equal(receivedCredentials[0], "stale-credential", "首连应携带旧凭证");
+    assert.equal(receivedCredentials[1], "", "被拒后应以空凭证重注册");
+    assert.equal(invalidEvents.length, 1, "onCredentialInvalid 必须回调一次供清持久化");
+  } finally {
+    recoveryConnector.stop();
+    await new Promise<void>((resolve) => typeServer.close(() => resolve()));
+  }
 });
 
 test("控制通道断线：沿用凭证自动重连", async () => {

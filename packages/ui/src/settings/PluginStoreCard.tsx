@@ -204,7 +204,9 @@ export function PluginStoreInstallButton({
       type="button"
       data-testid="plugin-store-install"
       data-plugin-id={item.id}
-      variant="secondary"
+      /* 安装是商店的品牌主行动（DESIGN.md「Brand gradient usage rules」），
+       * 详情页共用此按钮，因此同一视图仍只有一个渐变 CTA。 */
+      variant="brand"
       size={size}
       className="rounded-full"
       disabled={installing}
@@ -286,17 +288,36 @@ export function PluginStoreUpdateButton({
 }
 
 /**
+ * 精选徽章：官方目录 `featured` 名单的可视化（SkillPie 市场同款渐变胶囊）。
+ * 仅在公开分段的精选区块渲染，不参与交互语义——策展事实仍由目录驱动。
+ */
+export function PluginStoreFeaturedBadge({ label }: { label: string }) {
+  return (
+    <span
+      data-testid="plugin-store-featured-badge"
+      className="inline-flex shrink-0 items-center rounded-full bg-brand-gradient px-1.5 py-0.5 text-ui-xs font-medium leading-none whitespace-nowrap text-brand-accent-foreground"
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
  * 商店卡片（双列网格单元）：40px 头像 + 显示名 + 单行截断描述；
  * 尾部动作：已安装 → 「…」菜单，未安装 → 「安装」胶囊。点击主体进入详情页。
+ * 卡片面采用市场语言（bg-card + 描边 + hover 品牌色描边），密度与旧行一致。
  */
 export function PluginStoreCard({
   item,
   actions,
   locale,
+  featured = false,
 }: {
   item: StorePluginItem;
   actions: PluginStoreActions;
   locale: string;
+  /** 仅精选区块传 true；搜索结果与分类区块保持无徽章。 */
+  featured?: boolean;
 }) {
   const { intl } = useZCodeIntl();
   const displayName = resolveItemDisplayName(item, locale);
@@ -307,7 +328,7 @@ export function PluginStoreCard({
       tabIndex={0}
       data-testid="plugin-store-card"
       data-plugin-id={item.id}
-      className="group/card flex min-w-0 cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused"
+      className="group/card flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-card-border bg-card px-3 py-2.5 transition-colors hover:border-brand-accent-border hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused"
       onClick={() => actions.onOpenDetail(item.id)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -319,6 +340,11 @@ export function PluginStoreCard({
       <PluginStoreAvatar item={item} className="size-10" />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-1.5">
+          {featured ? (
+            <PluginStoreFeaturedBadge
+              label={intl.formatMessage({ id: "settings.plugins.store.featured" })}
+            />
+          ) : null}
           <span className="min-w-0 truncate text-ui-base font-semibold text-foreground">
             {displayName}
           </span>

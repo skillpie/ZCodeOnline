@@ -10,7 +10,7 @@ import {
   type Theme,
 } from "@zcode/ui";
 import "@zcode/ui/styles.css";
-import { connectViaWebSocket } from "@zcode/client";
+import { connectViaWebSocket, type IServiceAccessor } from "@zcode/client";
 import { WebCallbackPage } from "./auth/WebCallbackPage.js";
 import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
@@ -24,6 +24,8 @@ import {
   ConversationSharePreviewClient,
   resolveConversationShareRouteLocale,
 } from "./share/conversationSharePreviewClient.js";
+import { TunnelAppRoot } from "./tunnel/TunnelAppRoot.js";
+import { RemoteAssistApp } from "./tunnel/RemoteAssistApp.js";
 import {
   isConversationSharePath,
   resolveConversationShareCodeFromPath,
@@ -36,10 +38,10 @@ function resolveWebThemePreference(defaultTheme: Theme = WEB_DEFAULT_THEME): The
   return resolveWebInitialTheme({ storedTheme: saved, defaultTheme });
 }
 
-// 初始化主题：默认 Zai dark，后续由 useTheme hook 接管
+// 初始化主题：默认跟随系统，后续由 useTheme hook 接管（见 specs/theme-default.md）
 // system 模式下需要查询系统偏好；非 system 模式直接用存储值
 {
-  // 分享页没有本地主题配置时使用浅色，已有配置仍然沿用；其他 Web 页面继续默认深色。
+  // 分享页没有本地主题配置时使用浅色，已有配置仍然沿用；其他 Web 页面默认跟随系统。
   const saved = resolveWebThemePreference(
     isConversationSharePath(window.location.pathname) ? "zai-light" : undefined,
   );
@@ -105,6 +107,13 @@ function renderWebAuthCallbackPage(): void {
     <WebCallbackPage
       authService={webAuthService}
       onSuccess={({ appReturnTo }) => {
+        // 隧道门禁登录：OAuth state 的 app_return_to 白名单不含查询串（?tunnel=1 回不来），
+        // 用 session 标记桥接，登录完成后回到隧道模式。
+        if (window.sessionStorage.getItem("zcode-tunnel-login-return") === "1") {
+          window.sessionStorage.removeItem("zcode-tunnel-login-return");
+          window.location.replace("/?tunnel=1");
+          return;
+        }
         window.location.replace(appReturnTo ?? "/");
       }}
       onRetry={() => {
@@ -422,6 +431,38 @@ function renderWebBootstrapError(error: unknown): void {
   );
 }
 
+/** 隧道模式（?tunnel=1）没有 server-info/初始 workspace 语义，用空 bootstrap 渲染同一应用树。 */
+function renderAppWithServices(
+  services: IServiceAccessor,
+  bootstrap: WebBootstrapResult = { wsUrl: "" },
+): void {
+  const platform = createWebPlatform();
+  document.title = "ZCode - Web + Server";
+
+  root.render(
+    <AppErrorBoundary>
+      <ZCodeIntlProvider
+        settingService={services.settingService}
+        broadcastService={services.broadcastService}
+      >
+        <Root
+          services={services}
+          platform={platform}
+          initialWorkspaceAbsPath={bootstrap.initialWorkspaceAbsPath}
+          initialWorkspaceIdentity={bootstrap.initialWorkspaceIdentity}
+          initialTaskId={bootstrap.initialTaskId}
+          restoreSession={bootstrap.restoreSession}
+          allowOpenWorkspace={bootstrap.allowOpenWorkspace}
+          preferDirectoryBrowser
+          supportsEmbeddedBrowser={false}
+          allowRemoteWorkspace={false}
+          loadZcodeSsoJwtToken={async () => webAuthService.getZCodeJwtToken()}
+        />
+      </ZCodeIntlProvider>
+    </AppErrorBoundary>,
+  );
+}
+
 async function bootstrapWebApp() {
   const params = new URLSearchParams(window.location.search);
   if (isWebOAuthCallback(params)) {
@@ -431,6 +472,42 @@ async function bootstrapWebApp() {
 
   if (isConversationSharePath(window.location.pathname)) {
     await renderConversationSharePage();
+    return;
+  }
+
+  // 远程控制（specs/web-tunnel.md §5.9）：/<16位码>（或 /remote/<码> 别名）= 机器的
+  // 公开地址，码即凭证（匿名、长期有效、可多浏览器同时连接）。
+  const remoteAssistCode = (() => {
+    const match = /^\/(?:(?:remote\/)?(\d{16}))$/u.exec(window.location.pathname);
+    return match?.[1];
+  })();
+  if (remoteAssistCode) {
+    document.title = "ZCode - Remote";
+    root.render(
+      <RemoteAssistApp code={remoteAssistCode} platform={createWebPlatform()} />,
+    );
+    return;
+  }
+
+  // 隧道模式（specs/web-tunnel.md）：主界面常驻渲染（stub 服务挂起），未连接时
+  // 顶层盖不可关闭的连接引导模态；连接成功换入真实服务，断开时模态重现。
+  if (params.has("tunnel") || import.meta.env.VITE_TUNNEL_ENTRY === "1") {
+    document.title = "ZCode Online";
+    root.render(
+      <TunnelAppRoot
+        platform={createWebPlatform()}
+        getAccessToken={() => webAuthService.getZCodeJwtToken()}
+        startLogin={() => {
+          // 回跳地址携带 ?tunnel=1，登录完成后整页跳回门禁屏（已登录态）。
+          window.sessionStorage.setItem("zcode-tunnel-login-return", "1");
+          webAuthService.startLogin({
+            appReturnTo: window.location.href,
+            redirectUri: WEB_ZAI_OAUTH_CONFIG.redirectUri,
+            devReturnTo: resolveWebAuthDevReturnTo(WEB_ZAI_OAUTH_CONFIG),
+          });
+        }}
+      />,
+    );
     return;
   }
 
@@ -446,31 +523,7 @@ async function bootstrapWebApp() {
     const services = await connectViaWebSocket(bootstrap.wsUrl, {
       onClose: () => {},
     });
-    const platform = createWebPlatform();
-    document.title = "ZCode - Web + Server";
-
-    root.render(
-      <AppErrorBoundary>
-        <ZCodeIntlProvider
-          settingService={services.settingService}
-          broadcastService={services.broadcastService}
-        >
-          <Root
-            services={services}
-            platform={platform}
-            initialWorkspaceAbsPath={bootstrap.initialWorkspaceAbsPath}
-            initialWorkspaceIdentity={bootstrap.initialWorkspaceIdentity}
-            initialTaskId={bootstrap.initialTaskId}
-            restoreSession={bootstrap.restoreSession}
-            allowOpenWorkspace={bootstrap.allowOpenWorkspace}
-            preferDirectoryBrowser
-            supportsEmbeddedBrowser={false}
-            allowRemoteWorkspace={false}
-            loadZcodeSsoJwtToken={async () => webAuthService.getZCodeJwtToken()}
-          />
-        </ZCodeIntlProvider>
-      </AppErrorBoundary>,
-    );
+    renderAppWithServices(services, bootstrap);
   } catch (error) {
     renderWebBootstrapError(error);
   }

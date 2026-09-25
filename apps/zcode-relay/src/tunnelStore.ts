@@ -144,6 +144,67 @@ export class ConnectTokenStore {
   }
 }
 
+export interface AssistInvitation {
+  hostId: string;
+  maskedPsk: string;
+  expiresAt: number;
+}
+
+/**
+ * 远程协助邀请（specs/web-tunnel.md §5.9）：codeHash → 邀请。
+ * 同 hostId 仅一份有效（刷新即覆盖）；兑换即消费（单码单用户）。
+ */
+export class AssistInvitationStore {
+  private readonly byCodeHash = new Map<string, AssistInvitation>();
+  private readonly byHostId = new Map<string, string>();
+
+  register(
+    codeHash: string,
+    invitation: Omit<AssistInvitation, "expiresAt">,
+    expiresAt: number,
+    now: number,
+  ): void {
+    purgeExpired(this.byCodeHash, now);
+    // 同 hostId 的旧邀请作废（「刷新」语义）。
+    const previousHash = this.byHostId.get(invitation.hostId);
+    if (previousHash !== undefined) {
+      this.byCodeHash.delete(previousHash);
+    }
+    this.byCodeHash.set(codeHash, { ...invitation, expiresAt });
+    this.byHostId.set(invitation.hostId, codeHash);
+  }
+
+  /** 兑换：校验（不消费——持久机器码，任意浏览器可反复连接）；否则 null。 */
+  verify(codeHash: string, now: number): AssistInvitation | null {
+    purgeExpired(this.byCodeHash, now);
+    const invitation = this.byCodeHash.get(codeHash);
+    if (!invitation || invitation.expiresAt <= now) return null;
+    return invitation;
+  }
+}
+
+/** 每 IP 滑窗限流：兑换接口防 16 位码暴力枚举。 */
+export class RateLimiter {
+  private readonly hits = new Map<string, number[]>();
+
+  constructor(
+    private readonly windowMs: number,
+    private readonly maxHits: number,
+  ) {}
+
+  allow(key: string, now: number): boolean {
+    const windowStart = now - this.windowMs;
+    const recent = (this.hits.get(key) ?? []).filter((timestamp) => timestamp > windowStart);
+    if (recent.length >= this.maxHits) {
+      this.hits.set(key, recent);
+      return false;
+    }
+    recent.push(now);
+    this.hits.set(key, recent);
+    return true;
+  }
+}
+
 /** 数据面路由表：hostId → 控制通道，宿主断线即摘除，不持久化。 */
 export class RouteTable<T> {
   private readonly routes = new Map<string, T>();
