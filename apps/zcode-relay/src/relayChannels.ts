@@ -296,11 +296,20 @@ export function createRelayChannels(options: RelayChannelsOptions): RelayChannel
             record.hostId !== hostId ||
             !options.bindings.isBound(record.user, hostId)
           ) {
+            log.warn("tunnel hello rejected", {
+              reason: !record
+                ? "tokenInvalid"
+                : record.hostId !== hostId
+                  ? "hostMismatch"
+                  : "notBound",
+              hostId,
+            });
             closeWithHostError(ws, "invalidSessionCredential");
             return;
           }
           const route = routes.getRoute(hostId);
           if (!route) {
+            log.warn("tunnel hello rejected", { reason: "hostOffline", hostId });
             closeWithHostError(ws, "hostOffline");
             return;
           }

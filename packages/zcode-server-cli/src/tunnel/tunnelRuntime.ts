@@ -149,7 +149,7 @@ export function createTunnelRuntime(options: TunnelRuntimeOptions): TunnelRuntim
             .load()
             .then((state2) => {
               if (state2) {
-                return identity.save({ ...state2, assist: { code: assist.code, psk: assist.psk } });
+                return identity.save({ ...state2, assist: { code: assist.code } });
               }
               return undefined;
             })

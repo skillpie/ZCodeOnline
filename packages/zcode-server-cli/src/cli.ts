@@ -261,8 +261,14 @@ async function runServe(
     if (json) stdout(io, started);
     else stdout(io, `ZCode Server ${started.state} at ${started.host ?? ""}:${started.port ?? ""}`);
     // 打印本机远程链接（specs/web-tunnel.md §5.9）：机器码持久化，链接长期有效。
-    const tunnelState = await createTunnelStateStore(layout.serverRoot).load();
-    const assistCode = tunnelState?.assist?.code;
+    // 机器码由 Core 在 ready 后异步生成并持久化，这里短暂轮询等它落盘（通常 <1s）。
+    const tunnelStateStore = createTunnelStateStore(layout.serverRoot);
+    let assistCode: string | undefined;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      assistCode = (await tunnelStateStore.load())?.assist?.code;
+      if (assistCode) break;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
     if (assistCode && !json) {
       stdout(io, `Remote access: https://zcode.skillpie.cn/${assistCode}`);
     }

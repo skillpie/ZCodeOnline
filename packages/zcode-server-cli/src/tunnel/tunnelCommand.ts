@@ -77,9 +77,7 @@ export async function runTunnelCommand(
     },
     initialAssist: hostState.assist,
     onAssistChange: (assist) => {
-      void state
-        .save({ ...hostState, assist: { code: assist.code, psk: assist.psk } })
-        .catch(() => undefined);
+      void state.save({ ...hostState, assist: { code: assist.code } }).catch(() => undefined);
     },
     onEvent: (event) => {
       stderr(io, describeEvent(event));

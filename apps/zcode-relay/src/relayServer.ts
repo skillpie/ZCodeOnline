@@ -175,12 +175,20 @@ export async function startRelayServer(options: RelayServerOptions = {}): Promis
     const invitation = normalized ? stores.assistInvitations.verify(codeHash, now()) : null;
     if (!invitation) return context.json({ error: "assistCodeInvalid" }, 401);
     const connectToken = generateTunnelSecret();
+    const assistUser = `assist:${invitation.hostId}`;
     stores.connectTokens.register(
       await hashTunnelSecret(connectToken),
-      { user: `assist:${invitation.hostId}`, hostId: invitation.hostId },
+      { user: assistUser, hostId: invitation.hostId },
       now() + TUNNEL_CONSTANTS.connectTokenTtlMs,
       now(),
     );
+    // hello 校验要求 (user, hostId) 绑定；assist 用户在兑换时创建临时绑定，
+    // 否则连接票据会在 WS 握手时被 isBound 拒绝（连接已断开问题的根因）。
+    stores.bindings.bind({
+      user: assistUser,
+      hostId: invitation.hostId,
+      displayName: stores.hosts.get(invitation.hostId)?.displayName ?? "",
+    });
     log.info("assist accepted", { hostId: invitation.hostId });
     return context.json(
       assistConnectResultSchema.parse({

@@ -42,9 +42,9 @@ export interface TunnelConnectorOptions {
   /** relay 侧凭证失效（relay 重启清空注册表）：调用方应清掉持久化凭证，连接器将以空凭证重注册。 */
   onCredentialInvalid?: () => void;
   /** 持久机器码初值（来自 state.json）：跨重启稳定，链接长期有效。 */
-  initialAssist?: { code: string; psk: string };
+  initialAssist?: { code: string };
   /** 远程码生成/轮换时回存（调用方持久化到 state.json）。 */
-  onAssistChange?: (assist: { code: string; psk: string; expiresAt: number }) => void;
+  onAssistChange?: (assist: { code: string; expiresAt: number }) => void;
   onEvent?: (event: TunnelConnectorEvent) => void;
 }
 
@@ -130,15 +130,18 @@ export class TunnelConnector {
     return { code: this.activeAssist!.code, expiresAt: this.activeAssist!.expiresAt };
   }
 
-  /** 轮换：作废旧码，生成新码（新 PSK）重新登记并持久化。 */
+  /**
+   * 轮换：作废旧码，生成新码重新登记并持久化。
+   * 掩码的对象必须是身份 PSK（options.psk）：宿主所有流的 E2E 密钥都从它派生，
+   * 掩一个独立 PSK 会让 assist 会话与宿主密钥不同源（握手必败，联调实证）。
+   */
   async regenerateAssistCode(): Promise<{ code: string; expiresAt: number }> {
     const code = generateAssistCode();
-    const psk = generateTunnelSecret();
-    const maskedPsk = await maskAssistPsk(psk, code);
+    const maskedPsk = await maskAssistPsk(this.options.psk, code);
     const expiresAt = Date.now() + TUNNEL_ASSIST_TTL_MS;
     const codeHash = await hashTunnelSecret(code);
     this.activeAssist = { code, codeHash, maskedPsk, expiresAt };
-    this.options.onAssistChange?.({ code, psk, expiresAt });
+    this.options.onAssistChange?.({ code, expiresAt });
     this.sendControl({
       type: "assistRegister",
       assistCodeHash: codeHash,
@@ -271,11 +274,11 @@ export class TunnelConnector {
       // 远程协助机器码随 hostReady 补登记（relay 重启后码不变 = 链接长期有效）。
       void (async () => {
         if (!this.activeAssist && this.options.initialAssist) {
-          const { code, psk } = this.options.initialAssist;
+          const { code } = this.options.initialAssist;
           this.activeAssist = {
             code,
             codeHash: await hashTunnelSecret(code),
-            maskedPsk: await maskAssistPsk(psk, code),
+            maskedPsk: await maskAssistPsk(this.options.psk, code),
             expiresAt: Date.now() + TUNNEL_ASSIST_TTL_MS,
           };
         }
@@ -374,7 +377,10 @@ export class TunnelConnector {
       isBinary: boolean,
     ): Promise<void> => {
       if (!isBinary) {
-        this.emit({ kind: "error", message: `DBG stream ${streamId} TEXT frame from browser (contract break)` });
+        this.emit({
+          kind: "error",
+          message: `DBG stream ${streamId} TEXT frame from browser (contract break)`,
+        });
         teardown();
         return;
       }
@@ -382,7 +388,10 @@ export class TunnelConnector {
       try {
         plaintext = await hostRecv.decrypt(cipherBytes);
       } catch (error) {
-        this.emit({ kind: "error", message: `DBG stream ${streamId} decrypt failed: ${String(error).slice(0, 100)}` });
+        this.emit({
+          kind: "error",
+          message: `DBG stream ${streamId} decrypt failed: ${String(error).slice(0, 100)}`,
+        });
         teardown();
         return;
       }
@@ -435,7 +444,10 @@ export class TunnelConnector {
       teardown();
     });
     relayStream.on("error", (error: Error) => {
-      this.emit({ kind: "error", message: `DBG stream ${streamId} relayStream error: ${error.message}` });
+      this.emit({
+        kind: "error",
+        message: `DBG stream ${streamId} relayStream error: ${error.message}`,
+      });
       relayStream.terminate();
     });
     loopback.on("close", (code, reason) => {
@@ -446,7 +458,10 @@ export class TunnelConnector {
       teardown();
     });
     loopback.on("error", (error: Error) => {
-      this.emit({ kind: "error", message: `DBG stream ${streamId} loopback error: ${error.message}` });
+      this.emit({
+        kind: "error",
+        message: `DBG stream ${streamId} loopback error: ${error.message}`,
+      });
       loopback.terminate();
     });
 

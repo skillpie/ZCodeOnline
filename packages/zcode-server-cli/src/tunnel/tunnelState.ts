@@ -6,7 +6,6 @@ import { generateTunnelSecret } from "@zcode/shared";
 
 export interface TunnelAssistState {
   code: string;
-  psk: string;
 }
 
 export interface TunnelHostState {
@@ -51,12 +50,8 @@ export function createTunnelStateStore(serverRoot: string): TunnelStateStore {
         const assist =
           typeof data.assist === "object" &&
           data.assist !== null &&
-          typeof (data.assist as Record<string, unknown>).code === "string" &&
-          typeof (data.assist as Record<string, unknown>).psk === "string"
-            ? {
-                code: (data.assist as { code: string }).code,
-                psk: (data.assist as { psk: string }).psk,
-              }
+          typeof (data.assist as Record<string, unknown>).code === "string"
+            ? { code: (data.assist as { code: string }).code }
             : undefined;
         return {
           hostId: data.hostId,
