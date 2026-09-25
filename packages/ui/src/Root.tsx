@@ -161,6 +161,7 @@ function RootInner({
   initialWorkspaceLoadingFallback,
   loadZcodeSsoJwtToken,
   suppressJwtInvalidReload,
+  suppressAccountOnboarding,
 }: RootProps) {
   useEffect(() => {
     setMcpStorePlatform(platform);
@@ -431,7 +432,7 @@ function RootInner({
       rootProviderAvailability.hydrated || rootModelSelectionRead.state.status === "error",
   });
   const providerAvailabilityLoginEntryGuardEnabled =
-    shouldEnableProviderAvailabilityLoginEntryGuard();
+    shouldEnableProviderAvailabilityLoginEntryGuard() && !suppressAccountOnboarding;
   const { startupCheckCompleted: providerAvailabilityStartupCheckCompleted } =
     useProviderAvailabilityLoginEntryGuard({
       enabled: providerAvailabilityLoginEntryGuardEnabled,
@@ -1074,6 +1075,7 @@ function RootInner({
             isWindowsDesktop={isWindowsDesktop}
             supportsEmbeddedBrowser={supportsEmbeddedBrowser}
             loadZcodeSsoJwtToken={loadZcodeSsoJwtToken}
+            suppressAccountOnboarding={suppressAccountOnboarding}
           />
         )}
         <ScopedErrorBoundary

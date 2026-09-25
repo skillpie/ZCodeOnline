@@ -46,6 +46,8 @@ export interface RootProps {
   loadZcodeSsoJwtToken?: () => Promise<string | null>;
   /** 隧道/远程会话：抑制 JWT 失效触发的整页 reload（登录态在宿主机器上）。 */
   suppressJwtInvalidReload?: boolean;
+  /** 隧道/远程会话：抑制账号引导门（WelcomeScreen）——模型凭据在被控机器上，浏览器侧登录无意义。 */
+  suppressAccountOnboarding?: boolean;
 }
 
 export interface WorkspaceSettingsLayerProps {

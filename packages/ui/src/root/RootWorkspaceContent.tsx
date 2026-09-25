@@ -47,6 +47,7 @@ interface RootWorkspaceContentProps {
   isWindowsDesktop?: RootProps["isWindowsDesktop"];
   supportsEmbeddedBrowser: NonNullable<RootProps["supportsEmbeddedBrowser"]>;
   loadZcodeSsoJwtToken?: RootProps["loadZcodeSsoJwtToken"];
+  suppressAccountOnboarding?: boolean;
   windowsWindowControlsRightPaddingPx?: number;
 }
 
@@ -86,6 +87,7 @@ export function RootWorkspaceContent({
   isWindowsDesktop,
   supportsEmbeddedBrowser,
   loadZcodeSsoJwtToken,
+  suppressAccountOnboarding,
   windowsWindowControlsRightPaddingPx,
 }: RootWorkspaceContentProps) {
   const workspaceKey = workspaceIdentity?.trim() || workspaceShellPath;
@@ -175,6 +177,7 @@ export function RootWorkspaceContent({
                 isWindowsDesktop={isWindowsDesktop}
                 supportsEmbeddedBrowser={supportsEmbeddedBrowser}
                 loadZcodeSsoJwtToken={loadZcodeSsoJwtToken}
+                suppressAccountOnboarding={suppressAccountOnboarding}
               />
             </ScopedErrorBoundary>
           </ServiceProvider>

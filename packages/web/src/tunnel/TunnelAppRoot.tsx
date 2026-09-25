@@ -219,6 +219,7 @@ export function TunnelAppRoot({
               key={`tunnel-conn-${activeConnRef.current}`}
               services={services}
               platform={platform}
+              suppressAccountOnboarding
               suppressJwtInvalidReload
               preferDirectoryBrowser
               supportsEmbeddedBrowser={false}

@@ -377,10 +377,6 @@ export class TunnelConnector {
       isBinary: boolean,
     ): Promise<void> => {
       if (!isBinary) {
-        this.emit({
-          kind: "error",
-          message: `DBG stream ${streamId} TEXT frame from browser (contract break)`,
-        });
         teardown();
         return;
       }
@@ -388,10 +384,6 @@ export class TunnelConnector {
       try {
         plaintext = await hostRecv.decrypt(cipherBytes);
       } catch (error) {
-        this.emit({
-          kind: "error",
-          message: `DBG stream ${streamId} decrypt failed: ${String(error).slice(0, 100)}`,
-        });
         teardown();
         return;
       }
@@ -407,25 +399,13 @@ export class TunnelConnector {
         stream.handshakeDone = true;
         return;
       }
-      this.emit({
-        kind: "error",
-        message: `DBG ${new Date().toISOString()} browser->loopback ${plaintext.byteLength}B`,
-      });
       if (loopback.readyState === WebSocket.OPEN) loopback.send(plaintext, { binary: true });
     };
     let inboundChain: Promise<void> = Promise.resolve();
     relayStream.on("message", (data, isBinary) => {
-      this.emit({
-        kind: "error",
-        message: `DBG ${new Date().toISOString()} relay->loopback ${(data as Buffer).length}B bin=${isBinary}`,
-      });
       inboundChain = inboundChain
         .then(() => handleRelayMessage(new Uint8Array(data as Buffer), isBinary))
         .catch((error: unknown) => {
-          this.emit({
-            kind: "error",
-            message: `DBG ${new Date().toISOString()} inbound chain threw: ${String(error).slice(0, 120)}`,
-          });
           return undefined;
         });
     });
@@ -437,31 +417,15 @@ export class TunnelConnector {
       if (loopback.readyState <= WebSocket.OPEN) loopback.close(1000);
     };
     relayStream.on("close", (code, reason) => {
-      this.emit({
-        kind: "error",
-        message: `DBG stream ${streamId} relayStream closed: code=${code} reason=${String(reason).slice(0, 80)}`,
-      });
       teardown();
     });
     relayStream.on("error", (error: Error) => {
-      this.emit({
-        kind: "error",
-        message: `DBG stream ${streamId} relayStream error: ${error.message}`,
-      });
       relayStream.terminate();
     });
     loopback.on("close", (code, reason) => {
-      this.emit({
-        kind: "error",
-        message: `DBG stream ${streamId} loopback closed: code=${code} reason=${String(reason).slice(0, 80)}`,
-      });
       teardown();
     });
     loopback.on("error", (error: Error) => {
-      this.emit({
-        kind: "error",
-        message: `DBG stream ${streamId} loopback error: ${error.message}`,
-      });
       loopback.terminate();
     });
 

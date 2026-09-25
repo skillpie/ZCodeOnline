@@ -128,6 +128,7 @@ export function RemoteAssistApp({ code, platform }: { code: string; platform: IP
               key="remote-assist"
               services={services}
               platform={platform}
+              suppressAccountOnboarding
               suppressJwtInvalidReload
               preferDirectoryBrowser
               supportsEmbeddedBrowser={false}

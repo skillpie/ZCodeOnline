@@ -112,6 +112,7 @@ export interface AppProps {
   supportsEmbeddedBrowser?: boolean;
   /** Web 入口注入的 zcode JWT 读取器（浏览器 localStorage）；桌面端 App 内回落凭据库。 */
   loadZcodeSsoJwtToken?: () => Promise<string | null>;
+  suppressAccountOnboarding?: boolean;
 }
 
 export interface GitChangeSummary {
