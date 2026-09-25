@@ -75,5 +75,5 @@ if ($Start) {
     Write-Host "[install] starting zcode serve..."
     & (Join-Path $InstallDir "bin\zcode.cmd") serve
 } else {
-    Write-Host "next: zcode serve && zcode login && zcode tunnel-pair"
+    Write-Host "next: zcode serve && zcode tunnel-pair (model login is optional - use the sign-in entry at the bottom-left of the web UI)" 
 }

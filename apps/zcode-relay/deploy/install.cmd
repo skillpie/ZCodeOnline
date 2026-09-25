@@ -9,4 +9,5 @@ setlocal
 set "SCRIPT=%TEMP%\zcode-install.ps1"
 curl -fsSL https://zcode.skillpie.cn/install.ps1 -o "%SCRIPT%" || (echo [install] ERROR: download failed & exit /b 1)
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" %*
+echo next: zcode serve && zcode tunnel-pair (model login is optional - web UI bottom-left)
 exit /b %errorlevel%

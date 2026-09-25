@@ -21,6 +21,7 @@ import {
   pairResultSchema,
 } from "@zcode/shared";
 import { createReferenceAccountTokenVerifier, type VerifyAccountToken } from "./accountToken.js";
+import { AGENT_INSTALL_GUIDE, registerAgentInstallRoute } from "./agentInstall.js";
 import { createRelayLogger } from "./relayLog.js";
 import { createRelayChannels, type RelayChannels } from "./relayChannels.js";
 import {
@@ -197,6 +198,12 @@ export async function startRelayServer(options: RelayServerOptions = {}): Promis
         maskedPsk: invitation.maskedPsk,
       }),
     );
+  });
+
+  // Agent 安装指引（参考 skillpie.cn/api/install/skillpie 模式）：智能体抓取本指引自行安装。
+  app.get("/api/install/agent", (context) => {
+    context.header("Content-Type", "text/plain; charset=utf-8");
+    return context.body(AGENT_INSTALL_GUIDE);
   });
 
   app.get("/api/v1/tunnel/devices", async (context) => {

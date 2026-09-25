@@ -8,11 +8,9 @@
 # 离线/自托管归档：
 #   install-zcode-server.sh --archive <file.tar.gz> [同上]
 #
-# 安装后：
-#   zcode serve                                   # 常驻（自注册系统服务）
-#   zcode login                                   # 模型账号登录（浏览器授权）
-#   zcode tunnel-enable --relay-url wss://zcode.skillpie.cn/relay
-#   zcode tunnel-pair
+# 默认行为：安装 → 注册常驻服务（开机自启）→ 立即启动，并打印远程控制链接。
+# --no-start 仅安装不启动；模型账号登录可在浏览器界面左下角完成（可选）。
+# 首次配对/日常使用：zcode status 查看；浏览器打开打印的 https://zcode.skillpie.cn/<码>。
 
 set -e
 
@@ -21,7 +19,7 @@ BASE_URL=""
 ARCHIVE=""
 INSTALL_DIR="/opt/zcode-server"
 WORKSPACE=""
-START=false
+START=true
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -30,6 +28,7 @@ while [ $# -gt 0 ]; do
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
     --workspace) WORKSPACE="$2"; shift 2 ;;
     --start) START=true; shift ;;
+    --no-start) START=false; shift ;;
     --help|-h)
       sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
@@ -130,8 +129,15 @@ fi
 echo "[install] done."
 
 if [ "$START" = true ]; then
-  echo "[install] starting zcode serve..."
-  "$INSTALL_DIR/bin/zcode" serve
+  echo "[install] registering boot-persistent service and starting..."
+  "$INSTALL_DIR/bin/zcode" serve --daemon > "$TMP/serve.out" 2>&1
+  # 轮询 ready + Remote access（core 启动后异步生成机器码）
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    if grep -q "Remote access" "$TMP/serve.out" 2>/dev/null; then break; fi
+    sleep 1
+  done
+  grep -E "ZCode Server ready|Remote access" "$TMP/serve.out" 2>/dev/null || true
+  echo "[install] 服务已注册为开机自启；电脑重启后会自动恢复，链接不变。"
 else
-  echo "next: zcode serve && zcode tunnel-pair（模型登录可在浏览器左下角完成，可选）"
+  echo "[install] --no-start: 仅安装。稍后运行 zcode serve 启动。"
 fi
