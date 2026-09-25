@@ -65,7 +65,9 @@ if [ "$RELEASES" = true ]; then
     echo "[release] zcode-server-$target.tar.gz published"
   done
   rsync -av "$DEPLOY_DIR/install-zcode-server.sh" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.sh"
-  echo "[release] install.sh published（curl -fsSL https://zcode.skillpie.cn/install.sh | sh）"
+  rsync -av "$DEPLOY_DIR/install-zcode-server.ps1" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.ps1"
+  rsync -av "$DEPLOY_DIR/install.cmd" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.cmd"
+  echo "[release] install.sh / install.ps1 / install.cmd published"
 fi
 
 if [ "$CHECK_ONLY" != true ]; then

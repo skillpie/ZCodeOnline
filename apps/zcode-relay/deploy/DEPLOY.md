@@ -44,19 +44,29 @@ cd apps/zcode-relay/deploy
 ./deploy-zcode.sh --relay      # relay 升级：重启服务，宿主 daemon 指数退避自动重连
 ```
 
-## 终端用户安装（"浏览器写代码"最小集）
+## 终端用户安装（"浏览器写代码"最小集，三平台）
 
-本机构建发行包：`pnpm --filter @zcode/server-cli stage` → `packages/zcode-server-cli/dist-release/zcode-server-<target>.tar.gz`（自包含：node 22 + server-cli + zcode.cjs + 依赖闭包，免预装 Node）。托管到任意 URL（如 zcode.skillpie.cn/dl/）后，新用户三步：
+本机构建发行包：`pnpm --filter @zcode/server-cli stage --target <target>` → `dist-release/zcode-server-<target>.tar.gz`（自包含：node 22 + server-cli + zcode.cjs + 依赖闭包，免预装 Node）。发布：`deploy-zcode.sh --release`（构建 darwin-arm64/linux-x64/win32-x64 并上传 `/var/www/zcode-dl/` + 三个安装脚本）。
+
+用户侧：
 
 ```bash
-curl -fsSL <release-url> -o zcode-server.tar.gz
-sh install-zcode-server.sh --archive zcode-server.tar.gz --workspace ~/my-project
-zcode serve && zcode login && zcode tunnel-pair
+# macOS / Linux
+curl -fsSL https://zcode.skillpie.cn/install.sh | sh
 ```
 
+```powershell
+# Windows PowerShell
+irm https://zcode.skillpie.cn/install.ps1 | iex
+# Windows CMD
+curl -fsSL https://zcode.skillpie.cn/install.cmd -o install.cmd && install.cmd
+```
+
+安装后统一收尾：`zcode serve`（启动即打印远程链接）→ `zcode login` → 浏览器打开打印的链接。
+
 - `zcode login`：委托 agent CLI 的 OAuth 授权-轮询登录（浏览器确认，凭据落 `~/.zcode/v2/credentials.json`，agent 与业务服务器共用）。
-- 工作区：`--workspace` 写入安装目录 `env` 文件（`ZCODE_SERVER_WORKSPACE`），core 的 server-info/bootstrap 帧据此注入浏览器。
-- Windows：release 有 win32 target 与 `zcode.cmd`，安装脚本当前仅 POSIX。
+- 工作区：`--workspace`（POSIX）/ `-Workspace`（PowerShell）写入安装目录 `env` 文件（`ZCODE_SERVER_WORKSPACE`），core 的 server-info/bootstrap 帧据此注入浏览器。
+- win32 归档需在 Windows 或交叉环境构建验证（stage 支持 `--target win32-x64`）；当前已发布构建为 darwin-arm64 / linux-x64。
 
 ## 安全清单
 

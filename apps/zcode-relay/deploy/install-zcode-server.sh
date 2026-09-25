@@ -1,5 +1,6 @@
 #!/bin/sh
-# ZCode Server 一键安装（specs/web-tunnel.md §5.7）。
+# ZCode Server 一键安装（specs/web-tunnel.md §5.7）—— macOS / Linux。
+# （Windows 用 install.ps1 / install.cmd，见 DEPLOY.md）
 # 标准形态（平台自动探测 + 从本站下载）：
 #   curl -fsSL https://zcode.skillpie.cn/install.sh | sh
 # 等价显式形式：

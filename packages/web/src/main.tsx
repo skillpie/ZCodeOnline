@@ -482,10 +482,8 @@ async function bootstrapWebApp() {
     return match?.[1];
   })();
   if (remoteAssistCode) {
-    document.title = "ZCode - Remote";
-    root.render(
-      <RemoteAssistApp code={remoteAssistCode} platform={createWebPlatform()} />,
-    );
+    document.title = "ZCode Online";
+    root.render(<RemoteAssistApp code={remoteAssistCode} platform={createWebPlatform()} />);
     return;
   }
 

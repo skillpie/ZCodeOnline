@@ -77,7 +77,7 @@ export function RemoteAssistApp({ code, platform }: { code: string; platform: IP
           );
         },
       });
-      document.title = "ZCode - Remote";
+      document.title = "ZCode Online";
       setServices(connected.services);
       setBootstrap(connected.bootstrap);
       setPhase("connected");
