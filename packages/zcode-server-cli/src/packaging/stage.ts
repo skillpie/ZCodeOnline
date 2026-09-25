@@ -559,16 +559,13 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
 
   let archivePath: string | null = null;
   if (options.archive !== false) {
-    const extension = options.target.startsWith("win32-") ? "zip" : "tar.gz";
-    archivePath = join(outputRoot, `${releaseName}.${extension}`);
+    // 发行归档统一 tar.gz，win32 不再特例 zip：install.ps1 与 deploy-zcode.sh
+    // --release 均按 <releaseName>.tar.gz 消费，Windows 10+ 内置 bsdtar 可直接解压。
+    archivePath = join(outputRoot, `${releaseName}.tar.gz`);
     await rm(archivePath, { force: true });
     // Windows 宿主显式 System32 bsdtar，不依赖调用方 PATH（原因同 tarCommand.ts）。
     const tarCommand = resolveHostTarCommand();
-    if (extension === "zip") {
-      if (process.platform === "win32")
-        await runCommand(tarCommand, ["-acf", archivePath, releaseName], outputRoot);
-      else await runCommand("zip", ["-qr", archivePath, releaseName], outputRoot);
-    } else if (process.platform === "win32") {
+    if (process.platform === "win32") {
       await runCommand(tarCommand, ["-czf", archivePath, releaseName], outputRoot);
     } else await runCommand("tar", ["-czf", archivePath, releaseName], outputRoot);
   }
