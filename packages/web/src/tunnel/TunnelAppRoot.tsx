@@ -30,7 +30,7 @@ interface GateState {
 }
 
 /** 未连接时的静态应用骨架：与主界面同构的空态，视觉占位而非假交互。 */
-function DisconnectedAppSkeleton() {
+export function DisconnectedAppSkeleton() {
   const isZh = /^zh\b/i.test(navigator.language);
   return (
     <div className="flex h-full w-full select-none bg-background text-foreground" aria-hidden>

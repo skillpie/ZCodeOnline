@@ -5,6 +5,7 @@ import { AppErrorBoundary, Root, ZCodeIntlProvider } from "@zcode/ui";
 import type { IPlatformService } from "@zcode/shared";
 import { DEFAULT_TUNNEL_RELAY_URL, normalizeAssistCode, revealAssistPsk } from "@zcode/shared";
 import { TunnelConnectError, connectTunnelServices, type TunnelBootstrap } from "./tunnelSocket.js";
+import { DisconnectedAppSkeleton } from "./TunnelAppRoot.js";
 import type { TunnelServices } from "./TunnelAppRoot.js";
 
 type Phase = "connecting" | "connected" | "error";
@@ -91,6 +92,21 @@ export function RemoteAssistApp({ code, platform }: { code: string; platform: IP
     }
   }, []);
 
+  // 自动重试（持久机器码）：错误态按指数退避周期重试（5s→30s 封顶），
+  // 宿主（zcode serve）回来后自动恢复——无需用户点击。
+  const [retryCount, setRetryCount] = useState(0);
+  useEffect(() => {
+    if (phase !== "error" || !normalized) return;
+    const attempt = retryCount + 1;
+    const delay = Math.min(5_000 * 2 ** (attempt - 1), 30_000);
+    const timer = setTimeout(() => {
+      setRetryCount(attempt);
+      void connect(normalized);
+    }, delay);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- retryCount 变化驱动下一轮
+  }, [phase, retryCount]);
+
   useEffect(() => {
     if (startedRef.current || !normalized) return;
     startedRef.current = true;
@@ -128,59 +144,58 @@ export function RemoteAssistApp({ code, platform }: { code: string; platform: IP
           </ZCodeIntlProvider>
         </AppErrorBoundary>
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-background px-4 text-foreground">
-          <section className="w-full max-w-lg rounded-xl border border-card-border bg-card p-5">
-            <div className="flex items-center gap-3">
-              <span
-                className={`size-2 rounded-full ${
-                  phase === "connecting" ? "animate-pulse bg-amber-500" : "bg-destructive"
-                }`}
-              />
-              <h1 className="text-ui-xs font-medium">
-                {phase === "connecting"
-                  ? t("正在连接对方的电脑…", "Connecting to the remote machine…")
-                  : t("远程控制", "Remote control")}
-              </h1>
-            </div>
-            {phase === "connecting" ? (
-              <p className="mt-2 text-ui-xs/relaxed text-foreground-subtle">
-                {t(
-                  "正在通过加密隧道接入对方电脑，代码与文件仅在对方机器上处理。",
-                  "Connecting over an encrypted tunnel; code and files stay on the remote machine.",
-                )}
-              </p>
-            ) : null}
-            {error !== null ? (
-              <p className="mt-3 break-all text-ui-xs/relaxed text-destructive">{error}</p>
-            ) : null}
-            {phase === "error" ? (
-              <div className="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-surface px-3 py-2 text-ui-xs text-foreground hover:bg-surface-hover"
-                  onClick={() => {
-                    if (normalized) void connect(normalized);
-                  }}
-                >
-                  {t("重新连接", "Reconnect")}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-surface px-3 py-2 text-ui-xs text-foreground hover:bg-surface-hover"
-                  onClick={() => {
-                    const next =
-                      window.prompt(t("输入 16 位远程码：", "Enter the 16-digit remote code:")) ??
-                      "";
-                    const valid = normalizeAssistCode(next);
-                    if (valid) void connect(valid);
-                  }}
-                >
-                  {t("换一个远程码", "Use another code")}
-                </button>
+        <>
+          <DisconnectedAppSkeleton />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <section className="w-full max-w-lg rounded-xl border border-card-border bg-card p-5 shadow-xl">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`size-2 rounded-full ${
+                    phase === "connecting" ? "animate-pulse bg-amber-500" : "bg-destructive"
+                  }`}
+                />
+                <h1 className="text-ui-xs font-medium">{t("远程控制", "Remote control")}</h1>
               </div>
-            ) : null}
-          </section>
-        </div>
+              {phase === "connecting" ? (
+                <p className="mt-2 text-ui-xs/relaxed text-foreground-subtle">
+                  {t(
+                    "正在通过加密隧道接入远程电脑，代码与文件只在被控机器上处理。",
+                    "Connecting over an encrypted tunnel; code and files stay on the controlled machine.",
+                  )}
+                </p>
+              ) : null}
+              {error !== null ? (
+                <p className="mt-3 break-all text-ui-xs/relaxed text-destructive">{error}</p>
+              ) : null}
+              {phase === "error" ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center text-ui-xs text-foreground hover:bg-surface-hover"
+                    onClick={() => {
+                      if (normalized) void connect(normalized);
+                    }}
+                  >
+                    {t("重新连接", "Reconnect")}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center text-ui-xs text-foreground hover:bg-surface-hover"
+                    onClick={() => {
+                      const next =
+                        window.prompt(t("输入 16 位远程码：", "Enter the 16-digit remote code:")) ??
+                        "";
+                      const valid = normalizeAssistCode(next);
+                      if (valid) void connect(valid);
+                    }}
+                  >
+                    {t("换一个远程码", "Use another code")}
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          </div>
+        </>
       )}
     </div>
   );

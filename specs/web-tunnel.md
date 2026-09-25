@@ -129,7 +129,7 @@ relay 服务（独立部署；数据面 = 加密字节管道 + 路由表，控�
 - **发行物**：`pnpm --filter @zcode/server-cli stage` 产出 `<release>/bin/zcode`（launcher）+ `runtime/`（自包含 node 22、server-cli.js、zcode.cjs、原生工具、依赖闭包）——单目录、免全局安装、免预装 Node。
 - **工作区指向**：Core 的 server-info 按 `ZCODE_SERVER_WORKSPACE` 环境变量或进程 cwd 解析初始工作区（对齐 `packages/server` 语义），浏览器 bootstrap 帧据此注入。多工作区注册留后续。
 - **默认入口 + 默认开启**：`DEFAULT_TUNNEL_RELAY_URL`（wss://zcode.skillpie.cn/relay）为缺省 relay（`ZCODE_RELAY_URL`/`--relay-url` 可覆盖），业务端口缺省 3030。**隧道出厂默认开启**：从未配置的机器 `zcode serve` 起来即自动连产品 relay（配对码是唯一门禁，未配对无人可连）；`tunnel-disable` 持久化 enabled=false 并跨重启尊重。
-- **serve 即完成一切**：serve 启动打印 `Remote access: https://zcode.skillpie.cn/<码>`（机器码从 state.json 读取，初始化时主动生成）——用户命令收敛为 `zcode serve`（前台联调 `zcode tunnel`）。
+- **serve 即完成一切**：serve 启动打印 `Remote access: https://zcode.skillpie.cn/<码>`（机器码从 state.json 读取，初始化时主动生成）——用户命令收敛为 `zcode serve`（前台联调 `zcode tunnel`）；模型登录可选——浏览器左下角登录入口即可（凭据落在宿主侧，agent 直接可用），headless 预配置才需要 `zcode login`。
 - **流级 keepalive**：空闲期 nginx send/read 定时器与中间设备会静默切断流 TCP（relay 观测 1006）——连接器对流 20s 协议层 ping，relay 对拼接流两端互 ping。
 - **登录**：`zcode login` 经 legacy 委托（`delegateLegacyCli`）复用 agent CLI 已有的 OAuth 授权-轮询登录（`loginZCodeCli`：打印授权 URL + 浏览器确认 + 轮换取 token），凭据写入 `~/.zcode/v2/credentials.json`（加密 KV），agent 与业务服务器共用。发行版缺 `zcode.cjs` 时给出明确指引（完整发行包或 `ZCODE_LEGACY_CLI_ENTRY`）。
 - **安装脚本**：`deploy/install-zcode-server.sh` —— 平台自动探测（darwin/linux × arm64/x64）+ 从本站 `/dl/` 下载对应归档（标准形态 `curl -fsSL https://zcode.skillpie.cn/install.sh | sh`，已上线），支持 `--archive` 离线归档、`--install-dir`、`--workspace`、`--start`；解压到安装目录、symlink `bin/zcode` 进 PATH、systemd drop-in 注入工作区环境。归档发布：`deploy-zcode.sh --release`（stage 多平台构建 → `/var/www/zcode-dl/`）。

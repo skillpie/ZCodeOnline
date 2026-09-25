@@ -62,9 +62,8 @@ irm https://zcode.skillpie.cn/install.ps1 | iex
 curl -fsSL https://zcode.skillpie.cn/install.cmd -o install.cmd && install.cmd
 ```
 
-安装后统一收尾：`zcode serve`（启动即打印远程链接）→ `zcode login` → 浏览器打开打印的链接。
+安装后统一收尾：`zcode serve`（启动即打印远程链接）→ 浏览器打开打印的链接。模型登录为**可选**步骤——界面左下角登录入口随时可用；命令行方式（`zcode login`，OAuth 授权-轮询，凭据落 `~/.zcode/v2/credentials.json` 供宿主 agent 使用）适合 headless 预配置场景。
 
-- `zcode login`：委托 agent CLI 的 OAuth 授权-轮询登录（浏览器确认，凭据落 `~/.zcode/v2/credentials.json`，agent 与业务服务器共用）。
 - 工作区：`--workspace`（POSIX）/ `-Workspace`（PowerShell）写入安装目录 `env` 文件（`ZCODE_SERVER_WORKSPACE`），core 的 server-info/bootstrap 帧据此注入浏览器。
 - win32 归档需在 Windows 或交叉环境构建验证（stage 支持 `--target win32-x64`）；当前已发布构建为 darwin-arm64 / linux-x64。
 

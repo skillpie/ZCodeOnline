@@ -133,5 +133,5 @@ if [ "$START" = true ]; then
   echo "[install] starting zcode serve..."
   "$INSTALL_DIR/bin/zcode" serve
 else
-  echo "next: zcode serve && zcode login && zcode tunnel-pair"
+  echo "next: zcode serve && zcode tunnel-pair（模型登录可在浏览器左下角完成，可选）"
 fi
