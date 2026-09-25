@@ -2,18 +2,66 @@
 // 作为不可关闭的顶层模态内容渲染（未连接时盖在常驻主界面上）。
 // 未挂 ZCodeIntlProvider，与 WebBootstrapErrorScreen 同样用 navigator.language 内联双语。
 import { useState } from "react";
+import {
+  AGENT_INSTALL_URL,
+  detectTunnelInstallPlatform,
+  tunnelInstallCommands,
+  type TunnelInstallCommand,
+} from "./tunnelInstall.js";
 
 type GateStatus = "idle" | "pairing" | "connecting" | "disconnected";
 
 const zh = (): boolean => /^zh\b/i.test(navigator.language);
 
-const INSTALL_COMMAND = "curl -fsSL https://zcode.skillpie.cn/install.sh | sh";
+// UA 在页面生命周期内不变：平台 → 安装命令的映射按模块级求值一次即可。
+const INSTALL_COMMANDS = tunnelInstallCommands(detectTunnelInstallPlatform(navigator.userAgent));
 
-/** 未配对时展示的安装引导（specs/web-tunnel.md §5.7）：一行 curl 装好本机端。 */
+/** 单条安装命令行：等宽展示 + 复制按钮（specs/web-tunnel.md §5.7）。 */
+function InstallCommandRow({
+  item,
+  isZh,
+  label,
+}: {
+  item: TunnelInstallCommand;
+  isZh: boolean;
+  /** 行首说明文字；缺省用命令的目标 shell 名（POSIX 单命令无标签）。 */
+  label?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const shellLabel = label ?? item.shell;
+  return (
+    <div className="flex items-center gap-2 py-1">
+      {shellLabel !== null && shellLabel !== undefined ? (
+        // shell 标签固定宽对齐两条命令；自定义标签（Agent 行）自适应宽度。
+        <span
+          className={`shrink-0 text-ui-xs text-foreground-subtle ${label === undefined ? "w-20" : ""}`}
+        >
+          {shellLabel}
+        </span>
+      ) : null}
+      <code className="flex-1 overflow-x-auto whitespace-nowrap text-ui-xs text-foreground">
+        {item.command}
+      </code>
+      <button
+        type="button"
+        className="shrink-0 text-ui-xs text-foreground-subtle hover:text-foreground"
+        onClick={() => {
+          void navigator.clipboard.writeText(item.command).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2_000);
+          });
+        }}
+      >
+        {copied ? (isZh ? "已复制" : "Copied") : isZh ? "复制" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
+/** 未配对时展示的安装引导（specs/web-tunnel.md §5.7）：按平台给出对应一键命令 + Agent 代装入口。 */
 function InstallGuide({ isZh }: { isZh: boolean }) {
   // 默认展开：需要安装的用户第一眼就能看到命令，少一次点击。
   const [open, setOpen] = useState(true);
-  const [copied, setCopied] = useState(false);
   return (
     <div className="mt-4 rounded-lg border border-border bg-surface">
       <button
@@ -25,22 +73,17 @@ function InstallGuide({ isZh }: { isZh: boolean }) {
         <span className="text-foreground-subtle">{open ? "−" : "+"}</span>
       </button>
       {open ? (
-        <div className="flex items-center gap-2 border-t border-border px-3 py-2">
-          <code className="flex-1 overflow-x-auto whitespace-nowrap text-ui-xs text-foreground">
-            {INSTALL_COMMAND}
-          </code>
-          <button
-            type="button"
-            className="shrink-0 text-ui-xs text-foreground-subtle hover:text-foreground"
-            onClick={() => {
-              void navigator.clipboard.writeText(INSTALL_COMMAND).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2_000);
-              });
-            }}
-          >
-            {copied ? (isZh ? "已复制" : "Copied") : isZh ? "复制" : "Copy"}
-          </button>
+        <div className="border-t border-border px-3 py-2">
+          {INSTALL_COMMANDS.map((item) => (
+            <InstallCommandRow key={item.command} item={item} isZh={isZh} />
+          ))}
+          <div className="mt-1 border-t border-border pt-2">
+            <InstallCommandRow
+              item={{ shell: null, command: AGENT_INSTALL_URL }}
+              isZh={isZh}
+              label={isZh ? "发给 AI 助手代装" : "Or let an AI agent install"}
+            />
+          </div>
         </div>
       ) : null}
     </div>
