@@ -100,6 +100,11 @@ export default defineConfig(({ mode }) => {
       // 明确注入 OAuth 公开配置，避免 Web 端在不同 mode 下隐式依赖源码 fallback。
       "import.meta.env.VITE_ZAI_OAUTH_CLIENT_ID": JSON.stringify(zaiOAuthClientId),
       "import.meta.env.VITE_ZAI_OAUTH_ORIGIN": JSON.stringify(zaiOAuthOrigin),
+      // 登录回跳受信 origin 白名单（specs/web-tunnel.md §5.7）：回调页所在部署
+      // 注入允许跨域跳回的自建域，逗号分隔；缺省为空（行为同旧版仅同源放行）。
+      "import.meta.env.VITE_TRUSTED_RETURN_ORIGINS": JSON.stringify(
+        env.VITE_TRUSTED_RETURN_ORIGINS?.trim() ?? "",
+      ),
     },
     build: {
       // 生产不在浏览器产物暴露 sourceMappingURL，避免客户端侧还原业务源码。

@@ -43,7 +43,11 @@ step() { printf '\n\033[0;34m========== %s ==========\033[0m\n' "$1"; }
 
 if [ "$BUILD_WEB" = true ]; then
   step "构建静态 Web（隧道默认入口）"
-  (cd "$PROJECT_ROOT" && VITE_TUNNEL_ENTRY=1 pnpm --filter @zcode/web build)
+  # 登录回跳受信 origin（specs/web-tunnel.md §5.7）：本部署注入自身 origin，
+  # 覆盖回调落在本域的形态；跨域回跳生效仍需回调页所在部署（官方构建）注入本域。
+  (cd "$PROJECT_ROOT" && VITE_TUNNEL_ENTRY=1 \
+    VITE_TRUSTED_RETURN_ORIGINS="${VITE_TRUSTED_RETURN_ORIGINS:-https://zcode.skillpie.cn}" \
+    pnpm --filter @zcode/web build)
 fi
 
 if [ "$BUILD_RELAY" = true ]; then

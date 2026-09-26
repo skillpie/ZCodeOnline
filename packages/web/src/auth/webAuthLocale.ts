@@ -7,6 +7,8 @@ interface WebAuthPageCopy {
   loginAction: string;
   callbackTitle: string;
   callbackDescription: string;
+  callbackCompleteTitle: string;
+  callbackCompleteDescription: string;
   callbackErrorTitle: string;
   callbackErrorDescription: string;
   retryAction: string;
@@ -24,6 +26,8 @@ const WEB_AUTH_COPY = {
     loginAction: "用 Z.AI 登录",
     callbackTitle: "正在完成登录",
     callbackDescription: "请稍候，正在校验账号身份。",
+    callbackCompleteTitle: "授权完成",
+    callbackCompleteDescription: "请回到发起登录的页签查看登录状态；本页可以关闭。",
     callbackErrorTitle: "登录失败",
     callbackErrorDescription: "授权流程未完成，请重新登录。",
     retryAction: "重新登录",
@@ -39,6 +43,9 @@ const WEB_AUTH_COPY = {
     loginAction: "Sign in with Z.AI",
     callbackTitle: "Finishing Sign-In",
     callbackDescription: "Verifying your account identity.",
+    callbackCompleteTitle: "Authorization Complete",
+    callbackCompleteDescription:
+      "Return to the tab where you started sign-in; you can close this page.",
     callbackErrorTitle: "Sign-In Failed",
     callbackErrorDescription: "The authorization flow did not complete. Sign in again.",
     retryAction: "Sign In Again",

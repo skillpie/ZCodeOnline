@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- Web 入口集中编排启动、路由与 workspace shell wiring，与 Root.tsx 同样先保持入口收口，避免跨层状态拆散。 */
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AppErrorBoundary,
@@ -15,6 +16,7 @@ import { WebCallbackPage } from "./auth/WebCallbackPage.js";
 import { createWebAuthService } from "./auth/webAuthService.js";
 import { WEB_ZAI_OAUTH_CONFIG, resolveWebAuthDevReturnTo } from "./auth/webZaiOAuthConfig.js";
 import { parseOAuthState, resolveSafeAppReturnTo } from "./auth/oauthStateCodec.js";
+import { getWebAuthCopy } from "./auth/webAuthLocale.js";
 import { resolveWebCommunityUrl, resolveWebHelpConfig } from "./communityUrl.js";
 import {
   ConversationShareLandingLoader,
@@ -97,30 +99,65 @@ function isWebOAuthCallback(params: URLSearchParams): boolean {
   );
 }
 
+/** 回调页完成态（specs/web-tunnel.md §5.7 登录回跳）：无可回跳目标时不再默默落回本站首页。 */
+function WebAuthCallbackComplete() {
+  const copy = getWebAuthCopy();
+  useEffect(() => {
+    // 授权页由 openExternal 以 noopener 打开，window.close 多数浏览器会拒绝；尽力一试，
+    // 失败时停留本页由文案指引回到原页签。
+    window.close();
+  }, []);
+  return (
+    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8 text-foreground">
+      <section className="w-full max-w-sm rounded-lg border border-card-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-emerald-500 text-ui-xs font-medium text-white">
+          ✓
+        </div>
+        <h1 className="text-ui-lg font-medium text-foreground">{copy.callbackCompleteTitle}</h1>
+        <p className="mt-2 text-ui-xs leading-6 text-foreground-subtle">
+          {copy.callbackCompleteDescription}
+        </p>
+      </section>
+    </main>
+  );
+}
+
+function WebAuthCallbackScreen({ safeRetryTarget }: { safeRetryTarget: string | null }) {
+  const [complete, setComplete] = useState(false);
+  if (complete) {
+    return <WebAuthCallbackComplete />;
+  }
+  return (
+    <WebCallbackPage
+      authService={webAuthService}
+      onSuccess={({ appReturnTo }) => {
+        // 隧道门禁登录：同源部署靠 session 标记桥接回隧道模式；跨域部署标记不可见，
+        // 由 app_return_to 的受信白名单接管回跳（specs/web-tunnel.md §5.7 登录回跳）。
+        if (window.sessionStorage.getItem("zcode-tunnel-login-return") === "1") {
+          window.sessionStorage.removeItem("zcode-tunnel-login-return");
+          window.location.replace("/?tunnel=1");
+          return;
+        }
+        if (appReturnTo) {
+          window.location.replace(appReturnTo);
+          return;
+        }
+        setComplete(true);
+      }}
+      onRetry={() => {
+        window.location.replace(safeRetryTarget ?? "/");
+      }}
+    />
+  );
+}
+
 function renderWebAuthCallbackPage(): void {
   document.title = "ZCode - Sign In";
   const callbackState = parseOAuthState(
     new URLSearchParams(window.location.search).get("state") ?? "",
   );
   const safeRetryTarget = resolveSafeAppReturnTo(callbackState?.app_return_to);
-  root.render(
-    <WebCallbackPage
-      authService={webAuthService}
-      onSuccess={({ appReturnTo }) => {
-        // 隧道门禁登录：OAuth state 的 app_return_to 白名单不含查询串（?tunnel=1 回不来），
-        // 用 session 标记桥接，登录完成后回到隧道模式。
-        if (window.sessionStorage.getItem("zcode-tunnel-login-return") === "1") {
-          window.sessionStorage.removeItem("zcode-tunnel-login-return");
-          window.location.replace("/?tunnel=1");
-          return;
-        }
-        window.location.replace(appReturnTo ?? "/");
-      }}
-      onRetry={() => {
-        window.location.replace(safeRetryTarget ?? "/");
-      }}
-    />,
-  );
+  root.render(<WebAuthCallbackScreen safeRetryTarget={safeRetryTarget} />);
 }
 
 async function renderConversationSharePage(): Promise<void> {

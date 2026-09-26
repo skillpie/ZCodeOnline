@@ -12,10 +12,6 @@ interface OAuthStatePayload {
   return_to?: string;
 }
 
-interface ResolveSafeAppReturnToOptions {
-  currentOrigin?: string;
-}
-
 function getCurrentOrigin(): string {
   const location = globalThis.window?.location ?? globalThis.location;
   return location?.origin ?? PRODUCTION_WEB_ORIGIN;
@@ -84,8 +80,50 @@ export function isTrustedDevReturnTo(url: URL): boolean {
   return PRIVATE_DEV_RETURN_TO_PATTERN.test(url.toString()) && WEB_CALLBACK_PATHS.has(url.pathname);
 }
 
+interface OAuthCodecEnv {
+  VITE_TRUSTED_RETURN_ORIGINS?: string;
+}
+
+/**
+ * 构建期受信回跳 origin（回调页所在部署注入，逗号分隔）。
+ *
+ * 浏览器 OAuth 的 redirect_uri 固定注册在官方域，回调页因此常运行在官方构建上；
+ * 自建域（隧道入口）的登录回跳只能由回调页构建的受信白名单放行——运行时不接受
+ * 任意 origin，防止授权回调沦为开放重定向。specs/web-tunnel.md §5.7 登录回跳。
+ */
+function readTrustedReturnOrigins(env: unknown): readonly string[] {
+  const raw = (env as OAuthCodecEnv | undefined)?.VITE_TRUSTED_RETURN_ORIGINS?.trim() ?? "";
+  if (raw === "") return [];
+  return raw
+    .split(",")
+    .map(normalizeTrustedOrigin)
+    .filter((entry): entry is string => entry !== null);
+}
+
+/** 归一化单个受信 origin：容忍尾斜缀与空白，非合法 URL 丢弃。 */
+function normalizeTrustedOrigin(entry: string): string | null {
+  const trimmed = entry.trim().replace(/\/$/, "");
+  if (trimmed === "") return null;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+const MODULE_TRUSTED_RETURN_ORIGINS = readTrustedReturnOrigins(
+  (import.meta as ImportMeta & { env?: OAuthCodecEnv }).env,
+);
+
 function resolveAllowedAppReturnOrigin(currentOrigin: string): string {
   return currentOrigin === PRODUCTION_WEB_ORIGIN ? PRODUCTION_WEB_ORIGIN : currentOrigin;
+}
+
+export interface ResolveSafeAppReturnToOptions {
+  currentOrigin?: string;
+  /** 覆盖构建期白名单（测试与未来多域策略注入用）；缺省读 VITE_TRUSTED_RETURN_ORIGINS。 */
+  trustedOrigins?: readonly string[];
 }
 
 export function resolveSafeAppReturnTo(
@@ -93,17 +131,31 @@ export function resolveSafeAppReturnTo(
   options: ResolveSafeAppReturnToOptions = {},
 ): string | null {
   const url = parseOptionalUrl(value);
-  if (!url || !SHARE_PATH_PATTERN.test(url.pathname)) {
+  if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) {
+    return null;
+  }
+  // URL 里内嵌凭据（user:pass@host）一律拒绝，避免白名单匹配被仿冒 origin 混过。
+  if (url.username !== "" || url.password !== "") {
     return null;
   }
 
   const currentOrigin = options.currentOrigin ?? getCurrentOrigin();
-  const allowedOrigin = resolveAllowedAppReturnOrigin(currentOrigin);
-  if (url.origin !== allowedOrigin) {
-    return null;
+  // 同源：维持分享流既有语义——仅 share 路径，返回站内路径（沿用 location.replace(path)）。
+  if (url.origin === resolveAllowedAppReturnOrigin(currentOrigin) || url.origin === currentOrigin) {
+    if (!SHARE_PATH_PATTERN.test(url.pathname)) {
+      return null;
+    }
+    return url.pathname;
   }
 
-  return url.pathname;
+  // 跨域受信 origin（自建隧道域）：整域放行（含路径与查询串），返回完整 URL 跳回。
+  const trustedOrigins = (options.trustedOrigins ?? MODULE_TRUSTED_RETURN_ORIGINS)
+    .map(normalizeTrustedOrigin)
+    .filter((entry): entry is string => entry !== null);
+  if (trustedOrigins.includes(url.origin)) {
+    return url.toString();
+  }
+  return null;
 }
 
 export function buildReturnToCallbackUrl(
