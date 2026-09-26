@@ -11,40 +11,18 @@
 // 由 skillMarketWebview preload 在 guest 侧转投页面。
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLinkIcon, RefreshCwIcon } from "lucide-react";
-import { DEFAULT_SKILL_MARKET_URL, resolveJwtExpiration } from "@zcode/shared";
+import { resolveJwtExpiration } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
+import { SKILL_MARKET_URL } from "@/lib/skillMarketUrl.js";
 import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
-const SKILL_MARKET_URL = resolveSkillMarketUrl();
 const SKILL_MARKET_ORIGIN = new URL(SKILL_MARKET_URL).origin;
 const SSO_REQUEST_TYPE = "skillpie:sso-request";
 const SSO_RESPONSE_TYPE = "zcode:sso-response";
-
-interface SkillMarketViewImportMetaEnv {
-  VITE_SKILL_MARKET_URL?: string;
-}
-
-function readImportMetaEnv(): SkillMarketViewImportMetaEnv {
-  return ((import.meta as ImportMeta & { env?: SkillMarketViewImportMetaEnv }).env ??
-    {}) as SkillMarketViewImportMetaEnv;
-}
-
-function resolveSkillMarketUrl(): string {
-  // 本地联调可指向自部署 skillpie（如 http://localhost:3001）；生产固定 skillpie.cn。
-  const override = readImportMetaEnv().VITE_SKILL_MARKET_URL?.trim();
-  if (override) {
-    try {
-      return new URL(override).toString();
-    } catch {
-      // 非法 override 忽略，回退线上地址。
-    }
-  }
-  return DEFAULT_SKILL_MARKET_URL;
-}
 
 interface SkillMarketEmbeddedViewProps {
   /** 是否为 Electron 桌面端：决定渲染 <webview>（桌面）还是 <iframe>（Web）。 */

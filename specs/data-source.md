@@ -34,10 +34,16 @@ interface IDataSourceService {
   saveDataSource(input: DataSourceInput): Promise<DataSourceMutationResult>;
   deleteDataSource(id: string): Promise<void>;
   activateDataSource(id: string): Promise<DataSourceMutationResult>;
-  testDataSource(input: DataSourceInput): Promise<{ ok: true; version: string } | { ok: false; error: string }>;
+  testDataSource(
+    input: DataSourceInput,
+  ): Promise<{ ok: true; version: string } | { ok: false; error: string }>;
   syncSchema(id: string): Promise<DataSourceMutationResult>;
   getSchemaSnapshot(id: string): Promise<DataSourceSchemaSnapshot | null>;
-  executeSql(id: string, sql: string, options?: { maxRows?: number }): Promise<DataSourceExecuteResult>;
+  executeSql(
+    id: string,
+    sql: string,
+    options?: { maxRows?: number },
+  ): Promise<DataSourceExecuteResult>;
 }
 ```
 
@@ -68,12 +74,12 @@ interface IDataSourceService {
 配置好数据源后，对话中的 Agent 通过三个内置工具（`@zcode/core` ToolEntry，注册于
 `apps/zcode-cli/packages/core/src/tool/handlers/index.ts` 的 `builtInTools`）按 tool_use 自主查库：
 
-| 工具 | 语义 | 权限 |
-|------|------|------|
-| `DBSchema` | 列数据源 / 按关键词搜表 / 查表字段（读本地表结构缓存，不实时内省） | 只读，自动放行 |
-| `DBQuery` | 只读 SQL（SELECT/WITH/SHOW/DESC/EXPLAIN，handler 强制拦截，与数据源模式无关） | 只读，自动放行 |
-| `DBExecute` | 写 SQL（读写模式数据源才可执行，包事务） | `alwaysAsk`，任何权限模式（含 yolo/plan）逐次确认，且不可记忆放行 |
-| `DBExport` | 表结构/数据导出为 .sql 文件（对齐 db_cli `--export-ddl/--export-dml`，仅 MySQL；DDL 单文件含 DROP，DML 逐表文件、行数封顶、空表跳过） | 写 workspace 文件：needsApproval（对齐 Write，medium；可记忆放行） |
+| 工具        | 语义                                                                                                                                  | 权限                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `DBSchema`  | 列数据源 / 按关键词搜表 / 查表字段（读本地表结构缓存，不实时内省）                                                                    | 只读，自动放行                                                     |
+| `DBQuery`   | 只读 SQL（SELECT/WITH/SHOW/DESC/EXPLAIN，handler 强制拦截，与数据源模式无关）                                                         | 只读，自动放行                                                     |
+| `DBExecute` | 写 SQL（读写模式数据源才可执行，包事务）                                                                                              | `alwaysAsk`，任何权限模式（含 yolo/plan）逐次确认，且不可记忆放行  |
+| `DBExport`  | 表结构/数据导出为 .sql 文件（对齐 db_cli `--export-ddl/--export-dml`，仅 MySQL；DDL 单文件含 DROP，DML 逐表文件、行数封顶、空表跳过） | 写 workspace 文件：needsApproval（对齐 Write，medium；可记忆放行） |
 
 - **「查不查」由模型判断**（tool_use 依问题与工具描述决定）；「能不能写」由工具实现按数据源 `readOnly` 配置强制拦截，双保险。
 - agent 侧只读 host 落盘的 `~/.zcode/v2/data-sources/`（config.json + schema-cache/），路径公式与 `shared-credentials.ts` 一致（`ZCODE_DATA_BASE_DIR ?? homedir()`）；agent 不写这两个文件，也不实时内省——表结构一律以面板同步的缓存为准，未同步时提示用户去面板同步。
@@ -88,8 +94,8 @@ Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择�
 ### 7.1 产品规则
 
 - 会话级选择（conversation binding）与全局激活（`activeId`）是两个概念：
-  - **会话级选择**：本对话用哪个源；新建对话（draft scope）默认为空。面板勾选状态、
-    输入框按钮文案均以它为准。
+- **会话级选择**：本对话用哪个源；新建对话（draft scope）默认为空。面板勾选状态、
+  输入框按钮文案均以它为准；未选择时按钮只显示图标，不展示「未选择」占位文案。
   - **全局激活**：点击列表项仍会激活该源（触发表结构同步、更新 `activeId`），维持
     §6 的工具侧 fallback 解析（`data_source` 入参缺省 → `activeId`）不变。
 - 面板提供「不使用数据源」入口，可把当前对话恢复为未选择（收回提权）。
@@ -143,4 +149,3 @@ CLI（bootstrap / core）
 4. 删除已被某对话选择的数据源后再发送 → 按未选择处理（工具隐藏），不报悬空绑定。
 5. 数据源面板勾选、按钮文案跟随会话级选择；不同会话互不影响。
 6. automation（cron）轮会话中 DB 工具仍可用；手机 / Web 与桌面行为一致（同一 Host 信封）。
-

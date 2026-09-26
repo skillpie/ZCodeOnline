@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 连接器集中承载拨号、e2e 握手、心跳与重连退避同一条生命周期（specs/web-tunnel.md §3.2），拆分会割裂状态机；后续按隧道功能边界单独推进。 */
 // 宿主出站隧道连接器（specs/web-tunnel.md §3.2）。
 // 出站拨号 relay（用户机器不开入站端口）；拼接流内的业务字节端到端加密，
 // 连接器解密后按 WS 消息 1:1 转发给本机 loopback 业务服务（/ws，replayable 档）。

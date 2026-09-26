@@ -854,14 +854,9 @@ export function App({
     preserveNextSettingsExit();
     setWorkspaceMainView("plugin-store");
   }, [preserveNextSettingsExit]);
-  const handleNavigateToSkillMarketMain = useCallback(() => {
-    // 技能市场与 automations 同级：纯主视图切换，不进任务导航历史。
-    // 侧边栏入口不携带参数，清掉可能残留的技能详情深链。
-    setSkillMarketInitialPath(null);
-    setWorkspaceMainView("skill-market");
-  }, []);
   // 付费技能详情弹窗「前往技能市场」：深链到该技能的详情页（specs/skill-market.md §5.1）。
   // 链接格式用 skillpie 站内既有约定：/skills?skill=<normalizedName>。
+  // 侧边栏入口已改为外跳系统浏览器（specs/skill-market.md §1），不再经此切换视图。
   const handleOpenSkillMarketSkill = useCallback((normalizedName: string) => {
     setSkillMarketInitialPath(`/skills?skill=${encodeURIComponent(normalizedName)}`);
     setWorkspaceMainView("skill-market");
@@ -1165,7 +1160,6 @@ export function App({
         onOpenAutomationConsumed={handleOpenAutomationConsumed}
         handleOpenAutomations={handleOpenAutomations}
         handleOpenPluginStore={handleOpenPluginStoreForScope}
-        handleOpenSkillMarket={handleNavigateToSkillMarketMain}
         skillMarketInitialPath={skillMarketInitialPath}
         loadSkillMarketSsoJwt={loadSkillMarketSsoJwt}
         handleManageInstalledPlugins={handleManageInstalledPlugins}

@@ -53,9 +53,6 @@ function DataSourceEntryInner({
   const selectedDataSource =
     dataSources.find((source) => source.id === selectedDataSourceId) ?? null;
   const label = intl.formatMessage({ id: "chat.toolbar.dataSource.label" });
-  const caption = selectedDataSource
-    ? selectedDataSource.name
-    : intl.formatMessage({ id: "chat.toolbar.dataSource.none" });
   const anySyncing = Object.values(syncStatus).some((status) => status === "syncing");
   const selectedSyncError = selectedDataSource ? (syncError[selectedDataSource.id] ?? null) : null;
 
@@ -74,12 +71,15 @@ function DataSourceEntryInner({
               className="group/data-source h-7 w-fit justify-center gap-1 rounded-lg px-1.5 py-1.5 text-ui-base data-[composer-compact=true]:w-7 data-[composer-compact=true]:gap-0 data-[composer-compact=true]:px-0"
             >
               <Database className="size-4 shrink-0" aria-hidden />
-              <span
-                className="max-w-28 truncate whitespace-nowrap group-data-[composer-compact=true]/data-source:hidden"
-                data-data-source-caption
-              >
-                {caption}
-              </span>
+              {/* 未选择时不展示占位文案（specs/data-source.md §7.1）：按钮只有图标。 */}
+              {selectedDataSource ? (
+                <span
+                  className="max-w-28 truncate whitespace-nowrap group-data-[composer-compact=true]/data-source:hidden"
+                  data-data-source-caption
+                >
+                  {selectedDataSource.name}
+                </span>
+              ) : null}
               {anySyncing ? (
                 <Loader2
                   className="size-3 shrink-0 animate-spin text-foreground-subtle"

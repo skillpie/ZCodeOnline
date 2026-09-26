@@ -132,11 +132,10 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   onOpenAutomationConsumed: () => void;
   handleOpenAutomations: OpenAutomationsMain;
   handleOpenPluginStore: () => void;
-  handleOpenSkillMarket: () => void;
   /**
    * 技能市场内嵌视图的初始路径（如 /skills?skill=<normalizedName>）。
-   * 付费技能「前往技能市场」深链到详情页；侧边栏入口为 null（市场首页）。
-   * App 拥有该状态，随 workspaceMainView 切换一起更新。
+   * 付费技能「前往技能市场」深链到详情页；侧边栏入口已外跳系统浏览器（specs/skill-market.md §1），
+   * 不再写入该状态。App 拥有该状态，随 workspaceMainView 切换一起更新。
    */
   skillMarketInitialPath?: string | null;
   handleManageInstalledPlugins: () => void;

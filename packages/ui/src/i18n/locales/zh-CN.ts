@@ -4550,7 +4550,6 @@ const zhCN: Record<string, string> = {
   "chat.toolbar.dataSource.label": "数据源",
   "chat.toolbar.dataSource.tooltip":
     "为本对话选择数据源；选择后 Agent 才能在对话中查询数据库（MySQL / PostgreSQL）",
-  "chat.toolbar.dataSource.none": "未选择",
   "chat.toolbar.dataSource.count": "{count} 个",
   "chat.toolbar.dataSource.deselect": "不使用数据源",
   "chat.toolbar.dataSource.hint": "选择后 Agent 才能在本对话中查询该数据源",
