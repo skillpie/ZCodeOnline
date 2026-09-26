@@ -152,6 +152,13 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   // 已在线上触发安装包启动即报 Cannot find module 'ms'（Require stack: debug/src/common.js），
   // 自动更新链路直接崩。ms 是叶子包，显式注入即可让 debug 在 app.asar 内稳定解析。
   "ms",
+  // 数据源服务（services/data-source）引入 mysql2 / pg；两者因 CJS 动态 require 在 tsup
+  // 外置（tsup.config desktopNodeRuntimeExternals）。外置后主进程产物保留裸 import，
+  // electron-builder 又因 @zcode workspace 包排除 + hoisted 布局不稳定拷贝它们，
+  // 导致安装包主进程启动即报 Cannot find package 'mysql2'。这里以两者为闭包根注入，
+  // 递归带齐 denque/iconv-lite/pg-protocol 等子依赖，与 bundle.mjs 校验名单同口径。
+  "mysql2",
+  "pg",
 ];
 // pacman 依赖必须使用 Arch 官方仓库中的包名。electron-builder 的历史默认集合包含
 // 已移除的 libappindicator-gtk3/http-parser，且缺少 Electron 实际需要的运行库；显式
@@ -217,7 +224,7 @@ if (
   !macSigningIdentity
 ) {
   throw new Error(
-    "ZCode Preview macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1",
+    "ZCodePlus macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1",
   );
 }
 

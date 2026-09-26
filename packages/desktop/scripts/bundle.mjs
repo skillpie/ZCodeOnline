@@ -117,6 +117,12 @@ const requiredRuntimeModules = [
   "asn1",
   "bcrypt-pbkdf",
   "tweetnacl",
+  // Bugfix: 数据源服务的 mysql2 / pg 在 tsup 外置后，electron-builder 不保证把它们拷进
+  // app.asar，已触发安装包启动即报 Cannot find package 'mysql2'。这里与 afterPack 注入
+  // 名单（electron-builder.config.js REQUIRED_ASAR_RUNTIME_MODULES）同口径机械校验，
+  // 防止缺包产物流出。
+  "mysql2",
+  "pg",
 ];
 const electronBuilderRetryCount = 3;
 const electronBuilderRetryDelayMs = 5_000;

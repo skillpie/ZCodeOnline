@@ -60,7 +60,7 @@ function loadEnvFiles(): Record<string, string> {
 
 const env = loadEnvFiles();
 const { environment: zcodeEnv } = await loadBuiltinProviderConfig();
-// 安装包身份与后端环境分轴：ZCODE_PREVIEW_IDENTITY=1 让生产后端的构建仍以 ZCode Preview 身份打包运行。
+// 安装包身份与后端环境分轴：ZCODE_PREVIEW_IDENTITY=1 让生产后端的构建仍以 ZCodePlus 身份打包运行。
 const zcodeProductFlavor = resolveDesktopProductFlavor({ ...process.env, ZCODE_ENV: zcodeEnv });
 console.log(`[tsup] ZCODE_ENV=${zcodeEnv} ZCODE_PRODUCT_FLAVOR=${zcodeProductFlavor}`);
 
@@ -170,6 +170,11 @@ export default defineConfig([
       // electron-builder 又会排除 node_modules/@zcode，导致安装包启动即 ERR_MODULE_NOT_FOUND。
       // producer 的 JS broker 必须跟随 services 一起内联，原生 addon 仍只存在于独立 Helper。
       "@zcode/zcode-cua",
+      // 隧道管理面（desktopTunnelControl）引用 @zcode/server-cli/control；workspace 包
+      // exports 指向 src/*.ts 源码，Electron 生产运行时没有 TS loader，electron-builder 又
+      // 排除 node_modules/@zcode，遗漏内联会导致安装包启动即 ERR_MODULE_NOT_FOUND
+      // （specs/desktop-product-identity.md §2 打包边界规则）。
+      "@zcode/server-cli",
     ],
     // OTLP 端点与鉴权只在运行时读取；构建环境中的凭据不能写进公开安装包。
     define: createSharedDefines(),
@@ -230,6 +235,8 @@ export default defineConfig([
       "@zcode/provider",
       "@zcode/provider-node",
       "@zcode/zcode-cua",
+      // 同 main：workspace 源码包必须内联，规则见 specs/desktop-product-identity.md §2。
+      "@zcode/server-cli",
     ],
     define: createSharedDefines(),
     // 与 main 保持一致的 chunk 隔离策略，避免 host/main 产物相互覆盖。
@@ -259,6 +266,8 @@ export default defineConfig([
       "@zcode/provider",
       "@zcode/provider-node",
       "@zcode/zcode-cua",
+      // 同 main：workspace 源码包必须内联，规则见 specs/desktop-product-identity.md §2。
+      "@zcode/server-cli",
     ],
     define: createSharedDefines(),
     esbuildOptions(options) {

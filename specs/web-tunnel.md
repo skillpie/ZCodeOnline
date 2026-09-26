@@ -121,6 +121,7 @@ relay 服务（独立部署；数据面 = 加密字节管道 + 路由表，控�
 - **路线 A（正解，工作量在 Host）**：桌面窗口 Host 本就支持多 attachment（Renderer 与手机 attachment 共存，clientMode 感知，`packages/desktop/src/host/index.ts`）。在此之上新增一种"隧道 attachment"：TunnelConnector 的解密流经 WS→MessagePort 语义 shim，按 replayable attachment 准入窗口 Host（与手机同权限面）。优点：浏览器会话与桌面会话共享同一 Host、同一任务历史，无双所有者问题；权限弹窗可复用 Host 现有本地副作用门禁（M3 的浏览器内确认在此路径上自然落点）。代价：attachment 准入与 `hostMessagePortGuard` 需要适配非 MessagePort 传输，涉及 host 生命周期与 scope generation 语义，需单独 spec 评审。
 - **路线 B（过渡）**：桌面 App 仅作为 server-cli daemon 的管理面（安装、`tunnel-enable`、展示配对码），浏览器流量进 server-cli 宿主。优点：零 Host 改动，全部复用 M1 已有能力；代价：同一 workspace 若同时被桌面窗口与隧道宿主打开，任务状态分属两个 runtime——依赖既有 owner/lease 与 stale-run 防护兜底，产品上需要明确"浏览器创建的任务在 server-cli 宿主"的语义。
 - **建议**：路线 B 先行验证需求，路线 A 作为 M3+ 的正式形态单独立 spec。
+- **实现与回退（2026-09）**：路线 B 已按"桌面 App 仅作 daemon 管理面"落地（`packages/desktop/src/main/desktopTunnelControl.ts` IPC 转发 + `packages/zcode-server-cli/src/tunnel/` daemon 控制 socket）。**2026-09-26 起按产品决策移除桌面管理面 UI 入口**：侧栏底部的「浏览器远程访问」触发按钮（`WorkspaceTunnelAccessTrigger`）与 `TunnelAccessDialog` 弹窗已删除，`tunnelManager.*` 文案同步清理；桌面→daemon 的 IPC 管理通道保留（无 UI 入口，供后续路线 A / 其他入口复用）。浏览器侧隧道入口（`?tunnel=1`、`/16位码`）不受影响。
 
 ## 5.7 产品化收尾（"陌生人三分钟装完"）
 
