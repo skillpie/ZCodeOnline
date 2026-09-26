@@ -44,6 +44,7 @@ import {
 import { isSubagentDispatchToolName } from "../../tool/compat.js";
 import { resolveEmbeddedSearchBranchCapability } from "../../embedded-search/capability.js";
 import { getSessionShellEnvironment } from "./session-shell-environment.js";
+import { runCompactSummaryModelRequest } from "./compact-summary-model-request.js";
 import { deriveChildClientPorts } from "../helpers/child-client-ports.js";
 import { createCoordinatorResponsePort } from "../../subagent/coordinator-response.js";
 import { isStaleBranchRuntimeTaskEvent } from "./runtime-command-generation.js";
@@ -71,6 +72,24 @@ export function createDefaultSubagentPort(
     outputRootDir: this.config.subagents?.outputRootDir,
     profiles: this.config.subagents?.profiles,
     builtInModelSelectionOverrides: this.config.subagents?.builtInModelSelectionOverrides,
+    // specs/subagent-result-digest.md：大结果压缩回传。摘要模型复用 compact 摘要同一条
+    // 请求链路（stream 失败自动回落非流式）；模型实例由 runner 传入本次 Agent 调用
+    // 继承的执行模型，这里不自行选模，避免摘要面与执行面漂移。
+    resultDigest: this.config.subagents?.resultDigest,
+    resultDigestArtifactStore: deps.artifactStore,
+    runResultDigestModel: async (input) => {
+      const result = await runCompactSummaryModelRequest({
+        logger: this.logger,
+        model: input.model,
+        request: {
+          messages: [{ role: "user", content: input.prompt }],
+          maxOutputTokens: input.maxOutputTokens,
+          ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
+          traceContext: input.traceContext,
+        },
+      });
+      return result.text;
+    },
     runtimeTaskRegistry: this.runtimeTaskRegistry,
     emitParentEvent: async (event, traceContext) => {
       if (isStaleBranchRuntimeTaskEvent(this, event)) return;

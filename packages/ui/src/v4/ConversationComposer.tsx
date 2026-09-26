@@ -365,6 +365,10 @@ interface ConversationComposerProps {
   draftConfig?: Partial<SessionConfigState>;
   /** SessionPane 注入的完整 Draft owner；生产路径不再由编辑器直接覆盖持久记录。 */
   composerDraft: V4ComposerDraft;
+  /** 会话级数据源绑定（specs/data-source.md §7）；null = 未选择（新建对话默认态）。 */
+  selectedDataSourceId: string | null;
+  /** 面板选择回调；null 表示取消选择。 */
+  onSelectDataSource: (dataSourceId: string | null) => void;
   updateComposerContent: (
     content: Pick<V4ComposerDraft, "text" | "editorStateJson" | "mention">,
   ) => void;
@@ -489,6 +493,8 @@ function ConversationComposerImpl({
   draftMode = false,
   draftConfig,
   composerDraft,
+  selectedDataSourceId,
+  onSelectDataSource,
   updateComposerContent,
   replaceComposerDraft,
   submissionReady = true,
@@ -2158,8 +2164,12 @@ function ConversationComposerImpl({
           remoteSessionId={remoteSessionId}
           currentSessionBusy={canStop}
         />
-        {/* 数据源入口（附加式新功能）：自管服务可用性与面板状态，不在 composer 重复判定。 */}
-        <V4ComposerDataSourceEntry />
+        {/* 数据源入口：自管服务可用性与面板状态，不在 composer 重复判定；
+            会话级选择状态由 SessionPane 经草稿 scope 提供（specs/data-source.md §7）。 */}
+        <V4ComposerDataSourceEntry
+          selectedDataSourceId={selectedDataSourceId}
+          onSelectDataSource={onSelectDataSource}
+        />
         <ConversationBackgroundWorkTrigger
           backgroundWorks={snapshot?.backgroundWorks ?? []}
           runningSubagentCount={runningSubagentCount}
@@ -2177,9 +2187,11 @@ function ConversationComposerImpl({
       backgroundWorkOpenTarget,
       onOpenRunningBackgroundWorks,
       onSwitchMode,
+      onSelectDataSource,
       provider,
       remoteSessionId,
       runningSubagentCount,
+      selectedDataSourceId,
       snapshot?.backgroundWorks,
       workspaceIdentity,
       workspacePath,

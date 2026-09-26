@@ -6,11 +6,19 @@ import {
   type ModelMessageContent,
   type ToolCallId,
 } from "@zcode/contracts";
+import { isPersistedOutputContent } from "../tool/result-persistence-format.js";
 import type { CompactModelMessage } from "./manual.js";
 import { estimateMessageTokens } from "./manual.js";
 
 export const MICROCOMPACT_CLEARED_TOOL_RESULT_PREFIX = "[Old tool result content cleared]";
 export const MICROCOMPACT_CLEARED_TOOL_RESULT_MESSAGE = "[Old tool result content cleared]";
+// 带 artifact 指针的占位内容复用 persisted-output 信封的路径句式，
+// 模型对「Full output saved to:」已按可回读路径理解，不另造文案。
+const MICROCOMPACT_CLEARED_ARTIFACT_POINTER_PREFIX = "Full output saved to: ";
+const RESULT_BUDGET_TRUNCATION_MARKER = "[Tool output truncated by resultBudget:";
+const PERSISTED_OUTPUT_PATH_LINE_PATTERN = /Full output saved to: (.+)/;
+const RESULT_BUDGET_ARTIFACT_HINT_PATTERN =
+  /\[Tool output truncated by resultBudget: artifactPath=([^\],]+)/;
 export const DEFAULT_MICROCOMPACT_KEEP_RECENT_TOOL_RESULTS = 5;
 const DEFAULT_MICROCOMPACT_IDLE_THRESHOLD_MINUTES = 60;
 export const DEFAULT_MICROCOMPACT_MIN_TOKEN_SAVINGS = 256;
@@ -138,7 +146,7 @@ export function maybeLocalMicrocompactMessages<T extends LocalMicrocompactMessag
     if (!message) continue;
     messages[candidate.index] = {
       ...message,
-      content: buildClearedToolResultContent(),
+      content: buildClearedToolResultContent(message.content),
     };
   }
 
@@ -238,12 +246,33 @@ function collectCompactableToolResultGroups<T extends LocalMicrocompactMessage>(
   return groups;
 }
 
-function buildClearedToolResultContent(): ModelMessageContent {
-  return MICROCOMPACT_CLEARED_TOOL_RESULT_MESSAGE;
+function buildClearedToolResultContent(originalContent: ModelMessageContent): ModelMessageContent {
+  const artifactPath = extractPreservedArtifactPath(originalContent);
+  if (artifactPath === undefined) {
+    return MICROCOMPACT_CLEARED_TOOL_RESULT_MESSAGE;
+  }
+  // Bash 等大输出落盘后，artifact 路径是磁盘文件的唯一引用；
+  // 清理时保留指针，避免文件还在而模型永久失去回读入口。
+  return `${MICROCOMPACT_CLEARED_TOOL_RESULT_PREFIX}\n${MICROCOMPACT_CLEARED_ARTIFACT_POINTER_PREFIX}${artifactPath}`;
+}
+
+function extractPreservedArtifactPath(content: ModelMessageContent): string | undefined {
+  const text = modelMessageContentToText(content);
+  // 仅识别运行时两种稳定落盘格式（persisted-output 信封与 resultBudget 截断尾注），
+  // 不对自由文本做路径猜测，防止把工具输出里碰巧出现的相似文案误判为指针。
+  if (isPersistedOutputContent(text)) {
+    return PERSISTED_OUTPUT_PATH_LINE_PATTERN.exec(text)?.[1]?.trim();
+  }
+  if (text.includes(RESULT_BUDGET_TRUNCATION_MARKER)) {
+    return RESULT_BUDGET_ARTIFACT_HINT_PATTERN.exec(text)?.[1]?.trim();
+  }
+  return undefined;
 }
 
 function isMicrocompactClearedToolResultContent(content: ModelMessageContent): boolean {
-  return modelMessageContentToText(content) === MICROCOMPACT_CLEARED_TOOL_RESULT_MESSAGE;
+  // 带 artifact 指针的占位内容不等于常量，必须按前缀识别；
+  // 否则二次触发时会把占位符当作未清理结果再次处理并剥掉指针行。
+  return modelMessageContentToText(content).startsWith(MICROCOMPACT_CLEARED_TOOL_RESULT_PREFIX);
 }
 
 function hasMediaToolResultContent(content: ModelMessageContent): boolean {

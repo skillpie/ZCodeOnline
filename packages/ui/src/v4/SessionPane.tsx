@@ -102,6 +102,7 @@ import { useDraftModelReadinessGate } from "@/v4/composer/useDraftModelReadiness
 import { useSettings } from "@/hooks/useSettingService.js";
 import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import { useDataSourceStore } from "@/store/dataSourceStore.js";
 import {
   DEFAULT_CONVERSATION_SHARE_ACCESS_MODE,
   DEFAULT_CONVERSATION_SHARE_DOCK_STATE,
@@ -426,6 +427,16 @@ function submissionConfigFromCommand(
         ? candidate.planEnabled
         : candidate.mode === "plan",
   };
+}
+
+// 会话级数据源绑定（specs/data-source.md §7）只在仍存在于数据源投影列表时随
+// submission 携带；悬挂 id（源已删除/列表未就绪）按未选择处理，Host 门控随之隐藏 DB 工具。
+function resolveSubmissionDataSourceId(draft: { dataSourceId?: string }): string | undefined {
+  const dataSourceId = draft.dataSourceId;
+  if (!dataSourceId) return undefined;
+  return useDataSourceStore.getState().dataSources.some((source) => source.id === dataSourceId)
+    ? dataSourceId
+    : undefined;
 }
 
 function isConversationFileDrag(dataTransfer: DataTransfer): boolean {
@@ -1240,6 +1251,8 @@ export function SessionPane({
     handleDraftSelectModel,
     handleDraftSelectThought,
     handleDraftSwitchMode,
+    composerDraftRef,
+    handleDraftSelectDataSource,
     promoteComposerDraft,
     captureAcceptedModelSelection,
     replaceComposerDraft,
@@ -1280,8 +1293,15 @@ export function SessionPane({
   }, [draftConfigRef, modelSelectionView?.revision, sessionId, workspaceIdentity, workspacePath]);
   const recommendStartPlan = useStartPlanRecommendation(modelSelectionView);
   const createSubmissionFromComposer = useCallback(
-    () => createComposerSubmissionConfig(draftConfigRef.current, modelSelectionView),
-    [draftConfigRef, modelSelectionView],
+    () =>
+      createComposerSubmissionConfig(
+        {
+          ...draftConfigRef.current,
+          dataSourceId: resolveSubmissionDataSourceId(composerDraftRef.current),
+        },
+        modelSelectionView,
+      ),
+    [draftConfigRef, composerDraftRef, modelSelectionView],
   );
   const composerSubmissionReady = useMemo(
     () => createComposerSubmissionConfig(draftConfig, modelSelectionView) !== null,
@@ -4405,6 +4425,9 @@ export function SessionPane({
       onDraftStateChange={handleComposerDraftStateChange}
       composerRestoreRequest={composerRestoreRequest}
       onComposerRestoreApplied={handleComposerRestoreApplied}
+      // 会话级数据源绑定（specs/data-source.md §7）：入口的勾选与文案以此为准。
+      selectedDataSourceId={composerDraft.dataSourceId ?? null}
+      onSelectDataSource={handleDraftSelectDataSource}
       onStop={handleStopFromButton}
       onSelectModel={handleSelectModel}
       onSelectThought={handleSelectThought}

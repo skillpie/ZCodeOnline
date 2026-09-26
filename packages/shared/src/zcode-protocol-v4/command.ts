@@ -52,6 +52,12 @@ export const commandPayloadSchemas = {
         modelSelection: modelSelectionSchema.optional(),
         mode: submissionModeSchema.optional(),
         planEnabled: z.boolean().optional(),
+        // 会话级数据源绑定（specs/data-source.md §7）：无预热 fallback 建会话时，
+        // 首发即首条 turn，与 sendText.dataSourceId 同义。
+        dataSourceId: z.string().min(1).optional(),
+        // 与 sendText.toolDisallowlist 同型：Host 门控在首轮注入，经原生 prompt turn
+        // 管道生效；调用方自带时 Host 不覆盖。additive，旧 CLI 非 strict 解析会剥离。
+        toolDisallowlist: z.array(z.string().min(1)).optional(),
       })
       .optional(),
     config: createSessionRequestedConfigSchema.optional(),
@@ -109,6 +115,10 @@ export const commandPayloadSchemas = {
       // 定时任务会话的后续用户输入也必须保持 turn-scoped 工具面隔离；不能借用
       // automationId，否则会把普通用户输入误标成一次 automation 派发。
       toolDisallowlist: z.array(z.string().min(1)).optional(),
+      // 会话级数据源绑定（specs/data-source.md §7）：本对话已选择的数据源 id。
+      // 字段本身不改工具面；Host 信封处以「是否携带」裁决是否把 DB 工具并入
+      // toolDisallowlist（未选择数据源的对话轮对模型隐藏 DB 工具）。
+      dataSourceId: z.string().min(1).optional(),
     })
     .superRefine((payload, context) => {
       if (payload.automationId && payload.offPeakTaskId) {

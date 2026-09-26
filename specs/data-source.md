@@ -80,3 +80,67 @@ interface IDataSourceService {
 - agent 进程是独立于 host 的 CLI runtime，驱动依赖（mysql2/pg）声明在 `apps/zcode-cli/packages/core/package.json` 并被 esbuild 内联进 `zcode.cjs`，与 `@zcode/services` 的同名驱动是两份独立实现（宿主与 agent 不共享代码，避免跨包依赖反转）。
 - 修改工具代码后需 `pnpm --filter @zcode/cli... build` 并重启宿主（dev:web / dev:desktop）才会生效。
 
+## 7. 会话级数据源选择与 DB 工具提权
+
+DB 工具不再对 UI 会话无条件可见：**新建对话默认未选择数据源，用户为该对话选择数据源后，
+Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择数据源的对话轮对模型隐藏四个 DB 工具。
+
+### 7.1 产品规则
+
+- 会话级选择（conversation binding）与全局激活（`activeId`）是两个概念：
+  - **会话级选择**：本对话用哪个源；新建对话（draft scope）默认为空。面板勾选状态、
+    输入框按钮文案均以它为准。
+  - **全局激活**：点击列表项仍会激活该源（触发表结构同步、更新 `activeId`），维持
+    §6 的工具侧 fallback 解析（`data_source` 入参缺省 → `activeId`）不变。
+- 面板提供「不使用数据源」入口，可把当前对话恢复为未选择（收回提权）。
+- 选择是纯 renderer 意图：不改变数据源配置事实，唯一的 Host 侧痕迹是激活与表结构同步。
+
+### 7.2 状态所有者
+
+```text
+UI（composerDraftStore，per-scope 会话草稿）
+  └─ V4ComposerDraft.dataSourceId  本对话选择；draft scope 默认缺省（未选择），
+     promote 到真实会话 scope 时随草稿整体转移
+UI（dataSourceStore，投影缓存）
+  └─ 列表 / activeId 仍是 Host 的投影，会话选择校验以投影列表为准
+Host（zcodeAgentService 信封装配）
+  └─ 唯一提权裁决点：按 payload 是否携带 dataSourceId 合并 turn 级 toolDisallowlist
+CLI（bootstrap / core）
+  └─ 机械执行：toolDisallowlist 经既有 startPromptTurn → turn-loop 管道逐轮过滤 provider 工具面
+```
+
+### 7.3 接口（协议 additive 字段）
+
+- `sendText.dataSourceId?: string`：本对话已选择的数据源 id；是「本轮提权」的信号。
+- `createSession.firstInput.dataSourceId?: string`：无预热 fallback 建会话首发的同义字段。
+- `createSession.firstInput.toolDisallowlist?: string[]`：与 sendText 同型的轮级禁用名单；
+  Host 在 `firstInput` 未携带 `dataSourceId` 时注入 DB 工具名。
+- 字段值除 Host 门控判定外暂无其他消费方；CLI 侧不解析数据源绑定（工具仍按 §6 fallback
+  `activeId`，与现状一致）。后续如需按会话硬绑定目标源，可从该字段接线。
+
+### 7.4 事件顺序与失败语义
+
+- 提交冻结：点击发送时从草稿读取 `dataSourceId` 并校验其仍存在于数据源投影列表；
+  悬挂 id（源已删除）按未选择处理，不随 submission 携带。
+- Host 门控（`buildConversationCommandEnvelope`，桌面与 Web 同源）：
+  - 普通 `sendText` 未携带 `dataSourceId` → 合并 `DBQuery/DBSchema/DBExecute/DBExport`
+    进 `toolDisallowlist`（轮级、registry 保留、只对模型隐藏）。
+  - `createSession.firstInput` 未携带 `dataSourceId` → 同型注入 `firstInput.toolDisallowlist`。
+  - **automation / off-peak / goal 轮不注入**（保持 §6 的全量工具面）：定时任务在配置时
+    已隐含数据源意图，fail-open 避免打断既有自动化。
+  - DB 工具名在 Host 侧按名收口（宿主不依赖 CLI contracts 包）；CLI 侧增删 DB 工具须同步。
+- turn 级名单的既有语义免费获得：busy 队列回放、steer/guide 续轮均携带已注入名单；
+  子代理工具面仍由会话级配置与 profile 规则约束（与 automation 轮名单同一边界，不在本轮收窄）。
+- 旧 CLI 兼容：schema 为非 strict zod，未知键静默剥离 → 旧 CLI 上首轮 fail-open（工具可见），
+  与 `offPeakToolEnabled` 同一取舍。
+- TUI / headless CLI 不经过 Host 信封装配，DB 工具保持 §6 的无条件注册，不受本节影响。
+
+### 7.5 验收场景
+
+1. 新建对话未选择数据源：发送「查一下订单表」→ 模型工具面无 DB 四工具。
+2. 面板选择某源（自动激活 + 同步表结构）后发送 → 该轮起 DB 四工具可见可用。
+3. 对话中途选择 / 切换 / 「不使用数据源」→ 自下一轮起提权、换绑、收回。
+4. 删除已被某对话选择的数据源后再发送 → 按未选择处理（工具隐藏），不报悬空绑定。
+5. 数据源面板勾选、按钮文案跟随会话级选择；不同会话互不影响。
+6. automation（cron）轮会话中 DB 工具仍可用；手机 / Web 与桌面行为一致（同一 Host 信封）。
+

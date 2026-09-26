@@ -22,6 +22,7 @@ import {
   type AgentCompletedOutput,
   type AgentOutput,
   type Logger,
+  type Model,
   type ModelUsage,
   type SessionEvent,
   type SessionId,
@@ -38,6 +39,7 @@ import {
   type SubagentStopOptions,
   type SubagentTaskSnapshot,
   type SubagentWaitOptions,
+  type ToolArtifactStorePort,
   type TraceContext,
 } from "@zcode/contracts";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -51,6 +53,12 @@ import {
 import { EXPLORE_AGENT_ALLOWED_TOOLS } from "./explore-tools.js";
 import { formatLocalAgentTaskNotification } from "./completion-notification.js";
 import { filterSubagentChildToolNames } from "./tool-policy.js";
+import {
+  maybeDigestSubagentResult,
+  resolveSubagentNotificationResultText,
+  type SubagentResultDigestConfig,
+  type SubagentResultDigestModelRunner,
+} from "./result-digest.js";
 import {
   ErrorPayloadRole,
   selectExecutionErrorMessage,
@@ -126,6 +134,11 @@ export interface ExploreSubagentPortOptions {
   inactivityTimeoutMs?: number;
   autoBackgroundMs?: number;
   logger?: Logger;
+  // specs/subagent-result-digest.md：大结果压缩回传。三个可选项全部缺席时行为与
+  // 无摘要完全一致（阈值内、模型/回调缺失、写入失败都走回退），因此不作为必填端口。
+  resultDigest?: SubagentResultDigestConfig;
+  resultDigestArtifactStore?: ToolArtifactStorePort;
+  runResultDigestModel?: SubagentResultDigestModelRunner;
 }
 
 export function createExploreSubagentPort(options: ExploreSubagentPortOptions): SubagentPort {
@@ -1167,6 +1180,26 @@ async function runAgentToCompletion(
   const totalToolUseCount = resolveSubagentToolUseCount(childResult.events);
   const totalDurationMs = Date.now() - lifecycle.startedAt;
 
+  // specs/subagent-result-digest.md：摘要只在组装期生成一次，前台/后台（含前台转后台）
+  // 共用同一产物。失败时 digest 缺席，输出与无摘要完全一致；abortSignal 透传保证
+  // 取消不被摘要调用拖住。
+  const digest = await maybeDigestSubagentResult({
+    report: childResult.response,
+    description: request.description,
+    prompt: request.prompt,
+    agentType: request.agentType,
+    config: options.resultDigest,
+    model: runOptions?.model,
+    runDigestModel: options.runResultDigestModel,
+    artifactStore: options.resultDigestArtifactStore,
+    sessionId: lifecycle.childSessionId,
+    toolCallId: String(request.parentToolCallId),
+    trace: lifecycle.runTraceContext,
+    abortSignal: runOptions?.signal,
+    logger: options.logger,
+    fallbackOutputPath: lifecycle.outputFile,
+  });
+
   const output: AgentCompletedOutput = {
     status: "completed",
     agentId: lifecycle.agentId,
@@ -1179,6 +1212,7 @@ async function runAgentToCompletion(
         text: childResult.response,
       },
     ],
+    ...(digest ? { digest } : {}),
     totalToolUseCount,
     totalDurationMs,
     ...(totalTokens === undefined ? {} : { totalTokens }),
@@ -1508,7 +1542,7 @@ async function finalizeBackgroundCompletion(
     description: completed.output.description,
     outputFile: lifecycle.outputFile,
     parentToolCallId: String(request.parentToolCallId),
-    result: completed.output.content.map((block) => block.text).join("\n\n"),
+    result: resolveSubagentNotificationResultText(completed.output),
     status: "completed",
     totalDurationMs: completed.output.totalDurationMs,
     totalTokens: completed.output.totalTokens,

@@ -4847,9 +4847,12 @@ const enUS: Record<string, string> = {
   // CUA composer entry button
   "chat.toolbar.computerUse.label": "Computer Use",
   "chat.toolbar.dataSource.label": "Data Sources",
-  "chat.toolbar.dataSource.tooltip": "Switch and manage database data sources (MySQL / PostgreSQL)",
+  "chat.toolbar.dataSource.tooltip":
+    "Pick a data source for this conversation; the agent can query databases only after you select one (MySQL / PostgreSQL)",
   "chat.toolbar.dataSource.none": "None",
   "chat.toolbar.dataSource.count": "{count}",
+  "chat.toolbar.dataSource.deselect": "No data source",
+  "chat.toolbar.dataSource.hint": "Selecting a source lets the agent query it in this conversation",
   "chat.toolbar.dataSource.empty":
     'No data sources yet. Click "New Data Source" below to add a MySQL / PostgreSQL connection',
   "chat.toolbar.dataSource.readOnly": "Read-only",
@@ -5954,7 +5957,7 @@ const enUS: Record<string, string> = {
 
   // Modes
   "mode.plan": "Plan",
-  "mode.label.glm.build": "Ask before changes",
+  "mode.label.glm.build": "Requires approval",
   "mode.label.glm.edit": "Edit automatically",
   "mode.label.glm.plan": "Plan mode",
   "mode.label.glm.yolo": "Full access",

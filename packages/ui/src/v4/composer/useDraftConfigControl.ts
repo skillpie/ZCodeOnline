@@ -80,6 +80,8 @@ interface DraftConfigControl {
   draftConfig: Partial<SessionConfigState>;
   /** 草稿已选 config（partial）；createSession 时经 buildDraftCreateConfigPayload 携带。 */
   draftConfigRef: React.RefObject<Partial<SessionConfigState>>;
+  /** 当前草稿全量（含会话级数据源绑定）；发送冻结时按 ref 读取，不依赖重渲染。 */
+  composerDraftRef: React.RefObject<V4ComposerDraft>;
   /** 当前草稿生命周期冻结的初始化 config；只供 prewarm/createSession 建立时使用。 */
   resolveInitialDraftConfig: () => Partial<SessionConfigState> | undefined;
   composerDraft: V4ComposerDraft;
@@ -97,6 +99,8 @@ interface DraftConfigControl {
   handleDraftSelectModel: (modelProvider: string, model: string) => void;
   handleDraftSelectThought: (thought: string) => void;
   handleDraftSwitchMode: (mode: string) => void;
+  /** 会话级数据源选择（specs/data-source.md §7）；null = 恢复未选择。 */
+  handleDraftSelectDataSource: (dataSourceId: string | null) => void;
 }
 
 export function useDraftConfigControl(params: {
@@ -174,6 +178,9 @@ export function useDraftConfigControl(params: {
   if (currentState !== storedState) setStoredState(currentState);
   const stateRef = useRef(currentState);
   stateRef.current = currentState;
+  // 与 stateRef 同步的草稿快照；发送冻结路径读 .current（与 draftConfigRef 同一模式）。
+  const composerDraftRef = useRef(draft);
+  composerDraftRef.current = draft;
   // 原因：按 revision 清草稿会把短暂不可用永久写成空选择。这里只派生当前结果，
   // 正文/模式自动保存继续保存 draft 中的原意图；读取未就绪时保留展示，提交由 View 门禁阻断。
   const effectiveSelection = modelSelectionView
@@ -480,10 +487,22 @@ export function useDraftConfigControl(params: {
     [updateComposerDraft],
   );
 
+  // 会话级数据源绑定随草稿 scope 持久化；promote 整体转移时自动带到真实会话。
+  const handleDraftSelectDataSource = useCallback(
+    (dataSourceId: string | null) => {
+      updateComposerDraft((current) => ({
+        ...current,
+        ...(dataSourceId ? { dataSourceId } : { dataSourceId: undefined }),
+      }));
+    },
+    [updateComposerDraft],
+  );
+
   return {
     modelSelectionRead,
     draftConfig,
     draftConfigRef,
+    composerDraftRef,
     resolveInitialDraftConfig,
     composerDraft: draft,
     updateComposerContent,
@@ -493,6 +512,7 @@ export function useDraftConfigControl(params: {
     handleDraftSelectModel,
     handleDraftSelectThought,
     handleDraftSwitchMode,
+    handleDraftSelectDataSource,
   };
 }
 

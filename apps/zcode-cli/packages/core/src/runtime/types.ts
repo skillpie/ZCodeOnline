@@ -145,6 +145,12 @@ export interface AgentRuntimeConfig {
     outputRootDir?: string;
     profiles?: readonly AgentProfile[];
     builtInModelSelectionOverrides?: Partial<Record<"general-purpose" | "Explore", ModelSelection>>;
+    // specs/subagent-result-digest.md：subagent 大结果压缩回传。缺省开启、阈值 32KB；
+    // env ZCODE_SUBAGENT_RESULT_DIGEST=off 逃生门优先于本配置。
+    resultDigest?: {
+      enabled?: boolean;
+      thresholdBytes?: number;
+    };
   };
   toolAllowlist?: readonly string[];
   toolDisallowlist?: readonly string[];

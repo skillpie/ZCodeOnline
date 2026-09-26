@@ -41,6 +41,17 @@ export interface AgentTextContentBlock {
   text: string;
 }
 
+/**
+ * 大结果（> subagents.resultDigest.thresholdBytes）时的压缩回传面。
+ * `content` 恒为全文；digest 只改变消费方读取的字段。摘要失败时整个字段缺席，
+ * 行为与无摘要完全一致（specs/subagent-result-digest.md §3）。
+ */
+export interface AgentResultDigest {
+  text: string;
+  originalBytes: number;
+  fullOutputPath: string;
+}
+
 export interface AgentCompletedOutput {
   status: "completed";
   agentId: string;
@@ -48,6 +59,7 @@ export interface AgentCompletedOutput {
   description: string;
   prompt: string;
   content: AgentTextContentBlock[];
+  digest?: AgentResultDigest;
   totalToolUseCount: number;
   totalDurationMs: number;
   totalTokens?: number;
@@ -76,6 +88,14 @@ export const AgentTextContentBlockSchema = z
   })
   .strict();
 
+export const AgentResultDigestSchema = z
+  .object({
+    text: z.string(),
+    originalBytes: z.number().int().nonnegative(),
+    fullOutputPath: z.string(),
+  })
+  .strict();
+
 export const AgentCompletedOutputSchema = z
   .object({
     status: z.literal("completed"),
@@ -84,6 +104,7 @@ export const AgentCompletedOutputSchema = z
     description: z.string(),
     prompt: z.string(),
     content: z.array(AgentTextContentBlockSchema),
+    digest: AgentResultDigestSchema.optional(),
     totalToolUseCount: z.number().int().nonnegative(),
     totalDurationMs: z.number().int().nonnegative(),
     totalTokens: z.number().int().nonnegative().optional(),

@@ -26,9 +26,10 @@
   "scripts": {
     "build": "tsc",
     "clean": "node ../../scripts/clean-dist.mjs",
-    "typecheck": "tsc --noEmit",
     "lint": "oxlint src --no-ignore",
-    "lint:fix": "oxlint --fix src --no-ignore"
+    "lint:fix": "oxlint --fix src --no-ignore",
+    "test": "node ../../../../node_modules/tsx/dist/cli.mjs --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@zcode/contracts": "workspace:*",

@@ -97,6 +97,11 @@ async function createSession(
         inputId: envelope.commandId,
         intent,
         ...(attachments ? { attachments } : {}),
+        // 轮级工具面隔离与 sendText 同管道：Host 门控在 firstInput 未绑定数据源时
+        // 注入 DB 工具名单（specs/data-source.md §7）；缺省不传 = 不收窄。
+        ...(payload.firstInput.toolDisallowlist
+          ? { toolDisallowlist: payload.firstInput.toolDisallowlist }
+          : {}),
       });
       firstInput = {
         delivery: started.admission.kind === "queued" ? "queue" : "startNow",

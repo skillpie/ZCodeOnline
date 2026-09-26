@@ -24,6 +24,8 @@ export interface V4ComposerDraft {
   lastPlanTransitionId?: string;
   lastPermissionGrantId?: string;
   modelSelection?: ModelSelection;
+  /** 会话级数据源绑定（specs/data-source.md §7）；缺省 = 未选择（新建对话默认态）。 */
+  dataSourceId?: string;
   /** 首次分享导入等待公共新任务初始化；不能由空 Session snapshot 抢先填充。 */
   initializeFromNewTask?: true;
   updatedAt: number;
@@ -133,6 +135,9 @@ function readDraft(value: unknown): V4ComposerDraft | null {
       ? { lastPlanTransitionId: value.lastPlanTransitionId }
       : {}),
     ...(modelSelection ? { modelSelection } : {}),
+    ...(typeof value.dataSourceId === "string" && value.dataSourceId
+      ? { dataSourceId: value.dataSourceId }
+      : {}),
     ...(value.initializeFromNewTask === true && !mode.success
       ? { initializeFromNewTask: true as const }
       : {}),
@@ -188,6 +193,7 @@ export function persistV4ComposerDraft(
     !draft.mention &&
     !draft.mode &&
     !draft.modelSelection &&
+    !draft.dataSourceId &&
     !draft.initializeFromNewTask
   ) {
     delete file.scopes[scopeId];

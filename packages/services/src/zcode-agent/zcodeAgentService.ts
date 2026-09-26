@@ -124,6 +124,7 @@ import {
   mergeOffPeakMutationToolDenylist,
 } from "#src/zcode-agent/automationToolPolicy.js";
 import { ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE } from "./zcodeAgent.js";
+import { mergeFirstInputDbToolGate, mergeSendTextDbToolGate } from "./conversationDbToolGate.js";
 import type {
   ZCodeProtocolRequestId,
   ModelSelection,
@@ -3287,12 +3288,20 @@ export function createZCodeAgentService(
       // 信封处同源注入；门禁 false 时不写字段（缺省即 fail-closed，与 legacy 一致）。
       const dynamicWorkflowEnabled = await resolveDynamicWorkflowGate();
       const offPeakToolEnabled = isOffPeakToolSupported(params);
-      if (!offPeakToolEnabled && !dynamicWorkflowEnabled) return envelope;
+      // 会话级数据源门控（specs/data-source.md §7）：首发 firstInput 未绑定数据源时
+      // 注入 DB 工具轮级禁用名单，与 sendText 同一裁决语义。
       const payload = commandPayloadSchemas.createSession.parse(envelope.payload);
+      const firstInput = payload.firstInput
+        ? mergeFirstInputDbToolGate(payload.firstInput)
+        : payload.firstInput;
+      if (!offPeakToolEnabled && !dynamicWorkflowEnabled && firstInput === payload.firstInput) {
+        return envelope;
+      }
       return {
         ...envelope,
         payload: {
           ...payload,
+          ...(firstInput ? { firstInput } : {}),
           ...(offPeakToolEnabled ? { offPeakToolEnabled: true } : {}),
           // 动态工作流灰度：V4 createSession 是桌面新会话的实际创建路径，不透传则九个工具
           // 永不注册。
@@ -3319,6 +3328,8 @@ export function createZCodeAgentService(
     }
     if (payload.offPeakTaskId) {
       // 闲时派发轮同型纵深——只 deny OffPeakCreate（OffPeakList 只读保留）。
+      // automation / off-peak 轮不做数据源门控（specs/data-source.md §7.4）：
+      // 定时任务配置时已隐含数据源意图，fail-open 保持既有自动化可用。
       return {
         ...envelope,
         payload: {
@@ -3327,7 +3338,17 @@ export function createZCodeAgentService(
         },
       };
     }
-    return envelope;
+    // 会话级数据源门控：未选择数据源的普通对话轮隐藏 DB 工具；携带 dataSourceId
+    // 即视为用户已为该对话提权（mergeSendTextDbToolGate 原名单透传，无需改写）。
+    const toolDisallowlist = mergeSendTextDbToolGate(
+      payload.toolDisallowlist,
+      payload.dataSourceId,
+    );
+    if (!toolDisallowlist || toolDisallowlist === payload.toolDisallowlist) return envelope;
+    return {
+      ...envelope,
+      payload: { ...payload, toolDisallowlist: [...toolDisallowlist] },
+    };
   }
 
   return {

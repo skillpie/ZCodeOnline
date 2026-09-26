@@ -17,6 +17,7 @@ import {
 import { TASK_TOOL_NAME } from "../compat.js";
 import type { ToolEntry, ToolHandler } from "../types.js";
 import { formatAgentProfilesForPrompt, type AgentProfile } from "../../subagent/profile.js";
+import { formatSubagentResultDigestReference } from "../../subagent/result-digest.js";
 
 const MAX_AGENT_MODEL_BYTES = 120_000;
 
@@ -41,6 +42,21 @@ const AGENT_TOOL_OUTPUT_SCHEMA = {
             required: ["type", "text"],
             additionalProperties: false,
           },
+        },
+        digest: {
+          type: "object",
+          description:
+            "Present only for very large results: condensed report plus the archived full-report path.",
+          properties: {
+            text: { type: "string", description: "Condensed digest of the agent's full report" },
+            originalBytes: { type: "integer", minimum: 0 },
+            fullOutputPath: {
+              type: "string",
+              description: "Archived full report path; Read it if the digest is insufficient",
+            },
+          },
+          required: ["text", "originalBytes", "fullOutputPath"],
+          additionalProperties: false,
         },
         totalToolUseCount: { type: "integer", minimum: 0 },
         totalDurationMs: { type: "integer", minimum: 0 },
@@ -111,6 +127,7 @@ function buildAgentProviderDescription(
     "Reach for this when the task matches an available agent type, when you have independent work to run in parallel, or when answering would mean reading across several files — delegate it and you keep the conclusion, not the file dumps. For a single-fact lookup where you already know the file, symbol, or value, search directly. Once you've delegated a search, don't also run it yourself — wait for the result.",
     "",
     "- The agent's final message is returned to you as the tool result; it is not shown to the user — relay what matters.",
+    "- Very large results are condensed into a digest with the full report archived; a full_report path is included. Read the archived file only if the digest is insufficient.",
     "- A new Agent call starts fresh, so the prompt must be self-contained.",
     "- `run_in_background: true` runs the agent asynchronously; you'll be notified when it completes.",
     "- When you launch multiple agents for independent work, send them in a single message with multiple tool uses so they run concurrently.",
@@ -135,7 +152,11 @@ function formatAgentOutputForModel(output: unknown): string {
 
   const data = parsed.data as AgentOutput;
   if (data.status !== "async_launched") {
-    const childText = data.content.map((block) => block.text).join("\n");
+    // specs/subagent-result-digest.md §1：有大结果摘要时，模型可见面用摘要 + 全文引用，
+    // 避免 0~120KB 区间的全文直通主上下文；无摘要时保持全文 join（现状）。
+    const childText = data.digest
+      ? formatSubagentResultDigestReference(data.digest)
+      : data.content.map((block) => block.text).join("\n");
     const childContent =
       childText.trim().length > 0 ? [childText] : ["(Subagent completed but returned no output.)"];
     const usageLines = [

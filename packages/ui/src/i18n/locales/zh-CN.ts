@@ -4548,9 +4548,12 @@ const zhCN: Record<string, string> = {
   // CUA 输入框常驻入口按钮
   "chat.toolbar.computerUse.label": "电脑操作",
   "chat.toolbar.dataSource.label": "数据源",
-  "chat.toolbar.dataSource.tooltip": "切换与管理数据库数据源（MySQL / PostgreSQL）",
+  "chat.toolbar.dataSource.tooltip":
+    "为本对话选择数据源；选择后 Agent 才能在对话中查询数据库（MySQL / PostgreSQL）",
   "chat.toolbar.dataSource.none": "未选择",
   "chat.toolbar.dataSource.count": "{count} 个",
+  "chat.toolbar.dataSource.deselect": "不使用数据源",
+  "chat.toolbar.dataSource.hint": "选择后 Agent 才能在本对话中查询该数据源",
   "chat.toolbar.dataSource.empty":
     "还没有数据源，点击下方「新建数据源」添加 MySQL / PostgreSQL 连接",
   "chat.toolbar.dataSource.readOnly": "只读",
@@ -5703,7 +5706,7 @@ const zhCN: Record<string, string> = {
 
   // 模式
   "mode.plan": "计划",
-  "mode.label.glm.build": "变更前确认",
+  "mode.label.glm.build": "需要授权",
   "mode.label.glm.edit": "自动编辑",
   "mode.label.glm.plan": "计划模式",
   "mode.label.glm.yolo": "完全访问",

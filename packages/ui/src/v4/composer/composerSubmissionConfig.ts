@@ -7,12 +7,22 @@ export interface ComposerSubmissionConfig {
   modelSelection: ModelSelection;
   mode: SubmissionMode;
   planEnabled: boolean;
+  /**
+   * 会话级数据源绑定（specs/data-source.md §7）。仅在用户已为该对话选择且
+   * id 仍存在于数据源列表时携带；是 Host 侧 DB 工具提权门控的信号。
+   */
+  dataSourceId?: string;
 }
 
 /** 在点击提交的瞬间，把 Composer 意图冻结成本次 Submission 的执行配置。 */
 export function createComposerSubmissionConfig(
   composer:
-    | { mode?: string; planEnabled?: boolean; modelSelection?: ModelSelection }
+    | {
+        mode?: string;
+        planEnabled?: boolean;
+        modelSelection?: ModelSelection;
+        dataSourceId?: string | null;
+      }
     | null
     | undefined,
   view: ModelSelectionView | null,
@@ -35,6 +45,8 @@ export function createComposerSubmissionConfig(
   return Object.freeze({
     mode: mode.data === "plan" ? "build" : mode.data,
     planEnabled: resolveExecutionState(composer).planEnabled,
+    // 悬挂 id（源已删除）由调用方校验过滤；这里只负责冻结当前意图。
+    ...(composer.dataSourceId ? { dataSourceId: composer.dataSourceId } : {}),
     modelSelection: Object.freeze({
       providerId: selection.providerId,
       modelId: selection.modelId,
