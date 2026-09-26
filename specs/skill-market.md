@@ -1,14 +1,12 @@
 # Spec: 技能市场入口（Skill Marketplace）
 
-内置访问 SkillPie 技能市场的入口。侧边栏「技能市场」入口直接跳系统浏览器；工作区主区内嵌视图仅保留给付费技能详情深链（§5）。不改插件商店与设置页既有逻辑。
+内置访问 SkillPie 技能市场的入口。本功能为**附加式**新增：一个侧边栏入口 + 一个工作区主区内嵌视图，不改插件商店与设置页既有逻辑。
 
 ## 1. 产品规则
 
-- 工作区侧边栏「插件市场」按钮正下方保留「技能市场」入口，样式与相邻入口一致（ghost、`size="lg"`、图标 + 文案）。
-- 点击入口在**系统浏览器**打开 `https://skillpie.cn/skills`（skillpie 技能列表页），不切换工作区主视图：
-  - 地址由 `SKILL_MARKET_SKILLS_URL` 提供，经 `platform.openExternal` 打开；与内嵌视图共用同一 base 解析（`VITE_SKILL_MARKET_URL` 联调覆盖对两者同时生效）。
-  - 入口不写 App 状态；原 `onOpenSkillMarket` 视图切换链路已移除。
-- 工作区主区内嵌视图（`workspaceMainView === "skill-market"`，与 automations / plugin-store 同级；**侧边栏保持可见**，非全屏 overlay）的唯一入口是 §5 付费技能详情弹窗「前往技能市场」深链：
+- 工作区侧边栏「插件市场」按钮正下方新增「技能市场」入口，样式与相邻入口一致（ghost、`size="lg"`、图标 + 文案、`aria-pressed` 激活态）。
+- 点击后以内置方式访问 `https://skillpie.cn/skills`（技能列表页），**不跳出应用**：
+  - 视图是工作区主视图（`workspaceMainView === "skill-market"`），与 automations / plugin-store 同级；**侧边栏保持可见**，非全屏 overlay。
   - 主视图仅保留与 plugin-store 相同的桌面面包屑拖拽区（`AutomationsMainBreadcrumbFrame`）；**没有关闭、前进、后退按钮**，离开视图靠侧边栏切换到其他入口/会话。
   - 桌面端（Electron）：`<webview>`，独立持久分区 `persist:zcode-skill-market` 保留 skillpie.cn 登录态；主 frame 加载失败显示错误态（重试 / `openExternal` 兜底）。
   - Web 端（浏览器）：`<iframe>`（skillpie.cn 未下发 `X-Frame-Options`/CSP `frame-ancestors`，可直接嵌入）；跨源拿不到子页导航态与失败信号，不做错误兜底 UI。
@@ -28,33 +26,32 @@
 ## 2. 状态所有者
 
 ```text
-App（workspaceMainView 唯一所有者；"skill-market" 仅由付费技能深链写入）
+App（workspaceMainView: "chat" | "automations" | "plugin-store" | "skill-market"，唯一所有者）
   └─ WorkspaceShellLayout 按 view 分支渲染主区；skill-market 分支挂 SkillMarketEmbeddedView
        ├─ 桌面：<webview>（persist:zcode-skill-market 分区）＋ loadError ＋ IPC 握手
        └─ Web：<iframe> ＋ postMessage 握手（无跨源导航态）
             └─ skillpie 端：ZcodeSsoBridge → POST /api/sso/zcode → 会话 Cookie/Bearer
 ```
 
-- 深链入口不携带侧边栏参数（侧边栏已外跳），`skillMarketInitialPath` 仅由付费技能详情弹窗写入；切换到其他主视图即卸载内嵌元素，分区/cookie 保留。
-- URL 常量 `SKILL_MARKET_URL` / `SKILL_MARKET_SKILLS_URL` 唯一出口为 `packages/ui/src/lib/skillMarketUrl.ts`，`SkillMarketEmbeddedView` 与侧边栏外链入口共用。
+- 入口经 `skillMarketInitialPath` 固定携带 `/skills`（覆盖可能残留的付费技能详情深链参数）、不持久化（重开应用回到 chat 视图）；切换到其他主视图即卸载内嵌元素，分区/cookie 保留。
+- URL 常量 `SKILL_MARKET_URL` 私有于 `SkillMarketEmbeddedView.tsx`。
 - 与 automations 同语义：不进 `useWorkspaceTaskNavigation` 历史、不调用 `preserveNextSettingsExit`（设置层退出统一回 chat 的既有规则天然覆盖）。
 
 ## 3. 事件顺序
 
-- 侧边栏点击：`handleOpenSkillMarketMain` → `platform.openExternal(SKILL_MARKET_SKILLS_URL)` → 系统浏览器接管；App 状态不变，`workspaceMainView` 不切换。
-- 深链打开（付费技能详情）：`handleOpenSkillMarketSkill` → `setSkillMarketInitialPath("/skills?skill=<name>")` + `setWorkspaceMainView("skill-market")` → 主区卸载 chat/其他视图、挂载内嵌元素。
+- 打开：sidebar 点击 → `onOpenSkillMarket` → `setSkillMarketInitialPath("/skills")` + `setWorkspaceMainView("skill-market")` → 主区卸载 chat/其他视图、挂载内嵌元素。
 - webview 生命周期：`did-start-loading` 清 loadError → `did-fail-load`（仅主 frame）置 loadError → `render-process-gone` 置 loadError；无导航态同步（无前进/后退 UI）。
 - iframe 生命周期：挂载即加载，无本地状态。
 - 离开：点击侧边栏任一会话/自动化/插件市场入口 → `workspaceMainView` 切换 → 内嵌元素卸载，持久分区保留。
 
 ## 4. 验收场景
 
-1. 侧边栏「插件市场」下方保留「技能市场」；点击后系统浏览器打开 `https://skillpie.cn/skills`，App 主区保持原视图、入口不呈激活态。
-2. 付费技能深链打开内嵌视图：顶部无关闭/前进/后退按钮；桌面端仅保留面包屑标签「技能市场」；入口按钮呈激活态（`bg-selected`）。
-3. 内嵌视图内点击侧边栏任意会话或「插件市场」「自动化」→ 平滑切回对应视图；再次深链进入时 skillpie.cn 登录态保留（桌面持久分区）。
+1. 侧边栏「插件市场」下方出现「技能市场」；点击后主区加载 skillpie.cn 技能列表页（`/skills`），**侧边栏保持可见**，无全屏遮罩。
+2. 视图顶部无关闭/前进/后退按钮；桌面端仅保留面包屑标签「技能市场」；入口按钮呈激活态（`bg-selected`）。
+3. 点击侧边栏任意会话或「插件市场」「自动化」→ 平滑切回对应视图；再次进入技能市场时 skillpie.cn 登录态保留（桌面持久分区）。
 4. skillpie.cn 站内 `target=_blank` 外链路由到应用内置 Browser tab（桌面），不产生脱离主窗口的新窗口。
-5. 桌面深链断网打开 → 错误态；「重试」可恢复；「打开浏览器访问」走系统浏览器。
-6. Web 端（5173/3030）付费技能深链 → 主区 iframe 呈现技能详情页，不跳出新标签；侧边栏入口在 Web 端同样打开系统默认浏览器。
+5. 桌面断网打开 → 错误态；「重试」可恢复；「打开浏览器访问」走系统浏览器。
+6. Web 端（5173/3030）点击「技能市场」→ 主区 iframe 呈现 skillpie.cn 技能列表页，不跳出新标签。
 7. ZCode 已登录用户首次进入 → 自动在 skillpie 注册并登录（免手动输入）；未登录 ZCode → skillpie 正常展示自身登录入口。
 8. 站内「安装/分享」点击复制安装文案：iframe 需宿主 `allow="clipboard-write"` 委托；桌面 webview 对 `clipboard-sanitize-write` 等权限请求予以批准。
 9. en-US 界面下入口与面包屑显示 "Skill Marketplace"。
@@ -74,7 +71,7 @@ App（workspaceMainView 唯一所有者；"skill-market" 仅由付费技能深�
   - 数据来自 SkillPie 详情接口 `GET {base}/api/skills/by-normalized-name/<normalizedName>`（公开免鉴权），展示名称、分类、作者、下载/点赞/版本/包大小与 `usageInstructions` markdown 文档；`screenshots` 存在时展示。
   - 免费技能（`isFree`）提供「安装」：下载 `version.packageDownloadUrl`（回退 download-url 接口）的 zip，校验 SKILL.md 后装入 `~/.zcode/skills/<normalizedName>`；同名已存在时提示已安装（不覆盖）。
   - 弹窗正文首屏必须醒目展示触发方式：显式引用 token（`$<normalizedName>`）+ 技能作者按约定写在描述末尾的触发词段（`触发词：…`，解析为徽标并从正文描述中移除；解析不出则完整展示描述）。
-  - 付费技能（`isFree: false`）不提供程序化安装，按钮禁用并引导「前往技能市场」：打开既有内嵌市场视图并深链到该技能详情页（skillpie 站内既有链接格式 `/skills?skill=<normalizedName>`）；侧边栏入口已外跳系统浏览器（§1），与本深链无关。
+  - 付费技能（`isFree: false`）不提供程序化安装，按钮禁用并引导「前往技能市场」：打开既有内嵌市场视图并深链到该技能详情页（skillpie 站内既有链接格式 `/skills?skill=<normalizedName>`）；侧边栏入口固定落在 `/skills` 列表页（§1）。
   - 安装目标为当前 workspace 所属环境的用户级技能目录（本地 workspace = 本机 `~/.zcode/skills`；远程 workspace = 远端主机用户技能根，与 skills/skillSync 目录语义一致）；安装后不主动刷新已打开面板——`/`、`$` 面板每次打开都会重新拉取 catalog，自然纳新。
 - 外部契约以 skillpie CLI 源码与线上实测为准；`baseUrl` 默认 `DEFAULT_SKILL_MARKET_URL`，可用 `ZCODE_SKILL_MARKET_URL`（node 侧）/ `VITE_SKILL_MARKET_URL`（UI 侧）覆盖用于联调。
 

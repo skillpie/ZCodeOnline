@@ -79,7 +79,6 @@ import { useZCodeStore } from "@/store/StoreProvider.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceReadOnly, isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
 import { useWorkspaceTaskLists } from "@/hooks/useWorkspaceTaskLists.js";
-import { usePlatform } from "@/hooks/usePlatform.js";
 import {
   persistSidebarTaskPreferences,
   readSidebarTaskPreferences,
@@ -93,7 +92,6 @@ import {
 } from "@/lib/sidebarPurposeSectionPreferences.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
-import { SKILL_MARKET_SKILLS_URL } from "@/lib/skillMarketUrl.js";
 import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import {
   increaseWorkspaceTaskVisibleLimit,
@@ -262,6 +260,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenCommandCenter,
   onOpenAutomations,
   onOpenPluginStore,
+  onOpenSkillMarket,
   automationsActive = false,
   pluginStoreActive = false,
   skillMarketActive = false,
@@ -315,6 +314,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenCommandCenter: () => void;
   onOpenAutomations?: () => void;
   onOpenPluginStore?: () => void;
+  onOpenSkillMarket?: () => void;
   automationsActive?: boolean;
   pluginStoreActive?: boolean;
   skillMarketActive?: boolean;
@@ -757,12 +757,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const handleOpenPluginStoreMain = useCallback(() => {
     onOpenPluginStore?.();
   }, [onOpenPluginStore]);
-  const platform = usePlatform();
-  // 产品规则（specs/skill-market.md §1）：技能市场入口直接交系统浏览器打开
-  // skillpie 技能列表页，不切换工作区内嵌主视图；内嵌视图仅保留付费技能深链入口。
   const handleOpenSkillMarketMain = useCallback(() => {
-    platform.openExternal(SKILL_MARKET_SKILLS_URL);
-  }, [platform]);
+    onOpenSkillMarket?.();
+  }, [onOpenSkillMarket]);
   const handleOpenAutomationsMain = useCallback(() => {
     onOpenAutomations?.();
   }, [onOpenAutomations]);

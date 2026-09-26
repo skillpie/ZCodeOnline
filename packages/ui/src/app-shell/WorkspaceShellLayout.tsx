@@ -199,6 +199,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   onOpenAutomationConsumed,
   handleOpenAutomations,
   handleOpenPluginStore,
+  handleOpenSkillMarket,
   skillMarketInitialPath,
   handleManageInstalledPlugins,
   loadSkillMarketSsoJwt,
@@ -1604,6 +1605,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                     automationsActive={workspaceMainView === "automations"}
                     onOpenPluginStore={handleOpenPluginStore}
                     pluginStoreActive={workspaceMainView === "plugin-store"}
+                    onOpenSkillMarket={handleOpenSkillMarket}
                     skillMarketActive={workspaceMainView === "skill-market"}
                     onFileTreeOpenChange={setIsSidebarFileTreeOpen}
                   />
