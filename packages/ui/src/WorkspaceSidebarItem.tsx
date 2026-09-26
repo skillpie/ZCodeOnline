@@ -1068,7 +1068,33 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                           </Button>
                         </ControlHintTooltip>
                       )
-                    ) : shouldMountWorkspaceRowActions ? (
+                    ) : null}
+                    {showFileTreeAction ? (
+                      <span className="shrink-0">
+                        {/* Project 文件树入口以前单独覆盖 hover:bg-surface-hover，
+                            与 Pinned / Grouped 的 bg-hover 不一致；三种入口统一复用同一 action。 */}
+                        {/* 用户要求：文件树入口常驻展示（不随行 hover 挂载），并与新建任务按钮互换位置，
+                            位于行操作区末位。 */}
+                        {/* 用户要求：文件树入口常驻展示（不随行 hover 挂载）。2026-09-26 与新建任务
+                            互换位置后位于新建任务之前。 */}
+                        <TaskRowActionButton
+                          // 该按钮默认继承 ghost 的主前景色，导致同组的三个图标明暗不一致。
+                          className="text-foreground-subtle hover:text-foreground"
+                          label={intl.formatMessage({
+                            id: "workspaceSidebar.showFileTree",
+                          })}
+                          onClick={handleOpenWorkspaceFileTree}
+                          showTooltip
+                          disabledReason={readOnlyReason}
+                          testId={testId(TID_WORKSPACE_FILE_TREE_BUTTON, tab.workspacePath)}
+                        >
+                          <ListTree className="h-3.5 w-3.5" />
+                        </TaskRowActionButton>
+                      </span>
+                    ) : null}
+                    {/* 用户要求（2026-09-26）：新建任务入口常驻展示（不随行 hover 挂载），
+                        与查看文件互换位置后位于行操作区末位。 */}
+                    {!showReconnectAction ? (
                       <ControlHintTooltip
                         title={readOnlyReason ?? intl.formatMessage({ id: "taskList.newThread" })}
                       >
@@ -1087,27 +1113,6 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                           <MessageCirclePlus className="h-3.5 w-3.5" />
                         </Button>
                       </ControlHintTooltip>
-                    ) : null}
-                    {showFileTreeAction ? (
-                      <span className="shrink-0">
-                        {/* Project 文件树入口以前单独覆盖 hover:bg-surface-hover，
-                            与 Pinned / Grouped 的 bg-hover 不一致；三种入口统一复用同一 action。 */}
-                        {/* 用户要求：文件树入口常驻展示（不随行 hover 挂载），并与新建任务按钮互换位置，
-                            位于行操作区末位。 */}
-                        <TaskRowActionButton
-                          // 该按钮默认继承 ghost 的主前景色，导致同组的三个图标明暗不一致。
-                          className="text-foreground-subtle hover:text-foreground"
-                          label={intl.formatMessage({
-                            id: "workspaceSidebar.showFileTree",
-                          })}
-                          onClick={handleOpenWorkspaceFileTree}
-                          showTooltip
-                          disabledReason={readOnlyReason}
-                          testId={testId(TID_WORKSPACE_FILE_TREE_BUTTON, tab.workspacePath)}
-                        >
-                          <ListTree className="h-3.5 w-3.5" />
-                        </TaskRowActionButton>
-                      </span>
                     ) : null}
                   </div>
                 </div>
