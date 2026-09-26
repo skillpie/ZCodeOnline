@@ -13,7 +13,6 @@ import {
   Check,
   ChevronDownIcon,
   CircleAlert,
-  CircleOff,
   Database,
   Loader2,
   RefreshCw,
@@ -130,8 +129,13 @@ function DataSourceEntryInner({
                     aria-selected={isSelected}
                     disabled={syncing}
                     onClick={() => {
-                      onSelectDataSource(source.id);
+                      // 再次点击已勾选项 = 本对话恢复不使用数据源（收回提权，§7.1）。
+                      if (isSelected) {
+                        onSelectDataSource(null);
+                        return;
+                      }
                       // 选择仍触发全局激活：同步表结构并维持工具侧 activeId fallback（§7.1）。
+                      onSelectDataSource(source.id);
                       if (source.id !== activeId) void activate(source.id);
                     }}
                     className={cn(
@@ -211,31 +215,18 @@ function DataSourceEntryInner({
                 {intl.formatMessage({ id: "chat.toolbar.dataSource.manage" })}
               </Button>
               {selectedDataSource ? (
-                <div className="flex items-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 px-2 text-ui-base"
-                    data-testid="composer-data-source-deselect"
-                    onClick={() => onSelectDataSource(null)}
-                  >
-                    <CircleOff className="size-3.5" aria-hidden />
-                    {intl.formatMessage({ id: "chat.toolbar.dataSource.deselect" })}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 px-2 text-ui-base"
-                    aria-label={intl.formatMessage({ id: "chat.toolbar.dataSource.syncSchema" })}
-                    data-testid="composer-data-source-resync"
-                    onClick={() => void activate(selectedDataSource.id)}
-                  >
-                    <RefreshCw className="size-3.5" aria-hidden />
-                    {intl.formatMessage({ id: "chat.toolbar.dataSource.syncSchema" })}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2 text-ui-base"
+                  aria-label={intl.formatMessage({ id: "chat.toolbar.dataSource.syncSchema" })}
+                  data-testid="composer-data-source-resync"
+                  onClick={() => void activate(selectedDataSource.id)}
+                >
+                  <RefreshCw className="size-3.5" aria-hidden />
+                  {intl.formatMessage({ id: "chat.toolbar.dataSource.syncSchema" })}
+                </Button>
               ) : null}
             </div>
           </PopoverContent>

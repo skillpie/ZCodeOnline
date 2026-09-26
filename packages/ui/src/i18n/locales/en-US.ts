@@ -4850,7 +4850,6 @@ const enUS: Record<string, string> = {
   "chat.toolbar.dataSource.tooltip":
     "Pick a data source for this conversation; the agent can query databases only after you select one (MySQL / PostgreSQL)",
   "chat.toolbar.dataSource.count": "{count}",
-  "chat.toolbar.dataSource.deselect": "No data source",
   "chat.toolbar.dataSource.hint": "Selecting a source lets the agent query it in this conversation",
   "chat.toolbar.dataSource.empty":
     'No data sources yet. Click "New Data Source" below to add a MySQL / PostgreSQL connection',
