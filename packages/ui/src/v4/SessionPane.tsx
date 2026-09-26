@@ -26,6 +26,7 @@ import {
 } from "@zcode/shared";
 import type {
   ConversationShareAccessMode,
+  GitChangeSourceId,
   GitRepositorySummary,
   ZCodeProvider,
 } from "@zcode/shared";
@@ -334,6 +335,8 @@ export interface SessionPaneProps {
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
+  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   summaryPanelVariantOverride?: ChatViewSummaryPanelVariant | null;
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
   onOpenBrowserUrl?: (url: string) => void;
@@ -506,6 +509,8 @@ export function SessionPane({
   gitSummary,
   gitDirtyFileCount,
   gitWorktreeChangeSummary,
+  gitWorktreeReviewSourceId,
+  onOpenGitReview,
   summaryPanelVariantOverride,
   onSummaryPanelVariantOverrideChange,
   onOpenBrowserUrl,
@@ -4634,6 +4639,8 @@ export function SessionPane({
             gitSummary={gitSummary}
             gitDirtyFileCount={gitDirtyFileCount}
             gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+            gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+            onOpenGitReview={onOpenGitReview}
             goal={selectionSideChat ? null : (snapshot?.goal ?? null)}
             sessionPlans={state.sessionPlans}
             plan={snapshot?.plan ?? null}

@@ -41,7 +41,12 @@ import {
   TID_V4_BACKGROUND_WORK_ITEM,
   testId,
 } from "@zcode/shared";
-import type { GitRepositorySummary, ZCodeSessionRunningSubagent } from "@zcode/shared";
+import type {
+  GitChangeSourceId,
+  GitRepositorySummary,
+  ZCodeSessionRunningSubagent,
+  ZCodeTaskChangeSummary,
+} from "@zcode/shared";
 import type {
   BackgroundWorkSummary,
   GoalState,
@@ -99,6 +104,10 @@ interface ConversationStatusPanelProps {
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
+  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
+  onRefreshGit?: () => void;
+  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   goal?: GoalState | null;
   sessionPlans?: readonly ToolCallRow[];
   plan?: PlanState | null;
@@ -213,9 +222,17 @@ function formatRunningSubagentCount(
   );
 }
 
-type StatusSectionKind = "goal" | "sessionPlans" | "plan" | "terminal" | "workflow" | "agent";
+type StatusSectionKind =
+  | "environment"
+  | "goal"
+  | "sessionPlans"
+  | "plan"
+  | "terminal"
+  | "workflow"
+  | "agent";
 
 const STATUS_SECTION_SCROLL_POLICY = {
+  environment: null,
   goal: "max-h-48",
   sessionPlans: "max-h-48",
   // 六个双行 Todo（6 × 52px）需要约 20rem；超过后只滚动进程区块。
@@ -331,6 +348,71 @@ function StatusSection({
         </CollapsibleContent>
       </section>
     </Collapsible>
+  );
+}
+
+// 2026-09-26 恢复（specs/workspace-header-git-tools.md）：头部「更改」入口移除后，
+// 浮动状态面板重新承载「更改」展示行；按用户决策仅恢复更改行，分支切换与提交菜单不回归。
+function GitChangesStatusSection({
+  gitWorktreeReviewSourceId,
+  model,
+  onOpenGitReview,
+  separated,
+}: {
+  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
+  model: ConversationStatusPanelModel;
+  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
+  separated: boolean;
+}) {
+  const { intl } = useZCodeIntl();
+  const git = model.git;
+  if (!git) {
+    return null;
+  }
+  const hasChanges = git.added + git.removed > 0;
+  const canOpenReview = Boolean(onOpenGitReview);
+
+  return (
+    <StatusSection
+      section="environment"
+      separated={separated}
+      title={intl.formatMessage({ id: "chat.statusPanel.environment" })}
+      trailing={(isOpen) =>
+        isOpen ? null : (
+          <span className="shrink-0 font-mono text-ui-sm tabular-nums">
+            <span className={cn("text-[var(--color-diff-added)]", !hasChanges && "opacity-50")}>
+              +{git.added}
+            </span>{" "}
+            <span className={cn("text-[var(--color-diff-removed)]", !hasChanges && "opacity-50")}>
+              -{git.removed}
+            </span>
+          </span>
+        )
+      }
+    >
+      <button
+        type="button"
+        disabled={!canOpenReview}
+        className={cn(
+          "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left text-ui-base text-[var(--color-foreground)] transition-colors",
+          canOpenReview
+            ? "hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-input-border-focused)]"
+            : "cursor-default opacity-50",
+        )}
+        onClick={() => {
+          onOpenGitReview?.(gitWorktreeReviewSourceId ?? undefined);
+        }}
+      >
+        <FileDiffIcon className="size-4 shrink-0 text-[var(--color-foreground)]" />
+        <span className="min-w-0 flex-1 truncate">
+          {intl.formatMessage({ id: "chat.statusPanel.changes" })}
+        </span>
+        <span className="shrink-0 font-mono tabular-nums">
+          <span className="text-[var(--color-diff-added)]">+{git.added}</span>{" "}
+          <span className="text-[var(--color-diff-removed)]">-{git.removed}</span>
+        </span>
+      </button>
+    </StatusSection>
   );
 }
 
@@ -1588,6 +1670,10 @@ function ConversationStatusPanelImpl({
   gitSummary,
   gitDirtyFileCount = 0,
   gitWorktreeChangeSummary,
+  activeTaskChangeSummary = null,
+  gitWorktreeReviewSourceId,
+  onRefreshGit,
+  onOpenGitReview,
   goal,
   sessionPlans,
   plan,
@@ -1668,6 +1754,8 @@ function ConversationStatusPanelImpl({
       }) as CSSProperties,
     [miniWidth],
   );
+  // 2026-09-26 恢复「更改」浮动展示：仅更改行，分支切换/提交菜单不回归（留在头部）。
+  const canRenderGit = Boolean(model.git && gitSummary);
   const canRenderGoal = Boolean(model.goal);
   const canRenderSessionPlans = Boolean(model.sessionPlans);
   const canRenderPlan = Boolean(model.plan);
@@ -1837,10 +1925,18 @@ function ConversationStatusPanelImpl({
               variant === "auto" ? "hidden @min-[1280px]/conversation:flex" : "flex",
             )}
           >
+            {canRenderGit ? (
+              <GitChangesStatusSection
+                model={model}
+                gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+                onOpenGitReview={onOpenGitReview}
+                separated={false}
+              />
+            ) : null}
             {canRenderGoal ? (
               <GoalStatusSection
                 model={model}
-                separated={false}
+                separated={canRenderGit}
                 onPauseGoal={onPauseGoal}
                 onResumeGoal={onResumeGoal}
               />
@@ -1850,14 +1946,14 @@ function ConversationStatusPanelImpl({
                 model={model}
                 parentSessionId={parentSessionId}
                 onOpenPlanDetail={onOpenPlanDetail}
-                separated={canRenderGoal}
+                separated={canRenderGit || canRenderGoal}
               />
             ) : null}
             {canRenderPlan ? (
               <PlanStatusSection
                 model={model}
                 popoverSide={useVerticalFloatingPanels ? "bottom" : "left"}
-                separated={canRenderGoal || canRenderSessionPlans}
+                separated={canRenderGit || canRenderGoal || canRenderSessionPlans}
               />
             ) : null}
             {canRenderTerminals ? (
@@ -1868,7 +1964,7 @@ function ConversationStatusPanelImpl({
                 works={model.runningBashWorks}
                 open={terminalSectionOpen}
                 onOpenChange={onTerminalSectionOpenChange}
-                separated={canRenderGoal || canRenderSessionPlans || canRenderPlan}
+                separated={canRenderGit || canRenderGoal || canRenderSessionPlans || canRenderPlan}
                 onCancelBackgroundWork={onCancelBackgroundWork}
               />
             ) : null}
@@ -1880,7 +1976,11 @@ function ConversationStatusPanelImpl({
                 open={workflowSectionOpen}
                 onOpenChange={onWorkflowSectionOpenChange}
                 separated={
-                  canRenderGoal || canRenderSessionPlans || canRenderPlan || canRenderTerminals
+                  canRenderGit ||
+                  canRenderGoal ||
+                  canRenderSessionPlans ||
+                  canRenderPlan ||
+                  canRenderTerminals
                 }
                 parentSessionId={parentSessionId}
                 onCancelBackgroundWork={onCancelBackgroundWork}
@@ -1897,6 +1997,7 @@ function ConversationStatusPanelImpl({
                 open={agentSectionOpen}
                 onOpenChange={onAgentSectionOpenChange}
                 separated={
+                  canRenderGit ||
                   canRenderGoal ||
                   canRenderSessionPlans ||
                   canRenderPlan ||

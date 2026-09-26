@@ -31,11 +31,8 @@ export function WorkspaceHeaderActionSection({
   useWindowsCaptionSpacing = false,
   gitSummary,
   gitDirtyFileCount = 0,
-  gitWorktreeChangeSummary,
   activeTaskChangeSummary,
-  gitWorktreeReviewSourceId,
   onRefreshGit,
-  onOpenGitReview,
 }: WorkspaceHeaderActionSectionProps) {
   return (
     <div
@@ -63,11 +60,8 @@ export function WorkspaceHeaderActionSection({
           workspaceIdentity={workspaceIdentity}
           gitSummary={gitSummary}
           gitDirtyFileCount={gitDirtyFileCount}
-          gitWorktreeChangeSummary={gitWorktreeChangeSummary}
           activeTaskChangeSummary={activeTaskChangeSummary}
-          gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
           onRefreshGit={onRefreshGit}
-          onOpenGitReview={onOpenGitReview}
         />
       ) : null}
       {/* 分享发布接口依赖登录态；未登录时隐藏入口，避免用户打开后只能得到鉴权失败。 */}

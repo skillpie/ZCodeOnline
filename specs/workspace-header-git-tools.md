@@ -6,17 +6,18 @@
 ## 1. 产品规则
 
 - 窗口右上角头部、分享按钮左侧，常驻 Git 操作（按此顺序排列），任务态与草稿态一致（均为 workspace 作用域能力）：
-  1. **更改**：diff 图标 + `+N -N` 行数统计（来源 `gitWorktreeChangeSummary`），点击打开 Git 审阅（`onOpenGitReview`，携带 worktree review sourceId）。仅在有 待提交内容（`gitSummary.isDirty`）时展示；头部变窄（<560px 容器）时收起统计文字只留图标。
+  1. ~~**更改**：diff 图标 + `+N -N` 行数统计~~（**2026-09-26 按用户决策移除**：恢复为最初无此按钮的形态，「更改 +N -N」不再出现在头部。同日后续决策：更改展示以**浮动状态面板「环境」分区**的形式恢复——仅「更改」行（FileDiffIcon + `+N -N`，点击进 Git 审阅），分支切换与提交菜单不回归、仍留在头部；见 `ConversationStatusPanel` 的 `GitChangesStatusSection`。组件 props 链按新形态重建，App 侧 `gitWorktreeReviewSourceId` / `onOpenGitReview` 链路改为服务状态面板。）
   2. **提交**：`GitActionMenu` 默认头部布局触发器，按既有主动作裁决打开提交弹窗或推送弹窗。在 `isDirty || canPushGitBranch(gitSummary)` 时展示——已提交未推送（领先上游或尚无上游的新分支）时仍展示，点击经主动作裁决直接进推送弹窗，触发器的图标与文案随之切为「推送」（`git.actionMenu.push`）。
   3. **拉取**：提交槽位的兜底项。工作区干净且无待推送（`!isDirty && !canPushGitBranch`）且有上游分支时，同一位置显示「拉取」按钮（`ArrowDownToLine` 图标）；点击调用 `IGitService.pull`（`git pull --ff-only`），成功 toast「已拉取远程更新」并 `onRefreshGit`，失败 toast 原始错误，进行中按钮转 spinner 并禁用。**快进式是有意约束**：分叉时直接报错让用户手动处理，不在 agent 工作区里悄悄生成 merge commit 或进入冲突态。detached HEAD / 无上游不展示。
   4. **分支选择**：`GitBranchSwitcher` 紧凑触发器（图标 + 分支名，超长截断），弹层向下弹出，能力与页头分支切换器一致（搜索、新建分支、提交图表）。**唯一常驻项**。
-- **展示规则（提交/拉取互斥占同一槽位）**：「更改」跟随 `isDirty`；「提交」跟随 `isDirty || canPushGitBranch`；两者都不满足时该槽位显示「拉取」。agent 改文件后随 `onRefreshGit` 重新出现。
+  - **排序（2026-09-26 按用户决策）**：分支切换器渲染在最左，「提交/拉取」槽位移到其右。
+- **展示规则（提交/拉取互斥占同一槽位）**：「提交」跟随 `isDirty || canPushGitBranch`；两者都不满足时该槽位显示「拉取」。agent 改文件后随 `onRefreshGit` 重新出现。
 - 非 Git 工作区（git 不可用或不是仓库）整组不渲染；远程移动端窄头部（`simplifyForNarrowRemote`）整组隐藏，与终端入口同一折叠规则。Web 端草稿态按壳层既有规则不渲染工作区头部，Git 工具随之不可见（与旧草稿态分支入口仅桌面可见的行为一致）。
 - 标题区既有 hover 提示中的分支名（`WorkspaceHeaderTitleSection`）保持不变，仅作信息展示。
 
 ## 2. 状态所有者与不变量
 
-- 组件不持有 Git 状态：`gitSummary`、`gitDirtyFileCount`、`gitWorktreeChangeSummary`、`activeTaskChangeSummary` 全部由 `WorkspaceShellLayout` 从 shell 投影下发，变更由 `onRefreshGit` 驱动刷新。
+- 组件不持有 Git 状态：`gitSummary`、`gitDirtyFileCount`、`activeTaskChangeSummary` 全部由 `WorkspaceShellLayout` 从 shell 投影下发，变更由 `onRefreshGit` 驱动刷新。
 - 提交 / 推送弹窗、分支弹层的交互状态仍归 `GitActionMenu` / `GitBranchSwitcher` 内部所有；头部只提供触发器，不复制状态、不建第二条写路径。
 - 渲染门（两级）：`WorkspaceHeaderActionSection` 按 `gitSummary && onRefreshGit` 开门；`WorkspaceHeaderGitTools` 内再按 `isGitAvailable && isRepository` 裁决。
 

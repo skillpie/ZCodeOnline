@@ -267,8 +267,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   resolvedActiveTaskMeta,
   activeTaskTitle,
   activeTaskChangeSummary,
-  gitWorktreeReviewSourceId,
   gitWorktreeChangeSummary,
+  gitWorktreeReviewSourceId,
+  handleOpenGitReview,
   activeGitSourceId,
   gitState,
   browserNavigationRequest,
@@ -308,7 +309,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   handleOpenDeveloperTools,
   handleOpenTerminalTab,
   handleToggleGit,
-  handleOpenGitReview,
   handleToggleSidePane,
   handleOpenBrowserUrl,
   handleOpenCodeViewer,
@@ -1728,9 +1728,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                           workspaceHeaderState={workspaceShellZCodeState}
                           gitSummary={gitState.summary}
                           gitDirtyFileCount={gitDirtyFileCount}
-                          gitWorktreeChangeSummary={gitWorktreeChangeSummary}
-                          gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
-                          onOpenGitReview={handleOpenGitReview}
                           isMacDesktop={isMacDesktop}
                           isMacFullscreen={isMacFullscreen}
                           isWindowsDesktop={isWindowsDesktop}
@@ -1885,6 +1882,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                               gitSummary={gitState.summary}
                               gitDirtyFileCount={gitDirtyFileCount}
                               gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+                              gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+                              onOpenGitReview={handleOpenGitReview}
                               summaryPanelVariantOverride={summaryPanelVariantOverride}
                               onSummaryPanelVariantOverrideChange={
                                 onSummaryPanelVariantOverrideChange

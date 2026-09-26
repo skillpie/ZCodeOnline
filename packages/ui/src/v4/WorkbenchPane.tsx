@@ -12,7 +12,11 @@ import {
   type ReactNode,
 } from "react";
 import { TID_V4_PANE_SHELL, testId } from "@zcode/shared";
-import type { GitRepositorySummary, ZCodeProvider } from "@zcode/shared";
+import type {
+  GitChangeSourceId,
+  GitRepositorySummary,
+  ZCodeProvider,
+} from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { useServices } from "@/hooks/useServices.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
@@ -267,6 +271,8 @@ export interface WorkbenchShellBinding {
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
+  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   summaryPanelVariantOverride?: ChatViewSummaryPanelVariant | null;
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
   onOpenBrowserUrl?: (url: string) => void;
@@ -569,6 +575,10 @@ export function WorkbenchLeafPane({
           gitWorktreeChangeSummary={
             shouldUseShellStatusPanel ? shell.gitWorktreeChangeSummary : undefined
           }
+          gitWorktreeReviewSourceId={
+            shouldUseShellStatusPanel ? shell.gitWorktreeReviewSourceId : undefined
+          }
+          onOpenGitReview={shouldUseShellStatusPanel ? shell.onOpenGitReview : undefined}
           summaryPanelVariantOverride={
             shouldUseShellStatusPanel ? shell.summaryPanelVariantOverride : undefined
           }

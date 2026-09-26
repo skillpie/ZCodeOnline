@@ -1239,8 +1239,9 @@ export function App({
         resolvedActiveTaskMeta={resolvedActiveTaskMeta}
         activeTaskTitle={activeTaskTitle}
         activeTaskChangeSummary={activeTaskChangeSummary}
-        gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
         gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+        gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+        handleOpenGitReview={handleOpenGitReview}
         activeGitSourceId={activeGitSourceId}
         gitState={gitState}
         browserNavigationRequest={browserNavigationRequest}
@@ -1269,7 +1270,6 @@ export function App({
         handleStartDraftInWorkspace={handleStartDraftInWorkspace}
         handleOpenCommandCenter={handleOpenQuickPick}
         handleRefreshGit={handleRefreshGit}
-        handleOpenGitReview={handleOpenGitReview}
         handleBrowserUrlChange={handleBrowserUrlChange}
         handleBrowserPageMetadataChange={handleBrowserPageMetadataChange}
         handleToggleSidebar={handleToggleSidebar}

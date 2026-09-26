@@ -196,8 +196,8 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   activeTaskChangeSummary: ReturnType<
     typeof import("@/lib/taskChangeSummary.js").getTaskChangeSummary
   >;
-  gitWorktreeReviewSourceId: GitChangeSourceId | null;
   gitWorktreeChangeSummary: GitChangeSummary;
+  gitWorktreeReviewSourceId: GitChangeSourceId | null;
   activeGitSourceId: GitChangeSourceId;
   gitState: ReturnType<typeof import("@/hooks/useGitRepository.js").useGitRepository>;
   browserNavigationRequest: BrowserNavigationRequest | null;

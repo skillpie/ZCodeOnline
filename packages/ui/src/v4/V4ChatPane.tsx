@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import type { GitRepositorySummary, ZCodeProvider } from "@zcode/shared";
+import type {
+  GitChangeSourceId,
+  GitRepositorySummary,
+  ZCodeProvider,
+} from "@zcode/shared";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { AssistantPreviewCardsAutoOpenRequest } from "@/lib/assistantPreviewCards.js";
 import type { OpenAutomationsMain } from "@/lib/taskNavigationHistory.js";
@@ -44,6 +48,8 @@ interface V4ChatPaneProps {
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
+  gitWorktreeReviewSourceId?: GitChangeSourceId | null;
+  onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   summaryPanelVariantOverride?: ChatViewSummaryPanelVariant | null;
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
   onOpenBrowserUrl?: (url: string) => void;
@@ -87,6 +93,8 @@ export function V4ChatPane({
   gitSummary,
   gitDirtyFileCount,
   gitWorktreeChangeSummary,
+  gitWorktreeReviewSourceId,
+  onOpenGitReview,
   summaryPanelVariantOverride,
   onSummaryPanelVariantOverrideChange,
   onOpenBrowserUrl,
@@ -128,6 +136,8 @@ export function V4ChatPane({
         gitSummary={gitSummary}
         gitDirtyFileCount={gitDirtyFileCount}
         gitWorktreeChangeSummary={gitWorktreeChangeSummary}
+        gitWorktreeReviewSourceId={gitWorktreeReviewSourceId}
+        onOpenGitReview={onOpenGitReview}
         summaryPanelVariantOverride={summaryPanelVariantOverride}
         onSummaryPanelVariantOverrideChange={onSummaryPanelVariantOverrideChange}
         onOpenBrowserUrl={onOpenBrowserUrl}
