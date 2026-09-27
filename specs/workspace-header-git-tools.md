@@ -1,7 +1,7 @@
 # Spec: 工作区头部 Git 工具（更改 / 提交 / 拉取 / 分支）
 
 > 实现入口：`packages/ui/src/WorkspaceHeaderGitTools.tsx`，装配于 `WorkspaceHeaderActionSection`（窗口右上角，分享按钮左侧）。
-> 本功能自 v4 状态面板的「Git 工具」分区迁移而来：面板展开态不再有 Git 分区；收起态 mini 胶囊上的 git 统计（`StatusSummaryRow`）保持不变。草稿态输入框上方项目名右侧的分支切换器（`draftComposerHeader`）按用户要求保留，与头部入口并存：头部是任务/草稿通用的常驻入口，草稿 contextHeader 只保留分支这一项。
+> 本功能自 v4 状态面板的「Git 工具」分区迁移而来：面板展开态不再有 Git 分区；收起态 mini 胶囊上的 git 统计（`StatusSummaryRow`）保持不变。草稿态输入框上方项目名右侧的分支切换器（`draftComposerHeader`）曾按当时决策与头部入口并存；**2026-09-28 按用户决策移除**：草稿态 contextHeader 不再渲染分支切换器，分支操作统一收敛到右上角头部入口，`draftComposerHeader` 插槽本身保留（仍承载 workspace 切换菜单与插件入口）。
 
 ## 1. 产品规则
 
@@ -14,7 +14,7 @@
   - **分支弹窗对话动作「合入 / 拉取」（2026-09-27 新增，仅头部弹窗启用）**：分支行交互时按需**挂载**行尾动作按钮——hover 或 focus-within 时渲染，触屏（`hover:none`）常驻；未交互时不渲染、不占行内布局（同 `workspace-grouped-tasks/task-row` 的挂载式决策，不用 CSS 隐藏）。点击不切换分支，而是关闭弹层并把提示词发送到**当前工作区主对话**，由 AI 执行：
     - 非当前分支行显示「合入」（按钮文案 2026-09-27 由「合并」改为「合入」），提示词为「将分支 {branchName} 合并到本地当前分支，遇冲突解决后完成合并」，由 AI 执行合并（含冲突处理）。
     - 当前分支行显示「拉取」，提示词为「拉取当前分支（{branchName}）的远程更新」，由 AI 执行；**与头部直连「拉取」（快进式、分叉即报错）语义不同**：弹窗内拉取由 AI 决策分叉处理（如 rebase/merge），两者互不替代。按钮 hover 显示在行尾。
-  - 提交弹窗（`GitActionMenu`）与草稿区（`WorkspaceShellLayout`）的分支弹窗不启用，维持原能力集。
+  - 提交弹窗（`GitActionMenu`）不启用对话动作，维持原能力集。（草稿区分支弹窗已随 2026-09-28 的移除决策不复存在。）
 - **展示规则（提交/拉取互斥占同一槽位）**：「提交」跟随 `isDirty || canPushGitBranch`；两者都不满足时该槽位显示「拉取」。agent 改文件后随 `onRefreshGit` 重新出现。
 - 非 Git 工作区（git 不可用或不是仓库）整组不渲染；远程移动端窄头部（`simplifyForNarrowRemote`）整组隐藏，与终端入口同一折叠规则。工作区头部的可见性由壳层唯一谓词 `shouldRenderWorkspaceHeader`（`app-shell/workspaceHeaderVisibility.ts`）裁决：主视图为 `chat` 即渲染，不再区分平台与任务/草稿态——**2026-09-27 按用户决策，Web 端（含手机远控）草稿态对齐桌面，渲染头部**，Git 工具随之常驻可见；草稿态头部没有分享按钮（依赖活动任务）。头部只消费壳层投影的 chrome 状态（git 摘要、终端/侧栏开关），不承载流式/快照语义，草稿态渲染头部不触碰 web-remote-replayable 恢复链路。
 - 标题区既有 hover 提示中的分支名（`WorkspaceHeaderTitleSection`）保持不变，仅作信息展示。

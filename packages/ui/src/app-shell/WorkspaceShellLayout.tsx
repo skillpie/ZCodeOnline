@@ -35,7 +35,6 @@ import { DesktopTopOverlay } from "@/DesktopTopOverlay.js";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { WorkspacePluginPreview } from "@/WorkspacePluginPreview.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
-import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
 import { AUTOMATIONS_TOAST_ANCHOR_ID, AutomationsSection } from "@/settings/AutomationsSection.js";
@@ -1111,12 +1110,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       handleStartDraftInWorkspaceInChat(path, identity, undefined, "project"),
     [handleStartDraftInWorkspaceInChat],
   );
-  const activeWorkspacePurpose =
-    workspaceTabs.find(
-      (tab) =>
-        tab.workspacePath === workspaceAbsPath &&
-        (!workspaceIdentity || tab.workspaceIdentity === workspaceIdentity),
-    )?.workspacePurpose ?? "project";
   const handleSelectConversationWorkspace = useCallback(async () => {
     if (!onResolveConversationWorkspace) {
       return;
@@ -1166,8 +1159,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     },
     [handleSelectTask, workspaceAbsPath, workspaceIdentity],
   );
-  // 草稿态 composer contextHeader：workspace 切换菜单 + 项目名右侧的分支切换器
-  //（用户明确要求保留；工作区头部的 Git 三件套是另一条常驻入口，见 specs/workspace-header-git-tools.md）。
+  // 草稿态 composer contextHeader：workspace 切换菜单（2026-09-28 按用户决策移除原
+  // 项目名右侧的分支切换器，分支操作统一走右上角头部入口，见 specs/workspace-header-git-tools.md）。
   // onSelectWorkspace 语义与旧版一致：切到目标 workspace 的新草稿。
   const draftComposerHeader = useMemo(
     () => (
@@ -1201,19 +1194,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
             workspaceIdentity={workspaceIdentity}
             remoteSessionId={workspaceRemoteSessionId ?? undefined}
           />
-        ) : !isOfficeMode && activeWorkspacePurpose === "project" ? (
-          <GitBranchSwitcher
-            workspacePath={workspaceAbsPath}
-            gitSummary={gitState.summary}
-            dirtyFileCount={gitDirtyFileCount}
-            onRefreshGit={handleRefreshGit}
-            className="px-0 pt-0"
-            popoverClassName="w-72"
-            branchListClassName="max-h-48"
-            // 输入框区域在底部，Radix 碰撞避让会把分支菜单翻到下方。
-            // 这里锁定上方弹出，避免菜单遮挡输入区并保持操作方向稳定。
-            avoidPopoverCollisions={false}
-          />
         ) : null}
       </>
     ),
@@ -1224,10 +1204,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       handleSelectComposerPlugin,
       allowOpenWorkspace,
       allowRemoteWorkspace,
-      activeWorkspacePurpose,
-      gitDirtyFileCount,
-      gitState.summary,
-      handleRefreshGit,
       handleSelectConversationWorkspace,
       handleStartDraftInWorkspaceInChat,
       isWindowsDesktop,
