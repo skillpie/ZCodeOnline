@@ -69,3 +69,10 @@ packages/desktop/.e2e-artifacts/
 packages/desktop/.e2e-cache/
 packages/desktop/.e2e-network-capture/
 .zcode-runtime/
+
+# skillpie 服务器部署信息（IP / 账号 / 服务器路径与拓扑），只保留本地副本，不入库。
+# 终端用户安装脚本（install-zcode-server.* / install.cmd）只含公开域名，保持追踪。
+apps/zcode-relay/deploy/DEPLOY.md
+apps/zcode-relay/deploy/zcode-relay.service
+apps/zcode-relay/deploy/zcode.skillpie.cn.conf
+apps/zcode-relay/deploy/deploy.env
