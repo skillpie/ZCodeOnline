@@ -10,6 +10,8 @@ import { candidateBaseDirs } from "./bundled-plugins.js";
  *
  * 它不是插件：不进官方市场目录、没有启停开关、不能卸载，也不出现在设置页与 `$` 引用面板。
  * 产品功能的工具由 runtime 注册，配套技能随 CLI 分发，避免卸载插件后缺少工具使用说明。
+ * 包内还随产品分发默认通用技能（如 bugfix、grill）：scope=system 且优先级最低，
+ * 用户/项目/插件里的同名技能总是压过内置版；是否随包由构建期 required 清单守卫。
  *
  * 三种运行形态解析到同一个 skills 目录：
  * - 开发态 / Electron 桌面：沿官方插件同款候选目录在入口旁找到 `packages/bundled-skills`，原地读取，不拷贝。
@@ -23,7 +25,8 @@ export const BUNDLED_SKILL_PACK_SKILLS_DIRECTORY = "skills";
 /** 门与技能包共用一个名字：常量住在 contracts（core 的技能门也读它），这里只转出。 */
 export { DYNAMIC_WORKFLOW_SKILL_NAME };
 
-/** 技能包里每个文件都是必需资产：丢任何一个都拒绝整包，而不是装出一个引用文件缺失的技能。 */
+/** 技能包运行时必需资产：丢任何一个都拒绝整包，而不是装出一个引用文件缺失的技能。
+ *  只列工作流门依赖的文件；默认通用技能的缺失由各构建脚本中止构建，不在此连坐整包。 */
 export const BUNDLED_SKILL_PACK_REQUIRED_PATHS = [
   `skills/${DYNAMIC_WORKFLOW_SKILL_NAME}/SKILL.md`,
   `skills/${DYNAMIC_WORKFLOW_SKILL_NAME}/patterns.md`,
