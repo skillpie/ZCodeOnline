@@ -11,6 +11,7 @@ import { resolveNativeSearchReleasePlan } from "../../scripts/native-search-tool
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { collectRuntimeModuleClosureEntries } from "./scripts/runtime-dependency-closure.mjs";
 import {
+  rebuildDarwinNodePtySpawnHelper,
   resolvePackagedNodePtyPrebuildPath,
   restoreTargetNodePtyPrebuild,
 } from "./scripts/node-pty-package-assets.mjs";
@@ -512,6 +513,9 @@ export default {
   beforePack: async (context) => {
     runTimedSync("beforePack:restoreTargetNodePtyPrebuild", () =>
       restoreTargetNodePtyPrebuild({ desktopPackageRoot, targetPlatform }),
+    );
+    runTimedSync("beforePack:rebuildDarwinNodePtySpawnHelper", () =>
+      rebuildDarwinNodePtySpawnHelper({ desktopPackageRoot, targetPlatform }),
     );
     if (context.electronPlatformName !== "win32" || nsisInstallSectionPatched) {
       return;
