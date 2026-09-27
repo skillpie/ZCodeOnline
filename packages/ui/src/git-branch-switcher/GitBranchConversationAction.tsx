@@ -71,7 +71,7 @@ export function GitBranchConversationAction({
       size="sm"
       disabled={mutationPending}
       aria-label={intl.formatMessage({ id: messageIds.aria }, { branchName })}
-      className="mt-0.5 shrink-0 rounded-sm"
+      className="-mt-0.5 shrink-0 rounded-sm"
       onClick={(event) => {
         // 阻止冒泡到 cmdk Item，避免行内动作被当作分支切换。
         event.stopPropagation();
