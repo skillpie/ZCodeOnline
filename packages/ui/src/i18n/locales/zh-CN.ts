@@ -1184,7 +1184,7 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.empty": "未找到匹配分支",
   "git.branchSwitcher.currentDirty": "未提交的更改：{count} 个文件",
   "git.branchSwitcher.createAction": "创建并检出新分支...",
-  "git.branchSwitcher.mergeAction": "合并",
+  "git.branchSwitcher.mergeAction": "合入",
   "git.branchSwitcher.mergeAction.ariaLabel": "把分支 {branchName} 合并到当前分支",
   "git.branchSwitcher.mergePrompt":
     "请将分支 {branchName} 合并到本地当前分支，如遇冲突请解决冲突后完成合并。",
