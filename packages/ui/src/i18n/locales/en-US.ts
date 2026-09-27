@@ -1275,6 +1275,14 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.empty": "No matching branches",
   "git.branchSwitcher.currentDirty": "Uncommitted changes: {count} files",
   "git.branchSwitcher.createAction": "Create and switch to new branch...",
+  "git.branchSwitcher.mergeAction": "Merge",
+  "git.branchSwitcher.mergeAction.ariaLabel": "Merge branch {branchName} into the current branch",
+  "git.branchSwitcher.mergePrompt":
+    "Please merge branch {branchName} into the local current branch. If there are conflicts, resolve them and complete the merge.",
+  "git.branchSwitcher.pullAction": "Pull",
+  "git.branchSwitcher.pullAction.ariaLabel": "Pull remote updates for branch {branchName}",
+  "git.branchSwitcher.pullPrompt":
+    "Please pull remote updates for the current branch ({branchName}).",
   "git.branchSwitcher.createDialog.title": "Create and switch to a new branch",
   "git.branchSwitcher.createDialog.description":
     "Create a new local branch from the current HEAD and switch to it immediately after it succeeds.",
@@ -4582,6 +4590,14 @@ const enUS: Record<string, string> = {
   "chat.attachments.dragHint": "Drop to add attachments",
   "chat.composer.workspaceFileDragHint": "Drop to mention this file or folder",
   "chat.send": "Send",
+  "chat.composer.quickPhrases.label": "Quick phrases",
+  "chat.composer.quickPhrases.empty":
+    'No quick phrases yet. Use "Manage quick phrases" below to add one.',
+  "chat.composer.quickPhrases.manage": "Manage quick phrases",
+  "chat.composer.quickPhrases.inputPlaceholder": "Type a phrase and press Enter",
+  "chat.composer.quickPhrases.add": "Add",
+  "chat.composer.quickPhrases.delete": "Delete this quick phrase",
+  "chat.composer.quickPhrases.done": "Done",
   "chat.scrollToBottom": "Scroll to bottom",
   "chat.message.edit": "Edit",
   "chat.message.restore": "Restore",

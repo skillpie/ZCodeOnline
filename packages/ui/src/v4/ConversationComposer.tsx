@@ -70,6 +70,9 @@ import {
   AttachmentPreview,
 } from "@/components/ai-elements/attachments.js";
 import { Button } from "@/components/ui/button.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
+import { ComposerQuickPhrasesManageDialog } from "@/v4/composer/ComposerQuickPhrasesManageDialog.js";
+import { ComposerQuickPhrasesMenu } from "@/v4/composer/ComposerQuickPhrasesMenu.js";
 import {
   Dialog,
   DialogClose,
@@ -597,6 +600,9 @@ function ConversationComposerImpl({
     requestedDelivery?: "startNow" | "queue" | "guide";
   } | null>(null);
   const [sendTooltipOpen, setSendTooltipOpen] = useState(false);
+  // 空输入点击发送按钮弹出的常用语面板与其管理弹窗（specs/composer-quick-phrases.md）。
+  const [quickPhrasesOpen, setQuickPhrasesOpen] = useState(false);
+  const [quickPhrasesManageOpen, setQuickPhrasesManageOpen] = useState(false);
   // submit 经 ref 读取最新文本/pending，避免回调随每次输入变更引用。
   const textRef = useRef("");
   const contentRevisionRef = useRef(0);
@@ -1139,6 +1145,15 @@ function ConversationComposerImpl({
     routingAllowsSend &&
     attachmentsReady &&
     submissionReady;
+  // 空输入但其余发送条件齐备：点击发送按钮弹常用语面板而非置灰
+  // （specs/composer-quick-phrases.md）。busy 空输入由 Stop 控件接管，不会到这里。
+  const canOpenQuickPhrases =
+    !disabled &&
+    !pending &&
+    !hasDraftToSubmit &&
+    routingAllowsSend &&
+    attachmentsReady &&
+    submissionReady;
   // 旧 UI 状态机：streaming + 空草稿 → Stop；有草稿 → 发送键（入队）。
   const showStopControl = canStop && !hasDraftToSubmit;
 
@@ -1577,6 +1592,35 @@ function ConversationComposerImpl({
     [appleKeyboardPlatform, modifiedEnterReversesDelivery],
   );
 
+  // 常用语发送：把短语写入编辑器后复用既有 submit() 链路（队列准入 / 遥测 /
+  // 失败保留草稿全部一致），不建第二条发送路径。仅打开面板的空态满足全部发送条件。
+  const handleSendQuickPhrase = useCallback(
+    (phraseText: string) => {
+      setQuickPhrasesOpen(false);
+      const trimmed = phraseText.trim();
+      if (!trimmed) return;
+      sendTriggerRef.current = "button";
+      inputApiRef.current?.setText(trimmed);
+      updateText(inputApiRef.current?.getMarkdown() ?? trimmed);
+      void submit();
+    },
+    [submit, updateText],
+  );
+
+  const handleQuickPhrasesOpenChange = useCallback(
+    (next: boolean) => {
+      // 有可提交内容时按钮是发送语义，禁止面板打开（Radix trigger 点击会请求 open）。
+      if (next && !canOpenQuickPhrases) return;
+      setQuickPhrasesOpen(next);
+    },
+    [canOpenQuickPhrases],
+  );
+
+  const handleQuickPhrasesManage = useCallback(() => {
+    setQuickPhrasesOpen(false);
+    setQuickPhrasesManageOpen(true);
+  }, []);
+
   // ── 「加入对话」全局事件（workspace file tree 右键/按钮）→ mention 插入 ──
   useEffect(() => {
     if (!listenAddToChatEvents || typeof window === "undefined") {
@@ -1612,7 +1656,11 @@ function ConversationComposerImpl({
     }),
   });
   const sendTooltipTitle = intl.formatMessage({
-    id: mode === "enqueue" ? "chat.queue.enqueue" : "chat.send",
+    id: canOpenQuickPhrases
+      ? "chat.composer.quickPhrases.label"
+      : mode === "enqueue"
+        ? "chat.queue.enqueue"
+        : "chat.send",
   });
   const modifierTooltip = resolveFollowupModifierTooltip({
     enabled: modifiedEnterReversesDelivery,
@@ -2089,18 +2137,28 @@ function ConversationComposerImpl({
             open={Boolean(modifierTooltip) || sendTooltipOpen}
             onOpenChange={setSendTooltipOpen}
           >
-            <Button
-              type="submit"
-              size="icon-md"
-              disabled={!canSend}
-              onClick={handleSendButtonClick}
-              data-testid={TID_V4_COMPOSER_SEND}
-              aria-label={resolvedSendTooltipTitle}
-              className="cursor-pointer gap-1 rounded-lg bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
-            >
-              {pending ? <Spinner className="size-4" /> : <ArrowUpIcon className="size-4" />}
-              <span className="sr-only">{resolvedSendTooltipTitle}</span>
-            </Button>
+            <Popover open={quickPhrasesOpen} onOpenChange={handleQuickPhrasesOpenChange}>
+              <PopoverTrigger asChild>
+                <Button
+                  type={canSend ? "submit" : "button"}
+                  size="icon-md"
+                  disabled={!canSend && !canOpenQuickPhrases}
+                  onClick={handleSendButtonClick}
+                  data-testid={TID_V4_COMPOSER_SEND}
+                  aria-label={resolvedSendTooltipTitle}
+                  className="cursor-pointer gap-1 rounded-lg bg-brand text-ui-base text-foreground-inverse hover:bg-brand/80"
+                >
+                  {pending ? <Spinner className="size-4" /> : <ArrowUpIcon className="size-4" />}
+                  <span className="sr-only">{resolvedSendTooltipTitle}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="end" className="w-64 gap-0 p-0">
+                <ComposerQuickPhrasesMenu
+                  onSend={handleSendQuickPhrase}
+                  onManage={handleQuickPhrasesManage}
+                />
+              </PopoverContent>
+            </Popover>
           </ControlHintTooltip>
         )}
       </div>
@@ -2116,6 +2174,11 @@ function ConversationComposerImpl({
       handleStopClick,
       handleSendButtonClick,
       handleConfigPickerOpenChange,
+      canOpenQuickPhrases,
+      quickPhrasesOpen,
+      handleQuickPhrasesOpenChange,
+      handleSendQuickPhrase,
+      handleQuickPhrasesManage,
       mode,
       handleSelectModelTrace,
       modelSelectionReload,
@@ -2312,6 +2375,10 @@ function ConversationComposerImpl({
           </p>
         ) : null}
       </div>
+      <ComposerQuickPhrasesManageDialog
+        open={quickPhrasesManageOpen}
+        onOpenChange={setQuickPhrasesManageOpen}
+      />
       <ImagePreviewDialog
         initialIndex={attachmentPreviewIndex}
         items={composerMediaPreviewItems}

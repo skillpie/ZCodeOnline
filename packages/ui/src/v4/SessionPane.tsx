@@ -271,6 +271,8 @@ import {
   setSelectionSideChatBlocked,
   subscribeSelectionSideChatRuntime,
 } from "@/lib/selectionSideChatRuntime.js";
+import { registerWorkspaceConversationPromptSender } from "@/lib/workspaceConversationPromptRuntime.js";
+import { V4_PRIMARY_PANE_ID } from "@/v4/paneLayoutTree.js";
 import {
   normalizeSlashCommandValue,
   shouldOfferSideSlashCommand,
@@ -3016,6 +3018,24 @@ export function SessionPane({
     },
     [dispatchSendText, focusTimelineToLatest, intl, sessionId],
   );
+
+  // 头部 Git 工具的分支弹窗「合并」位于会话 Provider 外，不能自己拼协议命令；
+  // 这里只把主 pane 既有的 handleSendText 编排能力注册进模块级路由表，外部按
+  // workspace 身份 key 路由。只读 pane 不注册；草稿态（sessionId === null）也注册，
+  // 首发建会话由 dispatchSendText 既有路径承接。
+  const conversationPromptSenderKey =
+    paneId === V4_PRIMARY_PANE_ID && !readOnly ? workspaceKey : null;
+  useEffect(() => {
+    if (!conversationPromptSenderKey) {
+      return;
+    }
+
+    return registerWorkspaceConversationPromptSender(
+      { workspacePath, workspaceIdentity },
+      (text) => handleSendText(text),
+      focused,
+    );
+  }, [conversationPromptSenderKey, focused, handleSendText, workspaceIdentity, workspacePath]);
 
   const handleComposerDraftStateChange = useCallback(
     (state: { hasContent: boolean; busy: boolean }) => {

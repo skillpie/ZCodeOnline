@@ -6,7 +6,6 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
   CommandList,
 } from "@/components/ui/command.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
@@ -26,10 +25,12 @@ import {
   isCoarseTouchDevice,
   shouldRestoreChatInputFocusAfterPickerClose,
 } from "@/lib/pickerFocus.js";
+import { GitBranchListRow } from "@/git-branch-switcher/GitBranchListRow.js";
 import { ChevronDownIcon, GitBranchIcon, GitGraph, LoaderIcon, PlusIcon } from "lucide-react";
 
 interface GitBranchSwitcherProps {
   workspacePath: string;
+  workspaceIdentity?: string;
   gitSummary: GitRepositorySummary;
   dirtyFileCount: number;
   onRefreshGit: () => void;
@@ -41,10 +42,13 @@ interface GitBranchSwitcherProps {
   popoverSide?: "top" | "bottom" | "left" | "right";
   avoidPopoverCollisions?: boolean;
   showFooterActions?: boolean;
+  /** 头部弹窗专属：分支行 hover 时行尾提供对话动作——非当前分支「合并」、当前分支「拉取」，点击向当前对话发送提示词。 */
+  enableConversationActions?: boolean;
 }
 
 export function GitBranchSwitcher({
   workspacePath,
+  workspaceIdentity,
   gitSummary,
   dirtyFileCount,
   onRefreshGit,
@@ -56,6 +60,7 @@ export function GitBranchSwitcher({
   popoverSide = "top",
   avoidPopoverCollisions = true,
   showFooterActions = true,
+  enableConversationActions = false,
 }: GitBranchSwitcherProps) {
   const { intl, locale } = useZCodeIntl();
   const numberFormatter = new Intl.NumberFormat(locale);
@@ -125,6 +130,10 @@ export function GitBranchSwitcher({
   const branchSearchFilter = useCallback(
     (value: string, search: string) => (matchesGitBranchSearch(value, search) ? 1 : 0),
     [],
+  );
+  const conversationPromptScope = useMemo(
+    () => ({ workspacePath, workspaceIdentity }),
+    [workspaceIdentity, workspacePath],
   );
 
   useEffect(() => {
@@ -266,34 +275,21 @@ export function GitBranchSwitcher({
                   })}
                   className="space-y-0.5 p-1 **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-ui-base **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-foreground-subtle"
                 >
-                  {(branchesResult?.branches ?? []).map((branch) => {
-                    const isCurrent = branch.name === displayedCurrentBranchName;
-                    return (
-                      <CommandItem
-                        key={branch.name}
-                        value={branch.name}
-                        data-checked={isCurrent ? "true" : undefined}
-                        data-branch-current={isCurrent ? "true" : undefined}
-                        disabled={mutationPending}
-                        className={cn("items-start gap-3 rounded-lg px-3 py-2 text-ui-base")}
-                        onSelect={() => {
-                          void switchBranch(branch.name);
-                        }}
-                      >
-                        <GitBranchIcon className="mt-0.5 size-4 text-foreground-subtle" />
-                        <div className="min-w-0 flex-1 flex flex-col gap-1 text-left">
-                          <div className="truncate text-ui-base font-medium text-foreground">
-                            {branch.name}
-                          </div>
-                          {isCurrent && currentBranchDirtyLabel ? (
-                            <p className="pt-0.5 text-ui-base text-foreground-subtle">
-                              {currentBranchDirtyLabel}
-                            </p>
-                          ) : null}
-                        </div>
-                      </CommandItem>
-                    );
-                  })}
+                  {(branchesResult?.branches ?? []).map((branch) => (
+                    <GitBranchListRow
+                      key={branch.name}
+                      branch={branch}
+                      isCurrent={branch.name === displayedCurrentBranchName}
+                      currentDirtyLabel={currentBranchDirtyLabel}
+                      mutationPending={mutationPending}
+                      onSwitch={switchBranch}
+                      enableConversationAction={enableConversationActions}
+                      conversationPromptScope={conversationPromptScope}
+                      onConversationActionTriggered={() => {
+                        setOpen(false);
+                      }}
+                    />
+                  ))}
                 </CommandGroup>
               </CommandList>
             </Command>

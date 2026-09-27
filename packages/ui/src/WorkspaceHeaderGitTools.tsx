@@ -8,7 +8,11 @@
  * 一并清理。组件不持有 Git 状态：summary / 变更摘要全部由 shell 投影下发，
  * 变更由 onRefreshGit 驱动刷新；提交与分支弹层的交互状态归 GitActionMenu /
  * GitBranchSwitcher 内部所有，这里只提供触发器。拉取是本组件唯一的即时动作：
- * 走 IGitService.pull（快进式），结果用 toast 反馈，不弹确认框。
+ * 走 IGitService.pull（快进式），结果用 toast 反馈，不弹确认框。分支弹窗另提供
+ * 对话动作（2026-09-27）：非当前分支「合并」、当前分支「拉取」，均把提示词发进
+ * 当前工作区主对话由 AI 执行（弹窗内拉取可由 AI 处理分叉，与头部快进式直拉
+ * 语义不同、互不替代），发送能力由主 pane SessionPane 注册，
+ * 链路见 specs/workspace-header-git-tools.md。
  */
 import { useCallback, useState } from "react";
 import { ArrowDownToLine, LoaderIcon } from "lucide-react";
@@ -80,10 +84,12 @@ export function WorkspaceHeaderGitTools({
       {/* 2026-09-26 按用户决策调整排序：分支切换器在最左（常驻项），「提交/拉取」移到其右。 */}
       <GitBranchSwitcher
         workspacePath={workspaceAbsPath}
+        workspaceIdentity={workspaceIdentity}
         gitSummary={gitSummary}
         dirtyFileCount={gitDirtyFileCount}
         onRefreshGit={onRefreshGit}
         markAsWorkspaceHeaderBranch
+        enableConversationActions
         className="min-w-0 px-0 pt-0"
         triggerClassName="h-7 w-fit min-w-0 gap-1 rounded-lg px-1.5 text-ui-sm text-foreground hover:bg-hover hover:text-foreground [&>span]:max-w-20"
         popoverSide="bottom"
