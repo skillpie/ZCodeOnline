@@ -306,18 +306,32 @@ function parseArgsJson(raw: string | undefined): string[] | undefined {
 }
 
 function findUpward(relativePath: string): string | null {
-  let current = process.cwd();
-  while (true) {
-    const candidate = join(current, relativePath);
-    if (existsSync(candidate)) {
-      return candidate;
+  // 关键业务逻辑：server-cli 守护进程由 launchd/systemd 拉起时 cwd 是 "/"，仅按 cwd 向上
+  // 找 monorepo 入口永远落空，隧道宿主会以 "ZCode agent server command is not configured"
+  // 崩溃。补充从当前运行入口（server-cli dist 所在目录）向上解析；cwd 优先保持既有行为。
+  const startDirs = [process.cwd()];
+  const entryPath = process.argv[1];
+  if (entryPath) {
+    const entryDir = dirname(entryPath);
+    if (!startDirs.includes(entryDir)) {
+      startDirs.push(entryDir);
     }
-    const parent = dirname(current);
-    if (parent === current) {
-      return null;
-    }
-    current = parent;
   }
+  for (const startDir of startDirs) {
+    let current = startDir;
+    while (true) {
+      const candidate = join(current, relativePath);
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+      const parent = dirname(current);
+      if (parent === current) {
+        break;
+      }
+      current = parent;
+    }
+  }
+  return null;
 }
 
 async function buildZCodeAgentSpawnPreflight(

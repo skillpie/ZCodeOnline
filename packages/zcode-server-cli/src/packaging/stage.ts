@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- 发行包 staging 流程按步骤线性组装，oxfmt 换行后略超 400 行，拆分会增加跨步骤状态同步。 */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { existsSync, readdirSync } from "node:fs";
 import { access, chmod, cp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -441,10 +442,12 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
     [...rawClosure].filter(([packageName]) => isTargetSpecificPackage(packageName, options.target)),
   );
   const nodeModulesTargetDir = join(runtimeDir, "node_modules");
+  let nodePtyPackageDir: string | null = null;
   for (const [packageName, packageDir] of closure) {
     const targetDir = join(nodeModulesTargetDir, ...packageName.split("/"));
     await mkdir(dirname(targetDir), { recursive: true });
     if (packageName === "node-pty") {
+      nodePtyPackageDir = packageDir;
       await copyPackageDir(packageDir, targetDir, (relativePath) =>
         isNodePtyRuntimePath(relativePath, options.target),
       );
@@ -462,7 +465,7 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
   }
 
   if (closure.has("node-pty")) {
-    await ensureNodePtyPrebuild(options, nodeModulesTargetDir);
+    await ensureNodePtyPrebuild(options, nodeModulesTargetDir, nodePtyPackageDir);
   }
 
   const tools = await copyNativeTools(
@@ -611,6 +614,7 @@ async function pruneKoffiRuntime(
 async function ensureNodePtyPrebuild(
   options: StageOptions,
   nodeModulesTargetDir: string,
+  nodePtyPackageDir: string | null,
 ): Promise<void> {
   const prebuildDir = join(nodeModulesTargetDir, "node-pty", "prebuilds", options.target);
   const ptyNodePath = join(prebuildDir, "pty.node");
@@ -646,4 +650,66 @@ async function ensureNodePtyPrebuild(
   } catch {
     // 非 darwin 平台没有 spawn-helper，忽略。
   }
+  // npm 自带的 spawn-helper 是老 SDK/极老部署目标的产物，在较新 macOS 上会被宿主进程的
+  // posix_spawn 拒绝（终端必然报 posix_spawnp failed，桌面端 beforePack 已同款修复）。
+  // 发行包走纯 Node 宿主时暂未复现，但同一份二进制没有理由继续分发：darwin 目标一律
+  // 用 node-pty 源码现编 arm64+x86_64 通用 helper 替换；默认 SDK 链接失败时按版本从新到旧
+  // 回退 CommandLineTools/Xcode 里的备选 SDK。
+  if (options.target.startsWith("darwin-") && nodePtyPackageDir) {
+    const helperSourcePath = join(nodePtyPackageDir, "src", "unix", "spawn-helper.cc");
+    if (existsSync(helperSourcePath)) {
+      compileDarwinSpawnHelper(helperSourcePath, spawnHelperPath);
+      await chmod(spawnHelperPath, 0o755);
+    }
+  }
+}
+
+/** 按 SDK 版本从新到旧列出备选 SDK（默认 SDK 由编译器自己解析，不含在内）。 */
+function listFallbackDarwinSdks(): string[] {
+  const sdkRoots = [
+    "/Library/Developer/CommandLineTools/SDKs",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs",
+  ];
+  const candidates: { path: string; version: number }[] = [];
+  for (const sdkRoot of sdkRoots) {
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(sdkRoot);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.startsWith("MacOSX") || !entry.endsWith(".sdk") || entry === "MacOSX.sdk") {
+        continue;
+      }
+      candidates.push({
+        path: resolve(sdkRoot, entry),
+        version: Number.parseFloat(entry.slice("MacOSX".length)) || 0,
+      });
+    }
+  }
+  return candidates.sort((left, right) => right.version - left.version).map((c) => c.path);
+}
+
+function compileDarwinSpawnHelper(sourcePath: string, outputPath: string): void {
+  const compilers = ["clang++", "c++"];
+  const sdkRoots: (string | null)[] = [null, ...listFallbackDarwinSdks()];
+  let lastError = "";
+  for (const sdkRoot of sdkRoots) {
+    for (const compiler of compilers) {
+      const result = spawnSync(
+        compiler,
+        ["-O2", "-arch", "arm64", "-arch", "x86_64", "-o", outputPath, sourcePath],
+        {
+          stdio: "pipe",
+          ...(sdkRoot ? { env: { ...process.env, SDKROOT: sdkRoot } } : {}),
+        },
+      );
+      if (result.status === 0) return;
+      lastError =
+        result.error?.message ??
+        `${compiler}${sdkRoot ? ` (SDK ${sdkRoot})` : ""} exited ${result.status}: ${String(result.stderr || "")}`.trim();
+    }
+  }
+  throw new Error(`node-pty spawn-helper 编译失败: ${lastError || "无可用 C++ 编译器"}`);
 }
