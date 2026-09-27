@@ -157,6 +157,28 @@ pnpm bundle:desktop -- --help
 sudo xattr -rd com.apple.quarantine /Applications/ZCode.app
 ```
 
+也可以用根目录的一键脚本完成「打包 + 替换本机安装」（以 ZCodeOnline Preview 身份构建，生产后端，可与正式版并排；`--skip-build` / `-SkipBuild` 只重装不构建）：
+
+```bash
+./install_destop.sh                # macOS
+```
+
+```powershell
+.\install_destop.ps1               # Windows（NSIS 静默安装）
+```
+
+脚本会退出正在运行的 ZCodeOnline 后替换安装并重新拉起；若在 ZCode 会话内执行，该会话会随应用退出中断，安装仍会完成。安装日志写入 `~/.zcode/logs/desktop-install.log`。
+
+### Web 隧道部署
+
+`deploy_web.sh`（仓库根）把 Web 隧道形态部署到自有服务器：本机构建 Web 与 relay，经 rsync 上传并重启 systemd / reload nginx。
+
+```bash
+./deploy_web.sh            # 完整部署；--web / --relay / --ng / --check / --release 为细粒度入口
+```
+
+服务器与站点信息（`SERVER_HOST` / `SERVER_USER` / `SITE_URL`）从 `apps/zcode-relay/deploy/deploy.env` 读取——该文件与 nginx conf、systemd unit 均含部署侧信息，**不入库**（见 [.gitignore](.gitignore)），需在部署机上自行准备；缺失时脚本报错退出。
+
 ### ZCode 命令行版
 
 构建入口为 `pnpm build:zcode`。脚本会依次构建 CLI/TUI、后端和 Web，收集 TUI 的原生库、worker 与运行时依赖，再组装发行包；运行发行包仍需要 Node.js，版本以 `mise.toml` 为准。

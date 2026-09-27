@@ -14,7 +14,7 @@ if [ -d "$git_dir/rebase-merge" ] || [ -d "$git_dir/rebase-apply" ] || [ -f "$gi
 fi
 
 repo_root="$(git rev-parse --show-toplevel)" || exit 0
-deploy_sh="$repo_root/apps/zcode-relay/deploy/deploy-zcode.sh"
+deploy_sh="$repo_root/deploy_web.sh"
 [ -f "$deploy_sh" ] || exit 0
 
 log_dir="$HOME/.zcode/logs"

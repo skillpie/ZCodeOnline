@@ -23,6 +23,9 @@
 | 模块阅读包       | `pnpm architecture:context <module-id>`   |
 | 未使用依赖与导出 | `pnpm knip`                               |
 | 导出引用查询     | `pnpm dep:refs --list-exports <file>`     |
+| 桌面端打包并重装本机（macOS） | `./install_destop.sh`（`--skip-build` 只重装） |
+| 桌面端打包并安装本机（Windows） | `.\install_destop.ps1`（`-SkipBuild` 只安装） |
+| Web 隧道部署     | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库） |
 
 测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
 
