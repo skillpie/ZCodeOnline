@@ -1083,6 +1083,13 @@ const zhCN: Record<string, string> = {
   "sidePane.time.hoursAgo": "{count} 小时前",
   "sidePane.time.daysAgo": "{count} 天前",
   "git.action.refresh": "刷新",
+  "git.review.aiReview": "AI 评审",
+  "git.review.aiReview.prompt.unstaged":
+    "请评审当前工作区未暂存的代码变更（含未跟踪文件），从正确性、安全性、可维护性角度指出问题，并给出具体的改进建议。",
+  "git.review.aiReview.prompt.staged":
+    "请评审当前工作区已暂存的代码变更，从正确性、安全性、可维护性角度指出问题，并给出具体的改进建议。",
+  "git.review.aiReview.prompt.branch":
+    "请评审当前分支已提交、尚未推送到上游的代码变更（相对上游分支），从正确性、安全性、可维护性角度指出问题，并给出具体的改进建议。",
   "git.action.stage": "暂存",
   "git.action.unstage": "取消暂存",
   "git.action.discard": "丢弃",

@@ -1,11 +1,11 @@
 /* eslint-disable max-lines -- GitPane 当前集中承载来源切换、diff 懒加载、展开状态和文件变更查找联动；后续拆分需按 Git 面板功能边界单独推进。 */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { GitChangeSourceId, GitDiffResult } from "@zcode/shared";
 import { TID_GIT_PANE } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
-import { FileTextIcon, RefreshCw } from "lucide-react";
+import { FileTextIcon, RefreshCw, SparklesIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { type GitPaneFileChange, type GitPaneRepositoryState } from "@/hooks/useGitRepository.js";
 import { useServices } from "@/hooks/useServices.js";
@@ -13,6 +13,11 @@ import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { joinFilePath, isAbsoluteFilePath } from "@/lib/path.js";
+import {
+  getWorkspaceConversationPromptAvailability,
+  requestWorkspaceConversationPrompt,
+  subscribeWorkspaceConversationPromptRuntime,
+} from "@/lib/workspaceConversationPromptRuntime.js";
 import {
   getDiffCacheKey,
   getErrorMessage,
@@ -371,6 +376,27 @@ export function GitPane({
     setExpandedPath(null);
   };
 
+  // AI 评审提示词链路复用 workspaceConversationPromptRuntime（owner 为主 pane SessionPane，
+  // 见 specs/workspace-header-git-tools.md）；无注册方时不渲染按钮，避免死入口。
+  // 评审范围跟随当前选中来源：未暂存 / 已暂存 / 已提交（领先上游）。
+  const conversationPromptAvailable = useSyncExternalStore(
+    subscribeWorkspaceConversationPromptRuntime,
+    () => getWorkspaceConversationPromptAvailability({ workspacePath, workspaceIdentity }),
+    () => "unavailable",
+  );
+  const aiReviewPromptMessageId =
+    currentSourceOption.id === "staged"
+      ? "git.review.aiReview.prompt.staged"
+      : currentSourceOption.id === "branch"
+        ? "git.review.aiReview.prompt.branch"
+        : "git.review.aiReview.prompt.unstaged";
+  const handleAiReview = useCallback(() => {
+    requestWorkspaceConversationPrompt(
+      { workspacePath, workspaceIdentity },
+      intl.formatMessage({ id: aiReviewPromptMessageId }),
+    );
+  }, [aiReviewPromptMessageId, intl, workspaceIdentity, workspacePath]);
+
   const handleExpandChange = (change: GitPaneFileChange, nextOpen: boolean) => {
     logger.info(
       `[GitPane] 切换文件展开 workspace=${workspacePath} source=${currentSourceOption.id} path=${change.path} expanded=${nextOpen}`,
@@ -464,6 +490,12 @@ export function GitPane({
             <RefreshCw className={cn("size-3.5", gitState.loading && "animate-spin")} />
             {intl.formatMessage({ id: "git.action.refresh" })}
           </Button>
+          {conversationPromptAvailable === "ready" ? (
+            <Button type="button" variant="ghost" size="lg" onClick={handleAiReview}>
+              <SparklesIcon className="size-3.5" />
+              {intl.formatMessage({ id: "git.review.aiReview" })}
+            </Button>
+          ) : null}
         </div>
       </div>
 

@@ -9,7 +9,7 @@
   2. **已暂存**（`staged`）：暂存区改动。
   3. **已提交**（`branch`）：已提交、尚未推送到上游的文件，数据为 `git diff --numstat <upstream>...HEAD`（`IGitService.refresh` 的 `branchComparison`，仅 Git 面板打开时拉取）；展开文件查看 `upstream...HEAD` 的逐文件 diff（`IGitService.getDiff`，`sourceId: "branch"`）。来源只读，无 stage/discard 动作。
 - 2026-09 产品决策：原下拉框中的「全部分支更改」更名为「已提交」并改为分段切换；「上一轮更改」（last-turn）来源移除——其数据集自 store 收尾后恒为空壳，不再出现在来源切换中。
-- 头部右侧是「刷新」按钮（`onRefreshGit` 驱动 `refreshToken` 重拉真实 Git）。
+- 头部右侧是「刷新」按钮（`onRefreshGit` 驱动 `refreshToken` 重拉真实 Git）；其右侧为「AI 评审」按钮（2026-09-27 新增）：点击把评审提示词发送到**当前工作区主对话**，**按当前选中来源评审对应类别**——未暂存（含未跟踪文件）/ 已暂存 / 已提交（当前分支领先上游的变更），由 AI 自行执行 git 命令查看差异并评审。发送能力复用 `lib/workspaceConversationPromptRuntime.ts`（owner 为主 pane SessionPane 的 `handleSendText`，链路与失败语义见 `specs/workspace-header-git-tools.md`），GitPane 不拼协议命令、不建第二条发送路径；无注册方（可用性 `unavailable`）时按钮不渲染。
 - 变更列表按文件卡片渲染（虚拟滚动），点击展开懒加载该文件 diff（`IGitService.getDiff`，按 `sourceId:path` 缓存）；文件变更查找命中折叠文件时批量预加载 diff 并展开滚动到命中行。
 - `readonly` 字段语义：`unstaged` / `staged` 为可写来源（恒 false），`branch`（已提交）为只读来源（恒 true）。
 
@@ -35,3 +35,4 @@
 4. 展开/折叠文件卡片：diff 懒加载一次，重复展开命中缓存。
 5. 旧会话内存中选中过 last-turn：打开面板回落到未暂存，不报错、不显示空来源。
 6. 查找（文件变更查找）：命中折叠文件时自动展开并滚动居中，跨文件循环。
+7. AI 评审按钮：点击后当前对话收到评审提示词并开始执行，提示词针对**当前选中来源**对应类别的变更（草稿态则新建会话承载）；切换来源后再点击，评审范围随之变化；主 pane 未挂载时按钮不渲染；按钮不触发刷新、不改变来源选中态。

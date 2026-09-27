@@ -1167,6 +1167,13 @@ const enUS: Record<string, string> = {
   "sidePane.time.hoursAgo": "{count}h ago",
   "sidePane.time.daysAgo": "{count}d ago",
   "git.action.refresh": "Refresh",
+  "git.review.aiReview": "AI review",
+  "git.review.aiReview.prompt.unstaged":
+    "Please review the current workspace's unstaged code changes (including untracked files). Point out issues with correctness, security, and maintainability, and give concrete improvement suggestions.",
+  "git.review.aiReview.prompt.staged":
+    "Please review the current workspace's staged code changes. Point out issues with correctness, security, and maintainability, and give concrete improvement suggestions.",
+  "git.review.aiReview.prompt.branch":
+    "Please review the code changes that are committed on the current branch but not yet pushed to upstream. Point out issues with correctness, security, and maintainability, and give concrete improvement suggestions.",
   "git.action.stage": "Stage",
   "git.action.unstage": "Unstage",
   "git.action.discard": "Discard",
