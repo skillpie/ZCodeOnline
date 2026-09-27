@@ -5,7 +5,6 @@
     ".": {
       "entry": [
         ".release-it.mjs",
-        ".vscode/*.mjs",
         "scripts/check-workspace-freshness.mjs",
         "scripts/mise-run.mjs"
       ]
