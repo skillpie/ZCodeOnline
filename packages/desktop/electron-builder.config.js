@@ -224,7 +224,7 @@ if (
   !macSigningIdentity
 ) {
   throw new Error(
-    "ZCodePlus macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1",
+    "ZCodeOnline macOS packaging requires APPLE_SIGNING_IDENTITY or CSC_NAME when ZCODE_ENABLE_MAC_SIGN=1",
   );
 }
 

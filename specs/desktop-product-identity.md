@@ -10,11 +10,14 @@
 - 产品身份（flavor）与后端环境（`ZCODE_ENV`）是两个独立的轴：
   - `ZCODE_ENV=test` 一律 Preview 身份，产物带 `_TEST` 后缀；
   - `ZCODE_ENV=production` 默认正式身份，`ZCODE_PREVIEW_IDENTITY=1` 时改用 Preview 身份（可与正式版并排安装）。
-- **本 fork 的 Preview 身份命名为 `ZCodePlus`**（原 `ZCode Preview`）：appId `dev.zcode.app.plus`，
-  Linux 可执行名/包名 `zcode-plus`。运行时应用名与 Electron userData 目录同为 `ZCodePlus`
-  （`~/Library/Application Support/ZCodePlus`），与官方 `ZCode` 完全隔离，不存在包名/数据目录冲突。
+- **本 fork 的 Preview 身份命名为 `ZCodeOnline`**（原 `ZCodePlus`，更早为 `ZCode Preview`）：appId `dev.zcode.app.online`，
+  Linux 可执行名/包名 `zcode-online`。运行时应用名与 Electron userData 目录同为 `ZCodeOnline`
+  （`~/Library/Application Support/ZCodeOnline`），与官方 `ZCode` 完全隔离，不存在包名/数据目录冲突。
 - 内部 flavor 键仍为 `preview`（`ZCODE_PRODUCT_FLAVOR` 编译期常量），仅对外展示名变更；
   Helper 安装变体子目录沿用 `preview` 值，不迁移。
+- 更名边界（2026-09-28，`ZCodePlus` → `ZCodeOnline`）：productName、appId 与 Linux 可执行名/包名
+  作为同一身份整体同步更名（与上一次 `ZCode Preview` → `ZCodePlus` 的惯例一致）。更名后新旧包
+  互不识别为升级，已安装的 `ZCodePlus` 保持独立并存，数据目录按既有设计隔离，不做迁移。
 
 ## 2. 打包边界规则
 
@@ -34,7 +37,7 @@
 ## 3. 验收场景
 
 1. `ZCODE_ENV=production ZCODE_PREVIEW_IDENTITY=1 pnpm bundle:desktop` 产物安装名/运行名均为
-   `ZCodePlus`，启动后数据目录落在 `Application Support/ZCodePlus`，与 `/Applications/ZCode.app`
+   `ZCodeOnline`，启动后数据目录落在 `Application Support/ZCodeOnline`，与 `/Applications/ZCode.app`
    互不读写。
 2. 打包产物内 `out/main/index.js` 不含指向 `@zcode/*` 的裸 import specifier。
 3. 应用主进程启动不出现 `ERR_MODULE_NOT_FOUND`（隧道管理面 `@zcode/server-cli/control`
