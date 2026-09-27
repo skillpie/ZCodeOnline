@@ -82,9 +82,9 @@ if [ "$RELEASES" = true ]; then
     rsync -av --delete "$archive" "$SERVER_USER@$SERVER_HOST:$DL_DIR/zcode-server-$target.tar.gz"
     echo "[release] zcode-server-$target.tar.gz published"
   done
-  rsync -av "$DEPLOY_DIR/install-zcode-server.sh" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.sh"
-  rsync -av "$DEPLOY_DIR/install-zcode-server.ps1" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.ps1"
-  rsync -av "$DEPLOY_DIR/install.cmd" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.cmd"
+  rsync -av "$DEPLOY_ASSETS_DIR/install-zcode-server.sh" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.sh"
+  rsync -av "$DEPLOY_ASSETS_DIR/install-zcode-server.ps1" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.ps1"
+  rsync -av "$DEPLOY_ASSETS_DIR/install.cmd" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.cmd"
   echo "[release] install.sh / install.ps1 / install.cmd published"
 fi
 
