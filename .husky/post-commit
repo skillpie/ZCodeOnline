@@ -1,0 +1,42 @@
+#!/bin/sh
+# 提交成功后自动部署 Web 隧道（zcode.skillpie.cn）。
+#
+# 设计要点：
+# - 后台执行不阻塞提交；部署脚本自身的验证输出与失败信息只落在日志文件。
+# - 产物从**当前工作区**构建（与手动执行 deploy-zcode.sh 行为一致）：提交后立刻
+#   改文件的话，后台部署可能带上未提交内容。
+# - rebase / merge / cherry-pick 的自动提交不触发部署，避免提交风暴。
+# - 锁目录防并发：上一次部署未结束时跳过本次触发，不排队。
+
+git_dir="$(git rev-parse --git-dir 2>/dev/null)" || exit 0
+if [ -d "$git_dir/rebase-merge" ] || [ -d "$git_dir/rebase-apply" ] || [ -f "$git_dir/MERGE_HEAD" ]; then
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)" || exit 0
+deploy_sh="$repo_root/apps/zcode-relay/deploy/deploy-zcode.sh"
+[ -f "$deploy_sh" ] || exit 0
+
+log_dir="$HOME/.zcode/logs"
+log_file="$log_dir/web-tunnel-deploy.log"
+lock_dir="$log_dir/web-tunnel-deploy.lock"
+
+if [ -d "$lock_dir" ]; then
+  echo "[post-commit] Web 隧道部署已在后台执行，跳过本次触发（日志: $log_file）"
+  exit 0
+fi
+
+mkdir -p "$log_dir" || exit 0
+echo "[post-commit] Web 隧道部署已在后台触发，日志: $log_file"
+
+LOCK="$lock_dir" LOG="$log_file" DEPLOY_SH="$deploy_sh" REPO_ROOT="$repo_root" \
+nohup sh -c '
+  mkdir "$LOCK" 2>/dev/null || exit 0
+  echo "===== $(date "+%F %T") commit-triggered deploy start ($REPO_ROOT)" >> "$LOG"
+  bash "$DEPLOY_SH" >> "$LOG" 2>&1
+  code=$?
+  echo "===== $(date "+%F %T") deploy end (exit=$code)" >> "$LOG"
+  rmdir "$LOCK" 2>/dev/null
+' >/dev/null 2>&1 &
+
+exit 0

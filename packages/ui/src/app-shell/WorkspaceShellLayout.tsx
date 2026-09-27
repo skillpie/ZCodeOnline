@@ -49,6 +49,7 @@ import { PluginStorePage } from "@/settings/PluginStorePage.js";
 import { SkillMarketEmbeddedView } from "@/SkillMarketEmbeddedView.js";
 import { TaskFindDialog } from "@/quickpick/TaskFindDialog.js";
 import { WorkspaceHeader } from "@/WorkspaceHeader.js";
+import { shouldRenderWorkspaceHeader } from "@/app-shell/workspaceHeaderVisibility.js";
 import { WorkspaceSidebar, type SidebarFileTreeOpenRequest } from "@/WorkspaceSidebar.js";
 import { AnimatedSidePanePanel } from "@/app-shell/AnimatedSidePanePanel.js";
 import {
@@ -1492,14 +1493,11 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     updateState?.kind === "download-progress" ||
     updateState?.kind === "update-downloaded";
   // Draft 之前维护一套独立轻量 header，导致 side pane、caption 安全区和拖拽入口
-  // 与 Task Header 分叉。桌面端统一复用 WorkspaceHeader，只由 variant 裁剪 task 专属内容；
-  // 手机远控无 active task 时仍不渲染桌面 chrome，继续遵守 replayable overlay 边界。
-  const shouldRenderMainViewHeader =
-    workspaceMainView !== "automations" &&
-    workspaceMainView !== "plugin-store" &&
-    workspaceMainView !== "skill-market";
-  const shouldRenderWorkspaceHeader =
-    shouldRenderMainViewHeader && (activeTaskId !== null || isDesktop);
+  // 与 Task Header 分叉。现统一复用 WorkspaceHeader，只由 variant 裁剪 task 专属内容；
+  // 可见性收敛到 workspaceHeaderVisibility.ts 唯一谓词：只看主视图，不按平台与
+  // 活动 task 区分（2026-09-27 用户决策，Web/手机远控草稿态对齐桌面渲染头部）。
+  // 头部不承载流式/快照状态，草稿态渲染头部不影响 web-remote-replayable 恢复链路。
+  const shouldRenderMainViewHeader = shouldRenderWorkspaceHeader(workspaceMainView);
   // ErrorBoundary resetKeys 的数组如果每次 render 都重新创建，
   // 即使 workspace/task 没变化也会在 React DevTools Components 轨道里持续表现为子树 props 变化。
   const workspaceOnlyResetKeys = useMemo(() => [workspaceKey], [workspaceKey]);
@@ -1691,7 +1689,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                       isTerminalVisible && "rounded-b-[var(--workspace-panel-radius)] border-b",
                     )}
                   >
-                    {shouldRenderWorkspaceHeader ? (
+                    {shouldRenderMainViewHeader ? (
                       <ScopedErrorBoundary
                         scope="workspace-header"
                         resetKeys={workspaceOnlyResetKeys}
