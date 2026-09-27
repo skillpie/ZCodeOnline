@@ -44,10 +44,14 @@ export function GitBranchListRow({
   return (
     <CommandItem
       value={branch.name}
-      data-checked={isCurrent ? "true" : undefined}
+      // 当前分支不打勾（2026-09-27 用户决策）：去掉行尾 ✓，以选中底色标识，
+      // 因此不再写 data-checked（该 attr 只驱动 command.tsx 的 CheckIcon）。
       data-branch-current={isCurrent ? "true" : undefined}
       disabled={mutationPending}
-      className={cn("items-start gap-3 rounded-lg px-3 py-2 text-ui-base")}
+      className={cn(
+        "items-start gap-3 rounded-lg px-3 py-2 text-ui-base",
+        "data-[branch-current=true]:bg-selected",
+      )}
       onMouseEnter={() => {
         setHovered(true);
       }}
@@ -68,7 +72,14 @@ export function GitBranchListRow({
     >
       <GitBranchIcon className="mt-0.5 size-4 text-foreground-subtle" />
       <div className="min-w-0 flex-1 flex flex-col gap-1 text-left">
-        <div className="truncate text-ui-base font-medium text-foreground">{branch.name}</div>
+        <div
+          className={cn(
+            "truncate text-ui-base text-foreground",
+            isCurrent ? "font-semibold" : "font-medium",
+          )}
+        >
+          {branch.name}
+        </div>
         {isCurrent && currentDirtyLabel ? (
           <p className="pt-0.5 text-ui-base text-foreground-subtle">{currentDirtyLabel}</p>
         ) : null}
