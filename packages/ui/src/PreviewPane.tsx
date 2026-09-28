@@ -20,9 +20,6 @@ import {
   FileCode2Icon,
   CopyIcon,
   LocateFixed,
-  PencilIcon,
-  SaveIcon,
-  XIcon,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { Button } from "@/components/ui/button.js";
@@ -37,6 +34,7 @@ import { usePdfViewerLabels, usePptxViewerLabels } from "@/hooks/usePreviewViewe
 import {
   FILE_VIEWER_MAX_TEXT_BYTES,
   createDiffSourceFilePreviewSource,
+  inferCodeLanguage,
   inferImageMediaType,
   inferMediaPreview,
   isPdfPreviewPath,
@@ -649,6 +647,12 @@ export function PreviewPane({
   // 以及 diff/评审等投影视图都没有可安全覆写的全文，不能出现"保存丢内容"的入口。
   const canEditFile =
     source?.type === "file" && filePreview !== null && !filePreview.isBinary && !fileTooLarge;
+  // 编辑态高亮的语言取自文件路径 + 进入编辑时的文件内容，编辑过程中不随草稿变化，
+  // 避免输入内容翻转语言推断导致整层配色跳变。
+  const editFileLanguage = useMemo(
+    () => inferCodeLanguage(fileSource?.path, filePreview?.content),
+    [fileSource, filePreview],
+  );
   const displayOptions = useMemo(
     () =>
       getPreviewPaneDisplayOptions(source, {
@@ -1632,26 +1636,27 @@ export function PreviewPane({
         </div>
 
         <div className="flex shrink-0 pr-1.5 items-center gap-2">
-          {/* 编辑模式：只保留 放弃 / 保存 两个动作，隐藏定位、更多、外部编辑器等冲突操作。
-              取消在左、保存在右：放弃是退路，保存是确认。 */}
+          {/* 编辑模式：只保留 退出 / 保存 两个动作，隐藏定位、更多、外部编辑器等冲突操作。
+              退出在左、保存在右：退出是退路，保存是确认；均用描边矩形文字按钮。 */}
           {isEditingFile ? (
             <>
               <Button
                 type="button"
-                size="icon-md"
-                variant="ghost"
-                className="shrink-0 text-foreground-subtle hover:text-foreground"
-                data-testid="preview-pane-cancel-file-edit"
-                title={intl.formatMessage({ id: "common.cancel" })}
-                aria-label={intl.formatMessage({ id: "common.cancel" })}
+                size="default"
+                variant="outline"
+                className="shrink-0"
+                data-testid="preview-pane-exit-file-edit"
+                title={intl.formatMessage({ id: "previewPane.exitFileEdit" })}
+                aria-label={intl.formatMessage({ id: "previewPane.exitFileEdit" })}
                 disabled={savingFileEdit}
                 onClick={handleCancelFileEdit}
               >
-                <XIcon className="size-3.5" />
+                {intl.formatMessage({ id: "previewPane.exitFileEdit" })}
               </Button>
               <Button
                 type="button"
-                size="icon-md"
+                size="default"
+                variant="outline"
                 className="shrink-0"
                 data-testid="preview-pane-save-file-edit"
                 title={intl.formatMessage({ id: "common.save" })}
@@ -1661,7 +1666,7 @@ export function PreviewPane({
                   void handleSaveFileEdit();
                 }}
               >
-                <SaveIcon className="size-3.5" />
+                {intl.formatMessage({ id: "common.save" })}
               </Button>
             </>
           ) : null}
@@ -1688,19 +1693,19 @@ export function PreviewPane({
               </span>
             </Button>
           ) : null}
-          {/* 编辑按钮：进入文件编辑模式，放在定位按钮左侧 */}
+          {/* 编辑按钮：进入文件编辑模式的描边文字按钮，放在定位按钮左侧 */}
           {canEditFile && !isEditingFile ? (
             <Button
               type="button"
-              size="icon-md"
-              variant="ghost"
-              className="shrink-0 text-foreground-subtle hover:text-foreground"
+              size="default"
+              variant="outline"
+              className="shrink-0"
               data-testid="preview-pane-edit-file"
               title={intl.formatMessage({ id: "previewPane.editFile" })}
               aria-label={intl.formatMessage({ id: "previewPane.editFile" })}
               onClick={handleStartFileEdit}
             >
-              <PencilIcon className="size-3.5" />
+              {intl.formatMessage({ id: "previewPane.editFile" })}
             </Button>
           ) : null}
           {/* 定位按钮：在左侧项目文件树中展开并聚焦当前文件 */}
@@ -1864,6 +1869,8 @@ export function PreviewPane({
               value={fileEditDraft}
               onChange={setFileEditDraft}
               fontSizePx={codePreviewSettings.fontSizePx}
+              language={editFileLanguage}
+              theme={codeTheme}
               ariaLabel={intl.formatMessage({ id: "previewPane.editFile" })}
             />
           ) : (
