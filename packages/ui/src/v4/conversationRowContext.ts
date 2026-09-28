@@ -62,6 +62,11 @@ export interface ConversationRowRenderContext {
   messageStreamFirstReasoningRowId?: number;
   /** 常规设置：是否在对话消息流中渲染 Todo 工具卡片。 */
   messageStreamShowTodos?: boolean;
+  /**
+   * 常规设置：是否展开中间执行过程。关闭时执行过程分段默认折叠（异常终态除外），
+   * 由 ConversationTimeline 在构建 render units 时消费。
+   */
+  messageStreamShowProcess?: boolean;
   /** 常规设置：是否聚合连续的 Explore-compatible 工具。 */
   toolGroupingExploreEnabled?: boolean;
   /** 常规设置：是否聚合连续的非只读 Shell 工具。 */

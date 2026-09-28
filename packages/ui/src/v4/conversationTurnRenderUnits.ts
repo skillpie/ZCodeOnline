@@ -15,6 +15,7 @@ import {
 } from "@/v4/workflowLaunchTurn.js";
 import {
   buildConversationTurnWorkSegments,
+  resolveAssistantHistoryDefaultOpen,
   resolveConversationTurnWorkDurationMs,
   resolveConversationTurnWorkStatus,
 } from "@/v4/conversationTurnWorkSegments.js";
@@ -72,6 +73,8 @@ export interface ConversationTurnRenderUnit {
 interface BuildConversationTurnRenderUnitsOptions {
   nowMs?: number;
   sessionPhase?: SessionPhase;
+  /** 常规设置“显示执行过程”；关闭时中间执行过程分段默认折叠。缺省按开启兼容旧调用方。 */
+  messageStreamShowProcess?: boolean;
 }
 
 interface DraftTurnRenderUnit {
@@ -321,6 +324,7 @@ function materializeDraftUnit(
     forceOpenHistory,
     timelineOnly,
     nowMs: options.nowMs,
+    messageStreamShowProcess: options.messageStreamShowProcess,
   });
   const orderedAssistantHistoryRows = workSegments.flatMap(
     (segment) => segment.assistantHistoryRows,
@@ -393,32 +397,38 @@ function normalizeRenderUnitPosition(
 ): ConversationTurnRenderUnit {
   const isLastTurn = index === total - 1;
   const forceOpenHistory = shouldForceOpenAbnormalHistory(unit.header, options.sessionPhase);
-  const assistantHistoryDefaultOpen =
-    unit.workSegments && unit.workSegments.length > 0
-      ? !unit.timelineOnly &&
-        (forceOpenHistory ||
-          (isLastTurn && unit.workSegments.at(-1)?.workStatus?.state === "running") ||
-          (unit.workSegments.length === 1 &&
-            unit.latestAssistantTextRow === undefined &&
-            unit.assistantWorkRows.length > 0))
-      : !unit.timelineOnly &&
-        (forceOpenHistory ||
-          (isLastTurn && unit.workStatus?.state === "running") ||
-          (unit.latestAssistantTextRow === undefined && unit.assistantWorkRows.length > 0));
-  const workSegments = unit.workSegments?.map((segment, segmentIndex, segments) =>
-    segmentIndex === segments.length - 1
+  const segments = unit.workSegments;
+  // 与分段构建同一条公式复算末段展开态：collapseProcess = 设置关闭且末段带“已工作”
+  // 触发器（workStatus 在场）；无触发器分段回退旧公式，避免折叠后没有再展开入口。
+  // unit 级旗帜恒等于末段（与 materialize 的 mustOpenHistory 同源）；缺 workSegments
+  // 的旧调用方按整轮 workStatus 走同一公式。
+  const resolveOpen = (hasTrigger: boolean, runningOpen: boolean, pureWorkOpen: boolean) =>
+    resolveAssistantHistoryDefaultOpen(forceOpenHistory || runningOpen || pureWorkOpen, {
+      timelineOnly: unit.timelineOnly,
+      forceOpenHistory,
+      collapseProcess: options.messageStreamShowProcess === false && hasTrigger,
+    });
+  const singleSegmentPureWorkOpen =
+    segments?.length === 1 && unit.latestAssistantTextRow === undefined;
+  const workSegments = segments?.map((segment, segmentIndex, all) =>
+    segmentIndex === all.length - 1
       ? {
           ...segment,
-          assistantHistoryDefaultOpen:
-            !unit.timelineOnly &&
-            (forceOpenHistory ||
-              (isLastTurn && segment.workStatus?.state === "running") ||
-              (segments.length === 1 &&
-                unit.latestAssistantTextRow === undefined &&
-                segment.assistantWorkRows.length > 0)),
+          assistantHistoryDefaultOpen: resolveOpen(
+            segment.workStatus !== undefined,
+            isLastTurn && segment.workStatus?.state === "running",
+            singleSegmentPureWorkOpen && segment.assistantWorkRows.length > 0,
+          ),
         }
       : segment,
   );
+  const assistantHistoryDefaultOpen =
+    workSegments?.at(-1)?.assistantHistoryDefaultOpen ??
+    resolveOpen(
+      unit.workStatus !== undefined,
+      isLastTurn && unit.workStatus?.state === "running",
+      unit.latestAssistantTextRow === undefined && unit.assistantWorkRows.length > 0,
+    );
   if (
     unit.isLastTurn === isLastTurn &&
     unit.assistantHistoryDefaultOpen === assistantHistoryDefaultOpen &&

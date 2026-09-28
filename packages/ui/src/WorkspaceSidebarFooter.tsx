@@ -46,6 +46,7 @@ import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
 import { WorkspaceAssistCodeRefreshTrigger } from "@/WorkspaceAssistCodeRefreshTrigger.js";
 import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
+import { shouldRenderBotChannelTrigger } from "@/workspaceSidebarFooterLayout.js";
 import {
   WorkspaceSidebarFooterPlanBadge,
   WorkspaceSidebarFooterUsageSummaryContent,
@@ -136,6 +137,10 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const avatarFallbackText = getAvatarFallbackText(user);
   const avatarKey = user?.avatarUrl ?? user?.id ?? "guest";
   const showAuthRestoreLoading = !user && isRestoringOAuthSession;
+  // 裁决交给纯函数便于单测；这里借真值收窄出 string，供 trigger 的必填 prop 使用。
+  const botChannelTriggerWorkspacePath = shouldRenderBotChannelTrigger({ workspacePath })
+    ? workspacePath
+    : undefined;
   const usageSummaryState = useWorkspaceSidebarFooterUsageSummaryState({
     enabled: true,
     workspaceIdentity,
@@ -371,9 +376,9 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex shrink-0 items-center gap-1.5">
-          {isDesktop && workspacePath ? (
+          {botChannelTriggerWorkspacePath ? (
             <WorkspaceWebRemoteControlTrigger
-              workspacePath={workspacePath}
+              workspacePath={botChannelTriggerWorkspacePath}
               workspaceIdentity={workspaceIdentity}
               compact
             />

@@ -62,6 +62,22 @@ export function resolveConversationTurnWorkDurationMs(
   return undefined;
 }
 
+/**
+ * “显示执行过程”关闭时的分段折叠裁决：中间执行过程默认全部折叠，只保留最终正文。
+ * - `collapseProcess` 由调用方合成：设置关闭 **且** 该分段会渲染“已工作”触发器
+ *   （workStatus 在场）。没有触发器的分段折叠后将无法再展开，必须回退旧公式保持展开。
+ * - 异常终态（中断/失败，forceOpenHistory）在任何口径下都强制展开，失败上下文必须可见。
+ * - 需要交互的行不受折叠影响：权限确认/AskUserQuestion 走独立 dialog，
+ *   计划确认等 userInput 行渲染在折叠区外。
+ */
+export function resolveAssistantHistoryDefaultOpen(
+  processVisibleOpen: boolean,
+  gates: { timelineOnly: boolean; forceOpenHistory: boolean; collapseProcess: boolean },
+): boolean {
+  if (gates.timelineOnly) return false;
+  return gates.collapseProcess ? gates.forceOpenHistory : processVisibleOpen;
+}
+
 interface DraftVisualWorkSegment {
   orderedRows: ConversationRow[];
   triggerRow?: UserInputRow;
@@ -143,9 +159,12 @@ export function buildConversationTurnWorkSegments(options: {
   forceOpenHistory: boolean;
   timelineOnly: boolean;
   nowMs?: number;
+  /** 常规设置“显示执行过程”；缺省按开启兼容旧调用方。 */
+  messageStreamShowProcess?: boolean;
 }): ConversationTurnWorkSegment[] {
   const visualDrafts = splitVisualWorkSegments(options.orderedRows);
   const tailRowIds = new Set(options.assistantTailRows.map((row) => row.rowId));
+  const showProcess = options.messageStreamShowProcess !== false;
   return visualDrafts.map((segment, segmentIndex) => {
     const segmentAssistantRows = segment.orderedRows.filter(isAssistantWorkRow);
     const segmentTailRows = segmentAssistantRows.filter((row) => tailRowIds.has(row.rowId));
@@ -213,13 +232,18 @@ export function buildConversationTurnWorkSegments(options: {
       assistantWorkRows: segmentAssistantRows,
       assistantHistoryRows: segmentHistoryRows,
       assistantFollowingRows: segmentFollowingRows,
-      assistantHistoryDefaultOpen:
-        !options.timelineOnly &&
-        (options.forceOpenHistory ||
+      assistantHistoryDefaultOpen: resolveAssistantHistoryDefaultOpen(
+        options.forceOpenHistory ||
           (options.isLastTurn && segmentWorkStatus?.state === "running") ||
           (visualDrafts.length === 1 &&
             visibleAssistantTextRow === undefined &&
-            segmentFlowRows.length > 0)),
+            segmentFlowRows.length > 0),
+        {
+          timelineOnly: options.timelineOnly,
+          forceOpenHistory: options.forceOpenHistory,
+          collapseProcess: !showProcess && segmentWorkStatus !== undefined,
+        },
+      ),
       ...(segmentWorkStatus ? { workStatus: segmentWorkStatus } : {}),
     };
   });

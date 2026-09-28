@@ -8,6 +8,7 @@ import {
 import { IZCodeAgentService } from "@zcode/services";
 import { ZCODE_VERSION } from "@zcode/shared";
 import { coreCommandSchema } from "../contracts.js";
+import { startAutomationScheduler, type AutomationSchedulerHandle } from "./automationScheduler.js";
 import { createCoreHttpServer } from "./http.js";
 import { installParentDisconnectHandler } from "./parentDisconnect.js";
 import { resolveCoreServerId } from "./serverIdentity.js";
@@ -41,10 +42,27 @@ export async function runServerCore(generation: number): Promise<void> {
       `当前构建未嵌入 ZCode Built-in Provider Config，且未设置 ${ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV}`,
     );
   }
+  // manual run 即时派发钩子：调度器实例在 services 装配后才创建，先到的 manual run
+  // 留在队列里由首轮 tick 的 claimManualRuns 兜底派发，不会丢失。
+  let automationSchedulerRef: AutomationSchedulerHandle | undefined;
   const services = createLocalServices({
     zcodeBuiltinProviderConfigFilePath,
     serviceAuthorityMode: "standalone-server",
+    onAutomationManualRunRequested: (params) =>
+      automationSchedulerRef?.dispatchManualRun(params) ?? Promise.resolve(),
   });
+  // 调度循环挂在 Core 进程内（grill 决策）：与桌面 scheduler 进程共享同一 tasks-index 库，
+  // 靠 AutomationRepo.claimDue 的 BEGIN IMMEDIATE 原子认领互斥，桌面 app 与 daemon
+  // 并存不会重复执行。misfire/退避/终态语义与桌面 scheduler 逐字对齐。
+  const automationScheduler = startAutomationScheduler({
+    services,
+    log: (level, message) => {
+      process.stderr.write(
+        `${JSON.stringify({ level, message: `[automation-scheduler] ${message}` })}\n`,
+      );
+    },
+  });
+  automationSchedulerRef = automationScheduler;
   const taskActivityTracker = createTaskActivityTracker(services.getOptional(IZCodeAgentService));
   const http = await createCoreHttpServer(services, { serverId: await resolveCoreServerId() });
   // 隧道运行时归 Core 所有（specs/web-tunnel.md §3.2）：与 loopback server 同进程，
@@ -134,6 +152,8 @@ export async function runServerCore(generation: number): Promise<void> {
     clearInterval(heartbeat);
     activitySubscription.dispose();
     taskActivityTracker.dispose();
+    // 先释放 automation 在途认领并停轮询，再释放 services（repo close 依赖库仍可用）。
+    await automationScheduler.dispose().catch(() => undefined);
     tunnel.dispose();
     await http.close().catch(() => undefined);
     await disposeServiceResourcesAndWait(services).catch(() => undefined);

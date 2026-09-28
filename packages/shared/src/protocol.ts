@@ -299,6 +299,11 @@ export interface AppSettings {
   messageStreamShowReasoningMigrationInitialized?: boolean;
   /** 是否在消息流中展示 todo 工具渲染；不影响摘要面板的 todo */
   messageStreamShowTodos?: boolean;
+  /**
+   * 是否在消息流中展开中间执行过程（工具调用、子代理、思考等）。
+   * 关闭后过程默认折叠到“已工作”分段里，只保留最终正文与必须交互的行；缺省按开启兼容旧配置。
+   */
+  messageStreamShowProcess?: boolean;
   /** 是否把连续的只读工具调用聚合成 Explore。 */
   toolGroupingExploreEnabled?: boolean;
   /** 是否把连续的非只读 Shell 工具调用聚合成 Terminal。 */
