@@ -120,7 +120,12 @@ export interface GitChangeSummary {
   removed: number;
 }
 
-export type WorkspaceMainView = "chat" | "automations" | "plugin-store" | "skill-market";
+export type WorkspaceMainView =
+  | "chat"
+  | "automations"
+  | "plugin-store"
+  | "skill-market"
+  | "code-repository";
 
 export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackService"> {
   workspaceReadOnlyReason?: string;
@@ -133,6 +138,12 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   handleOpenAutomations: OpenAutomationsMain;
   handleOpenPluginStore: () => void;
   handleOpenSkillMarket: () => void;
+  handleOpenCodeRepository: () => void;
+  /**
+   * 设置页「代码仓库设置」配置的仓库地址；null = 未配置（侧边栏不渲染入口）。
+   * App 从 codeRepositorySettings 读取并传递，内嵌视图以此为加载地址。
+   */
+  codeRepositoryUrl: string | null;
   /**
    * 技能市场内嵌视图的初始路径（如 /skills?skill=<normalizedName>）。
    * 付费技能「前往技能市场」深链到详情页；侧边栏入口为 null（市场首页）。

@@ -263,9 +263,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenAutomations,
   onOpenPluginStore,
   onOpenSkillMarket,
+  onOpenCodeRepository,
   automationsActive = false,
   pluginStoreActive = false,
   skillMarketActive = false,
+  codeRepositoryActive = false,
   onFileTreeOpenChange,
 }: {
   workspacePath: string;
@@ -317,9 +319,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenAutomations?: () => void;
   onOpenPluginStore?: () => void;
   onOpenSkillMarket?: () => void;
+  onOpenCodeRepository?: () => void;
   automationsActive?: boolean;
   pluginStoreActive?: boolean;
   skillMarketActive?: boolean;
+  codeRepositoryActive?: boolean;
   onFileTreeOpenChange?: (open: boolean) => void;
 }) {
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
@@ -765,10 +769,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   // 设置页通用区「代码仓库设置」写入的地址；默认空 = 不渲染入口。
   const codeRepositoryUrl = useCodeRepositoryUrl();
   const handleOpenCodeRepositoryMain = useCallback(() => {
-    if (!codeRepositoryUrl) return;
-    // 内置浏览器打开（桌面 Browser side pane；Web 端由 handleOpenBrowserUrl 退回新标签）。
-    onOpenBrowserUrl?.(codeRepositoryUrl);
-  }, [codeRepositoryUrl, onOpenBrowserUrl]);
+    // 与技能市场同款：App 切主视图到 code-repository，主区内嵌视图加载。
+    onOpenCodeRepository?.();
+  }, [onOpenCodeRepository]);
   const handleOpenAutomationsMain = useCallback(() => {
     onOpenAutomations?.();
   }, [onOpenAutomations]);
@@ -1387,7 +1390,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                 data-icon="inline-start"
                 data-testid="code-repository-sidebar-open"
                 size="lg"
-                className="w-full justify-start gap-2 text-foreground hover:bg-surface-hover hover:text-foreground"
+                aria-pressed={codeRepositoryActive}
+                className={cn(
+                  "w-full justify-start gap-2 text-foreground hover:bg-surface-hover hover:text-foreground",
+                  codeRepositoryActive && "bg-selected text-foreground",
+                )}
               >
                 <GitBranch className="size-4" />
                 {intl.formatMessage({ id: "workspace.openCodeRepository" })}

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { GitChangeSourceId, WorkspacePurpose } from "@zcode/shared";
 import { useZCodeStore } from "@/store/StoreProvider.js";
+import { useCodeRepositoryUrl } from "@/codeRepositorySettings.js";
 import { getVisibleTaskMetas, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
 import { useAppPanels } from "@/hooks/useAppPanels.js";
@@ -861,6 +862,12 @@ export function App({
     setSkillMarketInitialPath(null);
     setWorkspaceMainView("skill-market");
   }, []);
+  // 代码仓库与技能市场同款交互：主区内嵌视图（CodeRepositoryEmbeddedView），
+  // 不进任务导航历史。未配置地址时入口不可见，视图分支不会渲染。
+  const codeRepositoryUrl = useCodeRepositoryUrl();
+  const handleNavigateToCodeRepositoryMain = useCallback(() => {
+    setWorkspaceMainView("code-repository");
+  }, []);
   // 付费技能详情弹窗「前往技能市场」：深链到该技能的详情页（specs/skill-market.md §5.1）。
   // 链接格式用 skillpie 站内既有约定：/skills?skill=<normalizedName>。
   const handleOpenSkillMarketSkill = useCallback((normalizedName: string) => {
@@ -1167,6 +1174,8 @@ export function App({
         handleOpenAutomations={handleOpenAutomations}
         handleOpenPluginStore={handleOpenPluginStoreForScope}
         handleOpenSkillMarket={handleNavigateToSkillMarketMain}
+        handleOpenCodeRepository={handleNavigateToCodeRepositoryMain}
+        codeRepositoryUrl={codeRepositoryUrl}
         skillMarketInitialPath={skillMarketInitialPath}
         loadSkillMarketSsoJwt={loadSkillMarketSsoJwt}
         handleManageInstalledPlugins={handleManageInstalledPlugins}

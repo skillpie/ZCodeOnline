@@ -1631,6 +1631,8 @@ const enUS: Record<string, string> = {
   "workspace.openPluginsSettings": "Plugin Marketplace",
   "workspace.openSkillMarket": "Skill Marketplace",
   "workspace.openCodeRepository": "Code Repository",
+  "codeRepository.embedded.loadFailed": "Failed to load the code repository",
+  "codeRepository.embedded.openWebsite": "Open in Browser",
   "skillMarket.embedded.loadFailed": "Failed to load the Skill Marketplace",
   "skillMarket.embedded.openWebsite": "Open in Browser",
   "skillMarket.detail.loading": "Loading skill details...",

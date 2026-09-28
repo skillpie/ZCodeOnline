@@ -1513,6 +1513,8 @@ const zhCN: Record<string, string> = {
   "workspace.openPluginsSettings": "插件市场",
   "workspace.openSkillMarket": "技能市场",
   "workspace.openCodeRepository": "代码仓库",
+  "codeRepository.embedded.loadFailed": "代码仓库页面加载失败",
+  "codeRepository.embedded.openWebsite": "打开浏览器访问",
   "skillMarket.embedded.loadFailed": "技能市场页面加载失败",
   "skillMarket.embedded.openWebsite": "打开浏览器访问",
   "skillMarket.detail.loading": "正在加载技能详情...",
