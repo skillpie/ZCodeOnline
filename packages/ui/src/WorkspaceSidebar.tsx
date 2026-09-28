@@ -19,7 +19,6 @@ import {
   Cloud,
   Folder,
   FolderOpen,
-  GitBranch,
   Hash,
   ListFilter,
   Maximize2,
@@ -60,7 +59,6 @@ import {
   TID_WORKSPACE_LIST,
 } from "@zcode/shared";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { useCodeRepositoryUrl } from "@/codeRepositorySettings.js";
 import { Button } from "@/components/ui/button.js";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import {
@@ -263,11 +261,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenAutomations,
   onOpenPluginStore,
   onOpenSkillMarket,
-  onOpenCodeRepository,
   automationsActive = false,
   pluginStoreActive = false,
   skillMarketActive = false,
-  codeRepositoryActive = false,
   onFileTreeOpenChange,
 }: {
   workspacePath: string;
@@ -319,11 +315,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onOpenAutomations?: () => void;
   onOpenPluginStore?: () => void;
   onOpenSkillMarket?: () => void;
-  onOpenCodeRepository?: () => void;
   automationsActive?: boolean;
   pluginStoreActive?: boolean;
   skillMarketActive?: boolean;
-  codeRepositoryActive?: boolean;
   onFileTreeOpenChange?: (open: boolean) => void;
 }) {
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
@@ -766,12 +760,6 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const handleOpenSkillMarketMain = useCallback(() => {
     onOpenSkillMarket?.();
   }, [onOpenSkillMarket]);
-  // 设置页通用区「代码仓库设置」写入的地址；默认空 = 不渲染入口。
-  const codeRepositoryUrl = useCodeRepositoryUrl();
-  const handleOpenCodeRepositoryMain = useCallback(() => {
-    // 与技能市场同款：App 切主视图到 code-repository，主区内嵌视图加载。
-    onOpenCodeRepository?.();
-  }, [onOpenCodeRepository]);
   const handleOpenAutomationsMain = useCallback(() => {
     onOpenAutomations?.();
   }, [onOpenAutomations]);
@@ -1383,23 +1371,6 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
               <Sparkles className="size-4" />
               {intl.formatMessage({ id: "workspace.openSkillMarket" })}
             </Button>
-            {codeRepositoryUrl ? (
-              <Button
-                variant="ghost"
-                onClick={handleOpenCodeRepositoryMain}
-                data-icon="inline-start"
-                data-testid="code-repository-sidebar-open"
-                size="lg"
-                aria-pressed={codeRepositoryActive}
-                className={cn(
-                  "w-full justify-start gap-2 text-foreground hover:bg-surface-hover hover:text-foreground",
-                  codeRepositoryActive && "bg-selected text-foreground",
-                )}
-              >
-                <GitBranch className="size-4" />
-                {intl.formatMessage({ id: "workspace.openCodeRepository" })}
-              </Button>
-            ) : null}
           </div>
 
           <div className="relative flex min-h-0 flex-1 flex-col">

@@ -903,15 +903,6 @@ const enUS: Record<string, string> = {
   "settings.onboardingDescription":
     "Choose your role, interface mode, and preferences again. Use Migration settings to import data.",
   "settings.onboardingOpen": "Open onboarding",
-  "settings.codeRepository": "Code repository",
-  "settings.codeRepositoryDescription":
-    'Configure a custom code repository URL. Once saved, a "Code Repository" entry appears in the sidebar below Skill Marketplace; clearing it hides the entry.',
-  "settings.codeRepositoryPlaceholder": "https://github.com/your-org/your-repo",
-  "settings.codeRepository.invalidUrl":
-    "Invalid URL. Enter a full address starting with http:// or https://.",
-  "settings.codeRepository.saved": "Code repository URL saved",
-  "settings.codeRepository.cleared": "Code repository URL cleared",
-  "settings.codeRepository.clear": "Clear",
 
   // App header
   "app.currentTheme": "Current: {theme}",
@@ -1630,9 +1621,6 @@ const enUS: Record<string, string> = {
   "workspace.openFolder": "Open folder",
   "workspace.openPluginsSettings": "Plugin Marketplace",
   "workspace.openSkillMarket": "Skill Marketplace",
-  "workspace.openCodeRepository": "Code Repository",
-  "codeRepository.embedded.loadFailed": "Failed to load the code repository",
-  "codeRepository.embedded.openWebsite": "Open in Browser",
   "skillMarket.embedded.loadFailed": "Failed to load the Skill Marketplace",
   "skillMarket.embedded.openWebsite": "Open in Browser",
   "skillMarket.detail.loading": "Loading skill details...",

@@ -823,14 +823,6 @@ const zhCN: Record<string, string> = {
   "settings.onboardingDescription":
     "重新选择职业、界面模式和使用偏好。数据迁移可在迁移设置中操作。",
   "settings.onboardingOpen": "打开引导",
-  "settings.codeRepository": "代码仓库设置",
-  "settings.codeRepositoryDescription":
-    "配置自定义代码仓库地址，保存后在左侧边栏「技能市场」下方显示「代码仓库」入口；清除后入口隐藏。",
-  "settings.codeRepositoryPlaceholder": "https://github.com/your-org/your-repo",
-  "settings.codeRepository.invalidUrl": "链接无效，请输入 http:// 或 https:// 开头的完整地址。",
-  "settings.codeRepository.saved": "代码仓库地址已保存",
-  "settings.codeRepository.cleared": "已清除代码仓库地址",
-  "settings.codeRepository.clear": "清除",
 
   // 应用头部
   "app.currentTheme": "当前: {theme}",
@@ -1512,9 +1504,6 @@ const zhCN: Record<string, string> = {
   "workspace.openFolder": "打开文件夹",
   "workspace.openPluginsSettings": "插件市场",
   "workspace.openSkillMarket": "技能市场",
-  "workspace.openCodeRepository": "代码仓库",
-  "codeRepository.embedded.loadFailed": "代码仓库页面加载失败",
-  "codeRepository.embedded.openWebsite": "打开浏览器访问",
   "skillMarket.embedded.loadFailed": "技能市场页面加载失败",
   "skillMarket.embedded.openWebsite": "打开浏览器访问",
   "skillMarket.detail.loading": "正在加载技能详情...",

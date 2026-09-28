@@ -46,7 +46,6 @@ import type {
 import { AutomationsMainBreadcrumbFrame } from "@/settings/AutomationsMainBreadcrumbFrame.js";
 import { PluginStorePage } from "@/settings/PluginStorePage.js";
 import { SkillMarketEmbeddedView } from "@/SkillMarketEmbeddedView.js";
-import { CodeRepositoryEmbeddedView } from "@/CodeRepositoryEmbeddedView.js";
 import { TaskFindDialog } from "@/quickpick/TaskFindDialog.js";
 import { WorkspaceHeader } from "@/WorkspaceHeader.js";
 import { shouldRenderWorkspaceHeader } from "@/app-shell/workspaceHeaderVisibility.js";
@@ -201,8 +200,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   handleOpenAutomations,
   handleOpenPluginStore,
   handleOpenSkillMarket,
-  handleOpenCodeRepository,
-  codeRepositoryUrl,
   skillMarketInitialPath,
   handleManageInstalledPlugins,
   loadSkillMarketSsoJwt,
@@ -1584,8 +1581,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                     pluginStoreActive={workspaceMainView === "plugin-store"}
                     onOpenSkillMarket={handleOpenSkillMarket}
                     skillMarketActive={workspaceMainView === "skill-market"}
-                    onOpenCodeRepository={handleOpenCodeRepository}
-                    codeRepositoryActive={workspaceMainView === "code-repository"}
                     onFileTreeOpenChange={setIsSidebarFileTreeOpen}
                   />
                 </WorkflowRunOpenProvider>
@@ -1827,28 +1822,6 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                             </div>
                           </AutomationsMainBreadcrumbFrame>
                         </main>
-                      ) : workspaceMainView === "code-repository" ? (
-                        <main className="flex h-full min-h-0 flex-1 flex-col bg-background">
-                          <AutomationsMainBreadcrumbFrame
-                            isDesktop={Boolean(isDesktop)}
-                            sectionLabel={intl.formatMessage({
-                              id: "workspace.openCodeRepository",
-                            })}
-                            ariaLabel={intl.formatMessage({
-                              id: "settings.breadcrumbLabel",
-                            })}
-                          >
-                            <div className="min-h-0 flex-1">
-                              {/* 未配置地址时入口不可见；此分支兜底不渲染空壳。 */}
-                              {codeRepositoryUrl ? (
-                                <CodeRepositoryEmbeddedView
-                                  url={codeRepositoryUrl}
-                                  isDesktop={Boolean(isDesktop)}
-                                />
-                              ) : null}
-                            </div>
-                          </AutomationsMainBreadcrumbFrame>
-                        </main>
                       ) : (
                         <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                           {renderChatFindDialog()}
@@ -1927,8 +1900,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                 </ResizablePanel>
                 {workspaceMainView !== "automations" &&
                 workspaceMainView !== "plugin-store" &&
-                workspaceMainView !== "skill-market" &&
-                workspaceMainView !== "code-repository" ? (
+                workspaceMainView !== "skill-market" ? (
                   <AnimatedTerminalPanel
                     frameClassName={cn(
                       isSidePaneVisible
