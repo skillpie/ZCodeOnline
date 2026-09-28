@@ -12,14 +12,17 @@ export const bundledSkillPackRootPath = join("packages", "bundled-skills");
 export const bundledSkillPackSkillsDirectory = "skills";
 // 与 bootstrap 的 BUNDLED_SKILL_PACK_REQUIRED_PATHS 对齐：缺任一项即中止 SEA 构建，
 // 不把一个引用文件残缺的技能包发进正式二进制。
-// 默认内置技能（bugfix/grill）只加在构建期清单：它们是产品承诺随包分发的技能，缺失即中止构建；
+// 默认内置技能（bugfix/grill/skillpie）只加在构建期清单：它们是产品承诺随包分发的技能，缺失即中止构建；
 // 但不进运行时整包拒收清单，避免可选技能缺席连坐 dynamic-workflows。
+// skillpie 连带守卫 scripts/cli.js：SKILL.md 指导 Agent 在技能目录执行该 CLI，缺运行时即不可用。
 export const bundledSkillPackRequiredPaths = [
   "skills/dynamic-workflows/SKILL.md",
   "skills/dynamic-workflows/patterns.md",
   "skills/dynamic-workflows/examples.md",
   "skills/bugfix/SKILL.md",
   "skills/grill/SKILL.md",
+  "skills/skillpie/SKILL.md",
+  "skills/skillpie/scripts/cli.js",
 ];
 
 export const collectSeaBundledSkillAssets = async ({ root, stagingDirectory }) => {

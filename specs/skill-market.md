@@ -5,7 +5,8 @@
 ## 1. 产品规则
 
 - 工作区侧边栏「插件市场」按钮正下方新增「技能市场」入口，样式与相邻入口一致（ghost、`size="lg"`、图标 + 文案、`aria-pressed` 激活态）。
-- 点击后以内置方式访问 `https://skillpie.cn/skills`（技能列表页），**不跳出应用**：
+- 点击后以内置方式访问市场链接（默认 `https://skillpie.cn/skills` 技能列表页），**不跳出应用**：
+  - 市场链接可在设置页技能区（已安装行三个点左侧的齿轮按钮）「技能市场设置」弹窗自定义，持久化在 localStorage `zcode-skill-market-url`（`packages/ui/src/skillMarketUrl.ts` 是唯一读写路径）；保存后下次进入市场视图生效。自定义链接必须是 http(s) 完整地址，可一键恢复默认。
   - 视图是工作区主视图（`workspaceMainView === "skill-market"`），与 automations / plugin-store 同级；**侧边栏保持可见**，非全屏 overlay。
   - 主视图仅保留与 plugin-store 相同的桌面面包屑拖拽区（`AutomationsMainBreadcrumbFrame`）；**没有关闭、前进、后退按钮**，离开视图靠侧边栏切换到其他入口/会话。
   - 桌面端（Electron）：`<webview>`，独立持久分区 `persist:zcode-skill-market` 保留 skillpie.cn 登录态；主 frame 加载失败显示错误态（重试 / `openExternal` 兜底）。
@@ -18,7 +19,8 @@
   - 会话 Cookie 在 https 下带 `SameSite=None; Secure; Partitioned`（CHIPS），使登录态能在 ZCode 的跨站 iframe 内存活（Chrome/Edge 系）；Safari 等不支持 CHIPS 的浏览器由 `Authorization: Bearer <sessionToken>` 兜底（guards 同时接受 CLI token / 会话 token / `sk_` appKey）。
   - 握手协议（双端字面量，以本 spec 为契约）：
     1. 子页 → 宿主：`{ type: "skillpie:sso-request" }`（iframe postMessage 到 parent；webview 由 preload 在加载时 `sendToHost` 主动发起）。
-    2. 宿主 → 子页：`{ type: "zcode:sso-response", jwt: string | null, profile: { displayName?: string } }`（iframe 按 `targetOrigin = https://skillpie.cn` 严格回包；webview 走 `webview.send`，preload 转投 `window.postMessage`）。JWT 仅由真正持有它的 ZCode 宿主提供，恶意页面嵌入 skillpie 只能拿到空 JWT。
+    2. 宿主 → 子页：`{ type: "zcode:sso-response", jwt: string | null, profile: { displayName?: string } }`（iframe 按 `targetOrigin = 构建期可信 origin` 严格回包；webview 走 `webview.send`，preload 转投 `window.postMessage`）。JWT 仅由真正持有它的 ZCode 宿主提供，恶意页面嵌入 skillpie 只能拿到空 JWT。
+  - **握手只对构建期可信 origin 开放**（线上 `https://skillpie.cn` 与 `VITE_SKILL_MARKET_URL` 覆盖的 origin）：用户经「技能市场设置」自定义的市场链接运行期可任意改写，不回 JWT、桌面主进程也不注入 skillMarketWebview preload，自定义市场走自身登录（`resolveTrustedSkillMarketSsoOrigin`）。
   - ZCode 侧 JWT 通路（与 UI 登录态同源）：统一先读 `credentialService.load("zcodejwttoken")`——Web 模式登录态/凭据都在 server 端（经 WebSocket RPC），桌面是宿主本地凭据库；再回落 `RootProps.loadZcodeSsoJwtToken`（浏览器 localStorage，仅 share/remote 等浏览器本地登录场景）。都取不到时回空 JWT，页面降级为 skillpie 自身登录。
   - 桌面 webview 需要专用 preload（`skillMarketWebview`），注入判断在主进程 `will-attach-webview`，origin 可用 `SKILL_MARKET_ORIGIN` 环境变量覆盖（测试部署）。
   - 旧 auth-center OAuth（`/api/oauth/*`、`lib/oauth/*`）已移除；skillpie 登录页保留账号密码与 CLI `login_code` 流（与 auth-center 无关）。
@@ -33,8 +35,8 @@ App（workspaceMainView: "chat" | "automations" | "plugin-store" | "skill-market
             └─ skillpie 端：ZcodeSsoBridge → POST /api/sso/zcode → 会话 Cookie/Bearer
 ```
 
-- 入口经 `skillMarketInitialPath` 固定携带 `/skills`（覆盖可能残留的付费技能详情深链参数）、不持久化（重开应用回到 chat 视图）；切换到其他主视图即卸载内嵌元素，分区/cookie 保留。
-- URL 常量 `SKILL_MARKET_URL` 私有于 `SkillMarketEmbeddedView.tsx`。
+- 入口 `skillMarketInitialPath` 仅在付费技能详情深链时携带 `/skills?skill=…`；侧边栏入口置空（覆盖可能残留的深链参数），内嵌视图落到配置的市场链接。不持久化（重开应用回到 chat 视图）；切换到其他主视图即卸载内嵌元素，分区/cookie 保留。
+- 市场链接解析私有于 `packages/ui/src/skillMarketUrl.ts`：用户自定义（localStorage）→ `VITE_SKILL_MARKET_URL` 基址 + `/skills` → 默认 `https://skillpie.cn/skills`。
 - 与 automations 同语义：不进 `useWorkspaceTaskNavigation` 历史、不调用 `preserveNextSettingsExit`（设置层退出统一回 chat 的既有规则天然覆盖）。
 
 ## 3. 事件顺序
@@ -71,7 +73,7 @@ App（workspaceMainView: "chat" | "automations" | "plugin-store" | "skill-market
   - 数据来自 SkillPie 详情接口 `GET {base}/api/skills/by-normalized-name/<normalizedName>`（公开免鉴权），展示名称、分类、作者、下载/点赞/版本/包大小与 `usageInstructions` markdown 文档；`screenshots` 存在时展示。
   - 免费技能（`isFree`）提供「安装」：下载 `version.packageDownloadUrl`（回退 download-url 接口）的 zip，校验 SKILL.md 后装入 `~/.zcode/skills/<normalizedName>`；同名已存在时提示已安装（不覆盖）。
   - 弹窗正文首屏必须醒目展示触发方式：显式引用 token（`$<normalizedName>`）+ 技能作者按约定写在描述末尾的触发词段（`触发词：…`，解析为徽标并从正文描述中移除；解析不出则完整展示描述）。
-  - 付费技能（`isFree: false`）不提供程序化安装，按钮禁用并引导「前往技能市场」：打开既有内嵌市场视图并深链到该技能详情页（skillpie 站内既有链接格式 `/skills?skill=<normalizedName>`）；侧边栏入口固定落在 `/skills` 列表页（§1）。
+  - 付费技能（`isFree: false`）不提供程序化安装，按钮禁用并引导「前往技能市场」：打开既有内嵌市场视图并深链到该技能详情页（skillpie 站内既有链接格式 `/skills?skill=<normalizedName>`）；侧边栏入口落在配置的市场链接（§1）。
   - 安装目标为当前 workspace 所属环境的用户级技能目录（本地 workspace = 本机 `~/.zcode/skills`；远程 workspace = 远端主机用户技能根，与 skills/skillSync 目录语义一致）；安装后不主动刷新已打开面板——`/`、`$` 面板每次打开都会重新拉取 catalog，自然纳新。
 - 外部契约以 skillpie CLI 源码与线上实测为准；`baseUrl` 默认 `DEFAULT_SKILL_MARKET_URL`，可用 `ZCODE_SKILL_MARKET_URL`（node 侧）/ `VITE_SKILL_MARKET_URL`（UI 侧）覆盖用于联调。
 

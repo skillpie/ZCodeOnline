@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Import,
   Plus,
+  Settings2,
   Trash2,
   UploadCloud,
   WandSparkles,
@@ -55,6 +56,7 @@ import {
 } from "@/settings/pluginStoreListing.js";
 import { groupSkillsByPlugin } from "@/settings/pluginManagedResourceGroups.js";
 import { SkillsImportDialog } from "@/settings/ExternalAgentImportDialog.js";
+import { SkillMarketSettingsDialog } from "@/settings/SkillMarketSettingsDialog.js";
 import { formatRemoteSkillSyncTarget } from "@/settings/RemoteSkillSyncDialog.js";
 import { RemoteSyncDialogs, shouldShowRemoteSyncActions } from "@/settings/RemoteSyncActions.js";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
@@ -218,6 +220,7 @@ export function SkillsSection({
   const [diagnostics, setDiagnostics] = useState<SkillDiagnostic[]>([]);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [marketSettingsOpen, setMarketSettingsOpen] = useState(false);
   const [remoteSkillSyncOpen, setRemoteSkillSyncOpen] = useState(false);
   const latestRequestIdRef = useRef(0);
   const activeSkillTargetKey = activeWorkspaceIdentity?.trim() || activeWorkspacePath || "";
@@ -654,6 +657,22 @@ export function SkillsSection({
 
   const skillHeaderActions = (
     <SettingsResourceHeaderActions
+      leadingActions={
+        <ControlHintTooltip
+          title={intl.formatMessage({ id: "settings.skills.marketSettings.open" })}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-md"
+            aria-label={intl.formatMessage({ id: "settings.skills.marketSettings.open" })}
+            data-testid="settings-skills-market-settings-open"
+            onClick={() => setMarketSettingsOpen(true)}
+          >
+            <Settings2 className="size-4" aria-hidden="true" />
+          </Button>
+        </ControlHintTooltip>
+      }
       onRefresh={() => void Promise.all([refresh(), refreshSharedSkillStoreForCurrentWorkspace()])}
       onImport={() => setImportDialogOpen(true)}
       onNew={handleCreateSkill}
@@ -976,6 +995,7 @@ export function SkillsSection({
           await refresh();
         }}
       />
+      <SkillMarketSettingsDialog open={marketSettingsOpen} onOpenChange={setMarketSettingsOpen} />
       <RemoteSyncDialogs
         canSyncSkills={Boolean(
           targetServiceResolution.rpcReady && connectedRemoteSyncTarget && activeWorkspacePath,

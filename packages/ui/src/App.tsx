@@ -856,9 +856,9 @@ export function App({
   }, [preserveNextSettingsExit]);
   const handleNavigateToSkillMarketMain = useCallback(() => {
     // 技能市场与 automations 同级：纯主视图切换，不进任务导航历史。
-    // 侧边栏入口固定落到技能列表页 /skills（specs/skill-market.md §1），
-    // 同时覆盖掉可能残留的付费技能详情深链参数。
-    setSkillMarketInitialPath("/skills");
+    // 侧边栏入口打开设置页技能区配置的市场链接（默认 skillpie.cn/skills，
+    // specs/skill-market.md §1）；path 置空同时覆盖掉可能残留的付费技能详情深链参数。
+    setSkillMarketInitialPath(null);
     setWorkspaceMainView("skill-market");
   }, []);
   // 付费技能详情弹窗「前往技能市场」：深链到该技能的详情页（specs/skill-market.md §5.1）。

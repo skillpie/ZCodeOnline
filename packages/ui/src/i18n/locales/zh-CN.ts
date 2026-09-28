@@ -3534,6 +3534,18 @@ const zhCN: Record<string, string> = {
   "settings.skills.title": "技能",
   "settings.skills.description": "管理项目级与用户级技能。启用后可在聊天里通过 $skill-name 使用。",
   "settings.skills.searchPlaceholder": "搜索技能...",
+  "settings.skills.marketSettings.open": "技能市场设置",
+  "settings.skills.marketSettings.title": "技能市场设置",
+  "settings.skills.marketSettings.description":
+    "自定义左侧边栏「技能市场」入口访问的链接，保存后下次进入技能市场生效。",
+  "settings.skills.marketSettings.urlLabel": "市场链接",
+  "settings.skills.marketSettings.defaultHint": "默认：{url}",
+  "settings.skills.marketSettings.ssoHint":
+    "仅默认技能市场支持 ZCode 免登；自定义链接将使用市场自身的登录。",
+  "settings.skills.marketSettings.invalidUrl":
+    "链接无效，请输入 http:// 或 https:// 开头的完整地址。",
+  "settings.skills.marketSettings.saved": "技能市场链接已保存",
+  "settings.skills.marketSettings.reset": "恢复默认",
   "settings.skills.refresh": "刷新",
   "settings.skills.refreshing": "刷新中...",
   "settings.skills.remoteContext": "当前远端工作区：{target}",

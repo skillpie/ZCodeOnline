@@ -3776,6 +3776,18 @@ const enUS: Record<string, string> = {
   "settings.skills.description":
     "Manage workspace and user skills. Enabled skills can be referenced in chat with $skill-name.",
   "settings.skills.searchPlaceholder": "Search skills...",
+  "settings.skills.marketSettings.open": "Skill marketplace settings",
+  "settings.skills.marketSettings.title": "Skill marketplace settings",
+  "settings.skills.marketSettings.description":
+    "Customize the link opened by the Skill Marketplace entry in the sidebar. Takes effect the next time you open the marketplace.",
+  "settings.skills.marketSettings.urlLabel": "Marketplace URL",
+  "settings.skills.marketSettings.defaultHint": "Default: {url}",
+  "settings.skills.marketSettings.ssoHint":
+    "Only the default marketplace supports ZCode single sign-on; a custom URL uses the marketplace's own login.",
+  "settings.skills.marketSettings.invalidUrl":
+    "Invalid URL. Enter a full address starting with http:// or https://.",
+  "settings.skills.marketSettings.saved": "Skill marketplace URL saved",
+  "settings.skills.marketSettings.reset": "Reset to default",
   "settings.skills.refresh": "Refresh",
   "settings.skills.refreshing": "Refreshing...",
   "settings.skills.remoteContext": "Current remote workspace: {target}",

@@ -1,4 +1,5 @@
-// 技能市场主区内嵌视图：skillpie.cn 以工作区主视图形态呈现，侧边栏保持可见。
+// 技能市场主区内嵌视图：市场链接可由设置页技能区「技能市场设置」配置（默认
+// skillpie.cn/skills，见 skillMarketUrl.ts），侧边栏保持可见。
 // 按产品规则不提供关闭/前进/后退工具栏，离开视图靠侧边栏入口切换。
 // 平台差异：桌面端用 Electron <webview>（持久分区保留登录态、可感知加载失败）；
 // Web 端用 <iframe>（skillpie.cn 未下发 X-Frame-Options/CSP frame-ancestors，可直接嵌入；
@@ -6,45 +7,27 @@
 //
 // 免登握手：ZCode 登录用户打开技能市场时，向 skillpie 页面提供平台 JWT，
 // 由 skillpie 服务端验证后自动注册/登录（协议见 specs/skill-market.md）。
+// 握手只在构建期可信 origin（线上默认 / VITE_SKILL_MARKET_URL 覆盖）上进行，
+// 用户自定义市场链接不发 JWT，避免平台凭据流向运行期可任意改写的 origin。
 // iframe 走 window postMessage；<webview> 的 guest 与宿主是独立 frame 树，
 // 走 ipc-message（skillpie:sso-request）/ webview.send（zcode:sso-response），
-// 由 skillMarketWebview preload 在 guest 侧转投页面。
+// 由 skillMarketWebview preload 在 guest 侧转投页面（preload 注入同样只认可信 origin）。
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLinkIcon, RefreshCwIcon } from "lucide-react";
-import { DEFAULT_SKILL_MARKET_URL, resolveJwtExpiration } from "@zcode/shared";
+import { resolveJwtExpiration } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import {
+  resolveSkillMarketEntryUrl,
+  resolveTrustedSkillMarketSsoOrigin,
+} from "@/skillMarketUrl.js";
 
-const SKILL_MARKET_URL = resolveSkillMarketUrl();
-const SKILL_MARKET_ORIGIN = new URL(SKILL_MARKET_URL).origin;
 const SSO_REQUEST_TYPE = "skillpie:sso-request";
 const SSO_RESPONSE_TYPE = "zcode:sso-response";
-
-interface SkillMarketViewImportMetaEnv {
-  VITE_SKILL_MARKET_URL?: string;
-}
-
-function readImportMetaEnv(): SkillMarketViewImportMetaEnv {
-  return ((import.meta as ImportMeta & { env?: SkillMarketViewImportMetaEnv }).env ??
-    {}) as SkillMarketViewImportMetaEnv;
-}
-
-function resolveSkillMarketUrl(): string {
-  // 本地联调可指向自部署 skillpie（如 http://localhost:3001）；生产固定 skillpie.cn。
-  const override = readImportMetaEnv().VITE_SKILL_MARKET_URL?.trim();
-  if (override) {
-    try {
-      return new URL(override).toString();
-    } catch {
-      // 非法 override 忽略，回退线上地址。
-    }
-  }
-  return DEFAULT_SKILL_MARKET_URL;
-}
 
 interface SkillMarketEmbeddedViewProps {
   /** 是否为 Electron 桌面端：决定渲染 <webview>（桌面）还是 <iframe>（Web）。 */
@@ -74,15 +57,23 @@ export function SkillMarketEmbeddedView({
   const webviewRef = useRef<ElectronWebviewTag | null>(null);
   const webviewCleanupRef = useRef<(() => void) | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // 挂载时解析一次入口链接：视图随主区切换卸载/重挂，设置保存只发生在设置视图，
+  // 下次进入市场自然生效。深链（/skills?skill=…）按入口链接解析。
+  const marketEntryUrl = useMemo(() => resolveSkillMarketEntryUrl(), []);
+  // 免登握手 origin：入口 origin 是构建期可信 origin 才回包，否则禁用握手。
+  const trustedSsoOrigin = useMemo(
+    () => resolveTrustedSkillMarketSsoOrigin(marketEntryUrl),
+    [marketEntryUrl],
+  );
   const initialSrc = useMemo(
-    () => (initialPath ? new URL(initialPath, SKILL_MARKET_URL).toString() : SKILL_MARKET_URL),
-    [initialPath],
+    () => (initialPath ? new URL(initialPath, marketEntryUrl).toString() : marketEntryUrl),
+    [initialPath, marketEntryUrl],
   );
 
   // 桌面 webview 加载失败后的兜底：交给系统浏览器打开同一地址。
   const handleOpenWebsite = useCallback(() => {
-    platform.openExternal(SKILL_MARKET_URL);
-  }, [platform]);
+    platform.openExternal(marketEntryUrl);
+  }, [marketEntryUrl, platform]);
 
   // 组装握手响应。JWT 每次握手时现读，保证轮换后的 token 不滞后；
   // profile 仅作展示字段，身份绑定以 JWT sub 为准（服务端在线验证）。
@@ -112,14 +103,15 @@ export function SkillMarketEmbeddedView({
     };
   }, [loadSsoJwtToken, user]);
 
-  // iframe 场景：skillpie 桥接组件向 parent 发握手请求，这里按目标 origin 严格回包。
+  // iframe 场景：skillpie 桥接组件向 parent 发握手请求，这里按可信 origin 严格回包；
+  // 自定义市场链接（trustedSsoOrigin 为 null）不监听、不回 JWT。
   useEffect(() => {
-    if (isDesktop) {
+    if (isDesktop || !trustedSsoOrigin) {
       return;
     }
     let cancelled = false;
     const handleMessage = (event: MessageEvent) => {
-      if (cancelled || event.origin !== SKILL_MARKET_ORIGIN) {
+      if (cancelled || event.origin !== trustedSsoOrigin) {
         return;
       }
       const data = event.data as { type?: unknown } | null;
@@ -129,7 +121,7 @@ export function SkillMarketEmbeddedView({
       const source = event.source as Window | null;
       void buildSsoResponse().then((payload) => {
         if (!cancelled && source) {
-          source.postMessage(payload, { targetOrigin: SKILL_MARKET_ORIGIN });
+          source.postMessage(payload, { targetOrigin: trustedSsoOrigin });
         }
       });
     };
@@ -138,7 +130,7 @@ export function SkillMarketEmbeddedView({
       cancelled = true;
       window.removeEventListener("message", handleMessage);
     };
-  }, [buildSsoResponse, isDesktop]);
+  }, [buildSsoResponse, isDesktop, trustedSsoOrigin]);
 
   const handleWebviewRef = useCallback(
     (element: ElectronWebviewTag | null) => {

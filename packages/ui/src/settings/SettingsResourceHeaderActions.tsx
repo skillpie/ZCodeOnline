@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Download,
   Loader2,
@@ -17,6 +18,8 @@ import {
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 interface SettingsResourceHeaderActionsProps {
+  /** 渲染在溢出菜单（三个点）左侧的前置动作，如技能页的「技能市场设置」。 */
+  leadingActions?: ReactNode;
   onRefresh?: () => void;
   onImport?: () => void;
   onExport?: () => void;
@@ -36,6 +39,7 @@ interface SettingsResourceHeaderActionsProps {
 }
 
 export function SettingsResourceHeaderActions({
+  leadingActions,
   onRefresh,
   onImport,
   onExport,
@@ -69,6 +73,7 @@ export function SettingsResourceHeaderActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {leadingActions}
       {hasOverflowActions ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
