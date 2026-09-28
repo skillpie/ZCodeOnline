@@ -81,7 +81,13 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
     // 平台实现内部已做"宿主不可达 → 回退本地存储"的兜底；local 为空时仍可展示已登记
     // 的远程链接（仅缺本机条目与刷新能力）。
     const finish = (local: string | null) => {
-      if (local) upsertAssistMachine(local);
+      // 本机条目默认名叫「我的ZCode」；曾被用户改过名的条目不会被覆盖。
+      if (local) {
+        upsertAssistMachine(
+          local,
+          intl.formatMessage({ id: "assistCode.dialog.localDefaultName" }),
+        );
+      }
       setLocalCode(local);
       setMachines(orderMachines(loadAssistMachines(), local));
       setPhase("ready");
@@ -240,7 +246,7 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
           {machines.length > 0 ? (
             <div className="space-y-2">
               {rotated && phase === "ready" ? (
-                <div className="text-ui-xs text-foreground-subtle">
+                <div className="text-ui-sm text-foreground-subtle">
                   {intl.formatMessage({ id: "assistCode.dialog.refreshed" })}
                 </div>
               ) : null}
@@ -274,7 +280,7 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
                   />
                 );
               })}
-              <p className="text-ui-xs/relaxed text-foreground-subtle">
+              <p className="text-ui-sm/relaxed text-foreground-subtle">
                 {intl.formatMessage({ id: "assistCode.dialog.switchHint" })}
               </p>
               {adding ? (
@@ -311,19 +317,19 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
                     }}
                   />
                   {addFormError !== null ? (
-                    <p className="text-ui-xs text-destructive">{addFormError}</p>
+                    <p className="text-ui-sm text-destructive">{addFormError}</p>
                   ) : null}
                   <div className="flex items-center justify-end gap-3">
                     <button
                       type="button"
-                      className="text-ui-xs text-foreground-subtle hover:text-foreground"
+                      className="text-ui-base text-foreground-subtle hover:text-foreground"
                       onClick={closeAddForm}
                     >
                       {intl.formatMessage({ id: "common.cancel" })}
                     </button>
                     <button
                       type="button"
-                      className="text-ui-xs font-medium text-primary hover:text-primary"
+                      className="text-ui-base font-medium text-primary hover:text-primary"
                       onClick={submitAdd}
                     >
                       {intl.formatMessage({ id: "assistCode.dialog.addConfirm" })}
@@ -333,13 +339,13 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
               ) : (
                 <button
                   type="button"
-                  className="flex items-center gap-1 text-ui-xs text-primary hover:text-primary"
+                  className="flex items-center gap-1 text-ui-base text-primary hover:text-primary"
                   onClick={() => {
                     setAdding(true);
                     setAddFormError(null);
                   }}
                 >
-                  <Plus className="size-3.5" />
+                  <Plus className="size-4" />
                   {intl.formatMessage({ id: "assistCode.dialog.add" })}
                 </button>
               )}

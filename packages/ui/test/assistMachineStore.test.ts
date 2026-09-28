@@ -104,3 +104,17 @@ test("删除：移除指定条目，不影响其他条目与活动码", () => {
   removeAssistMachine("bad-input");
   assert.equal(loadAssistMachines().length, 1);
 });
+
+test("登记默认名：传入 defaultName 生效；仅升级未被改过名的码默认名", () => {
+  // 新码直接用传入的默认名（本机 = 我的ZCode）。
+  const created = upsertAssistMachine("1111111111111111", "我的ZCode");
+  assert.equal(created?.name, "我的ZCode");
+  // 旧默认名（<码>的ZCode）视为未改名，升级为新默认名。
+  upsertAssistMachine("2222222222222222");
+  const upgraded = upsertAssistMachine("2222222222222222", "我的ZCode");
+  assert.equal(upgraded?.name, "我的ZCode");
+  // 用户改过名的条目不覆盖。
+  renameAssistMachine("1111111111111111", "客厅的电脑");
+  const kept = upsertAssistMachine("1111111111111111", "我的ZCode");
+  assert.equal(kept?.name, "客厅的电脑");
+});

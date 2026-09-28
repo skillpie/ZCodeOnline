@@ -44,8 +44,9 @@ export function AssistMachineRowCard({
   onRemove,
 }: AssistMachineRowCardProps) {
   const { intl } = useZCodeIntl();
+  // 操作按钮属常用控件，按 DESIGN.md 用 text-ui-base；仅徽标保留 badge 级 text-ui-xs。
   const rowActionClass =
-    "shrink-0 text-ui-xs text-foreground-subtle hover:text-foreground disabled:cursor-default disabled:opacity-50";
+    "shrink-0 text-ui-base text-foreground-subtle hover:text-foreground disabled:cursor-default disabled:opacity-50";
 
   return (
     <div
@@ -91,7 +92,7 @@ export function AssistMachineRowCard({
         )}
       </div>
       <div className="flex items-center gap-1.5">
-        <code className="min-w-0 flex-1 truncate text-ui-xs text-foreground-subtle">
+        <code className="min-w-0 flex-1 truncate text-ui-base text-foreground-subtle">
           {origin}/{machine.code}
         </code>
         <button
@@ -113,18 +114,6 @@ export function AssistMachineRowCard({
             </>
           )}
         </button>
-        {isLocal ? (
-          <button
-            type="button"
-            className={cn(rowActionClass, "flex items-center gap-1")}
-            aria-label={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
-            title={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
-            onClick={onRequestRefresh}
-          >
-            <RefreshCw className="size-3.5" />
-            {intl.formatMessage({ id: "assistCode.dialog.refresh" })}
-          </button>
-        ) : null}
         <button
           type="button"
           className={cn(rowActionClass, "flex items-center gap-1")}
@@ -140,6 +129,17 @@ export function AssistMachineRowCard({
           <ArrowLeftRight className="size-3.5" />
           {intl.formatMessage({ id: "assistCode.dialog.switch" })}
         </button>
+        {isLocal ? (
+          <button
+            type="button"
+            className={rowActionClass}
+            aria-label={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
+            title={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
+            onClick={onRequestRefresh}
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
+        ) : null}
         {!isLocal ? (
           <button
             type="button"

@@ -65,14 +65,28 @@ function saveAssistMachines(machines: AssistMachine[]): void {
   localStorage.setItem(MACHINES_STORAGE_KEY, JSON.stringify(machines));
 }
 
-/** 打开带码链接 / 发现本机码时登记：新码以默认名（码本身）入列，已有码保留名称。 */
-export function upsertAssistMachine(code: string): AssistMachine | null {
+/**
+ * 打开带码链接 / 发现本机码时登记：新码以默认名（缺省「<码>的ZCode」）入列，已有码
+ * 保留名称；仅当旧名称仍是码默认名（未被用户改过）时才升级为传入的 defaultName
+ * （本机条目用它把默认名定为「我的ZCode」）。
+ */
+export function upsertAssistMachine(code: string, defaultName?: string): AssistMachine | null {
   const normalized = normalizeAssistCode(code);
   if (!normalized) return null;
   const machines = loadAssistMachines();
   const existing = machines.find((machine) => machine.code === normalized);
-  if (existing) return existing;
-  const machine: AssistMachine = { code: normalized, name: defaultAssistMachineName(normalized) };
+  if (existing) {
+    const nextDefault = defaultName?.trim();
+    if (nextDefault && existing.name === defaultAssistMachineName(normalized)) {
+      existing.name = nextDefault;
+      saveAssistMachines(machines);
+    }
+    return existing;
+  }
+  const machine: AssistMachine = {
+    code: normalized,
+    name: defaultName?.trim() || defaultAssistMachineName(normalized),
+  };
   machines.push(machine);
   saveAssistMachines(machines);
   return machine;
