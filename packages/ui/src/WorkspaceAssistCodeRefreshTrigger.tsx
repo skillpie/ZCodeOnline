@@ -226,7 +226,7 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
       >
         <DialogContent
           showCloseButton={false}
-          className="max-h-[calc(100vh-6rem)] gap-5 overflow-y-auto rounded-2xl sm:max-w-md"
+          className="max-h-[calc(100vh-6rem)] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg"
         >
           <DialogHeader className="gap-2">
             <DialogTitle className="text-ui-lg font-semibold text-foreground">
