@@ -5,8 +5,7 @@
 // 仅当 platform 实现了远程码契约（浏览器与宿主同机的 Web 端）时渲染；
 // 轮换的权威所有者在宿主 Core 的隧道运行时，这里只经平台契约触发。
 import { useState } from "react";
-import { KeyRound, Loader2 } from "lucide-react";
-import { formatAssistCode } from "@zcode/shared";
+import { Loader2, MonitorSmartphone } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -107,7 +106,7 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
           className={cn("text-foreground hover:bg-surface-hover hover:text-foreground", className)}
           onClick={resetAndOpen}
         >
-          <KeyRound className="size-4" />
+          <MonitorSmartphone className="size-4" />
         </Button>
       </ControlHintTooltip>
       <Dialog
@@ -144,9 +143,6 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
                   {intl.formatMessage({ id: "assistCode.dialog.refreshed" })}
                 </div>
               ) : null}
-              <div className="text-ui-base font-medium tracking-widest text-foreground">
-                {code === null ? null : formatAssistCode(code)}
-              </div>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-ui-xs text-foreground-subtle">
                   {shareUrl}

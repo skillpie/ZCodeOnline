@@ -1656,8 +1656,8 @@ const zhCN: Record<string, string> = {
   "webRemoteControl.botChannel.telegram.description": "从 Telegram 打开这个工作区。",
   "webRemoteControl.botChannel.configure": "去 Bot Channels 配置",
   "webRemoteControl.botChannel.manageBots": "机器人管理",
-  "assistCode.dialog.trigger": "我的远程码",
-  "assistCode.dialog.title": "我的远程码",
+  "assistCode.dialog.trigger": "远程控制",
+  "assistCode.dialog.title": "远程控制",
   "assistCode.dialog.description":
     "任何拥有此链接的人都可以远程控制这台电脑。请妥善保管，怀疑泄露时立即刷新。",
   "assistCode.dialog.loading": "正在读取远程码…",

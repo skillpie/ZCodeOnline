@@ -378,7 +378,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               compact
             />
           ) : null}
-          {/* Web 版「我的远程码」入口（specs/web-tunnel.md §5.9）：弹窗展示当前带码链接
+          {/* Web 版「远程控制」入口（specs/web-tunnel.md §5.9）：弹窗展示当前带码链接
               + 复制/刷新；组件内部按 platform 能力自行隐藏（桌面未实现契约时不渲染），
               位置固定在设置按钮左侧。 */}
           <WorkspaceAssistCodeRefreshTrigger />

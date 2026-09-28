@@ -1777,8 +1777,8 @@ const enUS: Record<string, string> = {
   "webRemoteControl.botChannel.telegram.description": "Open this workspace from Telegram.",
   "webRemoteControl.botChannel.configure": "Configure in bot channels",
   "webRemoteControl.botChannel.manageBots": "Manage bots",
-  "assistCode.dialog.trigger": "My assist code",
-  "assistCode.dialog.title": "My assist code",
+  "assistCode.dialog.trigger": "Remote control",
+  "assistCode.dialog.title": "Remote control",
   "assistCode.dialog.description":
     "Anyone with this link can remotely control this machine. Keep it safe and refresh it immediately if it may have leaked.",
   "assistCode.dialog.loading": "Loading the assist code…",
