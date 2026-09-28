@@ -1775,6 +1775,7 @@ export function SettingsPage({
                               handleMessageStreamShowReasoningChange
                             }
                             onMessageStreamShowTodosChange={handleMessageStreamShowTodosChange}
+                            onMessageStreamShowProcessChange={handleMessageStreamShowProcessChange}
                             onToolGroupingExploreEnabledChange={
                               handleToolGroupingExploreEnabledChange
                             }
