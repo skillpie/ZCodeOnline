@@ -32,6 +32,7 @@ import {
   loadStoredAssistCode,
   refreshAssistCodeViaDiscovery,
   saveStoredAssistCode,
+  upsertAssistMachine,
 } from "./tunnel/assistSession.js";
 import {
   isConversationSharePath,
@@ -541,6 +542,8 @@ async function bootstrapWebApp() {
   if (remoteAssistCode) {
     document.title = "ZCode Online";
     saveStoredAssistCode(remoteAssistCode);
+    // 登记到远程链接列表（默认名 = 「<码>的ZCode」），远程控制弹窗据此展示与切换。
+    upsertAssistMachine(remoteAssistCode);
     const params = new URLSearchParams(window.location.search);
     // 本地 dev 没有 VITE_TUNNEL_ENTRY，保留 ?tunnel=1 才能回到隧道入口（生产行为不变）。
     window.location.replace(params.has("tunnel") ? "/?tunnel=1" : "/");

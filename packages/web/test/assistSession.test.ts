@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, describe, test } from "node:test";
+import { after, beforeEach, describe, test } from "node:test";
 import { maskAssistPsk, revealAssistPsk, generateTunnelSecret } from "@zcode/shared";
 import {
   AssistRedeemError,
@@ -11,13 +11,15 @@ import {
   saveStoredAssistCode,
 } from "../src/tunnel/assistSession.js";
 
-// 浏览器侧远程码会话（specs/web-tunnel.md §5.9）：
-// localStorage 后到优先（最后一次传入的链接生效）、兑换错误归类（invalid 驱动回退）、
-// 刷新端点成功后回写存储。node:test 无浏览器全局，统一用内存实现替换。
+// 浏览器侧远程码会话（specs/web-tunnel.md §5.9）网络路径：
+// 兑换错误归类（invalid 驱动回退）、刷新端点成功后回写存储。
+// 存储语义（活动码/机器列表/改名）收口在 @zcode/ui/assist-machine-store，
+// 用例见 packages/ui/test/assistMachineStore.test.ts。
 
 const storage = new Map<string, string>();
 
-before(() => {
+beforeEach(() => {
+  storage.clear();
   globalThis.localStorage = {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => void storage.set(key, value),
@@ -29,30 +31,6 @@ before(() => {
 after(() => {
   storage.clear();
   delete (globalThis as { localStorage?: Storage }).localStorage;
-});
-
-describe("assist code storage", () => {
-  test("save/load/clear roundtrip 与非法输入忽略", () => {
-    clearStoredAssistCode();
-    assert.equal(loadStoredAssistCode(), null);
-    saveStoredAssistCode("1234567890123456");
-    assert.equal(loadStoredAssistCode(), "1234567890123456");
-    // 分组格式归一化后等价入库；纯乱码不入库、保留旧值。
-    saveStoredAssistCode("1234-5678-9012-3456");
-    assert.equal(loadStoredAssistCode(), "1234567890123456");
-    saveStoredAssistCode("not-a-code");
-    assert.equal(loadStoredAssistCode(), "1234567890123456");
-    clearStoredAssistCode();
-    assert.equal(loadStoredAssistCode(), null);
-  });
-
-  test("多个带码链接以后传入的为准（last-write-wins）", () => {
-    clearStoredAssistCode();
-    saveStoredAssistCode("1111111111111111");
-    saveStoredAssistCode("2222222222222222");
-    assert.equal(loadStoredAssistCode(), "2222222222222222");
-    clearStoredAssistCode();
-  });
 });
 
 describe("redeemAssistCode 错误归类", () => {

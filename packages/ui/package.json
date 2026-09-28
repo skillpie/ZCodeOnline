@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./useTheme": "./src/useTheme.ts",
+    "./assist-machine-store": "./src/assistMachineStore.ts",
     "./conversation-share-readonly": "./src/v4/ConversationShareReadonlyTimeline.tsx",
     "./oauth-provider-icon": "./src/lib/oauthProviderIcon.tsx",
     "./message": "./src/components/ai-elements/message.tsx",
@@ -15,7 +16,8 @@
   },
   "scripts": {
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@aiden0z/pptx-renderer": "1.2.4",

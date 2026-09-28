@@ -1,36 +1,24 @@
 // 浏览器侧远程协助码会话（specs/web-tunnel.md §5.9）。
 // 授权模型是"码即凭证"：16 位码长期有效，浏览器把它存 localStorage（后到优先——
-// 每次打开带码链接都覆盖旧值），地址栏不再保留码本身，防截图/历史记录泄露。
-// 存储与兑换的唯一读写路径都收口在本模块，TunnelAppRoot / main 入口只经这里的函数访问。
+// 每次打开带码链接都覆盖旧值，存储读写收口在 @zcode/ui/assist-machine-store），
+// 地址栏不保留码本身，防截图/历史记录泄露。本模块只负责与 relay / 宿主回环端点的
+// 网络交互：兑换连接票据、读取与轮换远程码。
 import {
   TUNNEL_CONSTANTS,
   TUNNEL_DISCOVERY_PORT,
   assistCodeResponseSchema,
-  normalizeAssistCode,
   revealAssistPsk,
   type TunnelAssistCode,
 } from "@zcode/shared";
+import { saveStoredAssistCode } from "@zcode/ui/assist-machine-store";
 
-const ASSIST_CODE_STORAGE_KEY = "zcode-assist-code";
-
-export function loadStoredAssistCode(): string | null {
-  try {
-    return normalizeAssistCode(localStorage.getItem(ASSIST_CODE_STORAGE_KEY) ?? "");
-  } catch {
-    return null;
-  }
-}
-
-/** 后到优先：多次使用不同远程码链接时，最后一次传入的码覆盖之前的。 */
-export function saveStoredAssistCode(code: string): void {
-  const normalized = normalizeAssistCode(code);
-  if (!normalized) return;
-  localStorage.setItem(ASSIST_CODE_STORAGE_KEY, normalized);
-}
-
-export function clearStoredAssistCode(): void {
-  localStorage.removeItem(ASSIST_CODE_STORAGE_KEY);
-}
+// web 包内使用的存储函数经此统一出口（弹窗等 ui 侧直接用 @/assistMachineStore.js）。
+export {
+  clearStoredAssistCode,
+  loadStoredAssistCode,
+  saveStoredAssistCode,
+  upsertAssistMachine,
+} from "@zcode/ui/assist-machine-store";
 
 interface AssistRedeemResult {
   hostId: string;

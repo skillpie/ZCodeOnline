@@ -1,11 +1,13 @@
-// 远程码入口（specs/web-tunnel.md §5.9）：Web 版侧栏设置按钮左侧的图标按钮。
-// 点击先弹「我的远程码」弹窗，展示当前带码的完整链接并附「复制」「刷新」；
-// 「刷新」需二次确认（旧码及已分享链接立即失效、不可恢复），确认后轮换宿主码并
-// 原地更新为新链接。当前码以宿主回环发现端点为权威，取不到时回退本地存储码。
-// 仅当 platform 实现了远程码契约（浏览器与宿主同机的 Web 端）时渲染；
-// 轮换的权威所有者在宿主 Core 的隧道运行时，这里只经平台契约触发。
+// 远程控制弹窗（specs/web-tunnel.md §5.9）：Web 版侧栏设置按钮左侧的图标按钮。
+// 弹窗展示远程链接列表：本机（回环发现端点的权威码）固定第一项并带「本机」标签，
+// 额外多一个「刷新」（二次确认后轮换本机码，旧链接立即失效）；其余条目来自浏览器
+// 登记的远程链接列表，均支持改名（默认名 = <远程码>的ZCode）、「复制」「切换」与
+// 手动添加/删除。本机条目卡片见 AssistMachineRowCard.tsx。
+// 「切换」保存该链接为当前生效码并整页重连；仅当 platform 实现了远程码契约
+// （浏览器与宿主同机的 Web 端）时渲染本入口，轮换权威所有者在宿主 Core 隧道运行时。
 import { useState } from "react";
-import { Loader2, MonitorSmartphone } from "lucide-react";
+import { Loader2, MonitorSmartphone, Plus } from "lucide-react";
+import { normalizeAssistCode } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -16,6 +18,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.js";
+import {
+  defaultAssistMachineName,
+  loadAssistMachines,
+  loadStoredAssistCode,
+  removeAssistMachine,
+  renameAssistMachine,
+  replaceAssistMachineCode,
+  saveStoredAssistCode,
+  upsertAssistMachine,
+  type AssistMachine,
+} from "@/assistMachineStore.js";
+import { AssistDialogSecondaryButton, AssistMachineRowCard } from "@/AssistMachineRowCard.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -23,15 +37,32 @@ import { logger } from "@/logger.js";
 
 type AssistDialogPhase = "loading" | "ready" | "confirm" | "refreshing" | "error";
 
+/** 本机条目置顶，其余按登记顺序。 */
+function orderMachines(list: AssistMachine[], localCode: string | null): AssistMachine[] {
+  if (!localCode) return list;
+  return [
+    ...list.filter((machine) => machine.code === localCode),
+    ...list.filter((machine) => machine.code !== localCode),
+  ];
+}
+
 export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: string }) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<AssistDialogPhase>("loading");
-  const [code, setCode] = useState<string | null>(null);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [machines, setMachines] = useState<AssistMachine[]>([]);
+  const [localCode, setLocalCode] = useState<string | null>(null);
+  const [activeCode, setActiveCode] = useState<string | null>(null);
   const [rotated, setRotated] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addCodeDraft, setAddCodeDraft] = useState("");
+  const [addNameDraft, setAddNameDraft] = useState("");
+  const [addFormError, setAddFormError] = useState<string | null>(null);
 
   // 桌面端走 daemon 控制链路（暂未暴露远程码契约），未实现的平台直接不渲染入口。
   if (typeof platform.refreshRemoteAssistCode !== "function") {
@@ -40,19 +71,32 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
 
   const getRemoteAssistCode = platform.getRemoteAssistCode?.bind(platform);
   const refreshRemoteAssistCode = platform.refreshRemoteAssistCode.bind(platform);
-  const shareUrl = code === null ? null : `${window.location.origin}/${code}`;
+  const origin = window.location.origin;
 
-  const loadCurrentCode = () => {
-    if (!getRemoteAssistCode) return;
+  const loadCurrent = () => {
     setPhase("loading");
     setErrorCode(null);
-    // 平台实现内部已做"宿主不可达 → 回退本地存储码"的兜底，这里只区分成功/失败。
+    setRotated(false);
+    setActiveCode(loadStoredAssistCode());
+    // 平台实现内部已做"宿主不可达 → 回退本地存储"的兜底；local 为空时仍可展示已登记
+    // 的远程链接（仅缺本机条目与刷新能力）。
+    const finish = (local: string | null) => {
+      if (local) upsertAssistMachine(local);
+      setLocalCode(local);
+      setMachines(orderMachines(loadAssistMachines(), local));
+      setPhase("ready");
+    };
+    if (!getRemoteAssistCode) {
+      finish(null);
+      return;
+    }
     void getRemoteAssistCode()
-      .then((result) => {
-        setCode(result.code);
-        setPhase("ready");
-      })
+      .then((result) => finish(result.code))
       .catch((cause: unknown) => {
+        if (loadAssistMachines().length > 0) {
+          finish(null);
+          return;
+        }
         logger.warn("[WorkspaceAssistCodeRefreshTrigger] 读取远程码失败", {
           message: cause instanceof Error ? cause.message : String(cause),
         });
@@ -62,21 +106,29 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
   };
 
   const resetAndOpen = () => {
-    setCode(null);
-    setRotated(false);
-    setCopied(false);
+    setMachines([]);
+    setLocalCode(null);
+    setCopiedCode(null);
+    setEditingCode(null);
+    setAdding(false);
+    setAddCodeDraft("");
+    setAddNameDraft("");
+    setAddFormError(null);
     setOpen(true);
-    loadCurrentCode();
+    loadCurrent();
   };
 
-  const runRefresh = () => {
+  const runRefresh = (previousLocalCode: string) => {
     setPhase("refreshing");
     setErrorCode(null);
     void refreshRemoteAssistCode()
       .then((result) => {
-        setCode(result.code);
+        // 轮换后同步列表（旧码条目换成新码、保留名称）；活动码由平台实现已回写。
+        replaceAssistMachineCode(previousLocalCode, result.code);
+        setLocalCode(result.code);
+        setMachines(orderMachines(loadAssistMachines(), result.code));
         setRotated(true);
-        setCopied(false);
+        setCopiedCode(null);
         setPhase("ready");
       })
       .catch((cause: unknown) => {
@@ -87,13 +139,62 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
       });
   };
 
-  const copyShareUrl = () => {
-    if (shareUrl === null) return;
-    void navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2_000);
+  const switchTo = (code: string) => {
+    saveStoredAssistCode(code);
+    // 整页重连：挂载流程会以存储的当前码直连目标机器（含失效回退）。
+    window.location.reload();
+  };
+
+  const copyShareUrl = (code: string) => {
+    void navigator.clipboard.writeText(`${origin}/${code}`).then(() => {
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode((current) => (current === code ? null : current)), 2_000);
     });
   };
+
+  const commitRename = (code: string) => {
+    const draft = editingDraft;
+    setEditingCode(null);
+    setEditingDraft("");
+    renameAssistMachine(code, draft);
+    const fallbackName = draft.trim() ? draft.trim() : defaultAssistMachineName(code);
+    setMachines((rows) =>
+      rows.map((machine) => (machine.code === code ? { ...machine, name: fallbackName } : machine)),
+    );
+  };
+
+  const closeAddForm = () => {
+    setAdding(false);
+    setAddCodeDraft("");
+    setAddNameDraft("");
+    setAddFormError(null);
+  };
+
+  // 手动添加：码校验通过才入库；可选名称立即生效，否则走默认名（<码>的ZCode）。
+  const submitAdd = () => {
+    const code = normalizeAssistCode(addCodeDraft);
+    if (!code) {
+      setAddFormError(intl.formatMessage({ id: "assistCode.dialog.addInvalid" }));
+      return;
+    }
+    if (code === localCode || loadAssistMachines().some((machine) => machine.code === code)) {
+      setAddFormError(intl.formatMessage({ id: "assistCode.dialog.addDuplicate" }));
+      return;
+    }
+    upsertAssistMachine(code);
+    const name = addNameDraft.trim();
+    if (name) renameAssistMachine(code, name);
+    setMachines(orderMachines(loadAssistMachines(), localCode));
+    closeAddForm();
+  };
+
+  // 删除仅移除列表记录；活动行已被禁用，不会删掉当前连接目标。
+  const removeRow = (code: string) => {
+    setMachines(orderMachines(removeAssistMachine(code), localCode));
+  };
+
+  const addInputClass =
+    "w-full rounded-md border border-input-border-focused bg-background px-2 py-1 text-ui-base text-foreground outline-none";
 
   return (
     <>
@@ -136,38 +237,112 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
             </p>
           ) : null}
 
-          {phase === "ready" || phase === "confirm" || phase === "refreshing" ? (
-            <div className="space-y-2 rounded-xl border border-border bg-surface px-3 py-2.5">
+          {machines.length > 0 ? (
+            <div className="space-y-2">
               {rotated && phase === "ready" ? (
                 <div className="text-ui-xs text-foreground-subtle">
                   {intl.formatMessage({ id: "assistCode.dialog.refreshed" })}
                 </div>
               ) : null}
-              <div className="flex items-center gap-2">
-                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-ui-xs text-foreground-subtle">
-                  {shareUrl}
-                </code>
-                {phase === "ready" ? (
-                  <>
+              {machines.map((machine) => {
+                const isLocal = machine.code === localCode;
+                const isActive = machine.code === activeCode;
+                return (
+                  <AssistMachineRowCard
+                    key={machine.code}
+                    machine={machine}
+                    isLocal={isLocal}
+                    isActive={isActive}
+                    editing={editingCode === machine.code}
+                    editDraft={editingCode === machine.code ? editingDraft : ""}
+                    copied={copiedCode === machine.code}
+                    origin={origin}
+                    onEditStart={() => {
+                      setEditingCode(machine.code);
+                      setEditingDraft(machine.name);
+                    }}
+                    onEditChange={setEditingDraft}
+                    onEditCommit={() => commitRename(machine.code)}
+                    onEditCancel={() => {
+                      setEditingCode(null);
+                      setEditingDraft("");
+                    }}
+                    onCopy={() => copyShareUrl(machine.code)}
+                    onRequestRefresh={() => setPhase("confirm")}
+                    onSwitch={() => switchTo(machine.code)}
+                    onRemove={() => removeRow(machine.code)}
+                  />
+                );
+              })}
+              <p className="text-ui-xs/relaxed text-foreground-subtle">
+                {intl.formatMessage({ id: "assistCode.dialog.switchHint" })}
+              </p>
+              {adding ? (
+                <div className="space-y-2 rounded-xl border border-border bg-surface px-3 py-2.5">
+                  <input
+                    autoFocus
+                    value={addCodeDraft}
+                    inputMode="numeric"
+                    aria-label={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
+                    placeholder={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
+                    className={addInputClass}
+                    onChange={(event) => {
+                      setAddCodeDraft(event.target.value);
+                      setAddFormError(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") submitAdd();
+                      if (event.key === "Escape") closeAddForm();
+                    }}
+                  />
+                  <input
+                    value={addNameDraft}
+                    aria-label={intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })}
+                    placeholder={
+                      normalizeAssistCode(addCodeDraft)
+                        ? defaultAssistMachineName(normalizeAssistCode(addCodeDraft) ?? "")
+                        : intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })
+                    }
+                    className={addInputClass}
+                    onChange={(event) => setAddNameDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") submitAdd();
+                      if (event.key === "Escape") closeAddForm();
+                    }}
+                  />
+                  {addFormError !== null ? (
+                    <p className="text-ui-xs text-destructive">{addFormError}</p>
+                  ) : null}
+                  <div className="flex items-center justify-end gap-3">
                     <button
                       type="button"
-                      className="shrink-0 text-ui-xs text-foreground-subtle hover:text-foreground"
-                      onClick={copyShareUrl}
+                      className="text-ui-xs text-foreground-subtle hover:text-foreground"
+                      onClick={closeAddForm}
                     >
-                      {copied
-                        ? intl.formatMessage({ id: "assistCode.dialog.copied" })
-                        : intl.formatMessage({ id: "assistCode.dialog.copy" })}
+                      {intl.formatMessage({ id: "common.cancel" })}
                     </button>
                     <button
                       type="button"
-                      className="shrink-0 text-ui-xs text-primary hover:text-primary"
-                      onClick={() => setPhase("confirm")}
+                      className="text-ui-xs font-medium text-primary hover:text-primary"
+                      onClick={submitAdd}
                     >
-                      {intl.formatMessage({ id: "assistCode.dialog.refresh" })}
+                      {intl.formatMessage({ id: "assistCode.dialog.addConfirm" })}
                     </button>
-                  </>
-                ) : null}
-              </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-ui-xs text-primary hover:text-primary"
+                  onClick={() => {
+                    setAdding(true);
+                    setAddFormError(null);
+                  }}
+                >
+                  <Plus className="size-3.5" />
+                  {intl.formatMessage({ id: "assistCode.dialog.add" })}
+                </button>
+              )}
             </div>
           ) : null}
 
@@ -185,22 +360,19 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
           <DialogFooter className="gap-2 sm:justify-end">
             {phase === "confirm" ? (
               <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  className="h-9 gap-3 px-4 justify-between sm:min-w-28"
+                <AssistDialogSecondaryButton
+                  label={intl.formatMessage({ id: "common.cancel" })}
                   onClick={() => setPhase("ready")}
-                >
-                  <span>{intl.formatMessage({ id: "common.cancel" })}</span>
-                  <span className="font-mono text-ui-base text-foreground-subtle">esc</span>
-                </Button>
+                />
                 <Button
                   type="button"
                   autoFocus
                   size="lg"
                   className="h-9 gap-3 px-4 justify-between sm:min-w-32"
-                  onClick={runRefresh}
+                  onClick={() => {
+                    if (localCode === null) return;
+                    runRefresh(localCode);
+                  }}
                 >
                   <span>{intl.formatMessage({ id: "assistCode.dialog.refreshConfirm" })}</span>
                   <span className="font-mono text-ui-base text-primary-foreground/60">⏎</span>
@@ -215,24 +387,19 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
             ) : null}
             {phase === "error" ? (
               <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  className="h-9 px-4"
+                <AssistDialogSecondaryButton
+                  label={intl.formatMessage({ id: "common.close" })}
                   onClick={() => setOpen(false)}
-                >
-                  {intl.formatMessage({ id: "common.close" })}
-                </Button>
+                />
                 <Button
                   type="button"
                   autoFocus
                   size="lg"
                   className="h-9 px-4"
+                  // 列表为空说明是读取阶段失败，重试读取；否则是刷新失败，原地重刷。
                   onClick={() => {
-                    // 读取失败的重试回到加载；刷新失败的重试原地再刷新。
-                    if (code === null) loadCurrentCode();
-                    else runRefresh();
+                    if (machines.length === 0) loadCurrent();
+                    else if (localCode !== null) runRefresh(localCode);
                   }}
                 >
                   {intl.formatMessage({ id: "assistCode.dialog.retry" })}
@@ -240,15 +407,10 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
               </>
             ) : null}
             {phase === "ready" || phase === "loading" ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                className="h-9 px-4"
+              <AssistDialogSecondaryButton
+                label={intl.formatMessage({ id: "common.close" })}
                 onClick={() => setOpen(false)}
-              >
-                {intl.formatMessage({ id: "common.close" })}
-              </Button>
+              />
             ) : null}
           </DialogFooter>
         </DialogContent>
