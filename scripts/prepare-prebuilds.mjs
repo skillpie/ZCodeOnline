@@ -122,13 +122,15 @@ const remoteOfficialPluginPackages = [
 // 找 packages/bundled-skills 并原地读取；与 packages/desktop/scripts/prepare-agent-node-bundle.mjs 同一份清单。
 const remoteBundledSkillPack = {
   relativePath: "apps/zcode-cli/packages/bundled-skills",
-  // 与 prepare-agent-node-bundle.mjs 同款：默认内置技能 bugfix/grill 缺失即中止 staging。
+  // 与 prepare-agent-node-bundle.mjs、cli/scripts/sea-bundled-skill-assets.mjs 同款：
+  // 默认内置技能 grill/skillpie 缺失即中止 staging。
   requiredPaths: [
     "skills/dynamic-workflows/SKILL.md",
     "skills/dynamic-workflows/patterns.md",
     "skills/dynamic-workflows/examples.md",
-    "skills/bugfix/SKILL.md",
     "skills/grill/SKILL.md",
+    "skills/skillpie/SKILL.md",
+    "skills/skillpie/scripts/cli.js",
   ],
   stagedPath: "packages/bundled-skills",
   topLevelPaths: ["skills"],

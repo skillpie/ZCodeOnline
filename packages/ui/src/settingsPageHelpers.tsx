@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input.js";
 import { Button } from "@/components/ui/button.js";
 import { SettingsBadge, SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import { DataBaseDirControl } from "@/settings/DataBaseDirControl.js";
+import { CodeRepositoryControl } from "@/settings/CodeRepositoryControl.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { ProactiveSuggestionsSetting } from "@/settings/ProactiveSuggestionsSetting.js";
@@ -868,6 +869,16 @@ export function GeneralSectionContent({
               onSelectDataBaseDir={onSelectDataBaseDir}
             />
           }
+        />
+      </SettingsGroupCard>
+
+      <SettingsGroupCard>
+        <SettingsRow
+          label={intl.formatMessage({ id: "settings.codeRepository" })}
+          description={intl.formatMessage({
+            id: "settings.codeRepositoryDescription",
+          })}
+          control={<CodeRepositoryControl />}
         />
       </SettingsGroupCard>
 

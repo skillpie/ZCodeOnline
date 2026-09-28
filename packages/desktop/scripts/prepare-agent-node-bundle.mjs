@@ -118,14 +118,15 @@ const officialPluginPackages = [
 // 「先加载 dynamic-workflows 技能」而技能文件不存在，因此必须随 Agent 一起打包。
 const bundledSkillPack = {
   relativePath: "apps/zcode-cli/packages/bundled-skills",
-  // 默认内置技能 bugfix/grill 与 dynamic-workflows 同为打包承诺：缺失即中止 staging，
+  // 默认内置技能 grill/skillpie 与 dynamic-workflows 同为打包承诺：缺失即中止 staging，
   // 防止它们悄悄从安装包消失；运行时整包拒收清单不含它们（见 bootstrap bundled-skills.ts）。
   requiredPaths: [
     "skills/dynamic-workflows/SKILL.md",
     "skills/dynamic-workflows/patterns.md",
     "skills/dynamic-workflows/examples.md",
-    "skills/bugfix/SKILL.md",
     "skills/grill/SKILL.md",
+    "skills/skillpie/SKILL.md",
+    "skills/skillpie/scripts/cli.js",
   ],
   stagedPath: "packages/bundled-skills",
   topLevelPaths: ["skills"],

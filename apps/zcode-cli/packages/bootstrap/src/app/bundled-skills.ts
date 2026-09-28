@@ -10,7 +10,7 @@ import { candidateBaseDirs } from "./bundled-plugins.js";
  *
  * 它不是插件：不进官方市场目录、没有启停开关、不能卸载，也不出现在设置页与 `$` 引用面板。
  * 产品功能的工具由 runtime 注册，配套技能随 CLI 分发，避免卸载插件后缺少工具使用说明。
- * 包内还随产品分发默认通用技能（如 bugfix、grill、skillpie）：scope=system 且优先级最低，
+ * 包内还随产品分发默认通用技能（如 grill、skillpie）：scope=system 且优先级最低，
  * 用户/项目/插件里的同名技能总是压过内置版；是否随包由构建期 required 清单守卫。
  *
  * 三种运行形态解析到同一个 skills 目录：
