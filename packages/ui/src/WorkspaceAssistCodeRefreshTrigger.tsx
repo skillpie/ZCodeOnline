@@ -243,8 +243,10 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
             </p>
           ) : null}
 
+          {/* min-w-0：弹窗外壳是 grid，列表作为 grid item 默认 min-width:auto，
+              行内 code+按钮的固有宽度会把轨道撑出横向滚动条。 */}
           {machines.length > 0 ? (
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               {rotated && phase === "ready" ? (
                 <div className="text-ui-sm text-foreground-subtle">
                   {intl.formatMessage({ id: "assistCode.dialog.refreshed" })}

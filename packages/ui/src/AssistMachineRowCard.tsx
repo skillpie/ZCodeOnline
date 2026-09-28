@@ -51,7 +51,7 @@ export function AssistMachineRowCard({
   return (
     <div
       className={cn(
-        "space-y-1.5 rounded-xl border px-3 py-2.5",
+        "min-w-0 space-y-1.5 rounded-xl border px-3 py-2.5",
         isActive ? "border-input-border-focused bg-surface-hover/40" : "border-border bg-surface",
       )}
     >

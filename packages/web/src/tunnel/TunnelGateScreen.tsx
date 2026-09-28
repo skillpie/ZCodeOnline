@@ -34,17 +34,17 @@ function InstallCommandRow({
       {shellLabel !== null && shellLabel !== undefined ? (
         // shell 标签固定宽对齐两条命令；自定义标签（Agent 行）自适应宽度。
         <span
-          className={`shrink-0 text-ui-xs text-foreground-subtle ${label === undefined ? "w-20" : ""}`}
+          className={`shrink-0 text-ui-sm text-foreground-subtle ${label === undefined ? "w-20" : ""}`}
         >
           {shellLabel}
         </span>
       ) : null}
-      <code className="flex-1 overflow-x-auto whitespace-nowrap text-ui-xs text-foreground">
+      <code className="flex-1 overflow-x-auto whitespace-nowrap text-ui-base text-foreground">
         {item.command}
       </code>
       <button
         type="button"
-        className="shrink-0 text-ui-xs text-foreground-subtle hover:text-foreground"
+        className="shrink-0 text-ui-base text-foreground-subtle hover:text-foreground"
         onClick={() => {
           void navigator.clipboard.writeText(item.command).then(() => {
             setCopied(true);
@@ -66,7 +66,7 @@ function InstallGuide({ isZh }: { isZh: boolean }) {
     <div className="mt-4 rounded-lg border border-border bg-surface">
       <button
         type="button"
-        className="flex w-full items-center justify-between px-3 py-2 text-ui-xs text-foreground-subtle hover:text-foreground"
+        className="flex w-full items-center justify-between px-3 py-2 text-ui-base text-foreground-subtle hover:text-foreground"
         onClick={() => setOpen((value) => !value)}
       >
         {isZh ? "还没有安装？一行命令装好本机端" : "Not installed yet? One-line local install"}
@@ -111,9 +111,9 @@ export function ConnectionGateCard(props: ConnectionGateCardProps) {
             props.status === "connecting" ? "animate-pulse bg-amber-500" : "bg-emerald-500"
           }`}
         />
-        <h1 className="text-ui-xs font-medium">{t("连接到你的电脑", "Connect to your machine")}</h1>
+        <h1 className="text-ui-lg font-medium">{t("连接到你的电脑", "Connect to your machine")}</h1>
       </div>
-      <p className="mt-2 text-ui-xs/relaxed text-foreground-subtle">
+      <p className="mt-2 text-ui-base/relaxed text-foreground-subtle">
         {t(
           "本机已安装时会自动连接（无需操作）。连接其他电脑：在该电脑上运行 zcode serve，打开它打印的远程链接。",
           "Auto-connects when installed on this machine. To reach another computer: run zcode serve there and open the link it prints.",
@@ -124,12 +124,12 @@ export function ConnectionGateCard(props: ConnectionGateCardProps) {
 
       {props.needsLogin ? (
         <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
-          <span className="text-ui-xs/relaxed text-foreground-subtle">
+          <span className="text-ui-base/relaxed text-foreground-subtle">
             {t("配对前需要登录 ZCode 账号。", "Sign in to your ZCode account first.")}
           </span>
           <button
             type="button"
-            className="shrink-0 rounded-lg border border-border bg-surface px-3 py-2 text-ui-xs text-foreground hover:bg-surface-hover"
+            className="shrink-0 rounded-lg border border-border bg-surface px-3 py-2 text-ui-base text-foreground hover:bg-surface-hover"
             onClick={props.onStartLogin}
           >
             {t("登录", "Sign in")}
@@ -138,18 +138,18 @@ export function ConnectionGateCard(props: ConnectionGateCardProps) {
       ) : null}
 
       {props.status === "connecting" ? (
-        <p className="mt-3 text-ui-xs/relaxed text-foreground-subtle">
+        <p className="mt-3 text-ui-base/relaxed text-foreground-subtle">
           {t("正在建立端到端连接…", "Establishing end-to-end connection…")}
         </p>
       ) : null}
       {props.status === "disconnected" ? (
         <div className="mt-4 flex flex-col gap-2">
-          <p className="text-ui-xs/relaxed text-foreground-subtle">
+          <p className="text-ui-base/relaxed text-foreground-subtle">
             {t("连接已断开。", "Connection closed.")}
           </p>
           <button
             type="button"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center text-ui-xs text-foreground hover:bg-surface-hover"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center text-ui-base text-foreground hover:bg-surface-hover"
             onClick={props.onReconnect}
           >
             {t("重新连接", "Reconnect")}
@@ -157,7 +157,7 @@ export function ConnectionGateCard(props: ConnectionGateCardProps) {
         </div>
       ) : null}
       {props.error !== null ? (
-        <p className="mt-3 break-all text-ui-xs/relaxed text-destructive">{props.error}</p>
+        <p className="mt-3 break-all text-ui-base/relaxed text-destructive">{props.error}</p>
       ) : null}
     </section>
   );
