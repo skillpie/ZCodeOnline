@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppErrorBoundary, Root, ZCodeIntlProvider } from "@zcode/ui";
 import type { connectViaProtocol } from "@zcode/client";
 import type { IPlatformService } from "@zcode/shared";
-import { DEFAULT_TUNNEL_RELAY_URL } from "@zcode/shared";
+import { DEFAULT_TUNNEL_RELAY_URL, TUNNEL_CONSTANTS } from "@zcode/shared";
+import { createAutoReconnect } from "./autoReconnect.js";
 import { TunnelConnectError, connectTunnelServices, type TunnelBootstrap } from "./tunnelSocket.js";
 import {
   AssistRedeemError,
@@ -28,6 +29,34 @@ import { ConnectionGateCard } from "./TunnelGateScreen.js";
 export type TunnelServices = ReturnType<typeof connectViaProtocol>;
 
 const t = (zhText: string, enText: string) => (/^zh\b/i.test(navigator.language) ? zhText : enText);
+
+// 自动重连窗口：6 次（1+2+4+8+16+30 ≈ 61s）覆盖 relay 重启空窗（秒级）+ 宿主退避重连
+// （最长 reconnectMaxMs）的典型恢复时长；超过后交还手动重连，保留换机重新配对的出口。
+const AUTO_RECONNECT_MAX_ATTEMPTS = 6;
+
+/**
+ * 可自动重试的连接失败：
+ * - network / hostOffline：relay 重启空窗或宿主尚未重新注册（宿主凭证被拒后会自动
+ *   清空重注册），退避重试即可恢复；
+ * - invalidSessionCredential / connectTokenInvalid：relay 的会话与票据全在内存
+ *   （tunnelStore 参考实现驻内存），重启即失效——清掉旧凭证重跑连接链自愈：同机
+ *   浏览器经本地发现零输入重新配对，远程设备最终停在手动配对门禁；
+ * - 协议类失败（版本不匹配等）不重试：会话与 PSK 仍有效，宿主升级后手动重连即可。
+ */
+function isRetryableConnectError(cause: unknown): boolean {
+  if (cause instanceof TunnelConnectError) {
+    return (
+      cause.code === "network" ||
+      cause.code === "hostOffline" ||
+      cause.code === "invalidSessionCredential" ||
+      cause.code === "connectTokenInvalid"
+    );
+  }
+  if (cause instanceof AssistRedeemError) {
+    return cause.kind === "network" || cause.kind === "generic";
+  }
+  return false;
+}
 
 // ---- 门禁 UI 状态 ----
 
@@ -100,11 +129,46 @@ export function TunnelAppRoot({
     setGate((current) => ({ ...current, ...patch }));
   }, []);
 
+  // 自动重连调度器（唯一所有者是本组件）。重试动作经 retryDispatchRef 间接引用连接链，
+  // 打断"连接链引用调度器、调度器引用连接链"的 useCallback 循环依赖。
+  const autoReconnectRef = useRef<ReturnType<typeof createAutoReconnect> | null>(null);
+  const retryDispatchRef = useRef<() => void>(() => {});
+  if (autoReconnectRef.current === null) {
+    autoReconnectRef.current = createAutoReconnect({
+      maxAttempts: AUTO_RECONNECT_MAX_ATTEMPTS,
+      initialMs: TUNNEL_CONSTANTS.reconnectInitialMs,
+      maxMs: TUNNEL_CONSTANTS.reconnectMaxMs,
+      onRetry: () => retryDispatchRef.current(),
+      onGiveUp: () =>
+        patchGate({
+          visible: true,
+          status: "disconnected",
+          error: t(
+            "自动重连未成功，请点击「重新连接」。",
+            "Automatic reconnection failed. Click Reconnect to try again.",
+          ),
+        }),
+    });
+  }
+
+  // 断开/失败后的统一入口：门禁切到重连中，再由调度器按退避序列重跑连接链。
+  const scheduleReconnect = useCallback(() => {
+    patchGate({
+      visible: true,
+      status: "connecting",
+      error: t("连接已断开，正在自动重连…", "Connection lost. Reconnecting…"),
+    });
+    autoReconnectRef.current?.schedule();
+  }, [patchGate]);
+
   const connectWithSession = useCallback(
     async (session: TunnelSession) => {
       const seq = activeConnRef.current + 1;
       activeConnRef.current = seq;
       patchGate({ status: "connecting", error: null });
+      // 握手完成前的断开（含 fail() 主动 close 触发的 onClose）由 catch 统一做重试决策；
+      // onClose 只接管已建立的连接，避免协议类失败被误排入自动重试。
+      let established = false;
       try {
         const connected = await connectTunnelServices({
           relayUrl: session.relayUrl,
@@ -113,18 +177,21 @@ export function TunnelAppRoot({
           sessionCredential: session.sessionCredential,
           onClose: () => {
             if (activeConnRef.current !== seq) return;
-            // 断开：模态重现，UI 回到骨架态（Root 换回骨架重挂载）。
+            // 断开：UI 回到骨架态（Root 换回骨架重挂载），门禁由 scheduleReconnect 切重连中。
             document.title = "ZCode Online";
             setServices(null);
             setBootstrap(undefined);
-            patchGate({ visible: true, status: "disconnected" });
+            if (established) scheduleReconnect();
           },
         });
         if (activeConnRef.current !== seq) {
           connected.transport.close();
           return;
         }
+        established = true;
         document.title = "ZCode Online";
+        // 连接成功：清空重连计数，后续断开从第 1 次退避重新开始。
+        autoReconnectRef.current?.clear();
         // 地址栏保持干净域名（specs/web-tunnel.md §5.9）：远程码只存浏览器本地，
         // 不再回写 /<码> 形式的 URL，避免投屏/截图/历史记录泄露长期凭证。
         setServices(connected.services);
@@ -133,17 +200,26 @@ export function TunnelAppRoot({
       } catch (cause) {
         if (activeConnRef.current !== seq) return;
         setServices(null);
-        patchGate({ visible: true, status: "idle" });
-        if (cause instanceof TunnelConnectError && cause.code !== "network") {
-          // 凭证类失败：会话已不可用，清掉让用户重新配对。
+        if (
+          cause instanceof TunnelConnectError &&
+          (cause.code === "invalidSessionCredential" || cause.code === "connectTokenInvalid")
+        ) {
+          // 凭证类失败（relay 重启丢失内存态或会话过期）：旧会话已不可用，清掉让
+          // 重连链重新配对——同机浏览器经本地发现零输入完成，远程设备停在手动门禁。
           clearTunnelSession();
+        }
+        if (isRetryableConnectError(cause)) {
+          // 网络空窗/宿主暂未重新注册/会话待重新配对：退避重试。不再像旧逻辑那样对
+          // hostOffline 也清会话——宿主短暂离线后原会话仍有效，远程设备无需重新扫码。
+          scheduleReconnect();
+          return;
         }
         const message =
           cause instanceof Error ? cause.message : cause instanceof Object ? String(cause) : "";
-        patchGate({ error: message });
+        patchGate({ visible: true, status: "idle", error: message });
       }
     },
-    [patchGate],
+    [patchGate, scheduleReconnect],
   );
 
   const handlePairSubmit = useCallback(
@@ -206,6 +282,8 @@ export function TunnelAppRoot({
       const seq = activeConnRef.current + 1;
       activeConnRef.current = seq;
       patchGate({ visible: true, status: "connecting", error: null });
+      // 同 connectWithSession：握手前的断开由 catch 统一决策，onClose 只接管已建立的连接。
+      let established = false;
       try {
         const redeemed = await redeemAssistCode(code);
         const connected = await connectTunnelServices({
@@ -215,25 +293,20 @@ export function TunnelAppRoot({
           connectToken: redeemed.connectToken,
           onClose: () => {
             if (activeConnRef.current !== seq) return;
-            // 断开（被控电脑下线/网络断）：码仍长期有效，重连即可。
+            // 断开（被控电脑下线/网络断/relay 重启）：码长期有效，自动重连即可恢复。
             document.title = "ZCode Online";
             setServices(null);
             setBootstrap(undefined);
-            patchGate({
-              visible: true,
-              status: "disconnected",
-              error: t(
-                "远程电脑当前不在线，恢复后点「重新连接」。",
-                "The remote machine is offline. Click Reconnect once it's back.",
-              ),
-            });
+            if (established) scheduleReconnect();
           },
         });
         if (activeConnRef.current !== seq) {
           connected.transport.close();
           return;
         }
+        established = true;
         document.title = "ZCode Online";
+        autoReconnectRef.current?.clear();
         setServices(connected.services);
         setBootstrap(connected.bootstrap);
         patchGate({ visible: false, status: "idle", error: null, needsLogin: false });
@@ -245,6 +318,10 @@ export function TunnelAppRoot({
         if (invalidCode) clearStoredAssistCode();
         // 断开态（含重连按钮）承接兑换/握手的可重试失败；失效码则回退本机链路兜底。
         if (!invalidCode) {
+          if (isRetryableConnectError(cause)) {
+            scheduleReconnect();
+            return;
+          }
           patchGate({
             visible: true,
             status: "disconnected",
@@ -260,10 +337,12 @@ export function TunnelAppRoot({
         );
       }
     },
-    [connectWithoutAssistCode, patchGate],
+    [connectWithoutAssistCode, patchGate, scheduleReconnect],
   );
 
   const handleReconnect = useCallback(() => {
+    // 手动重连 = 重新开始完整的自动重连窗口（清计数与待执行定时器）。
+    autoReconnectRef.current?.clear();
     const storedCode = loadStoredAssistCode();
     if (storedCode) {
       void connectWithAssistCode(storedCode);
@@ -271,6 +350,17 @@ export function TunnelAppRoot({
     }
     void connectWithoutAssistCode(null);
   }, [connectWithAssistCode, connectWithoutAssistCode]);
+
+  // 自动重试的分派与手动重连同链路（远程码优先，其次已存会话/本地发现重配对），
+  // 但不清调度器状态——退避计数必须跨多次重试累积，清零会让窗口永不耗尽。
+  retryDispatchRef.current = () => {
+    const storedCode = loadStoredAssistCode();
+    if (storedCode) {
+      void connectWithAssistCode(storedCode);
+      return;
+    }
+    void connectWithoutAssistCode(null);
+  };
 
   // 挂载：存储的远程码优先（最后传入的码 = 用户最近一次的连接意图）；否则走本机链路。
   useEffect(() => {
@@ -281,6 +371,13 @@ export function TunnelAppRoot({
     }
     void connectWithoutAssistCode(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 生命周期仅挂载时执行一次
+  }, []);
+
+  // 卸载清理：组件销毁后不再让存活的定时器触发连接链。
+  useEffect(() => {
+    return () => {
+      autoReconnectRef.current?.clear();
+    };
   }, []);
 
   const hostWorkspace = services ? bootstrap?.workspaces[0] : undefined;

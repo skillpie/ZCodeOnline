@@ -1425,6 +1425,9 @@ const enUS: Record<string, string> = {
   "codeViewer.empty": "File is empty",
   "codeViewer.fileTooLarge":
     "This file exceeds the 256 KB preview limit. Open it in another editor to view the full contents.",
+  "previewPane.editFile": "Edit file",
+  "previewPane.fileSaved": "File saved",
+  "previewPane.fileSaveFailed": "Failed to save file",
   "codeViewer.viewCode": "View code",
   "codeViewer.viewDiff": "View diff",
   "codeViewer.openSourcePreview": "Source preview",

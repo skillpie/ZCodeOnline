@@ -20,6 +20,9 @@ import {
   FileCode2Icon,
   CopyIcon,
   LocateFixed,
+  PencilIcon,
+  SaveIcon,
+  XIcon,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { Button } from "@/components/ui/button.js";
@@ -66,6 +69,7 @@ import {
 } from "@/components/ui/dropdown-menu.js";
 import { readLastSelectedEditorId } from "@/lib/editorPreference.js";
 import { PreviewPaneContent } from "@/previewPaneContent.js";
+import { PreviewPaneFileEditContent } from "@/previewPaneFileEditContent.js";
 import {
   dispatchCodeCommentAddToChat,
   dispatchCodeCommentRemoveFromChat,
@@ -526,6 +530,11 @@ export function PreviewPane({
   const [filePreview, setFilePreview] = useState<FileTextSlice | null>(null);
   const [fileTooLarge, setFileTooLarge] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(false);
+  // 文件编辑模式状态：draft 是唯一编辑草稿，保存成功后通过 reloadToken 触发重读。
+  const [isEditingFile, setIsEditingFile] = useState(false);
+  const [fileEditDraft, setFileEditDraft] = useState("");
+  const [savingFileEdit, setSavingFileEdit] = useState(false);
+  const [fileReloadToken, setFileReloadToken] = useState(0);
   const [loadingImagePreview, setLoadingImagePreview] = useState(false);
   const [imagePreview, setImagePreview] = useState<FileMediaPreview | null>(null);
   const [loadingMediaPreview, setLoadingMediaPreview] = useState(false);
@@ -636,6 +645,10 @@ export function PreviewPane({
   const canCreateCodeComment = Boolean(
     source?.type !== "code-review" && source?.path && sourceWorkspacePath,
   );
+  // 编辑入口只对完整加载的磁盘文本文件开放：二进制、超过 256KB 截断（fileTooLarge）
+  // 以及 diff/评审等投影视图都没有可安全覆写的全文，不能出现"保存丢内容"的入口。
+  const canEditFile =
+    source?.type === "file" && filePreview !== null && !filePreview.isBinary && !fileTooLarge;
   const displayOptions = useMemo(
     () =>
       getPreviewPaneDisplayOptions(source, {
@@ -708,6 +721,13 @@ export function PreviewPane({
     );
     setWrapLongLinesOverride(null);
   }, [source]);
+
+  // 切换文件时必须丢弃上一文件的编辑草稿：编辑态只属于当前 fileSource。
+  useEffect(() => {
+    setIsEditingFile(false);
+    setFileEditDraft("");
+    setSavingFileEdit(false);
+  }, [fileSource]);
 
   const handleSubmitCodeComment = useCallback(
     (params: { range: CodeCommentRange; selectedText: string; comment: string }) => {
@@ -936,7 +956,7 @@ export function PreviewPane({
     return () => {
       disposed = true;
     };
-  }, [fileService, fileSource, intl]);
+  }, [fileService, fileSource, fileReloadToken, intl]);
 
   useEffect(() => {
     let disposed = false;
@@ -1518,6 +1538,48 @@ export function PreviewPane({
     onOpenCodeViewer?.(diffFilePreviewSource);
   };
 
+  const handleStartFileEdit = () => {
+    if (!filePreview || filePreview.isBinary) {
+      return;
+    }
+
+    setFileEditDraft(filePreview.content);
+    setIsEditingFile(true);
+  };
+
+  const handleCancelFileEdit = () => {
+    // 取消即丢弃草稿回到只读视图；只读内容仍来自 filePreview，无需重读文件。
+    setFileEditDraft("");
+    setIsEditingFile(false);
+  };
+
+  const handleSaveFileEdit = async () => {
+    if (!fileSource || savingFileEdit) {
+      return;
+    }
+
+    setSavingFileEdit(true);
+    try {
+      await fileService.writeTextFile({ path: fileSource.path, content: fileEditDraft });
+      setFileEditDraft("");
+      setIsEditingFile(false);
+      // 保存成功后重读文件，让只读视图、编辑可用性（大小/二进制判断）基于落盘内容。
+      setFileReloadToken((token) => token + 1);
+      toast(intl.formatMessage({ id: "previewPane.fileSaved" }));
+    } catch (saveError) {
+      logger.error(`[PreviewPane] 保存文件失败 path=${fileSource.path}:`, saveError);
+      // 失败保持编辑态，草稿不丢；错误文案复用预览层的路径脱敏逻辑。
+      toast(
+        `${intl.formatMessage({ id: "previewPane.fileSaveFailed" })}: ${getPreviewPaneSafeErrorMessage(
+          saveError,
+          fileSource.path,
+        )}`,
+      );
+    } finally {
+      setSavingFileEdit(false);
+    }
+  };
+
   const deferredBodyStyle: CSSProperties | undefined =
     !renderHeavyContent && preservedScrollMetricsRef.current.scrollHeight > 0
       ? {
@@ -1570,7 +1632,40 @@ export function PreviewPane({
         </div>
 
         <div className="flex shrink-0 pr-1.5 items-center gap-2">
-          {canOpenDiffFilePreview ? (
+          {/* 编辑模式：只保留 放弃 / 保存 两个动作，隐藏定位、更多、外部编辑器等冲突操作。
+              取消在左、保存在右：放弃是退路，保存是确认。 */}
+          {isEditingFile ? (
+            <>
+              <Button
+                type="button"
+                size="icon-md"
+                variant="ghost"
+                className="shrink-0 text-foreground-subtle hover:text-foreground"
+                data-testid="preview-pane-cancel-file-edit"
+                title={intl.formatMessage({ id: "common.cancel" })}
+                aria-label={intl.formatMessage({ id: "common.cancel" })}
+                disabled={savingFileEdit}
+                onClick={handleCancelFileEdit}
+              >
+                <XIcon className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="icon-md"
+                className="shrink-0"
+                data-testid="preview-pane-save-file-edit"
+                title={intl.formatMessage({ id: "common.save" })}
+                aria-label={intl.formatMessage({ id: "common.save" })}
+                disabled={savingFileEdit}
+                onClick={() => {
+                  void handleSaveFileEdit();
+                }}
+              >
+                <SaveIcon className="size-3.5" />
+              </Button>
+            </>
+          ) : null}
+          {canOpenDiffFilePreview && !isEditingFile ? (
             <Button
               type="button"
               size="default"
@@ -1593,8 +1688,23 @@ export function PreviewPane({
               </span>
             </Button>
           ) : null}
+          {/* 编辑按钮：进入文件编辑模式，放在定位按钮左侧 */}
+          {canEditFile && !isEditingFile ? (
+            <Button
+              type="button"
+              size="icon-md"
+              variant="ghost"
+              className="shrink-0 text-foreground-subtle hover:text-foreground"
+              data-testid="preview-pane-edit-file"
+              title={intl.formatMessage({ id: "previewPane.editFile" })}
+              aria-label={intl.formatMessage({ id: "previewPane.editFile" })}
+              onClick={handleStartFileEdit}
+            >
+              <PencilIcon className="size-3.5" />
+            </Button>
+          ) : null}
           {/* 定位按钮：在左侧项目文件树中展开并聚焦当前文件 */}
-          {source.path && onRevealFileInTree ? (
+          {source.path && onRevealFileInTree && !isEditingFile ? (
             <Button
               type="button"
               size="icon-md"
@@ -1609,7 +1719,7 @@ export function PreviewPane({
             </Button>
           ) : null}
           {/* 图片和 patch 这类预览没有任何显示选项，继续渲染触发器会打开空菜单，所以只在存在菜单项时显示更多按钮。*/}
-          {hasMoreMenu || source.path ? (
+          {!isEditingFile && (hasMoreMenu || source.path) ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1715,107 +1825,118 @@ export function PreviewPane({
             </DropdownMenu>
           ) : null}
           {/* 第一期 PPTX 明确为只读预览，不展示任何编辑入口。 */}
-          <Button
-            type="button"
-            size="icon-md"
-            variant="ghost"
-            className="shrink-0 text-foreground-subtle hover:text-foreground disabled:text-foreground-subtlest"
-            onClick={() => {
-              void handleOpenInEditor();
-            }}
-            disabled={!canOpenInEditor}
-            title={
-              selectedEditor
-                ? intl.formatMessage(
-                    { id: "appHeader.openInEditor" },
-                    { editor: selectedEditor.name },
-                  )
-                : intl.formatMessage({ id: "chat.changeSummary.openInEditor" })
-            }
-            aria-label={
-              selectedEditor
-                ? intl.formatMessage(
-                    { id: "appHeader.openInEditor" },
-                    { editor: selectedEditor.name },
-                  )
-                : intl.formatMessage({ id: "chat.changeSummary.openInEditor" })
-            }
-          >
-            <ExternalLinkIcon className="size-3.5" />
-          </Button>
+          {!isEditingFile ? (
+            <Button
+              type="button"
+              size="icon-md"
+              variant="ghost"
+              className="shrink-0 text-foreground-subtle hover:text-foreground disabled:text-foreground-subtlest"
+              onClick={() => {
+                void handleOpenInEditor();
+              }}
+              disabled={!canOpenInEditor}
+              title={
+                selectedEditor
+                  ? intl.formatMessage(
+                      { id: "appHeader.openInEditor" },
+                      { editor: selectedEditor.name },
+                    )
+                  : intl.formatMessage({ id: "chat.changeSummary.openInEditor" })
+              }
+              aria-label={
+                selectedEditor
+                  ? intl.formatMessage(
+                      { id: "appHeader.openInEditor" },
+                      { editor: selectedEditor.name },
+                    )
+                  : intl.formatMessage({ id: "chat.changeSummary.openInEditor" })
+              }
+            >
+              <ExternalLinkIcon className="size-3.5" />
+            </Button>
+          ) : null}
         </div>
       </div>
       <div className="min-h-0 flex-1">
         {renderHeavyContent ? (
-          <PreviewPaneContent
-            source={pptxSource ?? imageSource ?? pdfSource ?? mediaSource ?? source}
-            filePreview={filePreview}
-            fileTooLarge={fileTooLarge}
-            loadingInitial={loadingInitial}
-            loadingImagePreview={loadingImagePreview}
-            imagePreview={imagePreview}
-            mediaSource={mediaSource}
-            loadingMediaPreview={loadingMediaPreview}
-            mediaPreviewUrl={mediaPreviewUrl}
-            onMediaError={handleMediaError}
-            onMediaLoadedMetadata={handleMediaLoadedMetadata}
-            loadingPdfPreview={loadingPdfPreview}
-            pdfViewerSource={pdfViewerSource}
-            pdfViewerLabels={pdfViewerLabels}
-            loadingOfficePreview={loadingOfficePreview}
-            officePreview={officePreview}
-            officePreviewKind={officePreviewKind}
-            loadingPptxPreview={loadingPptxPreview}
-            pptxPreviewData={pptxPreviewData}
-            pptxViewerLabels={pptxViewerLabels}
-            pptxReferenceSource={
-              pptxSource && sourceWorkspacePath
-                ? {
-                    workspacePath: sourceWorkspacePath,
-                    ...(pptxSource.workspaceIdentity
-                      ? { workspaceIdentity: pptxSource.workspaceIdentity }
-                      : {}),
-                    ...(pptxSource.workspaceRemoteSessionId
-                      ? { remoteSessionId: pptxSource.workspaceRemoteSessionId }
-                      : {}),
-                    sourcePath: pptxSource.path,
-                    sourceTitle: pptxSource.title,
-                  }
-                : null
-            }
-            pptxReferenceNavigation={pptxReferenceNavigation}
-            pptxReferenceNavigationReady={
-              pptxReferenceNavigation !== null &&
-              validatedPptxReferenceNavigationRequestId === pptxReferenceNavigation.requestId
-            }
-            error={error}
-            codePreviewSettings={codePreviewSettings}
-            codeTheme={codeTheme}
-            resolvedTheme={resolvedTheme}
-            theme={theme}
-            workspacePath={sourceWorkspacePath}
-            onOpenBrowserUrl={onOpenBrowserUrl}
-            markdownSelectionTarget={
-              markdownSelectionTarget &&
-              (source.workspaceIdentity?.trim() || sourceWorkspacePath) ===
-                markdownSelectionTarget.workspaceKey
-                ? markdownSelectionTarget
-                : undefined
-            }
-            markdownViewMode={markdownViewMode}
-            svgViewMode={svgViewMode}
-            wrapLongLines={wrapLongLines}
-            codeComments={codeComments}
-            enableCodeLineSelection={canCreateCodeComment}
-            enableCodeGutterUtility={canCreateCodeComment}
-            codeCommentLabels={codeCommentLabels}
-            onSubmitCodeComment={handleSubmitCodeComment}
-            onDeleteCodeComment={handleDeleteCodeComment}
-            // PreviewPane 外层只是 flex 壳，真实滚动发生在具体内容组件的 overflow 容器。
-            // 折叠侧边面板卸载重内容前必须保存该容器的位置。
-            onScroll={handlePreviewContentScroll}
-            scrollContainerRef={scrollContainerRef}
-          />
+          isEditingFile && fileSource ? (
+            <PreviewPaneFileEditContent
+              value={fileEditDraft}
+              onChange={setFileEditDraft}
+              fontSizePx={codePreviewSettings.fontSizePx}
+              ariaLabel={intl.formatMessage({ id: "previewPane.editFile" })}
+            />
+          ) : (
+            <PreviewPaneContent
+              source={pptxSource ?? imageSource ?? pdfSource ?? mediaSource ?? source}
+              filePreview={filePreview}
+              fileTooLarge={fileTooLarge}
+              loadingInitial={loadingInitial}
+              loadingImagePreview={loadingImagePreview}
+              imagePreview={imagePreview}
+              mediaSource={mediaSource}
+              loadingMediaPreview={loadingMediaPreview}
+              mediaPreviewUrl={mediaPreviewUrl}
+              onMediaError={handleMediaError}
+              onMediaLoadedMetadata={handleMediaLoadedMetadata}
+              loadingPdfPreview={loadingPdfPreview}
+              pdfViewerSource={pdfViewerSource}
+              pdfViewerLabels={pdfViewerLabels}
+              loadingOfficePreview={loadingOfficePreview}
+              officePreview={officePreview}
+              officePreviewKind={officePreviewKind}
+              loadingPptxPreview={loadingPptxPreview}
+              pptxPreviewData={pptxPreviewData}
+              pptxViewerLabels={pptxViewerLabels}
+              pptxReferenceSource={
+                pptxSource && sourceWorkspacePath
+                  ? {
+                      workspacePath: sourceWorkspacePath,
+                      ...(pptxSource.workspaceIdentity
+                        ? { workspaceIdentity: pptxSource.workspaceIdentity }
+                        : {}),
+                      ...(pptxSource.workspaceRemoteSessionId
+                        ? { remoteSessionId: pptxSource.workspaceRemoteSessionId }
+                        : {}),
+                      sourcePath: pptxSource.path,
+                      sourceTitle: pptxSource.title,
+                    }
+                  : null
+              }
+              pptxReferenceNavigation={pptxReferenceNavigation}
+              pptxReferenceNavigationReady={
+                pptxReferenceNavigation !== null &&
+                validatedPptxReferenceNavigationRequestId === pptxReferenceNavigation.requestId
+              }
+              error={error}
+              codePreviewSettings={codePreviewSettings}
+              codeTheme={codeTheme}
+              resolvedTheme={resolvedTheme}
+              theme={theme}
+              workspacePath={sourceWorkspacePath}
+              onOpenBrowserUrl={onOpenBrowserUrl}
+              markdownSelectionTarget={
+                markdownSelectionTarget &&
+                (source.workspaceIdentity?.trim() || sourceWorkspacePath) ===
+                  markdownSelectionTarget.workspaceKey
+                  ? markdownSelectionTarget
+                  : undefined
+              }
+              markdownViewMode={markdownViewMode}
+              svgViewMode={svgViewMode}
+              wrapLongLines={wrapLongLines}
+              codeComments={codeComments}
+              enableCodeLineSelection={canCreateCodeComment}
+              enableCodeGutterUtility={canCreateCodeComment}
+              codeCommentLabels={codeCommentLabels}
+              onSubmitCodeComment={handleSubmitCodeComment}
+              onDeleteCodeComment={handleDeleteCodeComment}
+              // PreviewPane 外层只是 flex 壳，真实滚动发生在具体内容组件的 overflow 容器。
+              // 折叠侧边面板卸载重内容前必须保存该容器的位置。
+              onScroll={handlePreviewContentScroll}
+              scrollContainerRef={scrollContainerRef}
+            />
+          )
         ) : (
           <PreviewPaneDeferredHeavyContent style={deferredBodyStyle} />
         )}

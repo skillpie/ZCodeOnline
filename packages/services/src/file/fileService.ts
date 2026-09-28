@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import type { Dirent } from "node:fs";
-import { mkdir, open, readFile, readdir, realpath, stat } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { extname, join, relative, sep } from "node:path";
 import type {
@@ -37,6 +37,9 @@ import { createServiceLogger } from "../logger/serviceLogger.js";
 import { getConversationWorkspaceDir } from "../paths.js";
 const DEFAULT_TEXT_READ_BYTES = 128 * 1024;
 const MAX_TEXT_READ_BYTES = 256 * 1024;
+// 预览面板编辑保存的上限：与文本预览的 256KB 读取边界同量级再放宽到 1MB，
+// 允许在预览上限附近的小幅扩写，同时兜住误把超大文本整块写进 Host 的风险。
+const MAX_TEXT_WRITE_BYTES = 1024 * 1024;
 const DEFAULT_MEDIA_PREVIEW_BYTES = 4 * 1024 * 1024;
 const MAX_MEDIA_PREVIEW_BYTES = 8 * 1024 * 1024;
 const DEFAULT_BINARY_READ_BYTES = 256 * 1024;
@@ -624,6 +627,20 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       } finally {
         await handle.close();
       }
+    },
+    async writeTextFile(params: { path: string; content: string }): Promise<void> {
+      if (Buffer.byteLength(params.content, "utf-8") > MAX_TEXT_WRITE_BYTES) {
+        throw new Error(
+          `File content exceeds the ${MAX_TEXT_WRITE_BYTES} byte text write limit: ${params.path}`,
+        );
+      }
+      const fileStat = await stat(params.path);
+      if (!fileStat.isFile()) {
+        throw new Error(`Path is not a file: ${params.path}`);
+      }
+      // 预览编辑只覆写已存在的文件：不隐式建目录、不创建新文件，
+      // 避免把拼写错误的路径静默落成一个新文件。
+      await writeFile(params.path, params.content, "utf-8");
     },
     async readFileRange(params: {
       path: string;

@@ -2,6 +2,8 @@
 # ZCode Web 隧道一键部署。
 # 模型：本机构建 + rsync 产物（ZCode monorepo 不适合在服务器上构建）。
 # 产物：静态 Web（/var/www/zcode）+ relay 单文件（/opt/zcode-relay）+ nginx conf + systemd unit。
+# 平滑发布：relay 产物与 unit 内容未变化时自动跳过重启（restart 会断开所有隧道 WS），
+# nginx conf 一致时同样跳过；只有内容真正变化才重启。
 # 用法：
 #   ./deploy_web.sh            # 完整部署
 #   ./deploy_web.sh --web      # 仅更新静态 Web
@@ -92,10 +94,24 @@ if [ "$CHECK_ONLY" != true ]; then
   step "上传到 $SERVER_USER@$SERVER_HOST"
   ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p $RELAY_DIR $WEB_DIR"
   if [ "$BUILD_RELAY" = true ]; then
-    rsync -av "$RELAY_SRC" "$SERVER_USER@$SERVER_HOST:$RELAY_DIR/"
-    rsync -av "$SERVICE_SRC" "$SERVER_USER@$SERVER_HOST:/etc/systemd/system/"
-    ssh "$SERVER_USER@$SERVER_HOST" "systemctl daemon-reload && systemctl enable --now zcode-relay && systemctl restart zcode-relay"
-    echo "[服务器] relay 已部署并重启"
+    # 平滑发布：relay 产物与 systemd unit 均未变化时跳过上传与重启。restart 会立刻
+    # 断开所有隧道 WS（宿主连接器与浏览器），而绝大多数提交不触碰 relay（esbuild
+    # 产物随 @zcode/shared 变化，故以内容哈希而非 git 路径判定）。与下方 nginx conf
+    # 的 MD5 跳过同策略。
+    LOCAL_ENTRY_MD5=$(md5 -q "$RELAY_SRC" 2>/dev/null || md5sum "$RELAY_SRC" | awk '{print $1}')
+    LOCAL_UNIT_MD5=$(md5 -q "$SERVICE_SRC" 2>/dev/null || md5sum "$SERVICE_SRC" | awk '{print $1}')
+    REMOTE_ENTRY_MD5=$(ssh "$SERVER_USER@$SERVER_HOST" "md5sum $RELAY_DIR/entry.js 2>/dev/null | awk '{print \$1}'" || echo "")
+    REMOTE_UNIT_MD5=$(ssh "$SERVER_USER@$SERVER_HOST" "md5sum /etc/systemd/system/$(basename "$SERVICE_SRC") 2>/dev/null | awk '{print \$1}'" || echo "")
+    if [ "$LOCAL_ENTRY_MD5" = "$REMOTE_ENTRY_MD5" ] && [ "$LOCAL_UNIT_MD5" = "$REMOTE_UNIT_MD5" ]; then
+      # daemon-reload / enable --now 对运行中的服务是无操作；仅当服务意外退出时被拉起。
+      ssh "$SERVER_USER@$SERVER_HOST" "systemctl daemon-reload && systemctl enable --now zcode-relay"
+      echo "[服务器] relay 产物无变化，跳过重启（不断开现有隧道连接）"
+    else
+      rsync -av "$RELAY_SRC" "$SERVER_USER@$SERVER_HOST:$RELAY_DIR/"
+      rsync -av "$SERVICE_SRC" "$SERVER_USER@$SERVER_HOST:/etc/systemd/system/"
+      ssh "$SERVER_USER@$SERVER_HOST" "systemctl daemon-reload && systemctl enable --now zcode-relay && systemctl restart zcode-relay"
+      echo "[服务器] relay 产物有变化，已部署并重启"
+    fi
   fi
   if [ "$BUILD_WEB" = true ]; then
     rsync -av --delete "$WEB_SRC/" "$SERVER_USER@$SERVER_HOST:$WEB_DIR/"
