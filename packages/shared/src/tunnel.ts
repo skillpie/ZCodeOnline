@@ -361,6 +361,7 @@ export type AssistConnectResult = z.infer<typeof assistConnectResultSchema>;
 export const assistCodeResponseSchema = z
   .object({ code: z.string().min(16).max(16), expiresAt: z.number().int().positive() })
   .strict();
+export type TunnelAssistCode = z.infer<typeof assistCodeResponseSchema>;
 
 // ============================================================================
 // 桌面管理面（specs/web-tunnel.md §5.5 路线 B）：IPlatformService 的隧道管理契约。

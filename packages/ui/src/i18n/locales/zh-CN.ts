@@ -1656,6 +1656,20 @@ const zhCN: Record<string, string> = {
   "webRemoteControl.botChannel.telegram.description": "从 Telegram 打开这个工作区。",
   "webRemoteControl.botChannel.configure": "去 Bot Channels 配置",
   "webRemoteControl.botChannel.manageBots": "机器人管理",
+  "assistCode.dialog.trigger": "我的远程码",
+  "assistCode.dialog.title": "我的远程码",
+  "assistCode.dialog.description":
+    "任何拥有此链接的人都可以远程控制这台电脑。请妥善保管，怀疑泄露时立即刷新。",
+  "assistCode.dialog.loading": "正在读取远程码…",
+  "assistCode.dialog.copy": "复制链接",
+  "assistCode.dialog.copied": "已复制",
+  "assistCode.dialog.refresh": "刷新",
+  "assistCode.dialog.refreshWarning":
+    "刷新会生成新的 16 位远程码，旧码对应的链接（包括已分享出去的）会立即失效，且无法恢复。确定要刷新吗？",
+  "assistCode.dialog.refreshConfirm": "确认刷新",
+  "assistCode.dialog.refreshing": "正在刷新…",
+  "assistCode.dialog.refreshed": "远程码已刷新，旧链接已全部失效。请把新链接发给对方：",
+  "assistCode.dialog.retry": "重试",
   "remote.title": "连接远程环境",
   "remote.description":
     "通过 SSH、Server、WSL 或 Docker 连接远程工作区，并在当前窗口中继续选择目录。",

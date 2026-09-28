@@ -1777,6 +1777,21 @@ const enUS: Record<string, string> = {
   "webRemoteControl.botChannel.telegram.description": "Open this workspace from Telegram.",
   "webRemoteControl.botChannel.configure": "Configure in bot channels",
   "webRemoteControl.botChannel.manageBots": "Manage bots",
+  "assistCode.dialog.trigger": "My assist code",
+  "assistCode.dialog.title": "My assist code",
+  "assistCode.dialog.description":
+    "Anyone with this link can remotely control this machine. Keep it safe and refresh it immediately if it may have leaked.",
+  "assistCode.dialog.loading": "Loading the assist code…",
+  "assistCode.dialog.copy": "Copy link",
+  "assistCode.dialog.copied": "Copied",
+  "assistCode.dialog.refresh": "Refresh",
+  "assistCode.dialog.refreshWarning":
+    "Refreshing generates a new 16-digit assist code. Links containing the old code — including ones you already shared — stop working immediately and cannot be recovered. Refresh now?",
+  "assistCode.dialog.refreshConfirm": "Confirm refresh",
+  "assistCode.dialog.refreshing": "Refreshing…",
+  "assistCode.dialog.refreshed":
+    "The assist code has been refreshed and old links no longer work. Share the new link below:",
+  "assistCode.dialog.retry": "Retry",
   "remote.title": "Connect remote environment",
   "remote.description":
     "Connect to a remote workspace over SSH, Server, WSL, or Docker, then choose a directory in the current window.",

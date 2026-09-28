@@ -27,7 +27,12 @@ import {
   resolveConversationShareRouteLocale,
 } from "./share/conversationSharePreviewClient.js";
 import { TunnelAppRoot } from "./tunnel/TunnelAppRoot.js";
-import { RemoteAssistApp } from "./tunnel/RemoteAssistApp.js";
+import {
+  fetchAssistCodeViaDiscovery,
+  loadStoredAssistCode,
+  refreshAssistCodeViaDiscovery,
+  saveStoredAssistCode,
+} from "./tunnel/assistSession.js";
 import {
   isConversationSharePath,
   resolveConversationShareCodeFromPath,
@@ -395,6 +400,19 @@ function createWebPlatform(): IPlatformService {
       ];
       return parts.filter(Boolean).join("|");
     },
+    // 远程码读取/刷新（specs/web-tunnel.md §5.9）：仅当浏览器与宿主同机时回环端点可达。
+    // 读取以宿主为权威；不可达时回退本地存储码（手机远控等场景仍可展示/复制）。
+    // 刷新成功后同步覆盖本地存储的码，保证后续访问继续用最新码。
+    getRemoteAssistCode: async () => {
+      try {
+        return await fetchAssistCodeViaDiscovery();
+      } catch (cause) {
+        const stored = loadStoredAssistCode();
+        if (stored) return { code: stored, expiresAt: null };
+        throw cause;
+      }
+    },
+    refreshRemoteAssistCode: () => refreshAssistCodeViaDiscovery(),
   };
 }
 
@@ -514,13 +532,18 @@ async function bootstrapWebApp() {
 
   // 远程控制（specs/web-tunnel.md §5.9）：/<16位码>（或 /remote/<码> 别名）= 机器的
   // 公开地址，码即凭证（匿名、长期有效、可多浏览器同时连接）。
+  // 码不留在地址栏（防截图/投屏/历史记录泄露）：存入 localStorage（后到优先，最后一次
+  // 传入的码生效）后立刻跳回干净域名首页，由 TunnelAppRoot 用存储码直连。
   const remoteAssistCode = (() => {
     const match = /^\/(?:(?:remote\/)?(\d{16}))$/u.exec(window.location.pathname);
     return match?.[1];
   })();
   if (remoteAssistCode) {
     document.title = "ZCode Online";
-    root.render(<RemoteAssistApp code={remoteAssistCode} platform={createWebPlatform()} />);
+    saveStoredAssistCode(remoteAssistCode);
+    const params = new URLSearchParams(window.location.search);
+    // 本地 dev 没有 VITE_TUNNEL_ENTRY，保留 ?tunnel=1 才能回到隧道入口（生产行为不变）。
+    window.location.replace(params.has("tunnel") ? "/?tunnel=1" : "/");
     return;
   }
 

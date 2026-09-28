@@ -5,7 +5,7 @@ import type {
   SSHConnectOptions,
   WSLConnectOptions,
 } from "./remoteTarget.js";
-import type { TunnelManagerPairing, TunnelManagerStatus } from "./tunnel.js";
+import type { TunnelAssistCode, TunnelManagerPairing, TunnelManagerStatus } from "./tunnel.js";
 import type {
   LoadCliMcpFromUserDirectoryRequest,
   LoadCliMcpFromUserDirectoryResult,
@@ -935,6 +935,14 @@ export interface IPlatformService {
   tunnelDisable?(): Promise<TunnelManagerStatus>;
   /** 生成一次性配对链接（短 TTL）；未启用时抛错 */
   tunnelPair?(): Promise<TunnelManagerPairing>;
+
+  /**
+   * 刷新（轮换）远程协助码（specs/web-tunnel.md §5.9）：旧码及其链接立即失效。
+   * 仅 Web（浏览器与宿主同机，经回环发现端点）实现；桌面端走 daemon 控制链路，暂未暴露。
+   */
+  refreshRemoteAssistCode?(): Promise<TunnelAssistCode>;
+  /** 读取宿主当前远程协助码；宿主不可达时实现方可回退本地存储码（expiresAt 未知传 null）。 */
+  getRemoteAssistCode?(): Promise<{ code: string; expiresAt: number | null }>;
 
   /** 开发环境 stdio tap proxy 开关状态；非桌面平台可不实现 */
   getZCodeStdioTapDevState?(): Promise<ZCodeStdioTapDevState>;
