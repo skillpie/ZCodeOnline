@@ -42,6 +42,8 @@
 @source "./**/*.{ts,tsx}";
 /* 云端模板常用样式的构建保障，不是运行时 class 白名单。 */
 @source inline("text-center text-ui-base/relaxed text-foreground-subtle font-semibold font-normal text-foreground whitespace-nowrap underline decoration-foreground-subtle decoration-dashed underline-offset-4");
+/* web 包源码不在扫描范围内，web 侧独占的任意值类名在这里显式登记（max-w-lg 加宽 1/6 的门禁弹窗宽度）。 */
+@source inline("max-w-[37.333rem]");
 
 /* 磨砂玻璃效果：html/body 需要透明背景，让 Electron vibrancy 透出来 */
 html,

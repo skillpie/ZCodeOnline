@@ -322,8 +322,8 @@ export function TunnelAppRoot({
       {gate.visible ? (
         // 不可关闭的连接引导模态：连上本机前常驻顶层，断开时重现。
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          {/* max-w-lg（32rem）加宽 1/6 = 32rem * 7/6 ≈ 597px。 */}
-          <div className="w-full max-w-[calc(32rem*7/6)]">
+          {/* max-w-lg（32rem）加宽 1/6：32rem * 7/6 ≈ 37.333rem ≈ 597px。 */}
+          <div className="w-full max-w-[37.333rem]">
             <ConnectionGateCard
               status={gate.status}
               error={gate.error}
