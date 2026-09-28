@@ -244,13 +244,10 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
                 type="button"
                 variant="secondary"
                 size="lg"
-                className={cn("h-9 px-4", phase === "ready" && "justify-between sm:min-w-28")}
+                className="h-9 px-4"
                 onClick={() => setOpen(false)}
               >
-                <span>{intl.formatMessage({ id: "common.close" })}</span>
-                {phase === "ready" ? (
-                  <span className="font-mono text-ui-base text-foreground-subtle">esc</span>
-                ) : null}
+                {intl.formatMessage({ id: "common.close" })}
               </Button>
             ) : null}
           </DialogFooter>
