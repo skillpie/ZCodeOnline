@@ -285,72 +285,62 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
               <p className="text-ui-sm/relaxed text-foreground-subtle">
                 {intl.formatMessage({ id: "assistCode.dialog.switchHint" })}
               </p>
-              {adding ? (
-                <div className="space-y-2 rounded-xl border border-border bg-surface px-3 py-2.5">
-                  <input
-                    autoFocus
-                    value={addCodeDraft}
-                    inputMode="numeric"
-                    aria-label={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
-                    placeholder={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
-                    className={addInputClass}
-                    onChange={(event) => {
-                      setAddCodeDraft(event.target.value);
-                      setAddFormError(null);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") submitAdd();
-                      if (event.key === "Escape") closeAddForm();
-                    }}
-                  />
-                  <input
-                    value={addNameDraft}
-                    aria-label={intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })}
-                    placeholder={
-                      normalizeAssistCode(addCodeDraft)
-                        ? defaultAssistMachineName(normalizeAssistCode(addCodeDraft) ?? "")
-                        : intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })
-                    }
-                    className={addInputClass}
-                    onChange={(event) => setAddNameDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") submitAdd();
-                      if (event.key === "Escape") closeAddForm();
-                    }}
-                  />
-                  {addFormError !== null ? (
-                    <p className="text-ui-sm text-destructive">{addFormError}</p>
-                  ) : null}
-                  <div className="flex items-center justify-end gap-3">
-                    <button
-                      type="button"
-                      className="text-ui-base text-foreground-subtle hover:text-foreground"
-                      onClick={closeAddForm}
-                    >
-                      {intl.formatMessage({ id: "common.cancel" })}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-ui-base font-medium text-primary hover:text-primary"
-                      onClick={submitAdd}
-                    >
-                      {intl.formatMessage({ id: "assistCode.dialog.addConfirm" })}
-                    </button>
-                  </div>
-                </div>
-              ) : (
+            </div>
+          ) : null}
+
+          {/* 添加表单独立于列表渲染：列表为空（本机码缺失且无已登记链接）时也能添加。 */}
+          {adding ? (
+            <div className="min-w-0 space-y-2 rounded-xl border border-border bg-surface px-3 py-2.5">
+              <input
+                autoFocus
+                value={addCodeDraft}
+                inputMode="numeric"
+                aria-label={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
+                placeholder={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
+                className={addInputClass}
+                onChange={(event) => {
+                  setAddCodeDraft(event.target.value);
+                  setAddFormError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") submitAdd();
+                  if (event.key === "Escape") closeAddForm();
+                }}
+              />
+              <input
+                value={addNameDraft}
+                aria-label={intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })}
+                placeholder={
+                  normalizeAssistCode(addCodeDraft)
+                    ? defaultAssistMachineName(normalizeAssistCode(addCodeDraft) ?? "")
+                    : intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })
+                }
+                className={addInputClass}
+                onChange={(event) => setAddNameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") submitAdd();
+                  if (event.key === "Escape") closeAddForm();
+                }}
+              />
+              {addFormError !== null ? (
+                <p className="text-ui-sm text-destructive">{addFormError}</p>
+              ) : null}
+              <div className="flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  className="flex items-center gap-1 text-ui-base text-primary hover:text-primary"
-                  onClick={() => {
-                    setAdding(true);
-                    setAddFormError(null);
-                  }}
+                  className="text-ui-base text-foreground-subtle hover:text-foreground"
+                  onClick={closeAddForm}
                 >
-                  <Plus className="size-4" />
-                  {intl.formatMessage({ id: "assistCode.dialog.add" })}
+                  {intl.formatMessage({ id: "common.cancel" })}
                 </button>
-              )}
+                <button
+                  type="button"
+                  className="text-ui-base font-medium text-primary hover:text-primary"
+                  onClick={submitAdd}
+                >
+                  {intl.formatMessage({ id: "assistCode.dialog.addConfirm" })}
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -365,7 +355,28 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
             <p className="break-all text-ui-base/relaxed text-destructive">{errorCode}</p>
           ) : null}
 
-          <DialogFooter className="gap-2 sm:justify-end">
+          {/* 添加入口固定在 footer 左侧与「关闭」同行；内联表单展开期间隐藏避免重复入口。 */}
+          <DialogFooter
+            className={cn(
+              "gap-2",
+              phase === "ready" && !adding ? "sm:justify-between" : "sm:justify-end",
+            )}
+          >
+            {phase === "ready" && !adding ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="h-9 px-4"
+                onClick={() => {
+                  setAdding(true);
+                  setAddFormError(null);
+                }}
+              >
+                <Plus className="size-4" />
+                {intl.formatMessage({ id: "assistCode.dialog.add" })}
+              </Button>
+            ) : null}
             {phase === "confirm" ? (
               <>
                 <AssistDialogSecondaryButton

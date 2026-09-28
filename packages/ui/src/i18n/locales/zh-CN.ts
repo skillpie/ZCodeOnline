@@ -1662,6 +1662,7 @@ const zhCN: Record<string, string> = {
     "任何拥有此链接的人都可以远程控制对应的电脑。请妥善保管，怀疑泄露时立即刷新。",
   "assistCode.dialog.loading": "正在读取远程码…",
   "assistCode.dialog.localBadge": "本机",
+  "assistCode.dialog.remoteBadge": "远端",
   "assistCode.dialog.localDefaultName": "我的ZCode",
   "assistCode.dialog.copy": "复制",
   "assistCode.dialog.copied": "已复制",

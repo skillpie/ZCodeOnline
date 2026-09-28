@@ -1,7 +1,7 @@
 // 远程控制弹窗的单条机器卡片（specs/web-tunnel.md §5.9）：从弹窗组件拆出以控制文件体量。
-// 展示名称（可就地改名）、完整链接与操作按钮：复制（所有条目）、刷新（仅本机，触发
-// 由弹窗持有的二次确认流程）、切换（存为当前生效码并重连，当前连接条目禁用）、
-// 删除（仅非本机条目；当前连接条目禁用，需先切换）。
+// 首行展示本机/远端标签与名称（可就地改名），刷新（仅本机，触发由弹窗持有的二次确认
+// 流程）与删除（仅非本机条目；当前连接条目禁用，需先切换）图标固定在卡片右上角；
+// 次行为完整链接与复制（所有条目）、切换（存为当前生效码并重连，当前连接条目禁用）。
 import type { AssistMachine } from "@/assistMachineStore.js";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
@@ -56,11 +56,11 @@ export function AssistMachineRowCard({
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
-        {isLocal ? (
-          <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-border px-2 text-ui-xs font-medium leading-none text-foreground-subtle">
-            {intl.formatMessage({ id: "assistCode.dialog.localBadge" })}
-          </span>
-        ) : null}
+        <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-border px-2 text-ui-xs font-medium leading-none text-foreground-subtle">
+          {intl.formatMessage({
+            id: isLocal ? "assistCode.dialog.localBadge" : "assistCode.dialog.remoteBadge",
+          })}
+        </span>
         {editing ? (
           <input
             autoFocus
@@ -89,6 +89,32 @@ export function AssistMachineRowCard({
               <Pencil className="size-3.5" />
             </button>
           </>
+        )}
+        {isLocal ? (
+          <button
+            type="button"
+            className={cn(rowActionClass, "ml-auto")}
+            aria-label={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
+            title={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
+            onClick={onRequestRefresh}
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={cn(rowActionClass, "ml-auto hover:text-destructive")}
+            disabled={isActive}
+            aria-label={intl.formatMessage({ id: "assistCode.dialog.delete" })}
+            title={
+              isActive
+                ? intl.formatMessage({ id: "assistCode.dialog.deleteActiveTitle" })
+                : intl.formatMessage({ id: "assistCode.dialog.delete" })
+            }
+            onClick={onRemove}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         )}
       </div>
       <div className="flex items-center gap-1.5">
@@ -129,33 +155,6 @@ export function AssistMachineRowCard({
           <ArrowLeftRight className="size-3.5" />
           {intl.formatMessage({ id: "assistCode.dialog.switch" })}
         </button>
-        {isLocal ? (
-          <button
-            type="button"
-            className={rowActionClass}
-            aria-label={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
-            title={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
-            onClick={onRequestRefresh}
-          >
-            <RefreshCw className="size-3.5" />
-          </button>
-        ) : null}
-        {!isLocal ? (
-          <button
-            type="button"
-            className={cn(rowActionClass, "flex items-center gap-1 hover:text-destructive")}
-            disabled={isActive}
-            aria-label={intl.formatMessage({ id: "assistCode.dialog.delete" })}
-            title={
-              isActive
-                ? intl.formatMessage({ id: "assistCode.dialog.deleteActiveTitle" })
-                : intl.formatMessage({ id: "assistCode.dialog.delete" })
-            }
-            onClick={onRemove}
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-        ) : null}
       </div>
     </div>
   );
