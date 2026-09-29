@@ -40,6 +40,7 @@ import { hasGitCommitIdentity } from "@/git-branch-switcher/switchAssist.js";
 import {
   canUseGitActionMenu,
   canPushGitBranch,
+  canConfirmGitPush,
   DEFAULT_COMMIT_DIALOG_ACTION_ID,
   resolveDefaultCommitDialogActionId,
   resolveGitActionMenuPrimaryAction,
@@ -623,6 +624,27 @@ function GitPushDialog({
   const descriptionId = gitSummary.trackingBranchName
     ? "git.actionMenu.pushDialog.description.tracked"
     : "git.actionMenu.pushDialog.description.untracked";
+  const confirmEnabled = canConfirmGitPush({
+    hasError: Boolean(error),
+    mutationPending,
+    pushEnabled,
+  });
+  const confirmShortcutLabel = formatCommandShortcutLabel("⏎");
+
+  // ⌘⏎（Windows/Linux 为 Ctrl+Enter）在弹窗任意焦点位置触发确认推送，与确认按钮共用
+  // canConfirmGitPush 守卫；错误详情态不抢「关闭」的主动作。Radix DialogContent 会把外部
+  // onKeyDown 与内部 Esc 处理按序组合，这里不会覆盖按 Esc 关闭。
+  const handleDialogKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (!matchesPrimaryShortcut(event, "Enter") || !confirmEnabled) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      onSubmit();
+    },
+    [confirmEnabled, onSubmit],
+  );
 
   const handleCopyError = useCallback(() => {
     if (!error) {
@@ -660,7 +682,10 @@ function GitPushDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-0 rounded-2xl p-0 overflow-hidden">
+      <DialogContent
+        className="max-w-lg gap-0 rounded-2xl p-0 overflow-hidden"
+        onKeyDown={handleDialogKeyDown}
+      >
         <DialogHeader className="gap-2 px-6 py-5 pb-0">
           <DialogTitle className="text-lg font-medium text-foreground">
             {intl.formatMessage({ id: "git.actionMenu.pushDialog.title" })}
@@ -818,13 +843,22 @@ function GitPushDialog({
                   type="button"
                   size="lg"
                   onClick={onSubmit}
-                  disabled={mutationPending || !pushEnabled}
+                  disabled={!confirmEnabled}
                   className="h-10 min-w-0 px-5"
                 >
                   {mutationPending ? <LoaderIcon className="size-4 animate-spin" /> : null}
                   {intl.formatMessage({
                     id: "git.actionMenu.pushDialog.confirm",
                   })}
+                  {/* 与提交弹窗动作项的 ⏎ 角标同一来源（平台感知格式化）；无可推送提交时快捷键无效，不展示。 */}
+                  {pushEnabled ? (
+                    <span
+                      aria-hidden
+                      className="ml-1 font-sans text-ui-sm font-normal text-primary-foreground/60"
+                    >
+                      {confirmShortcutLabel}
+                    </span>
+                  ) : null}
                 </Button>
               </>
             )}

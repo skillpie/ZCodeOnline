@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  canConfirmGitPush,
   canPushGitBranch,
   resolveDefaultCommitDialogActionId,
   resolveGitActionMenuPrimaryAction,
@@ -66,6 +67,26 @@ test("canPushGitBranch：领先上游或尚无上游时可推送，同步中、d
   );
   assert.equal(
     canPushGitBranch({ headRefType: "branch", branchName: "  ", trackingBranchName: null, ahead: 0 }),
+    false,
+  );
+});
+
+test("推送确认守卫：仅「无错误详情、非 pending、有可推送提交」时按钮与 ⌘⏎ 可触发", () => {
+  assert.equal(
+    canConfirmGitPush({ hasError: false, mutationPending: false, pushEnabled: true }),
+    true,
+  );
+  // 错误详情态的主动作是「关闭」，快捷键不触发重试。
+  assert.equal(
+    canConfirmGitPush({ hasError: true, mutationPending: false, pushEnabled: true }),
+    false,
+  );
+  assert.equal(
+    canConfirmGitPush({ hasError: false, mutationPending: true, pushEnabled: true }),
+    false,
+  );
+  assert.equal(
+    canConfirmGitPush({ hasError: false, mutationPending: false, pushEnabled: false }),
     false,
   );
 });

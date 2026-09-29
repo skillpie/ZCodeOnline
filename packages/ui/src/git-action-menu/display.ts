@@ -54,3 +54,13 @@ export function canPushGitBranch(
 
   return !summary.trackingBranchName || summary.ahead > 0;
 }
+
+export function canConfirmGitPush(options: {
+  hasError: boolean;
+  mutationPending: boolean;
+  pushEnabled: boolean;
+}): boolean {
+  // 推送弹窗的确认动作（按钮与 ⌘⏎ 快捷键共用同一守卫）：错误详情态的主动作是「关闭」，
+  // 快捷键不抢道；pending 中不可重复触发；无可推送提交（含上游已同步）时确认无效。
+  return !options.hasError && !options.mutationPending && options.pushEnabled;
+}

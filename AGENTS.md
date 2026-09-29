@@ -38,8 +38,10 @@
 | 桌面端打包并重装本机（macOS）   | `./install_destop.sh`（`--skip-build` 只重装）                                           |
 | 桌面端打包并安装本机（Windows） | `.\install_destop.ps1`（`-SkipBuild` 只安装）                                            |
 | Web 隧道部署                    | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库） |
+| 宿主 daemon 重建并重启（网页会话 Agent） | `./install_cli.sh`（`--skip-build` 只重启，`--no-restart` 只构建）                        |
 
 - 每次成功 `git commit` 后，husky `post-commit` 钩子后台自动执行 `./deploy_web.sh` 部署 Web 隧道，日志在 `~/.zcode/logs/web-tunnel-deploy.log`；rebase/merge/cherry-pick 的自动提交不触发，锁目录防并发。
+- post-commit 钩子只部署静态 Web，不重建本机宿主 daemon；改动 `apps/zcode-cli` 或 `packages/zcode-server-cli` 后必须手动执行 `./install_cli.sh` 重建并重启，否则 zcode.skillpie.cn 的网页会话仍运行旧 Agent 产物。daemon 有运行中任务时先 `./install_cli.sh --no-restart` 只构建，任务结束后再 `./install_cli.sh --skip-build` 重启。
 - 测试使用 Node 内置 `node:test`（如 `pnpm --filter @zcode/relay test` 即 `tsx --test test/*.test.ts`），入口以目标包当前 `package.json` 和实际测试文件为准，不假定统一的单测或 E2E 命令。
 - `pnpm architecture:context` 的 `<module-id>` 取自 `architecture-policy.yaml`（rpc、shared、provider、provider-node、services、session、storage、client、server、zcode-server-cli、ui、web、desktop、formal-proof、zcode-cli、zcode-relay）。
 
