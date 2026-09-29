@@ -1,5 +1,7 @@
 // 远程控制弹窗（specs/web-tunnel.md §5.9）：Web 版侧栏设置按钮左侧的图标按钮。
 // 弹窗展示远程链接列表：本机（回环发现端点的权威码）固定第一项并带「本机」标签，
+// 权威发现的新码若与列表里带 local 标记的旧本机条目不同码（本机在别处换过码），
+// 由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底回退码不打标记。
 // 额外多一个「刷新」（二次确认后轮换本机码，旧链接立即失效）；其余条目来自浏览器
 // 登记的远程链接列表，均支持改名（默认名 = <远程码>的ZCode）、「复制」「切换」与
 // 手动添加/删除。本机条目卡片见 AssistMachineRowCard.tsx。
@@ -27,6 +29,7 @@ import {
   replaceAssistMachineCode,
   saveStoredAssistCode,
   upsertAssistMachine,
+  upsertLocalAssistMachine,
   type AssistMachine,
 } from "@/assistMachineStore.js";
 import { AssistDialogSecondaryButton, AssistMachineRowCard } from "@/AssistMachineRowCard.js";
@@ -80,27 +83,28 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
     setActiveCode(loadStoredAssistCode());
     // 平台实现内部已做"宿主不可达 → 回退本地存储"的兜底；local 为空时仍可展示已登记
     // 的远程链接（仅缺本机条目与刷新能力）。
-    const finish = (local: string | null) => {
+    const finish = (local: string | null, authoritative: boolean) => {
       // 本机条目默认名叫「我的ZCode」；曾被用户改过名的条目不会被覆盖。
+      // 仅权威回环发现（expiresAt 非 null）才打本机标记并参与换码合并：兜底回退的
+      // 存储码可能指向正在远控的其他机器，误标会让后续合并吃掉远端条目。
       if (local) {
-        upsertAssistMachine(
-          local,
-          intl.formatMessage({ id: "assistCode.dialog.localDefaultName" }),
-        );
+        const localDefaultName = intl.formatMessage({ id: "assistCode.dialog.localDefaultName" });
+        if (authoritative) upsertLocalAssistMachine(local, localDefaultName);
+        else upsertAssistMachine(local, localDefaultName);
       }
       setLocalCode(local);
       setMachines(orderMachines(loadAssistMachines(), local));
       setPhase("ready");
     };
     if (!getRemoteAssistCode) {
-      finish(null);
+      finish(null, false);
       return;
     }
     void getRemoteAssistCode()
-      .then((result) => finish(result.code))
+      .then((result) => finish(result.code, result.expiresAt !== null))
       .catch((cause: unknown) => {
         if (loadAssistMachines().length > 0) {
-          finish(null);
+          finish(null, false);
           return;
         }
         logger.warn("[WorkspaceAssistCodeRefreshTrigger] 读取远程码失败", {

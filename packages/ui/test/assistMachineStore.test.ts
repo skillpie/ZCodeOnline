@@ -9,6 +9,7 @@ import {
   replaceAssistMachineCode,
   saveStoredAssistCode,
   upsertAssistMachine,
+  upsertLocalAssistMachine,
 } from "../src/assistMachineStore.js";
 
 // 远程码浏览器存储（specs/web-tunnel.md §5.9）：活动码后到优先、机器列表登记/改名/
@@ -117,4 +118,96 @@ test("登记默认名：传入 defaultName 生效；仅升级未被改过名的�
   renameAssistMachine("1111111111111111", "客厅的电脑");
   const kept = upsertAssistMachine("1111111111111111", "我的ZCode");
   assert.equal(kept?.name, "客厅的电脑");
+});
+
+test("本机登记：首登打 local 标记并用默认名；同码重复登记不新增", () => {
+  const created = upsertLocalAssistMachine("1111111111111111", "我的ZCode");
+  assert.equal(created?.local, true);
+  assert.equal(created?.name, "我的ZCode");
+  assert.equal(loadAssistMachines().length, 1);
+  const again = upsertLocalAssistMachine("1111111111111111", "我的ZCode");
+  assert.equal(again?.code, "1111111111111111");
+  assert.equal(again?.local, true);
+  assert.equal(loadAssistMachines().length, 1);
+});
+
+test("本机换码合并：新本机码并入 local 条目原位替换，远程条目不受影响", () => {
+  // 场景：本机在别的浏览器刷新过码，本浏览器列表里留着旧本机条目 + 一个远程机器。
+  upsertLocalAssistMachine("1111111111111111", "我的ZCode");
+  upsertAssistMachine("2222222222222222");
+  renameAssistMachine("2222222222222222", "可乐的MacMini");
+  const merged = upsertLocalAssistMachine("3333333333333333", "我的ZCode");
+  assert.equal(merged?.code, "3333333333333333");
+  assert.deepEqual(loadAssistMachines(), [
+    // 原位替换：名称、登记顺序保持，不新增「我的ZCode」行。
+    { code: "3333333333333333", name: "我的ZCode", local: true },
+    { code: "2222222222222222", name: "可乐的MacMini" },
+  ]);
+});
+
+test("本机换码合并：缺省名跟随新码；用户改过名则保留", () => {
+  upsertLocalAssistMachine("1111111111111111");
+  const renamed = upsertLocalAssistMachine("3333333333333333", "我的ZCode");
+  // 旧条目还挂着未改过的码缺省名 → 视为未改名，跟随新码升级为默认本机名。
+  assert.equal(renamed?.name, "我的ZCode");
+  renameAssistMachine("3333333333333333", "客厅的电脑");
+  const kept = upsertLocalAssistMachine("4444444444444444", "我的ZCode");
+  assert.equal(kept?.name, "客厅的电脑");
+});
+
+test("普通登记不打标记也不清除已有本机标记（打开链接 ≠ 本机）", () => {
+  upsertLocalAssistMachine("1111111111111111", "我的ZCode");
+  // 打开本机自己的分享链接：已有条目保留标记，不新增。
+  const self = upsertAssistMachine("1111111111111111");
+  assert.equal(self?.local, true);
+  assert.equal(loadAssistMachines().length, 1);
+  // 登记远程机器：无 local 标记。
+  const remote = upsertAssistMachine("2222222222222222");
+  assert.equal(remote?.local, undefined);
+});
+
+test("本机标记唯一化：多条 local 的脏数据在下次本机登记时自愈", () => {
+  storage.set(
+    "zcode-assist-machines",
+    JSON.stringify([
+      { code: "1111111111111111", name: "甲", local: true },
+      { code: "2222222222222222", name: "乙", local: true },
+    ]),
+  );
+  const merged = upsertLocalAssistMachine("3333333333333333", "我的ZCode");
+  assert.equal(merged?.code, "3333333333333333");
+  assert.deepEqual(loadAssistMachines(), [
+    { code: "3333333333333333", name: "甲", local: true },
+    { code: "2222222222222222", name: "乙" },
+  ]);
+});
+
+test("local 标记持久化：非法值忽略，true 落盘后可读回", () => {
+  storage.set(
+    "zcode-assist-machines",
+    JSON.stringify([
+      { code: "1111111111111111", name: "甲", local: "yes" },
+      { code: "2222222222222222", name: "乙", local: true },
+    ]),
+  );
+  assert.deepEqual(loadAssistMachines(), [
+    { code: "1111111111111111", name: "甲" },
+    { code: "2222222222222222", name: "乙", local: true },
+  ]);
+  // 读写 roundtrip 后标记仍在。
+  assert.equal(loadAssistMachines()[1]?.local, true);
+});
+
+test("轮换替换：替换后的条目保持本机标记", () => {
+  upsertLocalAssistMachine("1111111111111111", "我的ZCode");
+  const machines = replaceAssistMachineCode("1111111111111111", "3333333333333333");
+  assert.equal(machines[0]?.local, true);
+  assert.equal(machines[0]?.name, "我的ZCode");
+});
+
+test("轮换替换：旧码未登记时兜底按本机登记新码", () => {
+  const machines = replaceAssistMachineCode("1111111111111111", "3333333333333333");
+  assert.equal(machines.length, 1);
+  assert.equal(machines[0]?.code, "3333333333333333");
+  assert.equal(machines[0]?.local, true);
 });
