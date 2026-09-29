@@ -2303,9 +2303,6 @@ const enUS: Record<string, string> = {
     "Show full reasoning inside the message stream. When off, the first reasoning item in each turn remains visible.",
   "settings.messageStreamShowTodos": "Show todos",
   "settings.messageStreamShowTodosDescription": "Show Todo tool cards inside the message stream. ",
-  "settings.messageStreamShowProcess": "Show execution process",
-  "settings.messageStreamShowProcessDescription":
-    "Expand intermediate work (tool calls, subagents, etc.) inside the message stream. When off, they stay collapsed by default and only the final result is shown.",
   "settings.toolGroupingExplore": "Group exploration tools",
   "settings.toolGroupingExploreDescription":
     "Group consecutive reads and searches into an Explore section.",

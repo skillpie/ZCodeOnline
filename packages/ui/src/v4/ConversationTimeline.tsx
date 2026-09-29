@@ -419,9 +419,8 @@ function ConversationTimelineImpl({
       buildConversationTurnRenderUnits(rows, {
         nowMs: liveNowMs,
         sessionPhase,
-        messageStreamShowProcess: rowContext.messageStreamShowProcess,
       }),
-    [liveNowMs, rows, rowContext.messageStreamShowProcess, sessionPhase],
+    [liveNowMs, rows, sessionPhase],
   );
   const { virtualizedUnits, liveUnit, liveUnitIndex } = useMemo(
     () => splitConversationTimelineLiveTail(renderUnits),
