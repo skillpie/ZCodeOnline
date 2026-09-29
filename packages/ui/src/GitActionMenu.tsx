@@ -40,7 +40,10 @@ import { hasGitCommitIdentity } from "@/git-branch-switcher/switchAssist.js";
 import {
   canUseGitActionMenu,
   canPushGitBranch,
+  DEFAULT_COMMIT_DIALOG_ACTION_ID,
+  resolveDefaultCommitDialogActionId,
   resolveGitActionMenuPrimaryAction,
+  type GitCommitDialogActionId,
 } from "@/git-action-menu/display.js";
 import {
   filterCommitPreviewFilesByCurrentSession,
@@ -79,7 +82,11 @@ interface GitActionMenuProps {
 
 type GitCommitPreviewFile = ReturnType<typeof buildGitBranchCommitPreviewFiles>[number];
 
-const COMMIT_DIALOG_ACTION_IDS = ["commit", "commitAndPush", "push"] as const;
+const COMMIT_DIALOG_ACTION_IDS = [
+  "commit",
+  "commitAndPush",
+  "push",
+] as const satisfies readonly GitCommitDialogActionId[];
 const GIT_COMMIT_MESSAGE_TEXTAREA_ID = "git-action-menu-commit-message";
 const TID_GIT_ACTION_TRIGGER = "git-action-trigger";
 const TID_GIT_COMMIT_ACTION_COMMAND = "git-commit-action-command";
@@ -210,7 +217,9 @@ function GitCommitDialog({
   onPushOnly,
 }: GitCommitDialogProps) {
   const { intl, locale } = useZCodeIntl();
-  const [selectedActionId, setSelectedActionId] = useState<CommitDialogActionId>("commit");
+  const [selectedActionId, setSelectedActionId] = useState<CommitDialogActionId>(
+    DEFAULT_COMMIT_DIALOG_ACTION_ID,
+  );
   const messageTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageInputFocusedOnOpenRef = useRef(false);
   const numberFormatter = new Intl.NumberFormat(locale);
@@ -276,7 +285,7 @@ function GitCommitDialog({
 
   useEffect(() => {
     if (open) {
-      setSelectedActionId("commit");
+      setSelectedActionId(DEFAULT_COMMIT_DIALOG_ACTION_ID);
     }
   }, [open]);
 
@@ -298,7 +307,8 @@ function GitCommitDialog({
   }, [actionPending, loading, open, state]);
 
   useEffect(() => {
-    // 弹窗加载 Git 状态前提交动作会短暂不可用，不能在 loading 阶段把默认选择跳到推送。
+    // 弹窗加载 Git 状态前提交动作会短暂不可用，不能在 loading 阶段改选；
+    // 选中项不可用时按默认优先级回落（提交并推送 → 按序第一个可用项）。
     if (!open || loading || !state || actionPending) {
       return;
     }
@@ -308,9 +318,12 @@ function GitCommitDialog({
       return;
     }
 
-    const firstEnabledAction = commitActions.find((action) => !action.disabled);
-    if (firstEnabledAction && firstEnabledAction.id !== selectedActionId) {
-      setSelectedActionId(firstEnabledAction.id);
+    const enabledActionIds = commitActions
+      .filter((action) => !action.disabled)
+      .map((action) => action.id);
+    const fallbackActionId = resolveDefaultCommitDialogActionId(enabledActionIds);
+    if (fallbackActionId !== selectedActionId) {
+      setSelectedActionId(fallbackActionId);
     }
   }, [actionPending, commitActions, loading, open, selectedActionId, state]);
 
