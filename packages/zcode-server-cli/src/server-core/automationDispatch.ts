@@ -1,14 +1,6 @@
 import type { IModelSelectionService, IZCodeTaskService } from "@zcode/services";
-import type {
-  ModelSelection,
-  TraceId,
-  ZCodeAutomationTrigger,
-  ZCodeTaskMode,
-} from "@zcode/shared";
-import {
-  formatModelPickerValue,
-  resolveWorkspaceKey,
-} from "@zcode/shared";
+import type { ModelSelection, TraceId, ZCodeAutomationTrigger, ZCodeTaskMode } from "@zcode/shared";
+import { formatModelPickerValue, resolveWorkspaceKey } from "@zcode/shared";
 import {
   recordCronRunOutcomeBestEffort,
   settleCronRunTerminalOutcome,
@@ -65,12 +57,14 @@ export interface AutomationDispatchTaskService {
     unread: boolean;
   }): Promise<unknown>;
   onDynamicTaskTerminalOutcome(taskId: string): {
-    (listener: (result: {
-      taskId: string;
-      inputId?: string;
-      outcome: "succeeded" | "failed" | "stopped";
-      error?: string;
-    }) => void): { dispose(): void };
+    (
+      listener: (result: {
+        taskId: string;
+        inputId?: string;
+        outcome: "succeeded" | "failed" | "stopped";
+        error?: string;
+      }) => void,
+    ): { dispose(): void };
   };
 }
 

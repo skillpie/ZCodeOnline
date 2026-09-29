@@ -21,23 +21,23 @@
 
 以下命令从仓库根目录执行：
 
-| 用途             | 命令                                      |
-| ---------------- | ----------------------------------------- |
-| 初始化           | `pnpm bootstrap`                          |
-| 类型检查         | `pnpm typecheck`                          |
-| Lint             | `pnpm lint` / `pnpm lint:fix`             |
-| 格式化           | `pnpm fmt` / `pnpm fmt:check`             |
-| 桌面开发         | `pnpm dev:desktop`（`ZCODE_ENV=production`） |
-| 桌面测试环境     | `pnpm dev:desktop:test`（`ZCODE_ENV=test`）；隔离数据目录用 `mise run dev` |
-| Web 开发         | `pnpm dev:web`                            |
-| 提交前检查       | `pnpm verify:pre-push`（Lint 与架构检查） |
-| 架构检查         | `pnpm architecture:check --changed`       |
-| 模块阅读包       | `pnpm architecture:context <module-id>`   |
-| 未使用依赖与导出 | `pnpm knip`                               |
-| 导出引用查询     | `pnpm dep:refs --list-exports <file>`     |
-| 桌面端打包并重装本机（macOS） | `./install_destop.sh`（`--skip-build` 只重装） |
-| 桌面端打包并安装本机（Windows） | `.\install_destop.ps1`（`-SkipBuild` 只安装） |
-| Web 隧道部署     | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库） |
+| 用途                            | 命令                                                                                     |
+| ------------------------------- | ---------------------------------------------------------------------------------------- |
+| 初始化                          | `pnpm bootstrap`                                                                         |
+| 类型检查                        | `pnpm typecheck`                                                                         |
+| Lint                            | `pnpm lint` / `pnpm lint:fix`                                                            |
+| 格式化                          | `pnpm fmt` / `pnpm fmt:check`                                                            |
+| 桌面开发                        | `pnpm dev:desktop`（`ZCODE_ENV=production`）                                             |
+| 桌面测试环境                    | `pnpm dev:desktop:test`（`ZCODE_ENV=test`）；隔离数据目录用 `mise run dev`               |
+| Web 开发                        | `pnpm dev:web`                                                                           |
+| 提交前检查                      | `pnpm verify:pre-push`（Lint 与架构检查）                                                |
+| 架构检查                        | `pnpm architecture:check --changed`                                                      |
+| 模块阅读包                      | `pnpm architecture:context <module-id>`                                                  |
+| 未使用依赖与导出                | `pnpm knip`                                                                              |
+| 导出引用查询                    | `pnpm dep:refs --list-exports <file>`                                                    |
+| 桌面端打包并重装本机（macOS）   | `./install_destop.sh`（`--skip-build` 只重装）                                           |
+| 桌面端打包并安装本机（Windows） | `.\install_destop.ps1`（`-SkipBuild` 只安装）                                            |
+| Web 隧道部署                    | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库） |
 
 - 每次成功 `git commit` 后，husky `post-commit` 钩子后台自动执行 `./deploy_web.sh` 部署 Web 隧道，日志在 `~/.zcode/logs/web-tunnel-deploy.log`；rebase/merge/cherry-pick 的自动提交不触发，锁目录防并发。
 - 测试使用 Node 内置 `node:test`（如 `pnpm --filter @zcode/relay test` 即 `tsx --test test/*.test.ts`），入口以目标包当前 `package.json` 和实际测试文件为准，不假定统一的单测或 E2E 命令。

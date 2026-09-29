@@ -29,6 +29,7 @@ import {
 import { Textarea } from "@/components/ui/textarea.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.js";
 import { toast } from "@/components/ui/toast.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import {
   buildGitBranchCommitPreviewFiles,
   getGitBranchCommitTotals,
@@ -48,9 +49,11 @@ import {
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
-import { runUserAction } from "@/lib/userActionTelemetry.js";
+import { runUserAction, type UserActionTrigger } from "@/lib/userActionTelemetry.js";
 import { formatCommandShortcutLabel, matchesPrimaryShortcut } from "@/lib/keyboardShortcuts.js";
 import { logger } from "@/logger.js";
+import { useShortcutCommandListener } from "@/shortcuts/useShortcutCommandListener.js";
+import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import {
   AlertCircleIcon,
   ArrowUpFromLine,
@@ -868,6 +871,8 @@ export function GitActionMenu({
   );
   const primaryActionDisabled = !actionAvailable || triggerPending || primaryActionId === null;
   const isStatusRowTrigger = triggerLayout === "status-row";
+  // tooltip 角标展示当前生效键位；未分配（显式空覆盖）时 label 为空串、角标不渲染。
+  const commitShortcutLabel = useShortcutCommandLabel("gitCommit");
 
   useEffect(() => {
     // 顶部 commit 入口改成“始终展示、异常时置灰”后，
@@ -1279,24 +1284,36 @@ export function GitActionMenu({
     }
   }, [closePushDialog, intl, onRefreshGit, pushCurrentBranch, pushEnabled, workspacePath]);
 
-  const handlePrimaryAction = useCallback(() => {
-    if (primaryActionDisabled) {
-      return;
-    }
+  const handlePrimaryAction = useCallback(
+    (trigger: UserActionTrigger = "button") => {
+      if (primaryActionDisabled) {
+        return;
+      }
 
-    runUserAction({
-      input: { featureId: "workbench.git", action: "open", trigger: "button" },
-      operation: () => {
-        if (primaryActionId === "push") {
-          openPushDialog();
-          return;
-        }
-        void openCommitDialog();
-      },
-      completed: { resultSource: "local_commit" },
-      failureStage: "git_action_open",
-    });
-  }, [openCommitDialog, openPushDialog, primaryActionId, primaryActionDisabled]);
+      runUserAction({
+        input: { featureId: "workbench.git", action: "open", trigger },
+        operation: () => {
+          if (primaryActionId === "push") {
+            openPushDialog();
+            return;
+          }
+          void openCommitDialog();
+        },
+        completed: { resultSource: "local_commit" },
+        failureStage: "git_action_open",
+      });
+    },
+    [openCommitDialog, openPushDialog, primaryActionId, primaryActionDisabled],
+  );
+
+  // ⌘⇧P（gitCommit）与提交按钮共用主动作裁决（已提交未推送时进推送弹窗），
+  // telemetry 按真实触发渠道上报。弹窗已打开时置为不可用：快捷键的职责是
+  // 打开弹窗，重复按键不应静默重置用户正在编辑的提交消息。
+  useShortcutCommandListener(
+    "gitCommit",
+    !primaryActionDisabled && !commitDialogOpen && !pushDialogOpen,
+    useCallback(() => handlePrimaryAction("shortcut"), [handlePrimaryAction]),
+  );
 
   const handleStatusRowContainerClick = useCallback(() => {
     handlePrimaryAction();
@@ -1304,59 +1321,73 @@ export function GitActionMenu({
 
   return (
     <>
-      <div
-        onClick={isStatusRowTrigger && !triggerIconOnly ? handleStatusRowContainerClick : undefined}
-        className={cn(
-          // macOS/Windows 小窗口下，顶部 Git 主按钮的中文文案会和分支入口、窗口控制区挤在同一行。
-          // 在 header 容器变窄时只隐藏主按钮文字，保留图标入口，避免丢失核心 Git 操作。
-          // transition-all 会把 scrollbar-color 等非合成属性也启动动画，
-          // 进而触发整页 UpdateLayoutTree；Git 入口只需要颜色反馈，不动画尺寸和滚动条属性。
-          // 与「拉取」等头部按钮统一为无边框 ghost 形态：不带 border/bg-input，
-          // 悬停反馈由内层 ghost Button 自身提供。
-          "flex h-7 items-center overflow-hidden rounded-lg @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:justify-center",
-          triggerIconOnly && "w-7 justify-center",
-          isStatusRowTrigger &&
-            "h-8 w-full justify-start rounded-lg border-0 bg-transparent hover:border-transparent hover:bg-hover @max-[560px]/workspace-header:w-full @max-[560px]/workspace-header:justify-start",
-          className,
-        )}
+      {/* 触发器 hover 提示随主动作裁决切换「提交/推送」，并展示当前生效的 gitCommit 键位
+          （与头部「拉取」按钮的 tooltip 角标同一形态）；未分配键位时不渲染角标。 */}
+      <ControlHintTooltip
+        title={intl.formatMessage({
+          id: primaryActionId === "push" ? "git.actionMenu.push" : "git.actionMenu.trigger",
+        })}
+        shortcut={commitShortcutLabel}
+        side="bottom"
       >
-        <Button
-          data-testid={TID_GIT_ACTION_TRIGGER}
-          type="button"
-          variant="ghost"
-          size="default"
-          disabled={primaryActionDisabled}
-          aria-label={intl.formatMessage({
-            // 主动作是推送（已提交未推送）时按钮叫「推送」，与图标、行为一致。
-            id:
-              primaryActionId === "push"
-                ? "git.actionMenu.push"
-                : "git.actionMenu.trigger.ariaLabel",
-          })}
+        <div
+          onClick={
+            isStatusRowTrigger && !triggerIconOnly ? handleStatusRowContainerClick : undefined
+          }
           className={cn(
-            "h-7 rounded-lg border-0 gap-1 px-1.5 @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0 @max-[560px]/workspace-header:[&>span]:hidden",
-            triggerIconOnly && "w-7 px-0 [&>span]:hidden",
+            // macOS/Windows 小窗口下，顶部 Git 主按钮的中文文案会和分支入口、窗口控制区挤在同一行。
+            // 在 header 容器变窄时只隐藏主按钮文字，保留图标入口，避免丢失核心 Git 操作。
+            // transition-all 会把 scrollbar-color 等非合成属性也启动动画，
+            // 进而触发整页 UpdateLayoutTree；Git 入口只需要颜色反馈，不动画尺寸和滚动条属性。
+            // 与「拉取」等头部按钮统一为无边框 ghost 形态：不带 border/bg-input，
+            // 悬停反馈由内层 ghost Button 自身提供。
+            "flex h-7 items-center overflow-hidden rounded-lg @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:justify-center",
+            triggerIconOnly && "w-7 justify-center",
             isStatusRowTrigger &&
-              "h-8 min-w-0 w-full justify-start gap-2 px-2 text-left text-ui-base hover:bg-transparent hover:text-foreground @max-[560px]/workspace-header:w-auto @max-[560px]/workspace-header:[&>span]:inline",
+              "h-8 w-full justify-start rounded-lg border-0 bg-transparent hover:border-transparent hover:bg-hover @max-[560px]/workspace-header:w-full @max-[560px]/workspace-header:justify-start",
+            className,
           )}
-          onClick={isStatusRowTrigger && !triggerIconOnly ? undefined : handlePrimaryAction}
         >
-          {/* 主按钮进入 pending 时直接替换左侧动作图标，避免在紧凑头部里额外追加 loading 图标把按钮挤宽。*/}
-          {triggerPending ? (
-            <LoaderIcon className="size-4 animate-spin text-foreground-subtle" />
-          ) : primaryActionId === "push" ? (
-            <ArrowUpFromLine className="size-4 text-foreground" />
-          ) : (
-            <GitCommitIcon className="size-4 text-foreground" />
-          )}
-          {/* 头部形态与「拉取」/分支切换器同档（text-ui-sm）；状态面板行保持 text-ui-base。 */}
-          <span className={cn(isStatusRowTrigger ? "min-w-0 truncate" : "text-ui-sm")}>
-            {intl.formatMessage({
-              id: primaryActionId === "push" ? "git.actionMenu.push" : "git.actionMenu.trigger",
+          <Button
+            data-testid={TID_GIT_ACTION_TRIGGER}
+            type="button"
+            variant="ghost"
+            size="default"
+            disabled={primaryActionDisabled}
+            aria-label={intl.formatMessage({
+              // 主动作是推送（已提交未推送）时按钮叫「推送」，与图标、行为一致。
+              id:
+                primaryActionId === "push"
+                  ? "git.actionMenu.push"
+                  : "git.actionMenu.trigger.ariaLabel",
             })}
-          </span>
-        </Button>
-      </div>
+            className={cn(
+              "h-7 rounded-lg border-0 gap-1 px-1.5 @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0 @max-[560px]/workspace-header:[&>span]:hidden",
+              triggerIconOnly && "w-7 px-0 [&>span]:hidden",
+              isStatusRowTrigger &&
+                "h-8 min-w-0 w-full justify-start gap-2 px-2 text-left text-ui-base hover:bg-transparent hover:text-foreground @max-[560px]/workspace-header:w-auto @max-[560px]/workspace-header:[&>span]:inline",
+            )}
+            onClick={
+              isStatusRowTrigger && !triggerIconOnly ? undefined : () => handlePrimaryAction()
+            }
+          >
+            {/* 主按钮进入 pending 时直接替换左侧动作图标，避免在紧凑头部里额外追加 loading 图标把按钮挤宽。*/}
+            {triggerPending ? (
+              <LoaderIcon className="size-4 animate-spin text-foreground-subtle" />
+            ) : primaryActionId === "push" ? (
+              <ArrowUpFromLine className="size-4 text-foreground" />
+            ) : (
+              <GitCommitIcon className="size-4 text-foreground" />
+            )}
+            {/* 头部形态与「拉取」/分支切换器同档（text-ui-sm）；状态面板行保持 text-ui-base。 */}
+            <span className={cn(isStatusRowTrigger ? "min-w-0 truncate" : "text-ui-sm")}>
+              {intl.formatMessage({
+                id: primaryActionId === "push" ? "git.actionMenu.push" : "git.actionMenu.trigger",
+              })}
+            </span>
+          </Button>
+        </div>
+      </ControlHintTooltip>
 
       <GitCommitDialog
         open={commitDialogOpen}

@@ -1,4 +1,13 @@
-import { cpSync, existsSync, mkdirSync, chmodSync, copyFileSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  chmodSync,
+  copyFileSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
@@ -126,50 +135,45 @@ export function rebuildDarwinNodePtySpawnHelper({ desktopPackageRoot, targetPlat
     throw new Error(`node-pty spawn-helper 源码缺失: ${helperSourcePath}`);
   }
 
-// 同时编出 arm64 与 x86_64：CI 可能交叉打包另一种架构的 DMG，
-// spawn-helper 必须能在目标机器上被直接 exec（Rosetta 不翻译 helper 的 exec 场景）。
-// 部分机器的默认 SDK 存在 tbd 损坏（链接期 unknown architecture），这里按候选 SDK
-// 依次重试：先用系统默认，失败再从 CommandLineTools 目录里从新到旧逐个尝试。
-const tempDir = mkdtempSync(resolve(tmpdir(), "node-pty-spawn-helper-"));
-const tempBinaryPath = resolve(tempDir, "spawn-helper");
-const compilers = ["clang++", "c++"];
-try {
-  let lastError = null;
-  let compiled = false;
-  outer: for (const sdkRoot of [null, ...listFallbackDarwinSdks()]) {
-    for (const compiler of compilers) {
-      const result = spawnSync(compiler, [
-        "-O2",
-        "-arch",
-        "arm64",
-        "-arch",
-        "x86_64",
-        "-o",
-        tempBinaryPath,
-        helperSourcePath,
-      ], {
-        stdio: "pipe",
-        ...(sdkRoot ? { env: { ...process.env, SDKROOT: sdkRoot } } : {}),
-      });
-      if (result.status === 0) {
-        compiled = true;
-        break outer;
+  // 同时编出 arm64 与 x86_64：CI 可能交叉打包另一种架构的 DMG，
+  // spawn-helper 必须能在目标机器上被直接 exec（Rosetta 不翻译 helper 的 exec 场景）。
+  // 部分机器的默认 SDK 存在 tbd 损坏（链接期 unknown architecture），这里按候选 SDK
+  // 依次重试：先用系统默认，失败再从 CommandLineTools 目录里从新到旧逐个尝试。
+  const tempDir = mkdtempSync(resolve(tmpdir(), "node-pty-spawn-helper-"));
+  const tempBinaryPath = resolve(tempDir, "spawn-helper");
+  const compilers = ["clang++", "c++"];
+  try {
+    let lastError = null;
+    let compiled = false;
+    outer: for (const sdkRoot of [null, ...listFallbackDarwinSdks()]) {
+      for (const compiler of compilers) {
+        const result = spawnSync(
+          compiler,
+          ["-O2", "-arch", "arm64", "-arch", "x86_64", "-o", tempBinaryPath, helperSourcePath],
+          {
+            stdio: "pipe",
+            ...(sdkRoot ? { env: { ...process.env, SDKROOT: sdkRoot } } : {}),
+          },
+        );
+        if (result.status === 0) {
+          compiled = true;
+          break outer;
+        }
+        lastError =
+          result.error?.message ??
+          `${compiler}${sdkRoot ? ` (SDK ${sdkRoot})` : ""} exited ${result.status}: ${String(result.stderr || "")}`.trim();
       }
-      lastError =
-        result.error?.message ??
-        `${compiler}${sdkRoot ? ` (SDK ${sdkRoot})` : ""} exited ${result.status}: ${String(result.stderr || "")}`.trim();
     }
-  }
 
-  if (!compiled) {
-    throw new Error(`node-pty spawn-helper 编译失败: ${lastError ?? "无可用 C++ 编译器"}`);
-  }
+    if (!compiled) {
+      throw new Error(`node-pty spawn-helper 编译失败: ${lastError ?? "无可用 C++ 编译器"}`);
+    }
 
-  copyFileSync(tempBinaryPath, targetHelperPath);
-  chmodSync(targetHelperPath, 0o755);
-} finally {
-  rmSync(tempDir, { recursive: true, force: true });
-}
+    copyFileSync(tempBinaryPath, targetHelperPath);
+    chmodSync(targetHelperPath, 0o755);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 
   if (!existsSync(targetHelperPath)) {
     throw new Error(`node-pty spawn-helper 替换失败: ${targetHelperPath}`);

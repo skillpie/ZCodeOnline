@@ -27,13 +27,13 @@
 
 ## 3. 失败语义
 
-| 失败点 | 行为 |
-| --- | --- |
-| 配置关闭 / 报告 ≤ 阈值 | 不生成 digest，不写 artifact，不调用模型，现状行为 |
-| artifact 写入失败 | `fullOutputPath` 回退 lifecycle `outputFile`；不阻断 digest |
-| 摘要模型调用失败 / 超时（60s）/ 返回空 | 记 warn 日志，不设 `digest` 字段，行为与现状逐字节一致 |
-| 摘要超长（>6000 字节） | 硬截断并追加 `[digest truncated]` 标记 |
-| digest 存在时的渲染 | `formatAgentOutputForModel` 与后台通知 `<result>` 均使用 digest + `full_report` 引用行；`<usage>` 统计保持原文 |
+| 失败点                                 | 行为                                                                                                           |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 配置关闭 / 报告 ≤ 阈值                 | 不生成 digest，不写 artifact，不调用模型，现状行为                                                             |
+| artifact 写入失败                      | `fullOutputPath` 回退 lifecycle `outputFile`；不阻断 digest                                                    |
+| 摘要模型调用失败 / 超时（60s）/ 返回空 | 记 warn 日志，不设 `digest` 字段，行为与现状逐字节一致                                                         |
+| 摘要超长（>6000 字节）                 | 硬截断并追加 `[digest truncated]` 标记                                                                         |
+| digest 存在时的渲染                    | `formatAgentOutputForModel` 与后台通知 `<result>` 均使用 digest + `full_report` 引用行；`<usage>` 统计保持原文 |
 
 ## 4. 验收场景
 

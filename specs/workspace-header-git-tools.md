@@ -16,6 +16,7 @@
     - 当前分支行显示「拉取」，提示词为「拉取当前分支（{branchName}）的远程更新」，由 AI 执行；**与头部直连「拉取」（快进式、分叉即报错）语义不同**：弹窗内拉取由 AI 决策分叉处理（如 rebase/merge），两者互不替代。按钮 hover 显示在行尾。
   - 提交弹窗（`GitActionMenu`）不启用对话动作，维持原能力集。（草稿区分支弹窗已随 2026-09-28 的移除决策不复存在。）
 - **展示规则（提交/拉取互斥占同一槽位）**：「提交」跟随 `isDirty || canPushGitBranch`；两者都不满足时该槽位显示「拉取」。agent 改文件后随 `onRefreshGit` 重新出现。
+- **键盘快捷键（2026-09-29 新增）**：命令表（`packages/shared/src/shortcutCommands.ts`）新增 window 通道命令 `gitCommit`（默认 ⇧⌘P）与 `gitPull`（默认 ⇧⌘U），可在设置-键盘快捷键搜索「提交 / 拉取」改绑。分发不走 App 根部 `useAppKeyboard` 处理器表，而是**组件级监听**（`shortcuts/useShortcutCommandListener.ts`，沿用 composer 工具条热键的组件级消费先例）：`gitCommit` 归 `GitActionMenu`、`gitPull` 归 `WorkspaceHeaderGitTools`，enabled 门控与按钮展示规则同源（弹窗打开 / 触发器置灰 / 槽位被占用 / 非 Git 仓库时不响应、放行事件）。`gitCommit` 与按钮共用主动作裁决（已提交未推送时按键进推送弹窗），telemetry `trigger: "shortcut"`；弹窗已打开时快捷键置为不可用，避免静默重置正在编辑的提交消息。占用让位（同日用户决策）：`openCommandCenter` 移除第二默认键 ⇧⌘P（保留 ⌘K），`toggleInterfaceMode` 由 ⇧⌘U 改绑 ⌘U。两键均为纯修饰组合，不受可编辑元素内大写字母输入保护影响；tooltip 角标随生效键位实时展示（未分配时不渲染）。
 - 非 Git 工作区（git 不可用或不是仓库）整组不渲染；远程移动端窄头部（`simplifyForNarrowRemote`）整组隐藏，与终端入口同一折叠规则。工作区头部的可见性由壳层唯一谓词 `shouldRenderWorkspaceHeader`（`app-shell/workspaceHeaderVisibility.ts`）裁决：主视图为 `chat` 即渲染，不再区分平台与任务/草稿态——**2026-09-27 按用户决策，Web 端（含手机远控）草稿态对齐桌面，渲染头部**，Git 工具随之常驻可见；草稿态头部没有分享按钮（依赖活动任务）。头部只消费壳层投影的 chrome 状态（git 摘要、终端/侧栏开关），不承载流式/快照语义，草稿态渲染头部不触碰 web-remote-replayable 恢复链路。
 - 标题区既有 hover 提示中的分支名（`WorkspaceHeaderTitleSection`）保持不变，仅作信息展示。
 
@@ -45,3 +46,4 @@
 6. 头部宽度收窄：统计文案与提交文案依次收起为图标，不与分享、帮助、终端按钮挤行。
 7. 分支行对话动作：hover 非当前分支行出现「合入」，点击后弹层关闭、当前对话收到合并提示词并开始执行（草稿态则新建会话承载）；hover 当前行出现「拉取」，点击发送拉取提示词由 AI 同步远程；点击任一按钮都不触发分支切换；主 pane 未挂载（可用性 unavailable）时按钮不渲染。
 8. Web 端（非桌面）新建任务（草稿态）：右上角头部与桌面一致渲染——分支切换器常驻、提交/拉取按仓库状态占位，帮助 / 终端 / 侧栏开关可用，无分享按钮；发送首条消息进入任务态后头部内容保持不变。
+9. 快捷键（2026-09-29）：脏仓库按 ⇧⌘P 打开提交弹窗（已提交未推送时打开推送弹窗，telemetry 记 shortcut）；干净且有上游按 ⇧⌘U 直拉（与点按钮等价，成功 toast）；提交弹窗打开时再按 ⇧⌘P 不重置弹窗；设置页改绑后下一次按键按新键位生效，清除键位后按钮 tooltip 不再显示角标。

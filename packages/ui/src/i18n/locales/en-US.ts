@@ -2174,6 +2174,8 @@ const enUS: Record<string, string> = {
   "settings.shortcuts.command.openModelMenu": "Open Model Menu",
   "settings.shortcuts.command.cycleSessionMode": "Cycle Session Mode",
   "settings.shortcuts.command.cycleThoughtLevel": "Cycle Thought Level",
+  "settings.shortcuts.command.gitCommit": "Commit (Git)",
+  "settings.shortcuts.command.gitPull": "Pull (Git)",
   "settings.shortcuts.command.findInTask": "Find in Task",
   "settings.shortcuts.command.openCommandCenter": "Open Command Center",
   "settings.shortcuts.command.openSettings": "Open Settings",

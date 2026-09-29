@@ -1,9 +1,5 @@
 import type { ReactNode } from "react";
-import type {
-  GitChangeSourceId,
-  GitRepositorySummary,
-  ZCodeProvider,
-} from "@zcode/shared";
+import type { GitChangeSourceId, GitRepositorySummary, ZCodeProvider } from "@zcode/shared";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { AssistantPreviewCardsAutoOpenRequest } from "@/lib/assistantPreviewCards.js";
 import type { OpenAutomationsMain } from "@/lib/taskNavigationHistory.js";

@@ -39,14 +39,17 @@ export async function sendInteractiveCard(
   receiveIdType: string,
   body: unknown,
 ): Promise<string> {
-  const response = await fetch(`${FEISHU_API_BASE}/im/v1/messages?receive_id_type=${encodeURIComponent(receiveIdType)}`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
+  const response = await fetch(
+    `${FEISHU_API_BASE}/im/v1/messages?receive_id_type=${encodeURIComponent(receiveIdType)}`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+  );
   const data = (await response.json()) as MessageResponse;
   if (data.code !== 0) {
     throw new Error(`卡片发送失败: code=${data.code} msg=${data.msg ?? ""}`);
@@ -61,7 +64,9 @@ interface ChatListResponse {
 }
 
 /** 列出机器人所在的群（`--list-chats` 调试用：帮部署者拿 chat_id 配置群发送）。 */
-export async function listBotChats(token: string): Promise<Array<{ chatId: string; name: string }>> {
+export async function listBotChats(
+  token: string,
+): Promise<Array<{ chatId: string; name: string }>> {
   const response = await fetch(`${FEISHU_API_BASE}/im/v1/chats?page_size=50`, {
     headers: { authorization: `Bearer ${token}` },
   });

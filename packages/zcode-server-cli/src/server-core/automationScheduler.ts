@@ -65,7 +65,10 @@ export interface AutomationSchedulerHandle {
   /** 手动驱动一轮轮询（测试确定性；生产由 interval 调用）。 */
   tick(): Promise<void>;
   /** services 落库 manual run 后的即时派发入口（onAutomationManualRunRequested 注入）。 */
-  dispatchManualRun(params: { automation: ZCodeAutomation; run: ZCodeAutomationRun }): Promise<void>;
+  dispatchManualRun(params: {
+    automation: ZCodeAutomation;
+    run: ZCodeAutomationRun;
+  }): Promise<void>;
   /** 释放本进程在途认领并停止轮询；Core shutdown 时调用，避免下轮启动等 CLAIM_STALE。 */
   dispose(): Promise<void>;
 }
@@ -89,7 +92,9 @@ function buildRunId(automationId: string, scheduledAt: number): string {
   return `${automationId}:${scheduledAt}`;
 }
 
-export function startAutomationScheduler(params: AutomationSchedulerParams): AutomationSchedulerHandle {
+export function startAutomationScheduler(
+  params: AutomationSchedulerParams,
+): AutomationSchedulerHandle {
   const log = params.log ?? defaultLogger;
   const now = params.now ?? Date.now;
   const repo: AutomationRepo & AutomationDispatchRepo =
@@ -377,7 +382,11 @@ export function startAutomationScheduler(params: AutomationSchedulerParams): Aut
       for (const [runId, context] of inFlight) {
         try {
           if (context.trigger === "manual") {
-            await releaseManualClaimForFailedDispatch(context.automationId, runId, context.workspaceKey);
+            await releaseManualClaimForFailedDispatch(
+              context.automationId,
+              runId,
+              context.workspaceKey,
+            );
           } else {
             await repo.releaseClaim(context.automationId);
           }

@@ -13,6 +13,9 @@
  * 当前工作区主对话由 AI 执行（弹窗内拉取可由 AI 处理分叉，与头部快进式直拉
  * 语义不同、互不替代），发送能力由主 pane SessionPane 注册，
  * 链路见 specs/workspace-header-git-tools.md。
+ * 键盘快捷键（2026-09-29）：gitPull（默认 ⇧⌘U）由本组件的
+ * useShortcutCommandListener 消费，gitCommit（默认 ⇧⌘P）归 GitActionMenu；
+ * 两者可用性与按钮展示规则同源，键位可在设置-键盘快捷键改绑。
  */
 import { useCallback, useState } from "react";
 import { ArrowDownToLine, LoaderIcon } from "lucide-react";
@@ -26,6 +29,8 @@ import { canPushGitBranch } from "@/git-action-menu/display.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
+import { useShortcutCommandListener } from "@/shortcuts/useShortcutCommandListener.js";
+import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 
 interface WorkspaceHeaderGitToolsProps {
   workspaceAbsPath: string;
@@ -67,6 +72,15 @@ export function WorkspaceHeaderGitTools({
         setPullPending(false);
       });
   }, [gitService, intl, onRefreshGit, pullPending, workspaceAbsPath]);
+  // ⌘⇧U（gitPull）与「拉取」按钮同路径（复用 handlePull 的 pending 门控与 toast 反馈）；
+  // 可用性跟按钮展示规则同源：槽位被提交入口占用、无上游或非 Git 仓库时不响应。
+  // 「提交」监听（gitCommit）归 GitActionMenu 所有——提交/拉取互斥占同一槽位，
+  // 两个监听不会同时处于可用态。
+  const showCommitEntry = gitSummary.isDirty || canPushGitBranch(gitSummary);
+  // pull 需要上游分支；detached HEAD / 无上游时 canPushGitBranch 分支已接管该槽位。
+  const showPullEntry = !showCommitEntry && Boolean(gitSummary.trackingBranchName);
+  useShortcutCommandListener("gitPull", showPullEntry, handlePull);
+  const pullShortcutLabel = useShortcutCommandLabel("gitPull");
   // 钩子必须全部位于上面的条件返回之前；gitSummary 就绪与否只影响 JSX，不影响钩子数量。
   if (!gitSummary.isGitAvailable || !gitSummary.isRepository) {
     return null;
@@ -74,9 +88,6 @@ export function WorkspaceHeaderGitTools({
   // 「提交」在脏仓库或已提交未推送（canPushGitBranch：领先上游 / 尚无上游的新分支）
   // 时展示——后者点击时 GitActionMenu 的主动作裁决会直接进推送弹窗。不在（干净且同步中）
   // 时，同一位置换成「拉取」，提供快速同步远程的入口；分支切换器保持常驻。
-  const showCommitEntry = gitSummary.isDirty || canPushGitBranch(gitSummary);
-  // pull 需要上游分支；detached HEAD / 无上游时 canPushGitBranch 分支已接管该槽位。
-  const showPullEntry = !showCommitEntry && Boolean(gitSummary.trackingBranchName);
   const pullLabel = intl.formatMessage({ id: "git.pull.action" });
 
   return (
@@ -107,7 +118,7 @@ export function WorkspaceHeaderGitTools({
         />
       ) : null}
       {showPullEntry ? (
-        <ControlHintTooltip title={pullLabel} side="bottom">
+        <ControlHintTooltip title={pullLabel} shortcut={pullShortcutLabel} side="bottom">
           <Button
             type="button"
             variant="ghost"

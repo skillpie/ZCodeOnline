@@ -50,7 +50,12 @@ async function main(): Promise<void> {
     ),
   ]);
 
-  const { metrics, newVisitors } = aggregateDaily({ statsLines, relayLines, seenVids, now: effectiveNow });
+  const { metrics, newVisitors } = aggregateDaily({
+    statsLines,
+    relayLines,
+    seenVids,
+    now: effectiveNow,
+  });
   log("info", "daily metrics aggregated", { ...metrics });
 
   if (!dryRun && newVisitors.length > 0) {
@@ -68,7 +73,8 @@ async function main(): Promise<void> {
   const card = buildDailyReportCard(metrics, now);
 
   if (args.has("--list-chats")) {
-    if (!appId || !appSecret) throw new Error("--list-chats 需要 FEISHU_APP_ID / FEISHU_APP_SECRET");
+    if (!appId || !appSecret)
+      throw new Error("--list-chats 需要 FEISHU_APP_ID / FEISHU_APP_SECRET");
     const chats = await listBotChats(await getTenantAccessToken({ appId, appSecret }));
     process.stdout.write(`${JSON.stringify(chats, null, 2)}\n`);
     return;
@@ -92,7 +98,11 @@ async function main(): Promise<void> {
   }
 
   const token = await getTenantAccessToken({ appId, appSecret });
-  const message = await sendInteractiveCard(token, receiveIdType, buildMessageBody(receiveId, card));
+  const message = await sendInteractiveCard(
+    token,
+    receiveIdType,
+    buildMessageBody(receiveId, card),
+  );
   log("info", "daily report sent", { receiveIdType, msg: message });
 }
 

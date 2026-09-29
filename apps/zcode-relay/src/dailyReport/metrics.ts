@@ -1,5 +1,11 @@
 // 当日指标聚合（specs/web-daily-report.md §1 口径）：纯函数，输入日志行集合与 seen-vids，输出指标与新访客增量。
-import { type StatsVisit, isoDayPrefix, nginxDayLabel, parseRelayLine, parseStatsLine } from "./parse.js";
+import {
+  type StatsVisit,
+  isoDayPrefix,
+  nginxDayLabel,
+  parseRelayLine,
+  parseStatsLine,
+} from "./parse.js";
 
 export interface DailyMetrics {
   /** 统计日期（本地 YYYY-MM-DD）。 */
@@ -25,7 +31,12 @@ export interface AggregateResult {
   newVisitors: string[];
 }
 
-export function aggregateDaily({ statsLines, relayLines, seenVids, now }: AggregateInput): AggregateResult {
+export function aggregateDaily({
+  statsLines,
+  relayLines,
+  seenVids,
+  now,
+}: AggregateInput): AggregateResult {
   const date = isoDayPrefix(now);
   const dayLabel = nginxDayLabel(now);
 
@@ -47,7 +58,12 @@ export function aggregateDaily({ statsLines, relayLines, seenVids, now }: Aggreg
     const req = parseRelayLine(line);
     if (!req) continue;
     // 配对换凭证：仅成功（2xx）计一次，失败重试不算有效配对。
-    if (req.method === "POST" && req.path === "/api/v1/pair" && req.status >= 200 && req.status < 300) {
+    if (
+      req.method === "POST" &&
+      req.path === "/api/v1/pair" &&
+      req.status >= 200 &&
+      req.status < 300
+    ) {
       pairCount += 1;
       continue;
     }

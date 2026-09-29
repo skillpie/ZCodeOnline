@@ -33,7 +33,10 @@ test("getCommunityUrlFromConfig 按语言取值并对缺失语言保持隐藏", 
   );
   assert.equal(getCommunityUrlFromConfig(localConfig, "ja-JP"), undefined);
   assert.equal(getCommunityUrlFromConfig(undefined, "zh-CN"), undefined);
-  assert.equal(getCommunityUrlFromConfig({ community_urls: { "zh-CN": "  " } }, "zh-CN"), undefined);
+  assert.equal(
+    getCommunityUrlFromConfig({ community_urls: { "zh-CN": "  " } }, "zh-CN"),
+    undefined,
+  );
 });
 
 test("resolveHelpAppConfig 社区地址只取本地，远端下发的 community_urls 不生效", () => {
@@ -43,7 +46,13 @@ test("resolveHelpAppConfig 社区地址只取本地，远端下发的 community_
 });
 
 test("resolveHelpAppConfig feedback_url 仍远端优先，本地兜底", () => {
-  assert.equal(resolveHelpAppConfig(remoteConfig, localConfig).feedback_url, "https://remote.example.com/feedback");
+  assert.equal(
+    resolveHelpAppConfig(remoteConfig, localConfig).feedback_url,
+    "https://remote.example.com/feedback",
+  );
   const remoteBroken = { ...remoteConfig, feedback_url: "" };
-  assert.equal(resolveHelpAppConfig(remoteBroken, localConfig).feedback_url, "https://local.example.com/feedback");
+  assert.equal(
+    resolveHelpAppConfig(remoteBroken, localConfig).feedback_url,
+    "https://local.example.com/feedback",
+  );
 });

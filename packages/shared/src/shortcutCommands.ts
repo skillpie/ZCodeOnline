@@ -28,6 +28,8 @@ export type ShortcutCommandId =
   | "openModelMenu"
   | "cycleSessionMode"
   | "cycleThoughtLevel"
+  | "gitCommit"
+  | "gitPull"
   | "newTask"
   | "openWorkspace"
   | "closeActiveContext"
@@ -60,9 +62,10 @@ export interface ShortcutCommandEntry {
  */
 export const SHORTCUT_COMMANDS: readonly ShortcutCommandEntry[] = [
   {
+    // 2026-09-29 按用户决策移除第二默认键 ⇧⌘P（让位给 gitCommit），⌘K 保留。
     id: "openCommandCenter",
     channel: "window",
-    defaultBindings: ["CmdOrCtrl+k", "CmdOrCtrl+Shift+p"],
+    defaultBindings: ["CmdOrCtrl+k"],
   },
   // 打开设置页：mac ⌘, / win·linux Ctrl+,（系统惯例，如 macOS Settings…、VSCode）
   { id: "openSettings", channel: "window", defaultBindings: ["CmdOrCtrl+,"] },
@@ -80,6 +83,12 @@ export const SHORTCUT_COMMANDS: readonly ShortcutCommandEntry[] = [
   { id: "openModelMenu", channel: "window", defaultBindings: ["Ctrl+m"] },
   { id: "cycleSessionMode", channel: "window", defaultBindings: ["Ctrl+Shift+m"] },
   { id: "cycleThoughtLevel", channel: "window", defaultBindings: ["Ctrl+t"] },
+  // 头部 Git 工具（2026-09-29 新增）：由 WorkspaceHeaderGitTools / GitActionMenu 的
+  // 组件级监听消费（可用性与头部入口同源），App 处理器表不持有这两个命令；
+  // 键位匹配仍走命令表 + 生效表。默认键位占用原 openCommandCenter 的 ⇧⌘P
+  // 与 toggleInterfaceMode 的 ⇧⌘U，后者同日改绑 ⌘U。
+  { id: "gitCommit", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+p"] },
+  { id: "gitPull", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+u"] },
   { id: "newTask", channel: "menu", defaultBindings: ["CmdOrCtrl+n"] },
   { id: "openWorkspace", channel: "menu", defaultBindings: ["CmdOrCtrl+o"] },
   { id: "closeActiveContext", channel: "menu", defaultBindings: ["CmdOrCtrl+w"] },
@@ -95,7 +104,8 @@ export const SHORTCUT_COMMANDS: readonly ShortcutCommandEntry[] = [
     scope: "composer",
     defaultBindings: ["Shift+Enter"],
   },
-  { id: "toggleInterfaceMode", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+u"] },
+  // 2026-09-29 按用户决策由 ⇧⌘U 改绑 ⌘U，让位给 gitPull。
+  { id: "toggleInterfaceMode", channel: "window", defaultBindings: ["CmdOrCtrl+u"] },
   { id: "openOnboarding", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+o"] },
 ];
 

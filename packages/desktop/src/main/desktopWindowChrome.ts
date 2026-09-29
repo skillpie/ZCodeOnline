@@ -57,7 +57,10 @@ const embeddedBrowserJavaScriptDialogPreloadPath = join(
 // Coding Plan 官网页专用 preload：挂 window.zcodeBridge 供官网回传购买完成信号。
 const codingPlanWebviewPreloadPath = join(import.meta.dirname, "../preload/codingPlanWebview.cjs");
 // 技能市场 webview 专用 preload：桥接 ZCode → SkillPie 免登握手（ipc sendToHost/on）。
-const skillMarketWebviewPreloadPath = join(import.meta.dirname, "../preload/skillMarketWebview.cjs");
+const skillMarketWebviewPreloadPath = join(
+  import.meta.dirname,
+  "../preload/skillMarketWebview.cjs",
+);
 
 function resolveSkillMarketWebviewOrigin(): string {
   // 主进程读不到 Vite 注入的 shared defines，运行时用环境变量覆盖测试部署。

@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildDailyReportCard, buildMessageBody, shanghaiTimeString } from "../src/dailyReport/feishuCard.js";
+import {
+  buildDailyReportCard,
+  buildMessageBody,
+  shanghaiTimeString,
+} from "../src/dailyReport/feishuCard.js";
 import { aggregateDaily } from "../src/dailyReport/metrics.js";
-import { isoDayPrefix, nginxDayLabel, parseRelayLine, parseStatsLine } from "../src/dailyReport/parse.js";
+import {
+  isoDayPrefix,
+  nginxDayLabel,
+  parseRelayLine,
+  parseStatsLine,
+} from "../src/dailyReport/parse.js";
 
 // 运营日报口径验收（specs/web-daily-report.md §1/§5）：日志解析、去重/新访客、卡片结构与消息体组装。
 
@@ -13,8 +22,12 @@ const DAY_ISO = "2026-09-29";
 const statsLine = (vid: string, ip = "203.0.113.5", iso = `${DAY_ISO}T10:00:00+08:00`) =>
   `${iso}\t${ip}\t${vid}\thttps://zcode.skillpie.cn/\tMozilla/5.0`;
 
-const relayLine = (method: string, path: string, status: number, time = "29/Sep/2026:22:00:00 +0800") =>
-  `203.0.113.5 - - [${time}] "${method} ${path} HTTP/1.1" ${status} 0 "-" Mozilla/5.0`;
+const relayLine = (
+  method: string,
+  path: string,
+  status: number,
+  time = "29/Sep/2026:22:00:00 +0800",
+) => `203.0.113.5 - - [${time}] "${method} ${path} HTTP/1.1" ${status} 0 "-" Mozilla/5.0`;
 
 test("parse：日期前缀与 combined 日期标签互为同一天的两种格式", () => {
   assert.equal(isoDayPrefix(NOW), DAY_ISO);
@@ -22,7 +35,10 @@ test("parse：日期前缀与 combined 日期标签互为同一天的两种格�
 });
 
 test("parseStatsLine：TAB 分隔，UA 内含分隔符不影响前四段", () => {
-  const visit = parseStatsLine(`${DAY_ISO}T09:00:00+08:00\t1.2.3.4\tvid-x\t\tTab\tUA\t1.0`, DAY_ISO);
+  const visit = parseStatsLine(
+    `${DAY_ISO}T09:00:00+08:00\t1.2.3.4\tvid-x\t\tTab\tUA\t1.0`,
+    DAY_ISO,
+  );
   assert.ok(visit);
   assert.equal(visit.ip, "1.2.3.4");
   assert.equal(visit.visitorKey, "vid-x");

@@ -66,8 +66,7 @@ function createFakeTargets() {
         calls.push({ op: "setTaskUnread", params: params as Record<string, unknown> });
       },
       onDynamicTaskTerminalOutcome:
-        (taskId: string) =>
-        (listener: (result: TerminalResult) => void) => {
+        (taskId: string) => (listener: (result: TerminalResult) => void) => {
           terminalListeners.set(taskId, listener);
           return { dispose: () => terminalListeners.delete(taskId) };
         },
@@ -183,7 +182,11 @@ test("misfire：错过窗口的循环任务记 skipped 并重排，不执行", a
   await scheduler.tick();
   await new Promise((resolve) => setTimeout(resolve, 50));
 
-  assert.equal(fake.calls.some((call) => call.op === "sendPrompt"), false, "misfire 不应派发");
+  assert.equal(
+    fake.calls.some((call) => call.op === "sendPrompt"),
+    false,
+    "misfire 不应派发",
+  );
   const after = await repo.get(automation.automationId);
   assert.ok(after);
   assert.equal(after.dispatchAttempts, 0);
@@ -224,7 +227,10 @@ test("misfire：一次性任务错过窗口即终态，不再排程", async () =
   assert.equal(after.enabled, false);
   // DB NULL 在 rowToAutomation 里映射为 undefined，断言用宽松判空。
   assert.ok(after.nextRunAt == null, "一次性任务错过即终态，不应再有 next_run_at");
-  assert.equal(fake.calls.some((call) => call.op === "sendPrompt"), false);
+  assert.equal(
+    fake.calls.some((call) => call.op === "sendPrompt"),
+    false,
+  );
   await scheduler.dispose();
 });
 
@@ -252,7 +258,9 @@ test("派发失败退避重试：transient 写 retry_at，重试复用同一 run
   });
   await scheduler.tick();
   const failedRunId = `${automation.automationId}:${dueAt}`;
-  await waitFor(async () => (await repo.getRun(failedRunId))?.dispatchStatus === "failed_to_dispatch");
+  await waitFor(
+    async () => (await repo.getRun(failedRunId))?.dispatchStatus === "failed_to_dispatch",
+  );
 
   const afterFail = await repo.get(automation.automationId);
   assert.ok(afterFail);
@@ -290,7 +298,11 @@ test("双调度器共享同库认领互斥：桌面与 daemon 并存不会重复
     { nextRunAt: dueAt },
   );
   const clock = dueAt + 1_000;
-  const common = { resolveTargets: () => fake.targets, now: () => clock, pollIntervalMs: 3_600_000 };
+  const common = {
+    resolveTargets: () => fake.targets,
+    now: () => clock,
+    pollIntervalMs: 3_600_000,
+  };
   const schedulerA = startAutomationScheduler({ repo: repoA, ...common });
   const schedulerB = startAutomationScheduler({ repo: repoB, ...common });
 

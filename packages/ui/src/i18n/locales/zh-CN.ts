@@ -2044,6 +2044,8 @@ const zhCN: Record<string, string> = {
   "settings.shortcuts.command.openModelMenu": "打开模型菜单",
   "settings.shortcuts.command.cycleSessionMode": "切换会话模式",
   "settings.shortcuts.command.cycleThoughtLevel": "切换思考深度",
+  "settings.shortcuts.command.gitCommit": "提交（Git）",
+  "settings.shortcuts.command.gitPull": "拉取（Git）",
   "settings.shortcuts.command.findInTask": "任务内查找",
   "settings.shortcuts.command.openCommandCenter": "打开命令中心",
   "settings.shortcuts.command.openSettings": "打开设置",

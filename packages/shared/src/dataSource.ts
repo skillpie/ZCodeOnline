@@ -108,9 +108,7 @@ export interface DataSourceMutationResult {
   syncError: string | null;
 }
 
-export type DataSourceTestResult =
-  | { ok: true; version: string }
-  | { ok: false; error: string };
+export type DataSourceTestResult = { ok: true; version: string } | { ok: false; error: string };
 
 export type DataSourceListResult = {
   dataSources: DataSourceView[];
@@ -166,7 +164,9 @@ export function maskDataSource(config: DataSourceConfig): DataSourceView {
 }
 
 export function newDataSourceId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return (
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
 }
 
 /**

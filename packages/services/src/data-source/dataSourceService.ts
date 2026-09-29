@@ -15,10 +15,7 @@ import type {
 import { maskDataSource, normalizeDataSourceInput } from "@zcode/shared";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 import { executeStatements, introspect, testConnection } from "./dbDriver.js";
-import {
-  loadDataSourceConfigFile,
-  saveDataSourceConfigFile,
-} from "./dataSourceConfigFile.js";
+import { loadDataSourceConfigFile, saveDataSourceConfigFile } from "./dataSourceConfigFile.js";
 import {
   invalidateSchemaCache,
   readSchemaSnapshot,
@@ -31,12 +28,15 @@ const log = createServiceLogger("data-source");
 /** 同一数据源的内省去重：进行中时复用同一 Promise（覆盖式同步，最后完成者为准）。 */
 const inflightSyncs = new Map<string, Promise<DataSourceSchemaSnapshot>>();
 
-async function upsertDataSource(input: DataSourceInput): Promise<{
-  ok: true;
-  config: DataSourceConfig;
-  created: boolean;
-  activeId: string | null;
-} | { ok: false; error: string }> {
+async function upsertDataSource(input: DataSourceInput): Promise<
+  | {
+      ok: true;
+      config: DataSourceConfig;
+      created: boolean;
+      activeId: string | null;
+    }
+  | { ok: false; error: string }
+> {
   const file = await loadDataSourceConfigFile();
   const existing = input.id ? file.dataSources.find((item) => item.id === input.id) : undefined;
   if (input.id && !existing) {
