@@ -26,6 +26,8 @@ export interface V4ComposerDraft {
   modelSelection?: ModelSelection;
   /** 会话级数据源绑定（specs/data-source.md §7）；缺省 = 未选择（新建对话默认态）。 */
   dataSourceId?: string;
+  /** 会话级评审开关；缺省 = 关闭。开启后本轮注入评审指令（先拷问达成共识再实现）。 */
+  reviewEnabled?: boolean;
   /** 首次分享导入等待公共新任务初始化；不能由空 Session snapshot 抢先填充。 */
   initializeFromNewTask?: true;
   updatedAt: number;
@@ -138,6 +140,7 @@ function readDraft(value: unknown): V4ComposerDraft | null {
     ...(typeof value.dataSourceId === "string" && value.dataSourceId
       ? { dataSourceId: value.dataSourceId }
       : {}),
+    ...(value.reviewEnabled === true ? { reviewEnabled: true as const } : {}),
     ...(value.initializeFromNewTask === true && !mode.success
       ? { initializeFromNewTask: true as const }
       : {}),
@@ -194,6 +197,7 @@ export function persistV4ComposerDraft(
     !draft.mode &&
     !draft.modelSelection &&
     !draft.dataSourceId &&
+    !draft.reviewEnabled &&
     !draft.initializeFromNewTask
   ) {
     delete file.scopes[scopeId];

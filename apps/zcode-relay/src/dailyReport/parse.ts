@@ -63,5 +63,12 @@ export function parseRelayLine(line: string): RelayRequest | null {
   const m = RELAY_LINE.exec(line);
   if (!m) return null;
   const rawPath = m[4]!;
-  return { method: m[3]!, path: rawPath.split("?")[0]!, status: Number(m[5]) };
+  let path = rawPath.split("?")[0]!;
+  // nginx `location /relay/` 的访问日志记录原始请求路径（含 /relay 前缀，剥前缀只发生在
+  // proxy_pass 转发时，见 deploy/zcode.skillpie.cn.conf）；而聚合口径按 relay 后端路由
+  // （/api/v1/*、/ws/*）匹配，这里先归一剥前缀，否则配对/隧道指标恒为 0。
+  if (path === "/relay" || path.startsWith("/relay/")) {
+    path = path.slice("/relay".length) || "/";
+  }
+  return { method: m[3]!, path, status: Number(m[5]) };
 }

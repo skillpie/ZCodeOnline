@@ -51,11 +51,18 @@ test("parseStatsLine：非当日与缺 IP 的行返回 null，缺 vid 按 IP 兜
   assert.equal(fallback?.visitorKey, "ip:5.6.7.8");
 });
 
-test("parseRelayLine：提取方法/路径（去查询串）/状态", () => {
+test("parseRelayLine：提取方法/路径（去查询串、剥 nginx /relay 前缀）/状态", () => {
+  // 真实日志路径带 /relay 前缀（nginx 记录原始请求路径，见 specs/web-daily-report.md）。
   const req = parseRelayLine(
-    `203.0.113.5 - - [29/Sep/2026:22:00:00 +0800] "GET /ws/tunnel/host-1?token=abc HTTP/1.1" 101 0 "-" UA`,
+    `203.0.113.5 - - [29/Sep/2026:22:00:00 +0800] "GET /relay/ws/tunnel/host-1?token=abc HTTP/1.1" 101 0 "-" UA`,
   );
   assert.deepEqual(req, { method: "GET", path: "/ws/tunnel/host-1", status: 101 });
+  assert.deepEqual(
+    parseRelayLine(
+      `203.0.113.5 - - [29/Sep/2026:22:00:00 +0800] "POST /api/v1/pair HTTP/1.1" 200 0 "-" UA`,
+    ),
+    { method: "POST", path: "/api/v1/pair", status: 200 },
+  );
   assert.equal(parseRelayLine("garbage line"), null);
 });
 
@@ -80,15 +87,16 @@ test("aggregate：PV/UV 按访客键去重，新访客对照 seen 集合", () =>
 test("aggregate：配对只计 2xx，隧道只计 101 且活跃宿主去重，非当日行不计", () => {
   const { metrics } = aggregateDaily({
     statsLines: [],
+    // 路径用真实日志格式（带 nginx /relay 前缀）。
     relayLines: [
-      relayLine("POST", "/api/v1/pair", 200),
-      relayLine("POST", "/api/v1/pair", 401),
-      relayLine("POST", "/api/v1/assist/connect", 200),
-      relayLine("GET", "/ws/tunnel/host-1", 101),
-      relayLine("GET", "/ws/tunnel/host-1", 101, "29/Sep/2026:22:30:00 +0800"),
-      relayLine("GET", "/ws/tunnel/host-2", 101),
-      relayLine("GET", "/ws/host", 101),
-      relayLine("GET", "/ws/tunnel/host-3", 101, "28/Sep/2026:22:00:00 +0800"),
+      relayLine("POST", "/relay/api/v1/pair", 200),
+      relayLine("POST", "/relay/api/v1/pair", 401),
+      relayLine("POST", "/relay/api/v1/assist/connect", 200),
+      relayLine("GET", "/relay/ws/tunnel/host-1", 101),
+      relayLine("GET", "/relay/ws/tunnel/host-1", 101, "29/Sep/2026:22:30:00 +0800"),
+      relayLine("GET", "/relay/ws/tunnel/host-2", 101),
+      relayLine("GET", "/relay/ws/host", 101),
+      relayLine("GET", "/relay/ws/tunnel/host-3", 101, "28/Sep/2026:22:00:00 +0800"),
     ],
     seenVids: new Set(),
     now: NOW,

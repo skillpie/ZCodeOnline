@@ -101,6 +101,8 @@ interface DraftConfigControl {
   handleDraftSwitchMode: (mode: string) => void;
   /** 会话级数据源选择（specs/data-source.md §7）；null = 恢复未选择。 */
   handleDraftSelectDataSource: (dataSourceId: string | null) => void;
+  /** 会话级评审开关；false = 关闭（默认态）。 */
+  handleDraftSetReviewEnabled: (reviewEnabled: boolean) => void;
 }
 
 export function useDraftConfigControl(params: {
@@ -498,6 +500,17 @@ export function useDraftConfigControl(params: {
     [updateComposerDraft],
   );
 
+  // 评审开关与数据源绑定同 scope 持久化；发送时冻结进本次 Submission。
+  const handleDraftSetReviewEnabled = useCallback(
+    (reviewEnabled: boolean) => {
+      updateComposerDraft((current) => ({
+        ...current,
+        ...(reviewEnabled ? { reviewEnabled: true } : { reviewEnabled: undefined }),
+      }));
+    },
+    [updateComposerDraft],
+  );
+
   return {
     modelSelectionRead,
     draftConfig,
@@ -513,6 +526,7 @@ export function useDraftConfigControl(params: {
     handleDraftSelectThought,
     handleDraftSwitchMode,
     handleDraftSelectDataSource,
+    handleDraftSetReviewEnabled,
   };
 }
 

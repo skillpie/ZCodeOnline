@@ -104,6 +104,8 @@ async function createSession(
           : {}),
         // 会话级数据源绑定随首发透传：首轮 DB 工具缺省源按绑定解析。
         ...(payload.firstInput.dataSourceId ? { dataSourceId: payload.firstInput.dataSourceId } : {}),
+        // 评审开关随首发透传：首轮注入 review_mode 评审指令。
+        ...(payload.firstInput.reviewEnabled ? { reviewEnabled: true } : {}),
       });
       firstInput = {
         delivery: started.admission.kind === "queued" ? "queue" : "startNow",

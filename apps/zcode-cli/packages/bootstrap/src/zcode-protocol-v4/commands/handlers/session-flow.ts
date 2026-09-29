@@ -278,6 +278,8 @@ async function sendText(
       toolDisallowlist: payload.toolDisallowlist,
       // 会话级数据源绑定随轮透传（specs/data-source.md §7）：DB 工具缺省源按本轮绑定解析。
       ...(payload.dataSourceId ? { dataSourceId: payload.dataSourceId } : {}),
+      // 评审开关随轮透传：本轮注入 review_mode 评审指令。
+      ...(payload.reviewEnabled ? { reviewEnabled: true } : {}),
       ...(payload.modelExecution
         ? { modelExecution: createModelExecutionContext(payload.modelExecution) }
         : {}),

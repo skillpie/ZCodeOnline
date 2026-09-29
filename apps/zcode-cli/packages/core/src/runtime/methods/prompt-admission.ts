@@ -63,6 +63,7 @@ export async function admitPrompt(
         queryId: options?.queryId,
         toolDisallowlist: options?.toolDisallowlist,
         ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
+        ...(options?.reviewEnabled ? { reviewEnabled: true } : {}),
         traceContext: options?.traceContext,
       });
     }
@@ -81,6 +82,7 @@ export async function admitPrompt(
       queryId: options?.queryId,
       toolDisallowlist: options?.toolDisallowlist,
       ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
+      ...(options?.reviewEnabled ? { reviewEnabled: true } : {}),
       traceContext: options?.traceContext,
     });
   }

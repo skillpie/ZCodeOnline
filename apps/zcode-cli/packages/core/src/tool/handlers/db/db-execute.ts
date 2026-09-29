@@ -24,8 +24,9 @@ const MAX_RESULT_MODEL_BYTES = 40_000;
 
 export const dbExecuteToolDescription =
   "Execute write SQL (INSERT / UPDATE / DELETE / DDL) on a read-write data source. Requires explicit " +
-  "user approval for every call and is rejected on read-only data sources. Multiple statements run in " +
-  "one transaction: any failure rolls back the whole batch.";
+  "user approval; the approval prompt offers a session-scoped \"always allow\" the user can grant. " +
+  "Rejected on read-only data sources. Multiple statements run in one transaction: any failure rolls " +
+  "back the whole batch.";
 
 const dbExecuteHandler: ToolHandler = async (input, context) => {
   const { data_source: target, sql } = DbExecuteInputSchema.parse(input) as DbExecuteInput;
@@ -81,16 +82,18 @@ export const dbExecuteToolEntry: ToolEntry = {
   formatModelContent: formatDbRunModelContent,
   permission: {
     permission: "dbExecute",
-    reason: "DBExecute writes to the database; every call needs explicit user approval",
+    reason: "DBExecute writes to the database; writes need explicit user approval",
     riskLevel: "high",
     sideEffectScope: "network",
     needsApproval: true,
     patternSources: ["toolName"],
     denyPriority: "beforeAsk",
-    // 每次调用写入的 SQL 都不同，「批准过一次」推不出「下次也批准」；
-    // 持久免确认永不开放，会话级也不开放（生产库写入必须次次确认）。
+    // 每次调用写入的 SQL 都不同，「批准过一次」推不出「下次也批准」，所以 alwaysAsk 且
+    // 持久免确认永不开放；但确认弹窗提供「本会话内始终允许」（按工具整体授权，只进内存
+    // sessionRules，重启 / /new 即失效，绝不落项目规则）。disallowedTools 与项目 deny
+    // 规则仍然压过会话规则，见 PermissionService.checkAlwaysAsk 的判定顺序。
     alwaysAsk: true,
-    askOptions: { allowAlways: false },
+    askOptions: { allowAlways: "session" },
   },
   resultBudget: {
     maxInlineBytes: MAX_RESULT_MODEL_BYTES,

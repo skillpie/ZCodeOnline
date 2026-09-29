@@ -64,6 +64,10 @@ export async function drainInlineGuideForNextRequest(
     // 会话级数据源绑定随 guide 注入更新当前 loop state，DB 工具缺省源跟随最新用户选择。
     state.dataSourceId = drained.dataSourceId;
   }
+  if (drained.reviewEnabled) {
+    // 评审开关随 guide 注入覆盖当前 loop state；评审指令已与 guide 输入同批入历史。
+    state.reviewEnabled = true;
+  }
   state.repeatedToolCallSignature = undefined;
   state.repeatedToolCallStreakCount = 0;
   return true;

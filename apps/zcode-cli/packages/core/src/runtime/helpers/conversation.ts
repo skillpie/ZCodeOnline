@@ -9,6 +9,7 @@ import {
   systemReminderAttachmentEntry,
   type RuntimeMessageEntry,
 } from "../../agent/message-history.js";
+import { buildReviewModeReminderBody, REVIEW_MODE_REMINDER_SOURCE } from "../../system-reminder/review-mode.js";
 import type {
   MessageId,
   MessageWithParts,
@@ -111,6 +112,8 @@ export function buildRuntimeUserEntriesFromTurn(
   attachments: ResolvedTurnAttachment[],
   options: {
     browserAmbientContext?: { tabCount: number; currentUrl?: string };
+    /** 本轮开启评审模式：在用户输入后追加 review_mode 系统提醒（随轮持久）。 */
+    reviewMode?: boolean;
   } = {},
 ): RuntimeMessageEntry[] {
   const realUserBlocks: ModelMessageContentBlock[] = [];
@@ -157,6 +160,15 @@ export function buildRuntimeUserEntriesFromTurn(
       metadata: realUserRuntimeMetadata(),
     },
     ...promptAttachmentEntries,
+    // 评审指令排在附件之后：它约束整个 turn 的行为阶段，不是用户提供的资料。
+    ...(options.reviewMode
+      ? [
+          systemReminderAttachmentEntry(
+            REVIEW_MODE_REMINDER_SOURCE,
+            buildReviewModeReminderBody(),
+          ),
+        ]
+      : []),
   ];
 }
 

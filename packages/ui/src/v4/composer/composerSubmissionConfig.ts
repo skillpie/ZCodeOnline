@@ -12,6 +12,11 @@ export interface ComposerSubmissionConfig {
    * id 仍存在于数据源列表时携带；是 Host 侧 DB 工具提权门控的信号。
    */
   dataSourceId?: string;
+  /**
+   * 会话级评审开关（默认关闭）。开启时本轮注入评审指令：
+   * Agent 先对方案做拷问式评审、达成共识后再实现。
+   */
+  reviewEnabled?: true;
 }
 
 /** 在点击提交的瞬间，把 Composer 意图冻结成本次 Submission 的执行配置。 */
@@ -22,6 +27,7 @@ export function createComposerSubmissionConfig(
         planEnabled?: boolean;
         modelSelection?: ModelSelection;
         dataSourceId?: string | null;
+        reviewEnabled?: boolean;
       }
     | null
     | undefined,
@@ -47,6 +53,8 @@ export function createComposerSubmissionConfig(
     planEnabled: resolveExecutionState(composer).planEnabled,
     // 悬挂 id（源已删除）由调用方校验过滤；这里只负责冻结当前意图。
     ...(composer.dataSourceId ? { dataSourceId: composer.dataSourceId } : {}),
+    // 评审开关按「携带即开启」透传；关闭是缺省态，不占用协议字段。
+    ...(composer.reviewEnabled ? { reviewEnabled: true as const } : {}),
     modelSelection: Object.freeze({
       providerId: selection.providerId,
       modelId: selection.modelId,

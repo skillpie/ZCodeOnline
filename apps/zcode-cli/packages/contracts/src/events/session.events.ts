@@ -495,6 +495,8 @@ export interface TurnSteerQueuedPayload {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）；随事件持久供提升重放透传。 */
   dataSourceId?: string;
+  /** 排队输入开启评审模式（composer 评审开关）；随事件持久供提升重放透传。 */
+  reviewEnabled?: boolean;
   /** 投递语义：queue=消费时切新 product turn；guide=内联当前轮。 */
   delivery?: TurnSteerDeliveryMode;
   targetTurnId: TurnId;
@@ -550,6 +552,7 @@ export interface TurnSteerDrainedPayload {
     intent?: TurnInputIntentMetadata;
     toolDisallowlist?: readonly string[];
     dataSourceId?: string;
+    reviewEnabled?: boolean;
   }>;
 }
 

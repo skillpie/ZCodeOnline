@@ -55,6 +55,9 @@ export const commandPayloadSchemas = {
         // 会话级数据源绑定（specs/data-source.md §7）：无预热 fallback 建会话时，
         // 首发即首条 turn，与 sendText.dataSourceId 同义。
         dataSourceId: z.string().min(1).optional(),
+        // 评审模式（composer 评审开关）：首发即首条 turn，与 sendText.reviewEnabled 同义。
+        // additive，旧 CLI 非 strict 解析会剥离。
+        reviewEnabled: z.boolean().optional(),
         // 与 sendText.toolDisallowlist 同型：Host 门控在首轮注入，经原生 prompt turn
         // 管道生效；调用方自带时 Host 不覆盖。additive，旧 CLI 非 strict 解析会剥离。
         toolDisallowlist: z.array(z.string().min(1)).optional(),
@@ -119,6 +122,9 @@ export const commandPayloadSchemas = {
       // 字段本身不改工具面；Host 信封处以「是否携带」裁决是否把 DB 工具并入
       // toolDisallowlist（未选择数据源的对话轮对模型隐藏 DB 工具）。
       dataSourceId: z.string().min(1).optional(),
+      // 评审模式（composer 评审开关）：本轮注入 review_mode 评审指令（先拷问达成共识
+      // 再实现）。additive，旧 CLI 非 strict 解析会剥离。
+      reviewEnabled: z.boolean().optional(),
     })
     .superRefine((payload, context) => {
       if (payload.automationId && payload.offPeakTaskId) {

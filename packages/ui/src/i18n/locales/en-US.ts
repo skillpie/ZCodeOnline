@@ -4919,6 +4919,10 @@ const enUS: Record<string, string> = {
   "chat.toolbar.mode.label": "Switch mode",
   // CUA composer entry button
   "chat.toolbar.computerUse.label": "Computer Use",
+  // Review mode toggle (default off): enabled inputs inject a review directive agent-side
+  "chat.toolbar.review.label": "Review",
+  "chat.toolbar.review.tooltip":
+    "When on, the agent grill-reviews your plan first (walks every design branch, one question at a time with a recommended answer) and only implements after you confirm consensus",
   "chat.toolbar.dataSource.label": "Data Sources",
   "chat.toolbar.dataSource.tooltip":
     "Pick a data source for this conversation; the agent can query databases only after you select one (MySQL / PostgreSQL)",
@@ -5929,6 +5933,7 @@ const enUS: Record<string, string> = {
   "chat.permission.approve": "Allow",
   "chat.permission.approveAlways": "Always allow",
   "chat.permission.allowForSession": "Allow for session",
+  "chat.permission.allowForSession.description": "Do not ask again for this tool in this session",
   "chat.permission.responseFailed": "Approval did not complete. Please retry.",
   "chat.permission.fullAccess": "Full access",
   "chat.permission.fullAccess.description":
@@ -5951,9 +5956,6 @@ const enUS: Record<string, string> = {
   "chat.permission.workflow.hideScript": "Hide full script",
   "chat.permission.workflow.refine": "Refine",
   "chat.permission.workflow.refine.placeholder": "Describe how the workflow should change…",
-  "chat.permission.workflow.allowForSession": "Always allow in this session",
-  "chat.permission.workflow.allowForSession.description":
-    "Do not ask again for workflows in this session",
   "chat.permission.workflow.amend.title": "Amend this workflow?",
   "chat.permission.workflow.amends": "Amends run",
   "chat.permission.workflow.amends.running": "still running, will be stopped",

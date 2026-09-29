@@ -504,6 +504,7 @@ export async function executeTurnCommand(
           this.messageHistory.addEntries(
             buildRuntimeUserEntriesFromTurn(input, resolvedAttachments, {
               browserAmbientContext: options?.browserAmbientContext,
+              ...(options?.reviewEnabled ? { reviewMode: true } : {}),
             }).map((entry) => {
               const metadata = runtimeInputMetadata(options?.inputPresentation);
               return entry.kind !== "attachment" && metadata ? { ...entry, metadata } : entry;
@@ -601,6 +602,8 @@ export async function executeTurnCommand(
           toolDisallowlist: options?.toolDisallowlist,
           // 会话级数据源绑定进入 loop state，供 DB 工具缺省解析（specs/data-source.md §7）。
           ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
+          // 评审开关进入 loop state：评审指令已随用户输入注入，guide drain 可覆盖。
+          ...(options?.reviewEnabled ? { reviewEnabled: true } : {}),
           traceId,
           turnAbortSignal,
           turnId,

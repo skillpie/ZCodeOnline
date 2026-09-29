@@ -46,8 +46,13 @@ import type {
 import {
   createRuntimeUserEntry,
   realUserRuntimeMetadata,
+  systemReminderAttachmentEntry,
   type RuntimeMessageEntry,
 } from "../../agent/message-history.js";
+import {
+  buildReviewModeReminderBody,
+  REVIEW_MODE_REMINDER_SOURCE,
+} from "../../system-reminder/review-mode.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 
 function hasSteerInput(request: Pick<TurnSteerInput, "attachments" | "input">): boolean {
@@ -143,6 +148,7 @@ export async function steerTurn(
     ...(request.attachments ? { attachments: request.attachments } : {}),
     ...(toolDisallowlist ? { toolDisallowlist } : {}),
     ...(request.dataSourceId ? { dataSourceId: request.dataSourceId } : {}),
+    ...(request.reviewEnabled ? { reviewEnabled: true } : {}),
     turnId: activeTurn.turnId,
   };
   activeTurn.pendingInputs.push(pendingInput);
@@ -164,6 +170,7 @@ export async function steerTurn(
       ...(intent ? { intent } : {}),
       ...(toolDisallowlist ? { toolDisallowlist } : {}),
       ...(request.dataSourceId ? { dataSourceId: request.dataSourceId } : {}),
+      ...(request.reviewEnabled ? { reviewEnabled: true } : {}),
       targetTurnId: activeTurn.turnId,
       queueLength,
     },
@@ -265,6 +272,7 @@ export async function enqueueDeferredInput(
       ...(intent ? { intent } : {}),
       ...(toolDisallowlist ? { toolDisallowlist } : {}),
       ...(request.dataSourceId ? { dataSourceId: request.dataSourceId } : {}),
+      ...(request.reviewEnabled ? { reviewEnabled: true } : {}),
       targetTurnId,
       queueLength,
     },
@@ -903,6 +911,7 @@ export async function editPendingInputById(
       ...(pendingInput.intent ? { intent: pendingInput.intent } : {}),
       ...(pendingInput.toolDisallowlist ? { toolDisallowlist: pendingInput.toolDisallowlist } : {}),
       ...(pendingInput.dataSourceId ? { dataSourceId: pendingInput.dataSourceId } : {}),
+      ...(pendingInput.reviewEnabled ? { reviewEnabled: true } : {}),
       queueLength: activeTurn.pendingInputs.length,
       targetTurnId: activeTurn.turnId,
     },
@@ -1198,6 +1207,7 @@ async function drainPendingInputUnlocked(
     intent?: NonNullable<PendingTurnInput["intent"]>;
     toolDisallowlist?: readonly string[];
     dataSourceId?: string;
+    reviewEnabled?: boolean;
   }> = [];
   for (const pendingInput of pendingInputs) {
     const messageId = createMessageId();
@@ -1222,8 +1232,18 @@ async function drainPendingInputUnlocked(
       buildUserContentFromTurn(pendingInput.input, resolvedAttachments),
       runtimeInputMetadata(inputPresentation) ?? realUserRuntimeMetadata(),
     );
-    this.messageHistory.addEntries([runtimeEntry]);
-    runtimeEntries.push(runtimeEntry);
+    // guide 输入携带评审开关时，评审指令与输入同批入历史，当前 loop 后续请求立即生效。
+    const turnEntries: RuntimeMessageEntry[] = pendingInput.reviewEnabled
+      ? [
+          runtimeEntry,
+          systemReminderAttachmentEntry(
+            REVIEW_MODE_REMINDER_SOURCE,
+            buildReviewModeReminderBody(),
+          ),
+        ]
+      : [runtimeEntry];
+    this.messageHistory.addEntries(turnEntries);
+    runtimeEntries.push(...turnEntries);
     await this.persistUserPrompt(
       messageId,
       pendingInput.input,
@@ -1248,6 +1268,7 @@ async function drainPendingInputUnlocked(
       ...(pendingInput.intent ? { intent: pendingInput.intent } : {}),
       ...(pendingInput.toolDisallowlist ? { toolDisallowlist: pendingInput.toolDisallowlist } : {}),
       ...(pendingInput.dataSourceId ? { dataSourceId: pendingInput.dataSourceId } : {}),
+      ...(pendingInput.reviewEnabled ? { reviewEnabled: true } : {}),
     });
   }
 
@@ -1259,6 +1280,9 @@ async function drainPendingInputUnlocked(
   const lastBoundIndex = pendingInputs.findLastIndex((pendingInput) => pendingInput.dataSourceId);
   const dataSourceId =
     lastBoundIndex >= 0 ? pendingInputs[lastBoundIndex].dataSourceId : undefined;
+  // 评审开关同序取最后一条携带者；未携带（缺省关）不覆盖当前 loop 状态。
+  const lastReviewIndex = pendingInputs.findLastIndex((pendingInput) => pendingInput.reviewEnabled);
+  const reviewEnabled = lastReviewIndex >= 0;
   const event = this.createEvent(
     SessionEventType.TurnSteerDrained,
     {
@@ -1295,6 +1319,7 @@ async function drainPendingInputUnlocked(
     runtimeEntries,
     ...(toolDisallowlist.length > 0 ? { toolDisallowlist } : {}),
     ...(dataSourceId ? { dataSourceId } : {}),
+    ...(reviewEnabled ? { reviewEnabled: true } : {}),
   };
 }
 

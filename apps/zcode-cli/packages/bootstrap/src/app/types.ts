@@ -207,6 +207,8 @@ export interface SubmitPromptOptionsBase {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）：本轮 DB 工具的缺省目标源。 */
   dataSourceId?: string;
+  /** 本轮开启评审模式（composer 评审开关）：注入 review_mode 评审指令。 */
+  reviewEnabled?: boolean;
   /** App 只读提供的 provider-only IAB 环境状态，不进入 UI transcript。 */
   browserAmbientContext?: ExecuteTurnOptions["browserAmbientContext"];
   /** 标准 Selection 的单次执行约束；不进入 Session Selection 或持久化。 */
@@ -233,6 +235,8 @@ export interface SteerTurnOptions {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）：排队输入消费时透传给 DB 工具。 */
   dataSourceId?: string;
+  /** 排队/guide 输入开启评审模式：消费时注入 review_mode 评审指令。 */
+  reviewEnabled?: boolean;
   onEvent?: (event: SessionEvent) => void | Promise<void>;
   traceContext?: TraceContext;
 }

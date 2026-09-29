@@ -147,6 +147,8 @@ export interface PendingSteerInputInfo {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）；投影保留供提升重放透传。 */
   dataSourceId?: string;
+  /** 排队输入开启评审模式（composer 评审开关）；投影保留供提升重放透传。 */
+  reviewEnabled?: boolean;
   queuedAt: Date;
   targetTurnId: TurnId;
   traceId: TraceId;
@@ -268,6 +270,8 @@ export interface TurnSteerInput {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）：本轮 DB 工具的缺省目标源。 */
   dataSourceId?: string;
+  /** 输入开启评审模式（composer 评审开关）：消费时注入 review_mode 评审指令。 */
+  reviewEnabled?: boolean;
 }
 
 export type TurnSteerCommandKind = "sendText" | "sendGoalCommand" | "compact";
@@ -346,6 +350,8 @@ export interface PendingTurnInput {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）：drain 后进入 turn 状态供 DB 工具取缺省源。 */
   dataSourceId?: string;
+  /** pending input 开启评审模式：drain 时覆盖当前 loop 的评审状态。 */
+  reviewEnabled?: boolean;
   turnId: TurnId;
 }
 

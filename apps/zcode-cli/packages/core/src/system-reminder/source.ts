@@ -47,6 +47,7 @@ export const SYSTEM_REMINDER_PER_REQUEST_SOURCES = [
   "referenced_session_context",
   "model_anomaly",
   "prompt_attachment",
+  "review_mode",
   "diagnostics",
 ] as const;
 
@@ -148,6 +149,8 @@ const SYSTEM_REMINDER_DESCRIPTORS: Record<SystemReminderSource, DescriptorShape>
     "sr.selection_side_chat",
   ),
   prompt_attachment: descriptor("current_turn", "per_current_turn", true, "sr.prompt_attachment"),
+  // 评审模式（composer 评审开关）：随开启评审的用户输入持久化，冷恢复后语义保留。
+  review_mode: descriptor("current_turn", "per_current_turn", true, "sr.review_mode"),
   queued_system_notification: descriptor(
     "mid_turn_event",
     "mid_turn_event",

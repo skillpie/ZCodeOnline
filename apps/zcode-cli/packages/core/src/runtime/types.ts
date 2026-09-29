@@ -474,6 +474,8 @@ export interface ExecuteTurnOptionsBase {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）：本轮 DB 工具的缺省目标源。 */
   dataSourceId?: string;
+  /** 本轮开启评审模式：用户输入后注入 review_mode 评审指令（拷问式评审后再实现）。 */
+  reviewEnabled?: boolean;
   traceContext?: TraceContext;
   /** 当前 Submission 的 Selection 只用于本次执行，并可绑定逐请求依赖。 */
   modelExecution?: ModelExecutionContext;
@@ -809,6 +811,8 @@ export interface DrainedPendingInputDiagnostics {
   toolDisallowlist?: readonly string[];
   /** 本次 drain 注入的输入携带的会话数据源绑定，覆盖 loop state 的缺省源。 */
   dataSourceId?: string;
+  /** 本次 drain 注入的 guide 输入开启评审模式，覆盖 loop state 的评审状态。 */
+  reviewEnabled?: boolean;
 }
 
 export interface ProviderContextUsageSnapshot {

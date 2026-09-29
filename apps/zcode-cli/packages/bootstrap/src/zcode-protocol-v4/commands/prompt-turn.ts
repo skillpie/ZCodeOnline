@@ -25,6 +25,8 @@ interface StartPromptTurnParamsBase {
   toolDisallowlist?: readonly string[];
   /** 会话级数据源绑定（specs/data-source.md §7）：本轮 DB 工具的缺省目标源。 */
   dataSourceId?: string;
+  /** 本轮开启评审模式（composer 评审开关）：注入 review_mode 评审指令。 */
+  reviewEnabled?: boolean;
   /** sendQueuedNow 已持有 Core promotion lease，要求这次 admission 只能占用空闲位。 */
   requireIdle?: boolean;
   /** Bot 入站 turn 的稳定回推地址；仅在本 turn 内暴露给 CronCreate。 */
@@ -135,6 +137,7 @@ export async function startPromptTurn(
         ...(params.sharedContextRefs ? { sharedContextRefs: params.sharedContextRefs } : {}),
         ...(turnToolDisallowlist ? { toolDisallowlist: turnToolDisallowlist } : {}),
         ...(params.dataSourceId ? { dataSourceId: params.dataSourceId } : {}),
+        ...(params.reviewEnabled ? { reviewEnabled: true } : {}),
         ...(params.requireIdle ? { requireIdle: true } : {}),
         queryId: params.inputId as SendInputOptions["queryId"],
       },

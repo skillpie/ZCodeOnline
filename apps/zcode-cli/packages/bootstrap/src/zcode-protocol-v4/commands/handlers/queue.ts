@@ -255,6 +255,8 @@ async function sendQueuedNow(
         // 会话级数据源绑定随提升重放透传（specs/data-source.md §7）：排队输入消费时
         // DB 工具缺省源保持入队时的绑定，不回退全局 activeId。
         ...(queueItem.dataSourceId ? { dataSourceId: queueItem.dataSourceId } : {}),
+        // 评审开关随提升重放透传：保持入队时的评审语义。
+        ...(queueItem.reviewEnabled ? { reviewEnabled: true } : {}),
         ...(attachments ? { attachments } : {}),
       });
       // 旧 fake app/兼容命令可能不返回 admission receipt；真实 app 已在 Core admission

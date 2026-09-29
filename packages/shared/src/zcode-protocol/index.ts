@@ -1203,6 +1203,8 @@ export const zcodeTurnSteerQueuedEventPayloadSchema = z
     // 会话级数据源绑定（specs/data-source.md §7）：随排队输入持久到事件，供
     // sendQueuedNow 提升重放时保持同一绑定；strict schema 必须同步声明以免丢弃整条事件。
     dataSourceId: nonEmptyString.optional(),
+    // 评审模式（composer 评审开关）：随排队输入持久到事件；strict schema 必须同步声明。
+    reviewEnabled: z.boolean().optional(),
     delivery: zcodeTurnSteerDeliverySchema.optional(),
     targetTurnId: nonEmptyString,
     queueLength: z.number().int().nonnegative(),
@@ -1226,6 +1228,7 @@ export const zcodeTurnSteerDrainedEventPayloadSchema = z
             intent: jsonObjectSchema.optional(),
             toolDisallowlist: z.array(nonEmptyString).optional(),
             dataSourceId: nonEmptyString.optional(),
+            reviewEnabled: z.boolean().optional(),
           })
           .strict(),
       )

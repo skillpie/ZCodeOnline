@@ -354,6 +354,7 @@ export class EventReducer {
         intent: payload.intent ?? existing?.intent,
         toolDisallowlist: payload.toolDisallowlist ?? existing?.toolDisallowlist,
         dataSourceId: payload.dataSourceId ?? existing?.dataSourceId,
+        reviewEnabled: payload.reviewEnabled ?? existing?.reviewEnabled,
         // editQueueItem 会以同 id 重发 queued 事件；编辑不是重新 admission，
         // 必须保留原排队时间和数组位置，否则 runtime 冷重建会把它移到队尾。
         queuedAt: existing?.queuedAt ?? e.timestamp,

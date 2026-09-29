@@ -119,6 +119,8 @@ export interface RegularTurnLoopState {
   toolDisallowlist?: readonly string[];
   /** 本轮会话级数据源绑定（specs/data-source.md §7）；DB 工具缺省目标源的优先来源。 */
   dataSourceId?: string;
+  /** 本轮开启评审模式（composer 评审开关）；drain 的 guide 输入可覆盖。 */
+  reviewEnabled?: boolean;
   traceId: TraceId;
   turnAbortSignal: AbortSignal;
   turnId: TurnId;

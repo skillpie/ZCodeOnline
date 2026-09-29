@@ -214,6 +214,8 @@ export const queueItemSchema = conversationInputIntentSchema.extend({
   // 会话级数据源绑定（specs/data-source.md §7）：QueueItem 同时是提升执行的输入，
   // sendQueuedNow 重放时必须随行透传，避免提升轮回退全局 activeId。
   dataSourceId: z.string().min(1).optional(),
+  // 评审模式（composer 评审开关）：提升重放时随行透传，保持入队时的评审语义。
+  reviewEnabled: z.boolean().optional(),
 });
 export type QueueItem = z.infer<typeof queueItemSchema>;
 

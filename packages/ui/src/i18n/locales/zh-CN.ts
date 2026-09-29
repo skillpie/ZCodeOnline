@@ -4617,6 +4617,10 @@ const zhCN: Record<string, string> = {
   "chat.toolbar.mode.label": "切换模式",
   // CUA 输入框常驻入口按钮
   "chat.toolbar.computerUse.label": "电脑操作",
+  // 评审模式开关（默认关闭）：开启的输入在 Agent 侧注入评审指令
+  "chat.toolbar.review.label": "评审",
+  "chat.toolbar.review.tooltip":
+    "开启后，Agent 会先对你的方案做拷问式评审（遍历设计分支、每次一个问题并附推荐答案），达成共识后再实现",
   "chat.toolbar.dataSource.label": "数据源",
   "chat.toolbar.dataSource.tooltip":
     "为本对话选择数据源；选择后 Agent 才能在对话中查询数据库（MySQL / PostgreSQL）",
@@ -5669,6 +5673,7 @@ const zhCN: Record<string, string> = {
   "chat.permission.approve": "允许",
   "chat.permission.approveAlways": "始终允许",
   "chat.permission.allowForSession": "允许本会话",
+  "chat.permission.allowForSession.description": "本会话内此工具不再询问",
   "chat.permission.responseFailed": "审批未完成，请重试。",
   "chat.permission.fullAccess": "完全访问",
   "chat.permission.fullAccess.description": "授予 Agent 完全访问权限，不再确认。",
@@ -5688,9 +5693,6 @@ const zhCN: Record<string, string> = {
   "chat.permission.workflow.hideScript": "收起完整脚本",
   "chat.permission.workflow.refine": "提出修改",
   "chat.permission.workflow.refine.placeholder": "描述这个工作流应该怎么改…",
-  // 会话免确认：只活在本次会话，重启后再问。
-  "chat.permission.workflow.allowForSession": "本会话内始终允许",
-  "chat.permission.workflow.allowForSession.description": "本会话内运行工作流不再询问",
   // ── 修订──
   // 修订的确认窗只对别的会话的 run 出现：问句换词，多一行 lineage（前驱还在跑时再多一句）。
   // 不导入预览、不放脚本 diff。
