@@ -9,7 +9,8 @@
     "dev": "tsx src/entry.ts",
     "lint": "oxlint src",
     "test": "tsx --test test/*.test.ts",
-    "build": "esbuild src/entry.ts --bundle --platform=node --format=esm --outfile=dist/entry.js --external:bufferutil --external:utf-8-validate --banner:js=\"import{createRequire}from 'module';const require=createRequire(import.meta.url);\""
+    "build": "esbuild src/entry.ts --bundle --platform=node --format=esm --outfile=dist/entry.js --external:bufferutil --external:utf-8-validate --banner:js=\"import{createRequire}from 'module';const require=createRequire(import.meta.url);\"",
+    "build:report": "esbuild src/dailyReport/cli.ts --bundle --platform=node --format=esm --outfile=dist/daily-report.js"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",

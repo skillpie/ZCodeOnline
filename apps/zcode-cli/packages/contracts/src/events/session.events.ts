@@ -493,6 +493,8 @@ export interface TurnSteerQueuedPayload {
   inputPresentation?: RuntimeInputPresentation;
   /** 当前排队输入消费时不向 provider 暴露的工具名。 */
   toolDisallowlist?: readonly string[];
+  /** 会话级数据源绑定（specs/data-source.md §7）；随事件持久供提升重放透传。 */
+  dataSourceId?: string;
   /** 投递语义：queue=消费时切新 product turn；guide=内联当前轮。 */
   delivery?: TurnSteerDeliveryMode;
   targetTurnId: TurnId;
@@ -547,6 +549,7 @@ export interface TurnSteerDrainedPayload {
     delivery?: TurnSteerDeliveryMode;
     intent?: TurnInputIntentMetadata;
     toolDisallowlist?: readonly string[];
+    dataSourceId?: string;
   }>;
 }
 

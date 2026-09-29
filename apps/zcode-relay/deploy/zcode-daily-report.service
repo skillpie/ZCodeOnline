@@ -1,0 +1,10 @@
+[Unit]
+Description=ZCode Web daily ops report (nginx logs -> Feishu, specs/web-daily-report.md)
+After=network-online.target
+
+[Service]
+Type=oneshot
+# 凭证与日志路径经 report.env 注入（deploy_web.sh 从本机 deploy.env 同步，0600 权限）。
+EnvironmentFile=-/opt/zcode-relay/report.env
+ExecStart=/usr/local/bin/node /opt/zcode-relay/daily-report.js
+SyslogIdentifier=zcode-daily-report

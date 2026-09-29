@@ -138,6 +138,8 @@ export interface ToolExecutionContext {
   automationTurn?: boolean;
   /** 当前工具调用是否属于闲时任务派发轮；OffPeakCreate handler 用它做最终拒绝。 */
   offPeakTurn?: boolean;
+  /** 本轮会话级数据源绑定（specs/data-source.md §7）：DB 工具缺省目标源的优先 fallback。 */
+  dataSourceId?: string;
   traceContext?: TraceContext;
   traceId: TraceId;
   spanId?: string;

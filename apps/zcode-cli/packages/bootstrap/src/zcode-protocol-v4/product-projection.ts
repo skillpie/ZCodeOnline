@@ -3401,6 +3401,9 @@ export class ProductProjection {
               : { state: "notRequested" },
       dispatch: { state: "queued" },
       ...(payload.toolDisallowlist ? { toolDisallowlist: [...payload.toolDisallowlist] } : {}),
+      ...(payload.dataSourceId || existing?.dataSourceId
+        ? { dataSourceId: payload.dataSourceId ?? existing?.dataSourceId }
+        : {}),
       admittedAt: payload.intent?.admittedAt ?? existing?.admittedAt ?? this.ms(event),
     };
     // 投递语义侧表：payload 未带（旧 runtime 事件）时按当前 followupMode 兜底。

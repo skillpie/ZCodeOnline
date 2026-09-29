@@ -69,6 +69,25 @@
         }
       })();
     </script>
+    <script>
+      (() => {
+        // 运营统计 PV beacon（specs/web-daily-report.md）：每次页面加载发一次匿名请求，
+        // 由 nginx 记入 zcode_stats.log 后经服务器每日任务聚合成日报。vid 是浏览器本地
+        // 随机 UUID，只用于去重计数，不含账号或业务内容；本地开发与桌面构建不经过本文件。
+        try {
+          if (!/^(localhost|127\.|::1|\[::1\])$/.test(location.hostname)) {
+            let vid = localStorage.getItem("zcode-vid");
+            if (!vid) {
+              vid = crypto.randomUUID();
+              localStorage.setItem("zcode-vid", vid);
+            }
+            new Image().src = `/stats.gif?vid=${encodeURIComponent(vid)}`;
+          }
+        } catch {
+          // 统计失败不影响产品功能。
+        }
+      })();
+    </script>
     <style>
       html,
       body,

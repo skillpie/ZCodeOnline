@@ -205,6 +205,8 @@ export interface SubmitPromptOptionsBase {
   onTurnStartedObserved?: (event: SessionEvent) => void;
   /** 仅当前 turn 从 provider 工具列表移除；不会永久改变 session runtime。 */
   toolDisallowlist?: readonly string[];
+  /** 会话级数据源绑定（specs/data-source.md §7）：本轮 DB 工具的缺省目标源。 */
+  dataSourceId?: string;
   /** App 只读提供的 provider-only IAB 环境状态，不进入 UI transcript。 */
   browserAmbientContext?: ExecuteTurnOptions["browserAmbientContext"];
   /** 标准 Selection 的单次执行约束；不进入 Session Selection 或持久化。 */
@@ -229,6 +231,8 @@ export interface SteerTurnOptions {
   attachments?: TurnAttachment[];
   /** 当前 queued/guide 输入消费时不向 provider 暴露的工具名。 */
   toolDisallowlist?: readonly string[];
+  /** 会话级数据源绑定（specs/data-source.md §7）：排队输入消费时透传给 DB 工具。 */
+  dataSourceId?: string;
   onEvent?: (event: SessionEvent) => void | Promise<void>;
   traceContext?: TraceContext;
 }

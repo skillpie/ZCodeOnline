@@ -252,6 +252,9 @@ async function sendQueuedNow(
         intent,
         requireIdle: true,
         toolDisallowlist: queueItem.toolDisallowlist,
+        // 会话级数据源绑定随提升重放透传（specs/data-source.md §7）：排队输入消费时
+        // DB 工具缺省源保持入队时的绑定，不回退全局 activeId。
+        ...(queueItem.dataSourceId ? { dataSourceId: queueItem.dataSourceId } : {}),
         ...(attachments ? { attachments } : {}),
       });
       // 旧 fake app/兼容命令可能不返回 admission receipt；真实 app 已在 Core admission

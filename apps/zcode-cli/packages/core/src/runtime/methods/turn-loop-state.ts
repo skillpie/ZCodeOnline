@@ -117,6 +117,8 @@ export interface RegularTurnLoopState {
   turnRequestState: TurnRequestState;
   /** 当前 turn 不向 provider 暴露的工具名；registry 仍保留，供执行边界做纵深校验。 */
   toolDisallowlist?: readonly string[];
+  /** 本轮会话级数据源绑定（specs/data-source.md §7）；DB 工具缺省目标源的优先来源。 */
+  dataSourceId?: string;
   traceId: TraceId;
   turnAbortSignal: AbortSignal;
   turnId: TurnId;

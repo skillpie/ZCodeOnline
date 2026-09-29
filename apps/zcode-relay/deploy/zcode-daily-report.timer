@@ -1,0 +1,11 @@
+[Unit]
+Description=Run ZCode Web daily ops report at 23:00 server local time (specs/web-daily-report.md)
+
+[Timer]
+# 日报固定 23:00（服务器本地时区）；Persistent 补跑停机期间错过的当日报告。
+OnCalendar=*-*-* 23:00:00
+Persistent=true
+Unit=zcode-daily-report.service
+
+[Install]
+WantedBy=timers.target

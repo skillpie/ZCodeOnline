@@ -27,9 +27,10 @@ export const dbExecuteToolDescription =
   "user approval for every call and is rejected on read-only data sources. Multiple statements run in " +
   "one transaction: any failure rolls back the whole batch.";
 
-const dbExecuteHandler: ToolHandler = async (input) => {
+const dbExecuteHandler: ToolHandler = async (input, context) => {
   const { data_source: target, sql } = DbExecuteInputSchema.parse(input) as DbExecuteInput;
-  const source = await resolveDataSource(target);
+  // 缺省目标源优先取会话级选择（specs/data-source.md §7），显式入参仍最优先。
+  const source = await resolveDataSource(target, context.dataSourceId);
   if (source.config.readOnly) {
     return {
       data_source: source.view,

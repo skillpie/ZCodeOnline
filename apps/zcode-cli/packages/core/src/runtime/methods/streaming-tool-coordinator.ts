@@ -289,6 +289,7 @@ async function executeDuringStream(
     model: state.model,
     automationTurn: isAutomationMutationRestrictedTurn(state),
     offPeakTurn: isOffPeakCreateRestrictedTurn(state),
+    dataSourceId: state.dataSourceId,
     signal: options.abortSignal,
     traceContext: options.traceContext,
     onBatchStart: async () => {

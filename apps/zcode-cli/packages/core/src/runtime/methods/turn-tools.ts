@@ -180,6 +180,7 @@ export async function executeToolCallsForModelStep(
     const execution = await this.executeTools(pendingToolCalls, pendingSchedule, {
       automationTurn: isAutomationMutationRestrictedTurn(state),
       offPeakTurn: isOffPeakCreateRestrictedTurn(state),
+      dataSourceId: state.dataSourceId,
       signal: state.turnAbortSignal,
       traceContext: options.modelTraceContext,
       subagentModelOverride: state.subagentModelOverride,

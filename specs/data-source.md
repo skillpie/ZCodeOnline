@@ -68,18 +68,19 @@ interface IDataSourceService {
 4. 只读模式执行写语句被拒绝并提示；读写模式写语句走事务。
 5. 编辑时清空密码保存 → 原密码保留；删除数据源 → 列表与快照同步清理。
 6. Web（5173/3030）与桌面端均可使用（服务注册于 createLocalServices，三端同构）。
+7. 对话中用 `DBExport` `scope=csv` + `where` 导出 → 每表生成带表头、UTF-8 BOM 的 RFC 4180 CSV；非法 `where`（分号/注释/`INTO OUTFILE`/`FOR UPDATE` 等）在查询前被拒绝并在 `skipped` 里报因。
 
 ## 6. Agent 内置工具接入（对话查库）
 
 配置好数据源后，对话中的 Agent 通过三个内置工具（`@zcode/core` ToolEntry，注册于
 `apps/zcode-cli/packages/core/src/tool/handlers/index.ts` 的 `builtInTools`）按 tool_use 自主查库：
 
-| 工具        | 语义                                                                                                                                  | 权限                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `DBSchema`  | 列数据源 / 按关键词搜表 / 查表字段（读本地表结构缓存，不实时内省）                                                                    | 只读，自动放行                                                     |
-| `DBQuery`   | 只读 SQL（SELECT/WITH/SHOW/DESC/EXPLAIN，handler 强制拦截，与数据源模式无关）                                                         | 只读，自动放行                                                     |
-| `DBExecute` | 写 SQL（读写模式数据源才可执行，包事务）                                                                                              | `alwaysAsk`，任何权限模式（含 yolo/plan）逐次确认，且不可记忆放行  |
-| `DBExport`  | 表结构/数据导出为 .sql 文件（对齐 db_cli `--export-ddl/--export-dml`，仅 MySQL；DDL 单文件含 DROP，DML 逐表文件、行数封顶、空表跳过） | 写 workspace 文件：needsApproval（对齐 Write，medium；可记忆放行） |
+| 工具        | 语义                                                                                                                                                                                                                    | 权限                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `DBSchema`  | 列数据源 / 按关键词搜表 / 查表字段（读本地表结构缓存，不实时内省）                                                                                                                                                      | 只读，自动放行                                                     |
+| `DBQuery`   | 只读 SQL（SELECT/WITH/SHOW/DESC/EXPLAIN，handler 强制拦截，与数据源模式无关）                                                                                                                                           | 只读，自动放行                                                     |
+| `DBExecute` | 写 SQL（读写模式数据源才可执行，包事务）                                                                                                                                                                                | `alwaysAsk`，任何权限模式（含 yolo/plan）逐次确认，且不可记忆放行  |
+| `DBExport`  | 表结构导出为 .sql、数据导出为 .sql/.csv（对齐 db_cli `--export-ddl/--export-dml` 并扩展 CSV，仅 MySQL；DDL 单文件含 DROP；DML/CSV 逐表文件、行数封顶；DML 空表跳过，CSV 空结果保留表头；`where` 条件可过滤 csv/dml 行） | 写 workspace 文件：needsApproval（对齐 Write，medium；可记忆放行） |
 
 - **「查不查」由模型判断**（tool_use 依问题与工具描述决定）；「能不能写」由工具实现按数据源 `readOnly` 配置强制拦截，双保险。
 - agent 侧只读 host 落盘的 `~/.zcode/v2/data-sources/`（config.json + schema-cache/），路径公式与 `shared-credentials.ts` 一致（`ZCODE_DATA_BASE_DIR ?? homedir()`）；agent 不写这两个文件，也不实时内省——表结构一律以面板同步的缓存为准，未同步时提示用户去面板同步。

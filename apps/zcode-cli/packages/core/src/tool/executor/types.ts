@@ -168,6 +168,8 @@ export interface ToolExecutor {
 export interface ToolExecuteOptions {
   automationTurn?: boolean;
   offPeakTurn?: boolean;
+  /** 本轮会话级数据源绑定（specs/data-source.md §7）；透传到 DB 工具执行上下文。 */
+  dataSourceId?: string;
   signal?: AbortSignal;
   traceContext?: TraceContext;
   subagentModelOverride?: SubagentRunOptions["modelOverride"];

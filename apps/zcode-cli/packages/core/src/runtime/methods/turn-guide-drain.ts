@@ -60,6 +60,10 @@ export async function drainInlineGuideForNextRequest(
       ...new Set([...(state.toolDisallowlist ?? []), ...(drained.toolDisallowlist ?? [])]),
     ];
   }
+  if (drained.dataSourceId) {
+    // 会话级数据源绑定随 guide 注入更新当前 loop state，DB 工具缺省源跟随最新用户选择。
+    state.dataSourceId = drained.dataSourceId;
+  }
   state.repeatedToolCallSignature = undefined;
   state.repeatedToolCallStreakCount = 0;
   return true;

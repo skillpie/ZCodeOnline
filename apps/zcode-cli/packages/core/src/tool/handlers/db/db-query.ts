@@ -28,7 +28,8 @@ export const dbQueryToolDescription =
 
 const dbQueryHandler: ToolHandler = async (input, context) => {
   const { data_source: target, sql, max_rows } = DbQueryInputSchema.parse(input) as DbQueryInput;
-  const source = await resolveDataSource(target);
+  // 缺省目标源优先取会话级选择（specs/data-source.md §7），显式入参仍最优先。
+  const source = await resolveDataSource(target, context.dataSourceId);
   const result = await executeBatch(source, sql, {
     maxRows: Math.min(Math.max(max_rows ?? DEFAULT_MAX_ROWS, 1), 200),
     // 工具级只读不变量：与目标数据源的模式无关，DBQuery 永不放行写语句

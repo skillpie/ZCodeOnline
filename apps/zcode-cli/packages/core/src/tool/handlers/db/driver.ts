@@ -313,17 +313,66 @@ export async function showCreateTable(
   return ddl;
 }
 
-/** 读一张表的全部数据（LIMIT 封顶），返回行列数组以便逐行转 INSERT。 */
+/**
+ * 校验导出用的 where 条件片段，返回剥边后的文本。
+ * 片段会内插进固定的 SELECT 语句，必须在引号外拒绝分号与注释（防止改写语句结构），
+ * 以及带服务端副作用的 SELECT 后缀子句（INTO OUTFILE/DUMPFILE、FOR UPDATE、LOCK IN SHARE MODE）。
+ */
+export function assertSafeWhereCondition(where: string): string {
+  const text = String(where ?? "").trim();
+  if (!text) {
+    throw new Error("`where` must be a non-empty SQL condition (without the WHERE keyword).");
+  }
+  // 引号感知扫描：剥离字符串/反引号字面量后再检查，避免误伤条件值里的 '--'、'#'
+  let quote: string | null = null;
+  let bare = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (quote) {
+      if (ch === "\\" && quote !== "`") {
+        i++;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    bare += ch;
+  }
+  if (quote) {
+    throw new Error("`where` contains an unclosed quote; pass a plain SQL condition.");
+  }
+  if (/;/.test(bare) || /--/.test(bare) || /#/.test(bare) || /\/\*/.test(bare)) {
+    throw new Error(
+      "`where` must be a single condition expression; semicolons and comments are not allowed.",
+    );
+  }
+  if (/\b(?:into\s+(?:outfile|dumpfile)|for\s+update|lock\s+in\s+share\s+mode)\b/i.test(bare)) {
+    throw new Error(
+      "`where` must be a plain condition; INTO OUTFILE/DUMPFILE, FOR UPDATE and LOCK IN SHARE MODE are not allowed.",
+    );
+  }
+  return text;
+}
+
+/** 读一张表的数据（可带 where 条件，LIMIT 封顶），返回行列数组以便逐行转 INSERT / CSV。 */
 export async function selectTableRows(
   source: ResolvedDataSource,
   client: DriverClient,
   table: string,
   maxRows: number,
+  where?: string,
 ): Promise<{ columns: string[]; rows: unknown[][]; truncated: boolean }> {
   const connection = client as mysql.Connection;
   const quoted = `\`${table.replace(/`/g, "``")}\``;
+  // where 片段先过安全校验，再整体括号包裹，防止拼接后语句结构被改写
+  const condition = where ? assertSafeWhereCondition(where) : "";
+  const whereSql = condition ? ` WHERE (${condition})` : "";
   const [rows, fields] = (await connection.query(
-    `SELECT * FROM ${quoted} LIMIT ${Math.floor(maxRows) + 1}`,
+    `SELECT * FROM ${quoted}${whereSql} LIMIT ${Math.floor(maxRows) + 1}`,
   )) as [Record<string, unknown>[], mysql.FieldPacket[]];
   const columns = (fields ?? []).map((field) => field.name);
   const truncated = rows.length > maxRows;

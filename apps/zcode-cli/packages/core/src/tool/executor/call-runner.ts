@@ -376,6 +376,8 @@ async function executeToolCallImpl(
       telemetry,
       automationTurn: options?.automationTurn,
       offPeakTurn: options?.offPeakTurn,
+      // 会话级数据源绑定：DB 工具缺省目标源的最高优先 fallback（specs/data-source.md §7）。
+      dataSourceId: options?.dataSourceId,
       traceContext,
       traceId,
       spanId: traceContext.spanId,

@@ -1,9 +1,10 @@
 // ============================================================
-// DBExport Tool Handler — DDL / DML export to SQL files
+// DBExport Tool Handler — DDL / DML / CSV export to files
 // ============================================================
-// 对齐 db_cli.py 的导出能力（--export-ddl / --export-dml，仅 MySQL）：
+// 对齐 db_cli.py 的导出能力（--export-ddl / --export-dml，仅 MySQL），并扩展 CSV：
 // - ddl：全部（或指定）基表的 CREATE TABLE 写入单个文件，含 DROP TABLE IF EXISTS
 // - dml：逐表 SELECT（LIMIT 封顶）转 INSERT，每表一个文件，空表跳过
+// - csv：与 dml 同一取数通道（支持 where 过滤），逐表转 CSV 文件；空结果保留表头
 // 文件写入是 workspace 副作用：与 Write 同档声明（needsApproval，可被规则记住放行）。
 // 对数据库本身只读，只读模式的数据源也能导出。
 
@@ -34,8 +35,8 @@ const DEFAULT_MAX_ROWS = 50_000;
 const MAX_RESULT_MODEL_BYTES = 20_000;
 
 export const dbExportToolDescription =
-  "Export table structures (DDL, CREATE TABLE files) or table data (DML, INSERT files) from a " +
-  "configured MySQL data source into .sql files on disk. Read-only against the database; MySQL only.";
+  "Export table structures (DDL, CREATE TABLE files) or table data (DML, INSERT files; CSV files) from a " +
+  "configured MySQL data source into .sql / .csv files on disk. Read-only against the database; MySQL only.";
 
 function timestampSuffix(now = new Date()): string {
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -65,11 +66,33 @@ function toSqlLiteral(value: unknown): string {
     .replace(/\0/g, "\\0")}'`;
 }
 
+/** CSV 单元格渲染：NULL → 空字段；BLOB → hex；JSON 列 → JSON 文本；日期 → `YYYY-MM-DD HH:MM:SS`。 */
+function renderCsvValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (Buffer.isBuffer(value)) return value.toString("hex");
+  if (value instanceof Date) return value.toISOString().slice(0, 19).replace("T", " ");
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+/** RFC 4180 序列化：含逗号/引号/换行的字段加引号，内部引号双写；首行为表头。 */
+export function toCsv(columns: string[], rows: unknown[][]): string {
+  const field = (value: unknown): string => {
+    const text = renderCsvValue(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const lines = [columns.map(field).join(",")];
+  for (const row of rows) lines.push(row.map(field).join(","));
+  return `${lines.join("\n")}\n`;
+}
+
 const dbExportHandler: ToolHandler = async (input, context) => {
   const started = Date.now();
   const parsed = DbExportInputSchema.parse(input) as DbExportInput;
   const { data_source: target, scope, tables, exclude_tables: excludeTables } = parsed;
-  const source = await resolveDataSource(target);
+  // 缺省目标源优先取会话级选择（specs/data-source.md §7），显式入参仍最优先。
+  const source = await resolveDataSource(target, context.dataSourceId);
   if (source.config.type !== "mysql") {
     throw new Error(
       `Export currently supports MySQL data sources only (data source "${source.view.name}" is ${source.config.type}).`,
@@ -123,32 +146,49 @@ const dbExportHandler: ToolHandler = async (input, context) => {
       return;
     }
 
-    // scope === "dml"：必须显式指定表，避免无意识的全库数据拖取
+    // scope === "dml" / "csv"：必须显式指定表，避免无意识的全库数据拖取
     if (!tables?.length) {
-      throw new Error("scope=dml requires `tables` (list the tables you want to export).");
+      throw new Error(`scope=${scope} requires \`tables\` (list the tables you want to export).`);
     }
     const maxRows = parsed.max_rows_per_table ?? DEFAULT_MAX_ROWS;
+    const where = parsed.where;
     for (const table of tables) {
       try {
-        const { columns, rows, truncated } = await selectTableRows(source, client, table, maxRows);
-        if (rows.length === 0) {
-          skipped.push({ table, reason: "empty table" });
-          continue;
+        // where 片段由 selectTableRows 内部的 assertSafeWhereCondition 统一校验
+        const { columns, rows, truncated } = await selectTableRows(
+          source,
+          client,
+          table,
+          maxRows,
+          where,
+        );
+        let path: string;
+        if (scope === "dml") {
+          if (rows.length === 0) {
+            skipped.push({ table, reason: "empty table" });
+            continue;
+          }
+          const columnList = columns.map((column) => `\`${column.replace(/`/g, "``")}\``).join(", ");
+          const whereNote = where ? ` · where: ${where.replace(/\s+/g, " ")}` : "";
+          const lines: string[] = [
+            `-- DML export: ${source.config.database}.${table} · ${rows.length} rows${truncated ? ` (truncated at ${maxRows})` : ""}${whereNote}`,
+            `-- exported at ${new Date().toISOString()}`,
+            "SET NAMES utf8mb4;",
+            "",
+          ];
+          for (const row of rows) {
+            lines.push(
+              `INSERT INTO \`${table.replace(/`/g, "``")}\` (${columnList}) VALUES (${row.map(toSqlLiteral).join(", ")});`,
+            );
+          }
+          path = resolve(outputDir, `${dbToken}_dml_${safeFileToken(table)}_${ts}.sql`);
+          await writeFile(path, lines.join("\n"), "utf-8");
+        } else {
+          // csv：空结果保留表头文件——where 过滤下 0 行是有效结果，便于下游确认列结构
+          path = resolve(outputDir, `${dbToken}_csv_${safeFileToken(table)}_${ts}.csv`);
+          // UTF-8 BOM：Excel 直接打开也能正确识别中文
+          await writeFile(path, `\uFEFF${toCsv(columns, rows)}`, "utf-8");
         }
-        const columnList = columns.map((column) => `\`${column.replace(/`/g, "``")}\``).join(", ");
-        const lines: string[] = [
-          `-- DML export: ${source.config.database}.${table} · ${rows.length} rows${truncated ? ` (truncated at ${maxRows})` : ""}`,
-          `-- exported at ${new Date().toISOString()}`,
-          "SET NAMES utf8mb4;",
-          "",
-        ];
-        for (const row of rows) {
-          lines.push(
-            `INSERT INTO \`${table.replace(/`/g, "``")}\` (${columnList}) VALUES (${row.map(toSqlLiteral).join(", ")});`,
-          );
-        }
-        const path = resolve(outputDir, `${dbToken}_dml_${safeFileToken(table)}_${ts}.sql`);
-        await writeFile(path, lines.join("\n"), "utf-8");
         files.push({ table, path, rows: rows.length, truncated });
       } catch (error) {
         skipped.push({
@@ -170,13 +210,14 @@ const dbExportHandler: ToolHandler = async (input, context) => {
 };
 
 export const dbExportToolEntry: ToolEntry = {
-  capability: "Export MySQL table structures or data as .sql files into the workspace",
+  capability: "Export MySQL table structures or data as .sql / .csv files into the workspace",
   metadata: {
     name: DB_EXPORT_TOOL_NAME,
     description: dbExportToolDescription,
     modelInstructions: [
-      "ddl exports all base tables into one file (schema_migrations excluded by default); dml requires an explicit `tables` list and writes one file per table.",
-      "Empty tables are skipped and reported in `skipped`; dml rows are capped (default 50000/table).",
+      "ddl exports all base tables into one file (schema_migrations excluded by default); dml and csv require an explicit `tables` list and write one file per table.",
+      "dml renders INSERT statements; csv renders RFC 4180 CSV with a header row and UTF-8 BOM. `where` (csv/dml only) filters exported rows with a plain SQL condition, without the WHERE keyword.",
+      "Empty tables are skipped and reported in `skipped` (dml); csv keeps a header-only file for 0 rows. Rows are capped (default 50000/table).",
       "Files land under output_dir relative to the working directory (default sql/export). MySQL data sources only.",
     ],
     readOnly: false,

@@ -1,7 +1,7 @@
 #!/bin/bash
 # ZCode Web 隧道一键部署。
 # 模型：本机构建 + rsync 产物（ZCode monorepo 不适合在服务器上构建）。
-# 产物：静态 Web（/var/www/zcode）+ relay 单文件（/opt/zcode-relay）+ nginx conf + systemd unit。
+# 产物：静态 Web（/var/www/zcode）+ relay 单文件（/opt/zcode-relay）+ 日报脚本与 timer + nginx conf + systemd unit。
 # 平滑发布：relay 产物与 unit 内容未变化时自动跳过重启（restart 会断开所有隧道 WS），
 # nginx conf 一致时同样跳过；只有内容真正变化才重启。
 # 用法：
@@ -69,6 +69,8 @@ fi
 if [ "$BUILD_RELAY" = true ]; then
   step "构建 relay 单文件"
   (cd "$PROJECT_ROOT" && pnpm --filter @zcode/relay build)
+  # 每日运营日报单文件（specs/web-daily-report.md）：与 relay 同源构建，独立部署（oneshot，无需重启）。
+  (cd "$PROJECT_ROOT" && pnpm --filter @zcode/relay build:report)
 fi
 
 # 终端用户发行发布：多平台 stage 归档 + install.sh → 服务器 $DL_DIR，
@@ -113,6 +115,29 @@ if [ "$CHECK_ONLY" != true ]; then
       echo "[服务器] relay 产物有变化，已部署并重启"
     fi
   fi
+  # 每日运营日报（specs/web-daily-report.md）：统计脚本 + systemd timer + 飞书凭证（report.env）。
+  # report.env 只在 deploy.env 三个飞书变量齐全时重写（0600）；缺项时保留服务器现状并提示。
+  if [ "$BUILD_RELAY" = true ]; then
+    step "部署每日运营日报（统计脚本 + systemd timer）"
+    REPORT_SRC="$DEPLOY_ASSETS_DIR/../dist/daily-report.js"
+    if [ ! -f "$REPORT_SRC" ]; then
+      echo "缺少 $REPORT_SRC（构建失败？）" >&2
+      exit 1
+    fi
+    rsync -av "$REPORT_SRC" "$SERVER_USER@$SERVER_HOST:$RELAY_DIR/"
+    rsync -av "$DEPLOY_ASSETS_DIR/zcode-daily-report.service" "$DEPLOY_ASSETS_DIR/zcode-daily-report.timer" \
+      "$SERVER_USER@$SERVER_HOST:/etc/systemd/system/"
+    if [ -n "${FEISHU_APP_ID:-}" ] && [ -n "${FEISHU_APP_SECRET:-}" ] && [ -n "${FEISHU_NOTIFY_USER_ID:-}" ]; then
+      printf 'FEISHU_APP_ID=%s\nFEISHU_APP_SECRET=%s\nFEISHU_NOTIFY_USER_ID=%s\n' \
+        "$FEISHU_APP_ID" "$FEISHU_APP_SECRET" "$FEISHU_NOTIFY_USER_ID" \
+        | ssh "$SERVER_USER@$SERVER_HOST" "umask 077 && cat > $RELAY_DIR/report.env"
+      echo "[服务器] report.env 已更新（飞书凭证，0600）"
+    else
+      echo "[提示] deploy.env 缺 FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_NOTIFY_USER_ID，日报将只聚合不发送"
+    fi
+    ssh "$SERVER_USER@$SERVER_HOST" "systemctl daemon-reload && systemctl enable --now zcode-daily-report.timer"
+    echo "[服务器] 日报 timer 已启用（每日 23:00 服务器本地时间）"
+  fi
   if [ "$BUILD_WEB" = true ]; then
     rsync -av --delete "$WEB_SRC/" "$SERVER_USER@$SERVER_HOST:$WEB_DIR/"
     echo "[服务器] 静态 Web 已更新"
@@ -131,6 +156,8 @@ fi
 
 step "验证"
 ssh "$SERVER_USER@$SERVER_HOST" "systemctl is-active zcode-relay && curl -s -o /dev/null -w 'relay(本机): %{http_code}\n' -X POST http://127.0.0.1:$RELAY_LOCAL_PORT/api/v1/pair -H 'content-type: application/json' -d '{}'"
+# 日报 timer 只在 --relay 部署路径安装；纯 --web/--ng/--check 部署时提示而非失败。
+ssh "$SERVER_USER@$SERVER_HOST" "systemctl is-active zcode-daily-report.timer 2>/dev/null || echo '日报 timer 未启用（跑一次 ./deploy_web.sh 或 --relay 后生效）'" || true
 curl -s -o /dev/null -w "$SITE_URL 首页: %{http_code}\n" "$SITE_URL/" || true
 curl -s -o /dev/null -w "$SITE_URL/relay 控制面: %{http_code}\n" -X POST "$SITE_URL/relay/api/v1/pair" -H 'content-type: application/json' -d '{}' || true
 echo ""

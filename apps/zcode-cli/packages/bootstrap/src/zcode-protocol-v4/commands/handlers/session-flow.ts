@@ -276,6 +276,8 @@ async function sendText(
       ...turnBackgroundAttributionOf(payload),
       ...(payload.botDeliveryTarget ? { botDeliveryTarget: payload.botDeliveryTarget } : {}),
       toolDisallowlist: payload.toolDisallowlist,
+      // 会话级数据源绑定随轮透传（specs/data-source.md §7）：DB 工具缺省源按本轮绑定解析。
+      ...(payload.dataSourceId ? { dataSourceId: payload.dataSourceId } : {}),
       ...(payload.modelExecution
         ? { modelExecution: createModelExecutionContext(payload.modelExecution) }
         : {}),

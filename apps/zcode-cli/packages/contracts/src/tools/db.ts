@@ -19,7 +19,8 @@ export const DB_EXECUTE_TOOL_NAME = "DBExecute";
 
 const DB_TARGET_DESCRIPTION =
   "Data source name or id, matching the Data Source panel in the app (case-sensitive). " +
-  "Omit to use the currently active data source.";
+  "Omit to use the data source selected for the current conversation (falls back to the " +
+  "globally active data source when the conversation has none).";
 
 const DbTargetViewSchema = z
   .object({
@@ -168,7 +169,7 @@ export type DbSchemaOutput = z.infer<typeof DbSchemaOutputSchema>;
 export const DbSchemaOutputJsonSchema = toToolJsonSchema(DbSchemaOutputSchema);
 
 // -----------------------------------------------
-// DBExport —— 表结构 / 数据导出为 SQL 文件
+// DBExport —— 表结构导出为 SQL / 表数据导出为 SQL 或 CSV
 // -----------------------------------------------
 
 export const DB_EXPORT_TOOL_NAME = "DBExport";
@@ -176,13 +177,23 @@ export const DB_EXPORT_TOOL_NAME = "DBExport";
 export const DbExportInputSchema = z.object({
   data_source: z.string().optional().describe(DB_TARGET_DESCRIPTION),
   scope: z
-    .enum(["ddl", "dml"])
-    .describe("ddl = table structures (CREATE TABLE); dml = table data (INSERT statements)"),
+    .enum(["ddl", "dml", "csv"])
+    .describe(
+      "ddl = table structures (CREATE TABLE); dml = table data (INSERT statements); csv = table data (CSV files)",
+    ),
   tables: z
     .array(z.string())
     .optional()
     .describe(
-      "Tables to export. Required for dml. For ddl, omit to export every base table (minus exclude_tables).",
+      "Tables to export. Required for dml and csv. For ddl, omit to export every base table (minus exclude_tables).",
+    ),
+  where: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "csv/dml only: SQL condition filtering exported rows, without the WHERE keyword " +
+        "(e.g. \"status = 'active' AND created_at >= '2026-01-01'\"). Applies to every listed table.",
     ),
   exclude_tables: z
     .array(z.string())
@@ -198,7 +209,7 @@ export const DbExportInputSchema = z.object({
     .min(1)
     .max(500_000)
     .optional()
-    .describe("dml only: row cap per table (default 50000); truncated beyond that."),
+    .describe("csv/dml only: row cap per table (default 50000); truncated beyond that."),
 });
 
 export type DbExportInput = z.infer<typeof DbExportInputSchema>;
@@ -208,7 +219,7 @@ export const DbExportInputJsonSchema = toToolJsonSchema(DbExportInputSchema);
 export const DbExportOutputSchema = z
   .object({
     data_source: DbTargetViewSchema,
-    scope: z.enum(["ddl", "dml"]),
+    scope: z.enum(["ddl", "dml", "csv"]),
     output_dir: z.string(),
     files: z.array(
       z

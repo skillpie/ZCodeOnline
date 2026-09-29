@@ -145,6 +145,8 @@ export interface PendingSteerInputInfo {
   inputPresentation?: RuntimeInputPresentation;
   /** 当前排队输入附带的工具隐藏列表；automation busy 入队必须在消费时继续生效。 */
   toolDisallowlist?: readonly string[];
+  /** 会话级数据源绑定（specs/data-source.md §7）；投影保留供提升重放透传。 */
+  dataSourceId?: string;
   queuedAt: Date;
   targetTurnId: TurnId;
   traceId: TraceId;
@@ -264,6 +266,8 @@ export interface TurnSteerInput {
   traceContext?: TraceContext;
   /** 当前输入消费时不向 provider 暴露的工具名。 */
   toolDisallowlist?: readonly string[];
+  /** 会话级数据源绑定（specs/data-source.md §7）：本轮 DB 工具的缺省目标源。 */
+  dataSourceId?: string;
 }
 
 export type TurnSteerCommandKind = "sendText" | "sendGoalCommand" | "compact";
@@ -340,6 +344,8 @@ export interface PendingTurnInput {
   attachments?: PendingTurnAttachment[];
   /** 当前 pending input drain 后不向 provider 暴露的工具名。 */
   toolDisallowlist?: readonly string[];
+  /** 会话级数据源绑定（specs/data-source.md §7）：drain 后进入 turn 状态供 DB 工具取缺省源。 */
+  dataSourceId?: string;
   turnId: TurnId;
 }
 

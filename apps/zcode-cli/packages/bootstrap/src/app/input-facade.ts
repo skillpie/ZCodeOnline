@@ -135,6 +135,7 @@ export function createInputFacade(deps: CreateInputFacadeDeps): InputFacade {
       sharedContextRefs: options?.sharedContextRefs,
       queryId: options?.queryId,
       toolDisallowlist: options?.toolDisallowlist,
+      ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
       traceContext: options?.traceContext ?? deps.traceContext,
       modelExecution: options?.modelExecution,
     });
@@ -257,6 +258,7 @@ export function createInputFacade(deps: CreateInputFacadeDeps): InputFacade {
         ...(options?.intent ? { intent: options.intent } : {}),
         ...(options?.attachments ? { attachments: options.attachments } : {}),
         ...(options?.toolDisallowlist ? { toolDisallowlist: options.toolDisallowlist } : {}),
+        ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
         ...(options?.intent?.queueItemId ? { pendingInputId: options.intent.queueItemId } : {}),
         ...(options?.inputId ? { inputId: options.inputId } : {}),
         ...(options?.queryId ? { queryId: options.queryId } : {}),
@@ -288,6 +290,7 @@ export function createInputFacade(deps: CreateInputFacadeDeps): InputFacade {
           pendingInputId: options?.intent?.queueItemId,
           input,
           toolDisallowlist: options?.toolDisallowlist,
+          ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
           traceContext: options?.traceContext ?? deps.traceContext,
         });
         if (result.kind === "queued") {

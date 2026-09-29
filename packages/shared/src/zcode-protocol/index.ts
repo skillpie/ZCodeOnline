@@ -1200,6 +1200,9 @@ export const zcodeTurnSteerQueuedEventPayloadSchema = z
     commandKind: zcodeTurnSteerCommandKindSchema.optional(),
     source: zcodeTurnSteerSourceSchema.optional(),
     toolDisallowlist: z.array(nonEmptyString).optional(),
+    // 会话级数据源绑定（specs/data-source.md §7）：随排队输入持久到事件，供
+    // sendQueuedNow 提升重放时保持同一绑定；strict schema 必须同步声明以免丢弃整条事件。
+    dataSourceId: nonEmptyString.optional(),
     delivery: zcodeTurnSteerDeliverySchema.optional(),
     targetTurnId: nonEmptyString,
     queueLength: z.number().int().nonnegative(),
@@ -1222,6 +1225,7 @@ export const zcodeTurnSteerDrainedEventPayloadSchema = z
             delivery: zcodeTurnSteerDeliverySchema.optional(),
             intent: jsonObjectSchema.optional(),
             toolDisallowlist: z.array(nonEmptyString).optional(),
+            dataSourceId: nonEmptyString.optional(),
           })
           .strict(),
       )

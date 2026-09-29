@@ -41,6 +41,7 @@ export async function executeToolBatch(
         executeOne(tc, {
           automationTurn: options?.automationTurn,
           offPeakTurn: options?.offPeakTurn,
+          dataSourceId: options?.dataSourceId,
           signal: options?.signal,
           traceContext: options?.traceContext,
           subagentModelOverride: options?.subagentModelOverride,
@@ -79,6 +80,7 @@ export async function* executeToolSchedule(
 
     const groupResults = await executeBatch(groupTools, {
       automationTurn: options?.automationTurn,
+      dataSourceId: options?.dataSourceId,
       signal: options?.signal,
       traceContext: options?.traceContext,
       subagentModelOverride: options?.subagentModelOverride,

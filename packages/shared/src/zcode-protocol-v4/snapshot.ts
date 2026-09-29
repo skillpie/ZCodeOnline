@@ -211,6 +211,9 @@ export const queueItemSchema = conversationInputIntentSchema.extend({
     state: z.enum(["queued", "reserved", "promoting"]),
   }),
   toolDisallowlist: z.array(z.string().min(1)).optional(),
+  // 会话级数据源绑定（specs/data-source.md §7）：QueueItem 同时是提升执行的输入，
+  // sendQueuedNow 重放时必须随行透传，避免提升轮回退全局 activeId。
+  dataSourceId: z.string().min(1).optional(),
 });
 export type QueueItem = z.infer<typeof queueItemSchema>;
 

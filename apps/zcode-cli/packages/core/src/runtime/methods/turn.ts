@@ -599,6 +599,8 @@ export async function executeTurnCommand(
             outputTokenContinuationCount: 0,
           },
           toolDisallowlist: options?.toolDisallowlist,
+          // 会话级数据源绑定进入 loop state，供 DB 工具缺省解析（specs/data-source.md §7）。
+          ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
           traceId,
           turnAbortSignal,
           turnId,

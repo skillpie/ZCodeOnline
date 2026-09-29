@@ -301,7 +301,7 @@ export async function introspect(conn: DataSourceConfig): Promise<DataSourceTabl
 }
 
 /** 表清单 + 注释：MySQL information_schema / PG pg_class+obj_description（含视图、分区表）。 */
-async function introspectTables(
+export async function introspectTables(
   client: DriverClient,
   conn: DataSourceConfig,
 ): Promise<Omit<DataSourceTable, "columns">[]> {
@@ -314,13 +314,17 @@ async function introspectTables(
     )) as [Array<{ name: string; comment: string; kind: string }>, unknown];
     return rows.map((row) => ({ name: row.name, comment: row.comment || "", kind: row.kind }));
   }
-  const rows = (await client.query(
+  // 修复依据：node-postgres 的 query() 返回 QueryResult 对象（行集合在 .rows 属性上）而非数组，
+  // 原实现把整个返回值强转成数组后直接 .map，导致 PG 同步表结构必现 "rows.map is not a function"；
+  // 与 mysql2 分支必须解构 [rows, fields] 元组同理，PG 分支必须从 .rows 取行集合
+  const result = (await client.query(
     `SELECT n.nspname AS schema, c.relname AS name, COALESCE(obj_description(c.oid, 'pg_class'), '') AS comment, c.relkind AS kind
      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE c.relkind IN ('r','p','v','m','f')
        AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg\\_toast%' AND n.nspname NOT LIKE 'pg\\_temp%'
      ORDER BY n.nspname, c.relname`,
-  )) as Array<{ schema: string; name: string; comment: string; kind: string }>;
+  )) as { rows?: Array<{ schema: string; name: string; comment: string; kind: string }> };
+  const rows = result.rows ?? [];
   return rows.map((row) => ({
     name: row.schema === "public" ? row.name : `${row.schema}.${row.name}`,
     comment: row.comment || "",
@@ -329,7 +333,7 @@ async function introspectTables(
 }
 
 /** 字段清单 + 注释，按表分组返回。 */
-async function introspectColumns(
+export async function introspectColumns(
   client: DriverClient,
   conn: DataSourceConfig,
 ): Promise<Record<string, { name: string; type: string; comment: string }[]>> {
@@ -353,20 +357,25 @@ async function introspectColumns(
     }
     return grouped;
   }
-  const rows = (await client.query(
+  // 修复依据：同 introspectTables 的 PG 分支——query() 返回 QueryResult 对象而非数组，
+  // 原实现 for...of 直接遍历返回值，会在 "rows.map" 修复后接着抛 "rows is not iterable"
+  const result = (await client.query(
     `SELECT table_schema, table_name, column_name, data_type, udt_name, character_maximum_length AS len, is_nullable,
             COALESCE(col_description(('"' || table_schema || '"."' || table_name || '"')::regclass, ordinal_position), '') AS column_comment
      FROM information_schema.columns
      WHERE table_schema NOT IN ('pg_catalog','information_schema') AND table_schema NOT LIKE 'pg\\_toast%' AND table_schema NOT LIKE 'pg\\_temp%'
      ORDER BY table_schema, table_name, ordinal_position`,
-  )) as Array<{
-    table_schema: string;
-    table_name: string;
-    column_name: string;
-    data_type: string;
-    len: number | null;
-    column_comment: string;
-  }>;
+  )) as {
+    rows?: Array<{
+      table_schema: string;
+      table_name: string;
+      column_name: string;
+      data_type: string;
+      len: number | null;
+      column_comment: string;
+    }>;
+  };
+  const rows = result.rows ?? [];
   for (const row of rows) {
     const tableName =
       row.table_schema === "public" ? row.table_name : `${row.table_schema}.${row.table_name}`;

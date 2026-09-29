@@ -86,18 +86,25 @@ function describeAvailable(file: DataSourceConfigFile): string {
 }
 
 /**
- * 解析目标数据源：显式名称/ID（大小写敏感）优先，其次 activeId。
+ * 解析目标数据源：显式名称/ID（大小写敏感）优先；缺省时优先会话级绑定
+ * （specs/data-source.md §7，host 随对话轮传入的 dataSourceId），再退全局 activeId。
  * 找不到时抛出带可用清单的错误，让模型能纠正参数。
  */
-export async function resolveDataSource(target?: string): Promise<ResolvedDataSource> {
+export async function resolveDataSource(
+  target?: string,
+  sessionDataSourceId?: string,
+): Promise<ResolvedDataSource> {
   const file = await readConfigFile();
+  const fallbackId = sessionDataSourceId?.trim() || file.activeId;
   const picked = target
     ? file.dataSources.find((item) => item.id === target || item.name === target)
-    : (file.dataSources.find((item) => item.id === file.activeId) ?? null);
+    : (file.dataSources.find((item) => item.id === fallbackId) ?? null);
   if (!picked) {
     const reason = target
       ? `Data source "${target}" not found.`
-      : "No active data source selected.";
+      : sessionDataSourceId?.trim()
+        ? `The data source selected for this conversation ("${sessionDataSourceId.trim()}") is no longer configured.`
+        : "No active data source selected.";
     throw new Error(`${reason} ${describeAvailable(file)}`);
   }
   return { config: picked, view: toView(picked) };

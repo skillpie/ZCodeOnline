@@ -62,6 +62,7 @@ export async function admitPrompt(
         intent: admissionIntent(options?.intent, delivery ?? "queue"),
         queryId: options?.queryId,
         toolDisallowlist: options?.toolDisallowlist,
+        ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
         traceContext: options?.traceContext,
       });
     }
@@ -79,6 +80,7 @@ export async function admitPrompt(
       intent: admissionIntent(options?.intent, delivery),
       queryId: options?.queryId,
       toolDisallowlist: options?.toolDisallowlist,
+      ...(options?.dataSourceId ? { dataSourceId: options.dataSourceId } : {}),
       traceContext: options?.traceContext,
     });
   }

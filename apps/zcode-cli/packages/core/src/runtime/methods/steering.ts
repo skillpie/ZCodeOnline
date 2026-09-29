@@ -142,6 +142,7 @@ export async function steerTurn(
     ...(intent ? { intent } : {}),
     ...(request.attachments ? { attachments: request.attachments } : {}),
     ...(toolDisallowlist ? { toolDisallowlist } : {}),
+    ...(request.dataSourceId ? { dataSourceId: request.dataSourceId } : {}),
     turnId: activeTurn.turnId,
   };
   activeTurn.pendingInputs.push(pendingInput);
@@ -162,6 +163,7 @@ export async function steerTurn(
       ...(delivery ? { delivery } : {}),
       ...(intent ? { intent } : {}),
       ...(toolDisallowlist ? { toolDisallowlist } : {}),
+      ...(request.dataSourceId ? { dataSourceId: request.dataSourceId } : {}),
       targetTurnId: activeTurn.turnId,
       queueLength,
     },
@@ -262,6 +264,7 @@ export async function enqueueDeferredInput(
       delivery,
       ...(intent ? { intent } : {}),
       ...(toolDisallowlist ? { toolDisallowlist } : {}),
+      ...(request.dataSourceId ? { dataSourceId: request.dataSourceId } : {}),
       targetTurnId,
       queueLength,
     },
@@ -899,6 +902,7 @@ export async function editPendingInputById(
         : {}),
       ...(pendingInput.intent ? { intent: pendingInput.intent } : {}),
       ...(pendingInput.toolDisallowlist ? { toolDisallowlist: pendingInput.toolDisallowlist } : {}),
+      ...(pendingInput.dataSourceId ? { dataSourceId: pendingInput.dataSourceId } : {}),
       queueLength: activeTurn.pendingInputs.length,
       targetTurnId: activeTurn.turnId,
     },
@@ -1193,6 +1197,7 @@ async function drainPendingInputUnlocked(
     delivery?: "guide" | "queue";
     intent?: NonNullable<PendingTurnInput["intent"]>;
     toolDisallowlist?: readonly string[];
+    dataSourceId?: string;
   }> = [];
   for (const pendingInput of pendingInputs) {
     const messageId = createMessageId();
@@ -1242,6 +1247,7 @@ async function drainPendingInputUnlocked(
       delivery,
       ...(pendingInput.intent ? { intent: pendingInput.intent } : {}),
       ...(pendingInput.toolDisallowlist ? { toolDisallowlist: pendingInput.toolDisallowlist } : {}),
+      ...(pendingInput.dataSourceId ? { dataSourceId: pendingInput.dataSourceId } : {}),
     });
   }
 
@@ -1249,6 +1255,10 @@ async function drainPendingInputUnlocked(
   const toolDisallowlist = [
     ...new Set(pendingInputs.flatMap((pendingInput) => pendingInput.toolDisallowlist ?? [])),
   ];
+  // 会话级数据源绑定按排队序取最后一条：批量 drain 中后提交的输入代表用户最新选择。
+  const lastBoundIndex = pendingInputs.findLastIndex((pendingInput) => pendingInput.dataSourceId);
+  const dataSourceId =
+    lastBoundIndex >= 0 ? pendingInputs[lastBoundIndex].dataSourceId : undefined;
   const event = this.createEvent(
     SessionEventType.TurnSteerDrained,
     {
@@ -1284,6 +1294,7 @@ async function drainPendingInputUnlocked(
     queryIds,
     runtimeEntries,
     ...(toolDisallowlist.length > 0 ? { toolDisallowlist } : {}),
+    ...(dataSourceId ? { dataSourceId } : {}),
   };
 }
 

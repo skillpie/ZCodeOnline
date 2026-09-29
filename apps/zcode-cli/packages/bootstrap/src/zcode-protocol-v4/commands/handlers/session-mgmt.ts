@@ -102,6 +102,8 @@ async function createSession(
         ...(payload.firstInput.toolDisallowlist
           ? { toolDisallowlist: payload.firstInput.toolDisallowlist }
           : {}),
+        // 会话级数据源绑定随首发透传：首轮 DB 工具缺省源按绑定解析。
+        ...(payload.firstInput.dataSourceId ? { dataSourceId: payload.firstInput.dataSourceId } : {}),
       });
       firstInput = {
         delivery: started.admission.kind === "queued" ? "queue" : "startNow",

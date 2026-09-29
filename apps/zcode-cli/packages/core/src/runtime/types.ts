@@ -472,6 +472,8 @@ export interface ExecuteTurnOptionsBase {
   targetId?: string;
   /** 仅当前 turn 对 provider 隐藏的工具；不修改 session runtime 的持久工具面。 */
   toolDisallowlist?: readonly string[];
+  /** 会话级数据源绑定（specs/data-source.md §7）：本轮 DB 工具的缺省目标源。 */
+  dataSourceId?: string;
   traceContext?: TraceContext;
   /** 当前 Submission 的 Selection 只用于本次执行，并可绑定逐请求依赖。 */
   modelExecution?: ModelExecutionContext;
@@ -734,6 +736,8 @@ export interface PermissionDecisionResult {
 export interface ExecuteToolsOptions {
   automationTurn?: boolean;
   offPeakTurn?: boolean;
+  /** 本轮会话级数据源绑定（specs/data-source.md §7）；透传到 DB 工具执行上下文。 */
+  dataSourceId?: string;
   signal?: AbortSignal;
   traceContext?: TraceContext;
   /** 仅透传给当前 turn 同步等待的 Agent child。 */
@@ -803,6 +807,8 @@ export interface DrainedPendingInputDiagnostics {
   runtimeEntries: readonly RuntimeMessageEntry[];
   /** 本次 drain 注入的输入附带的工具隐藏列表，下一次 provider 请求必须继续生效。 */
   toolDisallowlist?: readonly string[];
+  /** 本次 drain 注入的输入携带的会话数据源绑定，覆盖 loop state 的缺省源。 */
+  dataSourceId?: string;
 }
 
 export interface ProviderContextUsageSnapshot {

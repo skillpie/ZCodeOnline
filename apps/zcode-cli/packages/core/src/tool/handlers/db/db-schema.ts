@@ -26,9 +26,10 @@ export const dbSchemaToolDescription =
   "Discover configured data sources and their table structures (names, comments, columns) from the " +
   "locally synced schema cache. Use it before DBQuery/DBExecute to find exact table and column names.";
 
-const dbSchemaHandler: ToolHandler = async (input) => {
+const dbSchemaHandler: ToolHandler = async (input, context) => {
   const { data_source: target, keyword, table } = DbSchemaInputSchema.parse(input) as DbSchemaInput;
-  const source = await resolveDataSource(target);
+  // 缺省目标源优先取会话级选择（specs/data-source.md §7），显式入参仍最优先。
+  const source = await resolveDataSource(target, context.dataSourceId);
   const cache = await readSchemaCache(source.config.id);
   if (!cache) {
     throw new Error(
