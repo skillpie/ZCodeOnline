@@ -1,6 +1,8 @@
-// 浏览器侧隧道传输（specs/web-tunnel.md §3.4）：把 relay 拼接流包装成 v4 通道的 ISocket。
+// 隧道客户端传输（specs/web-tunnel.md §3.4）：把 relay 拼接流包装成 v4 通道的 ISocket。
 // 状态机：连接票据 → tunnelClientHello → tunnelConnected → e2e-hello 双向校验 → 业务帧放行。
 // 业务帧一进一出都过 TunnelCipher；relay 全程只见密文与路由元数据。
+// Web 与桌面 renderer 共用（桌面远程控制复用同一数据面协议）；WebSocket 实现可注入，
+// Node 测试环境用 ws 包适配层，浏览器/Electron renderer 走全局 WebSocket。
 import {
   TUNNEL_CONSTANTS,
   TUNNEL_PROTOCOL_VERSION,
@@ -10,11 +12,11 @@ import {
   relayClientFrameSchema,
   tunnelBootstrapFrameSchema,
   tunnelClientHelloSchema,
+  relayHttpOrigin,
   type TunnelErrorCode,
 } from "@zcode/shared";
 import { Emitter, SocketProtocol, VSBuffer, type ISocket } from "@zcode/rpc";
-import { connectViaProtocol, type WebSocketConnectionCloseEvent } from "@zcode/client";
-import { relayHttpOrigin } from "./tunnelSession.js";
+import { connectViaProtocol, type WebSocketConnectionCloseEvent } from "../websocket.js";
 
 export class TunnelConnectError extends Error {
   constructor(
@@ -187,12 +189,12 @@ export async function connectTunnelTransport(
   const bootstrapDone = new Promise<void>((resolve) => (bootstrapResolve = resolve));
 
   // 密钥派生异步进行；路由器在密钥就绪前收到的密文帧等待密钥就绪后处理。
-  let browserSendRef: TunnelCipher | null = null;
-  let browserRecvRef: TunnelCipher | null = null;
+  let clientSendRef: TunnelCipher | null = null;
+  let clientRecvRef: TunnelCipher | null = null;
   const keysReady = deriveTunnelKeys(options.psk, options.hostId)
     .then((keys) => {
-      browserSendRef = new TunnelCipher(keys.clientToHost, "clientToHost");
-      browserRecvRef = new TunnelCipher(keys.hostToClient, "hostToClient");
+      clientSendRef = new TunnelCipher(keys.clientToHost, "clientToHost");
+      clientRecvRef = new TunnelCipher(keys.hostToClient, "hostToClient");
     })
     .catch((error: unknown) => {
       fail(
@@ -221,7 +223,7 @@ export async function connectTunnelTransport(
           phase = "hostHello";
           // ack 到达即发 e2e-hello（密钥就绪后；GCM 校验即 PSK 证明）。
           await keysReady;
-          if (!browserSendRef || e2eFailed) return;
+          if (!clientSendRef || e2eFailed) return;
           const hello = new TextEncoder().encode(
             JSON.stringify(
               e2eHelloFrameSchema.parse({
@@ -230,7 +232,7 @@ export async function connectTunnelTransport(
               }),
             ),
           );
-          ws.send(new Uint8Array(await browserSendRef.encrypt(hello)));
+          ws.send(new Uint8Array(await clientSendRef.encrypt(hello)));
           return;
         }
         if (typeof data === "string") {
@@ -240,10 +242,10 @@ export async function connectTunnelTransport(
           return;
         }
         await keysReady;
-        if (!browserRecvRef) return;
+        if (!clientRecvRef) return;
         let plaintext: Uint8Array;
         try {
-          plaintext = await browserRecvRef.decrypt(new Uint8Array(data as ArrayBuffer));
+          plaintext = await clientRecvRef.decrypt(new Uint8Array(data as ArrayBuffer));
         } catch {
           // 握手阶段解密失败 = PSK 不匹配（对端用错误密钥加密）；业务阶段 = 流损坏。
           if (phase === "hostHello" || phase === "bootstrap") {
@@ -362,7 +364,7 @@ export async function connectTunnelTransport(
       writeChain = writeChain
         .then(async () => {
           await keysReady;
-          const frame = await browserSendRef!.encrypt(buffer.buffer);
+          const frame = await clientSendRef!.encrypt(buffer.buffer);
           ws.send(new Uint8Array(frame));
         })
         .catch((error: unknown) => {
@@ -388,53 +390,6 @@ export async function connectTunnelTransport(
       ws.close();
     },
   };
-}
-
-function nextTextFrame(ws: WebSocket): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new TunnelConnectError("握手超时", "network")), 10_000);
-    const onMessage = (event: MessageEvent): void => {
-      clearTimeout(timer);
-      ws.removeEventListener("message", onMessage);
-      if (typeof event.data === "string") {
-        resolve(event.data);
-      } else {
-        reject(new TunnelConnectError("握手时序错误", "protocol"));
-      }
-    };
-    ws.addEventListener("message", onMessage);
-    ws.addEventListener("close", () => {
-      clearTimeout(timer);
-      reject(new TunnelConnectError("连接已关闭", "network"));
-    });
-  });
-}
-
-function nextBinaryFrame(ws: WebSocket, timeoutMs = 10_000): Promise<ArrayBuffer> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new TunnelConnectError("端到端握手超时", "network")),
-      timeoutMs,
-    );
-    const onMessage = (event: MessageEvent): void => {
-      clearTimeout(timer);
-      ws.removeEventListener("message", onMessage);
-      if (typeof event.data !== "string") {
-        resolve(event.data as ArrayBuffer);
-      } else {
-        reject(new TunnelConnectError("握手时序错误", "protocol"));
-      }
-    };
-    ws.addEventListener("message", onMessage);
-    ws.addEventListener("close", () => {
-      clearTimeout(timer);
-      // 握手阶段被对端断开：绝大多数是宿主解密 e2e-hello 失败（PSK 不匹配）主动断连，
-      // 其次是宿主机中途离线——统一引导重新配对，不猜测具体原因。
-      reject(
-        new TunnelConnectError("宿主机断开了握手连接：可能配对信息不匹配，请重新配对", "protocol"),
-      );
-    });
-  });
 }
 
 /** 组装 v4 服务通道：加密 ISocket → SocketProtocol → ChannelClient。 */

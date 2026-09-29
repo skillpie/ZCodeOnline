@@ -48,8 +48,7 @@ export function parseStatsLine(line: string, dayPrefix: string): StatsVisit | nu
   return { timeIso: cols[0]!, ip, visitorKey: vid || `ip:${ip}` };
 }
 
-const RELAY_LINE =
-  /^(\S+) \S+ \S+ \[([^\]]+)\] "([A-Z]+) (\S+) HTTP\/[\d.]+" (\d{3}) /;
+const RELAY_LINE = /^(\S+) \S+ \S+ \[([^\]]+)\] "([A-Z]+) (\S+) HTTP\/[\d.]+" (\d{3}) /;
 
 export interface RelayRequest {
   method: string;

@@ -1,6 +1,7 @@
-// 浏览器侧隧道自动重连调度器：对齐宿主连接器（zcode-server-cli tunnelConnector）的
+// 隧道自动重连调度器：对齐宿主连接器（zcode-server-cli tunnelConnector）的
 // 指数退避语义。只负责"何时重试"的状态机——退避序列、尝试上限、并发合并；重试动作
-// 与 UI 反馈由 TunnelAppRoot 注入。独立于 React，node:test 可注入定时器直接驱动。
+// 与 UI 反馈由连接编排组件注入（Web TunnelAppRoot / 桌面 DesktopTunnelRoot）。
+// 独立于 React，node:test 可注入定时器直接驱动。
 //
 // 事件顺序（所有者 = 本调度器，重试动作 = 注入的 onRetry）：
 //   断开/失败 → schedule() 排定时器（pending 期间重复调用合并为一次）
@@ -41,8 +42,7 @@ export interface AutoReconnectController {
 export function createAutoReconnect(options: AutoReconnectOptions): AutoReconnectController {
   const setTimer =
     options.setTimer ?? ((handler: () => void, ms: number) => setTimeout(handler, ms));
-  const clearTimer =
-    options.clearTimer ?? ((handle: unknown) => clearTimeout(handle as number));
+  const clearTimer = options.clearTimer ?? ((handle: unknown) => clearTimeout(handle as number));
 
   let attempt = 0;
   let timerHandle: unknown = null;

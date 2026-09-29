@@ -1,6 +1,7 @@
 # Spec: 审查文件视图 git blame 悬停提示
 
 ## 行为
+
 - 右侧文件视图的所有代码类入口，鼠标悬停某行超过 0.3 秒，弹出该行的最后提交人与提交日期；
   未提交行显示「未提交」。已覆盖入口：
   1. PreviewPane patch 源（对话文件摘要卡「审查」）——轻量降级视图与富 DiffViewer 双路径
@@ -12,6 +13,7 @@
 - 暂不覆盖：GitPaneChangeCard 的大文件轻量 hunk 预览（行号映射需要独立推导，二期）。
 
 ## 所有者与边界
+
 - 数据所有者：Host 端 `IGitService.getBlame`（`gitCliRepo` 执行 + `parseBlamePorcelain` 解析）。
 - 未跟踪新文件（尚未 commit）：blame 失败但 `git ls-files` 为空 → 返回空行集，UI 全行按「未提交」；
   非 git 目录/命令失败 → 返回 null，UI 不提示。
@@ -20,6 +22,7 @@
   长度不一致时禁用 blame，防止错位）。
 
 ## 验收
+
 1. HEAD 内已提交文件：悬停 0.3s 显示「作者 · 日期」。
 2. 未提交修改行/未跟踪新文件：显示「未提交」。
 3. 非 git 目录：无提示，无报错。

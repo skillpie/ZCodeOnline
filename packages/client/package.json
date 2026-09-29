@@ -7,6 +7,7 @@
     "./globals": "./src/globals.d.ts"
   },
   "scripts": {
+    "test": "tsx --test test/*.test.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix"
   },
@@ -16,6 +17,7 @@
     "@zcode/shared": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "ws": "^8.20.0"
   }
 }

@@ -9,6 +9,18 @@ import { z } from "zod";
  */
 export const DEFAULT_TUNNEL_RELAY_URL = "wss://zcode.skillpie.cn/relay";
 
+/** relay 的 ws(s):// 地址转控制面 http(s):// 基路径（含 /relay 路径前缀，供 /api/v1/* 拼接）。 */
+export function relayHttpOrigin(relayUrl: string): string {
+  if (relayUrl.startsWith("wss://")) return `https://${relayUrl.slice("wss://".length)}`;
+  if (relayUrl.startsWith("ws://")) return `http://${relayUrl.slice("ws://".length)}`;
+  return relayUrl;
+}
+
+/** relay 部署对应的 Web 站点源（分享链接 `https://host/<码>` 用）：去掉 /relay 路径前缀。 */
+export function relayWebOrigin(relayUrl: string): string {
+  return relayHttpOrigin(relayUrl).replace(/\/relay\/?$/u, "");
+}
+
 /** 隧道 wire 协议版本；握手双方携带，不一致直接拒绝（M3 再补能力探测式降级）。 */
 export const TUNNEL_PROTOCOL_VERSION = 1 as const;
 
@@ -356,6 +368,16 @@ export const assistConnectResultSchema = z
   })
   .strict();
 export type AssistConnectResult = z.infer<typeof assistConnectResultSchema>;
+
+/**
+ * 桌面端兑换结果（Renderer → Main → relay 的结构化应答，桌面远程控制）：
+ * 不用异常跨 IPC 传错误类型；invalid（码已轮换）调用方据此清存储回退，
+ * 其余 kind 可退避重试。message 已是面向用户的文案；psk 由 main 还原
+ * （maskedPsk ⊕ SHA-256(code)），renderer 拿到即可发起隧道握手。
+ */
+export type RedeemAssistCodeResult =
+  | { ok: true; hostId: string; connectToken: string; psk: string }
+  | { ok: false; kind: "invalid" | "rateLimited" | "network" | "generic"; message: string };
 
 /** 发现端点：A 侧展示自己的远程码。 */
 export const assistCodeResponseSchema = z

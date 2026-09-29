@@ -486,6 +486,8 @@ export class Supervisor {
       case "tunnel-enable":
       case "tunnel-disable":
       case "tunnel-pair":
+      case "tunnel-assist-code":
+      case "tunnel-assist-refresh":
         return await this.forwardTunnelControl(request);
       case "stop":
         this.startAcknowledgedLifecycleOperation("stop", () =>
@@ -550,7 +552,11 @@ export class Supervisor {
           ? ("disable" as const)
           : request.command === "tunnel-pair"
             ? ("pair" as const)
-            : ("status" as const);
+            : request.command === "tunnel-assist-code"
+              ? ("assist-code" as const)
+              : request.command === "tunnel-assist-refresh"
+                ? ("assist-refresh" as const)
+                : ("status" as const);
     const relayUrl = request.command === "tunnel-enable" ? request.relayUrl : undefined;
     const requestId = randomUUID();
     const command = coreCommandSchema.parse({

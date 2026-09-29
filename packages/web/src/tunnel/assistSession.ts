@@ -1,16 +1,20 @@
 // 浏览器侧远程协助码会话（specs/web-tunnel.md §5.9）。
 // 授权模型是"码即凭证"：16 位码长期有效，浏览器把它存 localStorage（后到优先——
 // 每次打开带码链接都覆盖旧值，存储读写收口在 @zcode/ui/assist-machine-store），
-// 地址栏不保留码本身，防截图/历史记录泄露。本模块只负责与 relay / 宿主回环端点的
-// 网络交互：兑换连接票据、读取与轮换远程码。
+// 地址栏不保留码本身，防截图/历史记录泄露。兑换的传输实现在 @zcode/client
+// （Web 与桌面共用）；本模块只保留 Web 专属部分：同源兑换端点装配与宿主回环
+// 端点的码读取/轮换。
 import {
   TUNNEL_CONSTANTS,
   TUNNEL_DISCOVERY_PORT,
   assistCodeResponseSchema,
-  revealAssistPsk,
   type TunnelAssistCode,
 } from "@zcode/shared";
+import { redeemAssistCodeViaEndpoint } from "@zcode/client";
+import type { AssistRedeemResult } from "@zcode/client";
 import { saveStoredAssistCode } from "@zcode/ui/assist-machine-store";
+
+export { AssistRedeemError } from "@zcode/client";
 
 // web 包内使用的存储函数经此统一出口（弹窗等 ui 侧直接用 @/assistMachineStore.js）。
 export {
@@ -20,73 +24,12 @@ export {
   upsertAssistMachine,
 } from "@zcode/ui/assist-machine-store";
 
-interface AssistRedeemResult {
-  hostId: string;
-  connectToken: string;
-  psk: string;
-}
+/** Web 端兑换走同源相对路径（生产页与 relay 同域；dev 由 Vite 代理）。 */
+const ASSIST_CONNECT_ENDPOINT = "/relay/api/v1/assist/connect";
 
-type AssistRedeemErrorKind = "invalid" | "rateLimited" | "network" | "generic";
-
-export class AssistRedeemError extends Error {
-  constructor(
-    message: string,
-    readonly kind: AssistRedeemErrorKind,
-  ) {
-    super(message);
-    this.name = "AssistRedeemError";
-  }
-}
-
-const zh = (): boolean => /^zh\b/i.test(navigator.language);
-const t = (zhText: string, enText: string) => (zh() ? zhText : enText);
-
-/**
- * 用远程码向 relay 兑换一次性连接票据与端到端 PSK（校验不消费，码可反复使用）。
- * kind=invalid 表示码已被轮换/不存在——调用方据此清存储并回退其他连接方式，不锁死浏览器。
- */
+/** 用远程码向 relay 兑换一次性连接票据与端到端 PSK（错误语义见 @zcode/client）。 */
 export async function redeemAssistCode(code: string): Promise<AssistRedeemResult> {
-  let response: Response;
-  try {
-    response = await fetch("/relay/api/v1/assist/connect", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-  } catch {
-    throw new AssistRedeemError(
-      t("无法连接 relay 服务，请检查网络后重试。", "Cannot reach the relay; check your network."),
-      "network",
-    );
-  }
-  if (response.status === 401) {
-    throw new AssistRedeemError(
-      t("远程码无效或已被刷新。", "The assist code is invalid or has been rotated."),
-      "invalid",
-    );
-  }
-  if (response.status === 429) {
-    throw new AssistRedeemError(
-      t("尝试过于频繁，请稍后再试。", "Too many attempts. Try again shortly."),
-      "rateLimited",
-    );
-  }
-  if (!response.ok) {
-    throw new AssistRedeemError(
-      t("兑换远程码失败，请稍后重试。", "Failed to redeem the assist code."),
-      "generic",
-    );
-  }
-  const body = (await response.json()) as {
-    hostId: string;
-    connectToken: string;
-    maskedPsk: string;
-  };
-  return {
-    hostId: body.hostId,
-    connectToken: body.connectToken,
-    psk: await revealAssistPsk(body.maskedPsk, code),
-  };
+  return redeemAssistCodeViaEndpoint(code, ASSIST_CONNECT_ENDPOINT);
 }
 
 /**
@@ -170,3 +113,6 @@ export async function refreshAssistCodeViaDiscovery(
   saveStoredAssistCode(parsed.data.code);
   return parsed.data;
 }
+
+const zh = (): boolean => /^zh\b/i.test(navigator.language);
+const t = (zhText: string, enText: string) => (zh() ? zhText : enText);

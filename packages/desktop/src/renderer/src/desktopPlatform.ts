@@ -158,6 +158,21 @@ export function createDesktopPlatform(options: {
     tunnelPair: () =>
       window.zcode.tunnelPair?.() ??
       Promise.reject(new Error("Tunnel management requires the desktop app")),
+    // 远程协助码契约（specs/web-tunnel.md §5.9）：实现后共享弹窗自动在桌面渲染。
+    // 本机码权威所有者是 daemon（控制链读取/轮换）；redeem 供隧道模式组件注入使用。
+    getRemoteAssistCode: () =>
+      window.zcode.getRemoteAssistCode?.() ??
+      Promise.reject(new Error("Remote assist code requires the desktop app")),
+    refreshRemoteAssistCode: () =>
+      window.zcode.refreshRemoteAssistCode?.() ??
+      Promise.reject(new Error("Remote assist code requires the desktop app")),
+    redeemAssistCode: (code) =>
+      window.zcode.redeemAssistCode?.(code) ??
+      Promise.resolve({
+        ok: false as const,
+        kind: "generic" as const,
+        message: "Assist redeem requires the desktop app",
+      }),
     getZCodeStdioTapDevState: () =>
       window.zcode.getZCodeStdioTapDevState?.() ??
       Promise.resolve({ enabled: false, visible: false, logDir: "", statePath: "" }),

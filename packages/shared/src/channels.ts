@@ -8,7 +8,12 @@ import type {
   SaveCliMcpToUserDirectoryRequest,
 } from "./index.js";
 import type { OAuthStateRegistration } from "./oauth.js";
-import type { TunnelManagerPairing, TunnelManagerStatus } from "./tunnel.js";
+import type {
+  RedeemAssistCodeResult,
+  TunnelAssistCode,
+  TunnelManagerPairing,
+  TunnelManagerStatus,
+} from "./tunnel.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { StorageCleanRequest, StorageCleanResult, StorageUsageSnapshot } from "./storage.js";
 import type {
@@ -402,6 +407,12 @@ export const PlatformChannels = {
   TunnelEnable: "zcode:tunnel-enable",
   TunnelDisable: "zcode:tunnel-disable",
   TunnelPair: "zcode:tunnel-pair",
+  /** Renderer → Main：读取本机远程码（daemon 控制链，桌面远程控制弹窗用） */
+  GetRemoteAssistCode: "zcode:get-remote-assist-code",
+  /** Renderer → Main：轮换本机远程码（旧链接立即失效） */
+  RefreshRemoteAssistCode: "zcode:refresh-remote-assist-code",
+  /** Renderer → Main：用远程码向 relay 兑换连接票据（main 代理，绕开 renderer CORS） */
+  RedeemAssistCode: "zcode:redeem-assist-code",
   /** Renderer → Main：读取当前窗口页面缩放档位 */
   GetDesktopZoomLevel: "zcode:get-desktop-zoom-level",
   /** Main → Renderer：当前窗口页面缩放档位变化 */
@@ -1144,6 +1155,18 @@ export interface PlatformChannelMap {
   [PlatformChannels.TunnelPair]: {
     request: void;
     response: TunnelManagerPairing;
+  };
+  [PlatformChannels.GetRemoteAssistCode]: {
+    request: void;
+    response: TunnelAssistCode;
+  };
+  [PlatformChannels.RefreshRemoteAssistCode]: {
+    request: void;
+    response: TunnelAssistCode;
+  };
+  [PlatformChannels.RedeemAssistCode]: {
+    request: string;
+    response: RedeemAssistCodeResult;
   };
   [PlatformChannels.GetDesktopZoomLevel]: {
     request: void;

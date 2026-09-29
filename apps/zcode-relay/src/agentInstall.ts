@@ -3,7 +3,6 @@
 // 智能体（ZCode/Claude/Codex…），智能体自行抓取本指引并按步骤完成安装。
 // 指引内容与 deploy/install-zcode-server.sh、DEPLOY.md §终端用户安装 保持同步。
 
-
 export const AGENT_INSTALL_GUIDE = `ZCode Server 安装指引（远程控制入口，specs/web-tunnel.md §5.7）
 
 请按以下步骤在本机安装并启动 ZCode Server。安装完成后，用户即可在浏览器（https://zcode.skillpie.cn）远程控制这台电脑上的 ZCode。

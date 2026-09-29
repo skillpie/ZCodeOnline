@@ -1,15 +1,21 @@
-// 隧道应用根（specs/web-tunnel.md §3.3）：主界面常驻渲染——未连接时用"挂起型 stub 服务"
-// 驱动真实 UI（所有 RPC 永不返回 → 界面呈加载态），顶层盖不可关闭的连接引导模态；
-// 连接成功换入真实服务（Root 按 key 重挂载），断开则模态重现、UI 回到加载态。
+// 隧道应用根（specs/web-tunnel.md §3.3）：主界面常驻渲染——未连接时展示与主界面同构的
+// 静态骨架，连接在后台进行（刷新/首开不弹「连接到你的电脑」模态，底部只挂细状态条）；
+// 仅定局失败（不可重试错误、需登录、自动重连耗尽、本机无可连对象）才弹出连接引导模态。
+// 连接成功换入真实服务（Root 按 key 重挂载），断开则回到骨架并后台自动重连。
 // 远程码（§5.9）路径：浏览器存储的 16 位码优先直连目标机器；码失效（已在别处刷新）
 // 时清存储回退本机链路，保证轮换后旧浏览器不被锁死。地址栏始终不出现码本身。
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppErrorBoundary, Root, ZCodeIntlProvider } from "@zcode/ui";
+import {
+  createAutoReconnect,
+  isRetryableTunnelConnectError,
+  TunnelConnectError,
+  connectTunnelServices,
+  type TunnelBootstrap,
+} from "@zcode/client";
 import type { connectViaProtocol } from "@zcode/client";
 import type { IPlatformService } from "@zcode/shared";
 import { DEFAULT_TUNNEL_RELAY_URL, TUNNEL_CONSTANTS } from "@zcode/shared";
-import { createAutoReconnect } from "./autoReconnect.js";
-import { TunnelConnectError, connectTunnelServices, type TunnelBootstrap } from "./tunnelSocket.js";
 import {
   AssistRedeemError,
   clearStoredAssistCode,
@@ -24,6 +30,7 @@ import {
   pairWithCode,
   type TunnelSession,
 } from "./tunnelSession.js";
+import { initialGateState, nextGateState, type GateEvent, type GateState } from "./gateState.js";
 import { ConnectionGateCard } from "./TunnelGateScreen.js";
 
 export type TunnelServices = ReturnType<typeof connectViaProtocol>;
@@ -33,41 +40,6 @@ const t = (zhText: string, enText: string) => (/^zh\b/i.test(navigator.language)
 // 自动重连窗口：6 次（1+2+4+8+16+30 ≈ 61s）覆盖 relay 重启空窗（秒级）+ 宿主退避重连
 // （最长 reconnectMaxMs）的典型恢复时长；超过后交还手动重连，保留换机重新配对的出口。
 const AUTO_RECONNECT_MAX_ATTEMPTS = 6;
-
-/**
- * 可自动重试的连接失败：
- * - network / hostOffline：relay 重启空窗或宿主尚未重新注册（宿主凭证被拒后会自动
- *   清空重注册），退避重试即可恢复；
- * - invalidSessionCredential / connectTokenInvalid：relay 的会话与票据全在内存
- *   （tunnelStore 参考实现驻内存），重启即失效——清掉旧凭证重跑连接链自愈：同机
- *   浏览器经本地发现零输入重新配对，远程设备最终停在手动配对门禁；
- * - 协议类失败（版本不匹配等）不重试：会话与 PSK 仍有效，宿主升级后手动重连即可。
- */
-function isRetryableConnectError(cause: unknown): boolean {
-  if (cause instanceof TunnelConnectError) {
-    return (
-      cause.code === "network" ||
-      cause.code === "hostOffline" ||
-      cause.code === "invalidSessionCredential" ||
-      cause.code === "connectTokenInvalid"
-    );
-  }
-  if (cause instanceof AssistRedeemError) {
-    return cause.kind === "network" || cause.kind === "generic";
-  }
-  return false;
-}
-
-// ---- 门禁 UI 状态 ----
-
-type GateStatus = "idle" | "pairing" | "connecting" | "disconnected";
-
-interface GateState {
-  visible: boolean;
-  status: GateStatus;
-  error: string | null;
-  needsLogin: boolean;
-}
 
 /** 未连接时的静态应用骨架：与主界面同构的空态，视觉占位而非假交互。 */
 export function DisconnectedAppSkeleton() {
@@ -116,17 +88,13 @@ export function TunnelAppRoot({
 }) {
   const [services, setServices] = useState<TunnelServices | null>(null);
   const [bootstrap, setBootstrap] = useState<TunnelBootstrap | undefined>(undefined);
-  const [gate, setGate] = useState<GateState>({
-    visible: true,
-    status: "idle",
-    error: null,
-    needsLogin: false,
-  });
+  // 初始不弹门禁：刷新/首开直接展示骨架主界面，连接在后台进行（见 gateState.ts）。
+  const [gate, setGate] = useState<GateState>(initialGateState);
   // 连接代际：旧连接的迟到 onClose 不得影响新连接的状态。
   const activeConnRef = useRef(0);
 
-  const patchGate = useCallback((patch: Partial<GateState>) => {
-    setGate((current) => ({ ...current, ...patch }));
+  const dispatchGate = useCallback((event: GateEvent) => {
+    setGate((current) => nextGateState(current, event));
   }, []);
 
   // 自动重连调度器（唯一所有者是本组件）。重试动作经 retryDispatchRef 间接引用连接链，
@@ -140,10 +108,10 @@ export function TunnelAppRoot({
       maxMs: TUNNEL_CONSTANTS.reconnectMaxMs,
       onRetry: () => retryDispatchRef.current(),
       onGiveUp: () =>
-        patchGate({
-          visible: true,
+        dispatchGate({
+          kind: "gateError",
           status: "disconnected",
-          error: t(
+          message: t(
             "自动重连未成功，请点击「重新连接」。",
             "Automatic reconnection failed. Click Reconnect to try again.",
           ),
@@ -151,21 +119,20 @@ export function TunnelAppRoot({
     });
   }
 
-  // 断开/失败后的统一入口：门禁切到重连中，再由调度器按退避序列重跑连接链。
+  // 断开/失败后的统一入口：后台重连（骨架 + 底部状态条，不弹模态），再由调度器按退避序列重跑连接链。
   const scheduleReconnect = useCallback(() => {
-    patchGate({
-      visible: true,
-      status: "connecting",
-      error: t("连接已断开，正在自动重连…", "Connection lost. Reconnecting…"),
+    dispatchGate({
+      kind: "retryScheduled",
+      message: t("连接已断开，正在自动重连…", "Connection lost. Reconnecting…"),
     });
     autoReconnectRef.current?.schedule();
-  }, [patchGate]);
+  }, [dispatchGate]);
 
   const connectWithSession = useCallback(
     async (session: TunnelSession) => {
       const seq = activeConnRef.current + 1;
       activeConnRef.current = seq;
-      patchGate({ status: "connecting", error: null });
+      dispatchGate({ kind: "connectStart" });
       // 握手完成前的断开（含 fail() 主动 close 触发的 onClose）由 catch 统一做重试决策；
       // onClose 只接管已建立的连接，避免协议类失败被误排入自动重试。
       let established = false;
@@ -177,7 +144,7 @@ export function TunnelAppRoot({
           sessionCredential: session.sessionCredential,
           onClose: () => {
             if (activeConnRef.current !== seq) return;
-            // 断开：UI 回到骨架态（Root 换回骨架重挂载），门禁由 scheduleReconnect 切重连中。
+            // 断开：UI 回到骨架态（Root 换回骨架重挂载），scheduleReconnect 后台重连。
             document.title = "ZCode Online";
             setServices(null);
             setBootstrap(undefined);
@@ -196,7 +163,7 @@ export function TunnelAppRoot({
         // 不再回写 /<码> 形式的 URL，避免投屏/截图/历史记录泄露长期凭证。
         setServices(connected.services);
         setBootstrap(connected.bootstrap);
-        patchGate({ visible: false, status: "idle", error: null, needsLogin: false });
+        dispatchGate({ kind: "connectSuccess" });
       } catch (cause) {
         if (activeConnRef.current !== seq) return;
         setServices(null);
@@ -208,7 +175,7 @@ export function TunnelAppRoot({
           // 重连链重新配对——同机浏览器经本地发现零输入完成，远程设备停在手动门禁。
           clearTunnelSession();
         }
-        if (isRetryableConnectError(cause)) {
+        if (isRetryableTunnelConnectError(cause)) {
           // 网络空窗/宿主暂未重新注册/会话待重新配对：退避重试。不再像旧逻辑那样对
           // hostOffline 也清会话——宿主短暂离线后原会话仍有效，远程设备无需重新扫码。
           scheduleReconnect();
@@ -216,10 +183,10 @@ export function TunnelAppRoot({
         }
         const message =
           cause instanceof Error ? cause.message : cause instanceof Object ? String(cause) : "";
-        patchGate({ visible: true, status: "idle", error: message });
+        dispatchGate({ kind: "gateError", status: "idle", message });
       }
     },
-    [patchGate, scheduleReconnect],
+    [dispatchGate, scheduleReconnect],
   );
 
   const handlePairSubmit = useCallback(
@@ -231,15 +198,18 @@ export function TunnelAppRoot({
         });
         await connectWithSession(session);
       } catch (cause) {
-        patchGate({ status: "idle" });
         if (cause instanceof TunnelPairingError && cause.code === "auth") {
-          patchGate({ needsLogin: true });
+          dispatchGate({ kind: "needsLogin" });
           return;
         }
-        patchGate({ error: cause instanceof Error ? cause.message : String(cause) });
+        dispatchGate({
+          kind: "gateError",
+          status: "idle",
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
       }
     },
-    [connectWithSession, getAccessToken, patchGate],
+    [connectWithSession, getAccessToken, dispatchGate],
   );
 
   // 无远程码时的既有连接链：已存会话直连 → 本地发现（宿主在本机时零输入自动配对）→ 门禁。
@@ -253,10 +223,11 @@ export function TunnelAppRoot({
       }
       const discovery = await discoverLocalPairing();
       if (!discovery) {
-        patchGate({ visible: true, status: "idle", error: notice });
+        // 本机无可连对象（宿主未装/不在本机）：定局失败，弹出引导门禁。
+        dispatchGate({ kind: "gateError", status: "idle", message: notice });
         return;
       }
-      patchGate({ visible: true, status: "pairing", error: null });
+      dispatchGate({ kind: "pairingStart" });
       try {
         const session = await pairWithCode({
           pairingUrl: discovery.pairingUrl,
@@ -264,15 +235,18 @@ export function TunnelAppRoot({
         });
         await connectWithSession(session);
       } catch (cause) {
-        patchGate({ status: "idle" });
         if (cause instanceof TunnelPairingError && cause.code === "auth") {
-          patchGate({ needsLogin: true });
+          dispatchGate({ kind: "needsLogin" });
           return;
         }
-        patchGate({ error: cause instanceof Error ? cause.message : String(cause) });
+        dispatchGate({
+          kind: "gateError",
+          status: "idle",
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
       }
     },
-    [connectWithSession, getAccessToken, patchGate],
+    [connectWithSession, getAccessToken, dispatchGate],
   );
 
   // 远程码直连（码即凭证）：兑换一次性票据 → 隧道数据面。码失效（invalid，说明已在
@@ -281,7 +255,7 @@ export function TunnelAppRoot({
     async (code: string) => {
       const seq = activeConnRef.current + 1;
       activeConnRef.current = seq;
-      patchGate({ visible: true, status: "connecting", error: null });
+      dispatchGate({ kind: "connectStart" });
       // 同 connectWithSession：握手前的断开由 catch 统一决策，onClose 只接管已建立的连接。
       let established = false;
       try {
@@ -309,7 +283,7 @@ export function TunnelAppRoot({
         autoReconnectRef.current?.clear();
         setServices(connected.services);
         setBootstrap(connected.bootstrap);
-        patchGate({ visible: false, status: "idle", error: null, needsLogin: false });
+        dispatchGate({ kind: "connectSuccess" });
       } catch (cause) {
         if (activeConnRef.current !== seq) return;
         setServices(null);
@@ -318,14 +292,14 @@ export function TunnelAppRoot({
         if (invalidCode) clearStoredAssistCode();
         // 断开态（含重连按钮）承接兑换/握手的可重试失败；失效码则回退本机链路兜底。
         if (!invalidCode) {
-          if (isRetryableConnectError(cause)) {
+          if (isRetryableTunnelConnectError(cause)) {
             scheduleReconnect();
             return;
           }
-          patchGate({
-            visible: true,
+          dispatchGate({
+            kind: "gateError",
             status: "disconnected",
-            error: cause instanceof Error ? cause.message : String(cause),
+            message: cause instanceof Error ? cause.message : String(cause),
           });
           return;
         }
@@ -337,7 +311,7 @@ export function TunnelAppRoot({
         );
       }
     },
-    [connectWithoutAssistCode, patchGate, scheduleReconnect],
+    [connectWithoutAssistCode, dispatchGate, scheduleReconnect],
   );
 
   const handleReconnect = useCallback(() => {
@@ -416,8 +390,21 @@ export function TunnelAppRoot({
         <DisconnectedAppSkeleton />
       )}
 
+      {services === null && !gate.visible ? (
+        // 后台连接状态条：刷新/断线期间主界面（骨架）不被模态遮挡，仅以细条反馈进度；
+        // 定局失败弹出上方门禁后即被其取代（两者互斥）。
+        <div className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 shadow-lg">
+            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
+            <span className="text-ui-sm text-foreground-subtle">
+              {t("正在连接你的电脑…", "Connecting to your machine…")}
+            </span>
+          </div>
+        </div>
+      ) : null}
+
       {gate.visible ? (
-        // 不可关闭的连接引导模态：连上本机前常驻顶层，断开时重现。
+        // 不可关闭的连接引导模态：仅在定局失败/需要用户操作时弹出（见 gateState.ts）。
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           {/* max-w-lg（32rem）加宽 1/6：32rem * 7/6 ≈ 37.333rem ≈ 597px。 */}
           <div className="w-full max-w-[37.333rem]">

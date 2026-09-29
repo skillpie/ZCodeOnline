@@ -1,15 +1,17 @@
-// 远程控制弹窗（specs/web-tunnel.md §5.9）：Web 版侧栏设置按钮左侧的图标按钮。
-// 弹窗展示远程链接列表：本机（回环发现端点的权威码）固定第一项并带「本机」标签，
-// 权威发现的新码若与列表里带 local 标记的旧本机条目不同码（本机在别处换过码），
-// 由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底回退码不打标记。
-// 额外多一个「刷新」（二次确认后轮换本机码，旧链接立即失效）；其余条目来自浏览器
-// 登记的远程链接列表，均支持改名（默认名 = <远程码>的ZCode）、「复制」「切换」与
-// 手动添加/删除。本机条目卡片见 AssistMachineRowCard.tsx。
-// 「切换」保存该链接为当前生效码并整页重连；仅当 platform 实现了远程码契约
-// （浏览器与宿主同机的 Web 端）时渲染本入口，轮换权威所有者在宿主 Core 隧道运行时。
+// 远程控制弹窗（specs/web-tunnel.md §5.9）：侧栏设置按钮左侧的图标按钮，Web 与桌面共用。
+// 弹窗展示远程链接列表：本机（Web 经回环发现端点、桌面经 daemon 控制链的权威码）固定
+// 第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的旧本机条目不同码
+// （本机在别处换过码），由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底
+// 回退码不打标记。额外多一个「刷新」（二次确认后轮换本机码，旧链接立即失效）；其余
+// 条目来自本端登记的远程链接列表，均支持改名（默认名 = <远程码>的ZCode）、「复制」
+// 「切换」与手动添加/删除。本机条目卡片见 AssistMachineRowCard.tsx。
+// 「切换」保存该链接为当前生效码并整页重连（Web reload 后走隧道 bootstrap；桌面由
+// main.tsx 的 tunnelEntryActive 分支接管）。桌面处于隧道模式（存在活动存储码）时额外
+// 提供「切回本机」：清码 + 重载，回到本地桌面。仅当 platform 实现了远程码契约时渲染
+// 本入口；轮换权威所有者在宿主 Core 隧道运行时。
 import { useState } from "react";
 import { Loader2, MonitorSmartphone, Plus } from "lucide-react";
-import { normalizeAssistCode } from "@zcode/shared";
+import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -21,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.js";
 import {
+  clearStoredAssistCode,
   defaultAssistMachineName,
   loadAssistMachines,
   loadStoredAssistCode,
@@ -33,6 +36,7 @@ import {
   type AssistMachine,
 } from "@/assistMachineStore.js";
 import { AssistDialogSecondaryButton, AssistMachineRowCard } from "@/AssistMachineRowCard.js";
+import { AssistMachineAddForm } from "@/AssistMachineAddForm.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -49,7 +53,14 @@ function orderMachines(list: AssistMachine[], localCode: string | null): AssistM
   ];
 }
 
-export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: string }) {
+export function WorkspaceAssistCodeRefreshTrigger({
+  className,
+  isDesktop = false,
+}: {
+  className?: string;
+  /** 桌面端：分享链接用 relay 站点源（renderer origin 非网页域名）；并提供「切回本机」。 */
+  isDesktop?: boolean;
+}) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
   const [open, setOpen] = useState(false);
@@ -63,18 +74,25 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const [adding, setAdding] = useState(false);
-  const [addCodeDraft, setAddCodeDraft] = useState("");
-  const [addNameDraft, setAddNameDraft] = useState("");
-  const [addFormError, setAddFormError] = useState<string | null>(null);
 
-  // 桌面端走 daemon 控制链路（暂未暴露远程码契约），未实现的平台直接不渲染入口。
+  // 桌面端经 daemon 控制链路实现远程码契约（getRemoteAssistCode/refreshRemoteAssistCode），
+  // 未实现的平台直接不渲染入口。
   if (typeof platform.refreshRemoteAssistCode !== "function") {
     return null;
   }
 
   const getRemoteAssistCode = platform.getRemoteAssistCode?.bind(platform);
   const refreshRemoteAssistCode = platform.refreshRemoteAssistCode.bind(platform);
-  const origin = window.location.origin;
+  // 分享链接的站点源：Web 与 relay 同源直接取 location；桌面 renderer 的 origin 不是
+  // 网页域名，用产品 relay 入口推导（relayWebOrigin 去掉 /relay 路径前缀）。
+  const origin = isDesktop ? relayWebOrigin(DEFAULT_TUNNEL_RELAY_URL) : window.location.origin;
+
+  /** 桌面「切回本机」：清存储码后整页重载，本地启动流接管（见 desktop main.tsx）。 */
+  const returnToLocal = () => {
+    if (!isDesktop) return;
+    clearStoredAssistCode();
+    window.location.reload();
+  };
 
   const loadCurrent = () => {
     setPhase("loading");
@@ -121,9 +139,6 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
     setCopiedCode(null);
     setEditingCode(null);
     setAdding(false);
-    setAddCodeDraft("");
-    setAddNameDraft("");
-    setAddFormError(null);
     setOpen(true);
     loadCurrent();
   };
@@ -175,36 +190,12 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
 
   const closeAddForm = () => {
     setAdding(false);
-    setAddCodeDraft("");
-    setAddNameDraft("");
-    setAddFormError(null);
-  };
-
-  // 手动添加：码校验通过才入库；可选名称立即生效，否则走默认名（<码>的ZCode）。
-  const submitAdd = () => {
-    const code = normalizeAssistCode(addCodeDraft);
-    if (!code) {
-      setAddFormError(intl.formatMessage({ id: "assistCode.dialog.addInvalid" }));
-      return;
-    }
-    if (code === localCode || loadAssistMachines().some((machine) => machine.code === code)) {
-      setAddFormError(intl.formatMessage({ id: "assistCode.dialog.addDuplicate" }));
-      return;
-    }
-    upsertAssistMachine(code);
-    const name = addNameDraft.trim();
-    if (name) renameAssistMachine(code, name);
-    setMachines(orderMachines(loadAssistMachines(), localCode));
-    closeAddForm();
   };
 
   // 删除仅移除列表记录；活动行已被禁用，不会删掉当前连接目标。
   const removeRow = (code: string) => {
     setMachines(orderMachines(removeAssistMachine(code), localCode));
   };
-
-  const addInputClass =
-    "w-full rounded-md border border-input-border-focused bg-background px-2 py-1 text-ui-base text-foreground outline-none";
 
   return (
     <>
@@ -292,60 +283,19 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
             </div>
           ) : null}
 
-          {/* 添加表单独立于列表渲染：列表为空（本机码缺失且无已登记链接）时也能添加。 */}
+          {/* 添加表单独立于列表渲染：草稿态在 AssistMachineAddForm 内部，入库后收起。 */}
           {adding ? (
-            <div className="min-w-0 space-y-2 rounded-xl border border-border bg-surface px-3 py-2.5">
-              <input
-                autoFocus
-                value={addCodeDraft}
-                inputMode="numeric"
-                aria-label={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
-                placeholder={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
-                className={addInputClass}
-                onChange={(event) => {
-                  setAddCodeDraft(event.target.value);
-                  setAddFormError(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") submitAdd();
-                  if (event.key === "Escape") closeAddForm();
-                }}
-              />
-              <input
-                value={addNameDraft}
-                aria-label={intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })}
-                placeholder={
-                  normalizeAssistCode(addCodeDraft)
-                    ? defaultAssistMachineName(normalizeAssistCode(addCodeDraft) ?? "")
-                    : intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })
-                }
-                className={addInputClass}
-                onChange={(event) => setAddNameDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") submitAdd();
-                  if (event.key === "Escape") closeAddForm();
-                }}
-              />
-              {addFormError !== null ? (
-                <p className="text-ui-sm text-destructive">{addFormError}</p>
-              ) : null}
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  className="text-ui-base text-foreground-subtle hover:text-foreground"
-                  onClick={closeAddForm}
-                >
-                  {intl.formatMessage({ id: "common.cancel" })}
-                </button>
-                <button
-                  type="button"
-                  className="text-ui-base font-medium text-primary hover:text-primary"
-                  onClick={submitAdd}
-                >
-                  {intl.formatMessage({ id: "assistCode.dialog.addConfirm" })}
-                </button>
-              </div>
-            </div>
+            <AssistMachineAddForm
+              localCode={localCode}
+              existingCodes={machines.map((machine) => machine.code)}
+              onSubmit={(code, name) => {
+                upsertAssistMachine(code);
+                if (name) renameAssistMachine(code, name);
+                setMachines(orderMachines(loadAssistMachines(), localCode));
+                closeAddForm();
+              }}
+              onCancel={closeAddForm}
+            />
           ) : null}
 
           {phase === "loading" ? (
@@ -367,19 +317,30 @@ export function WorkspaceAssistCodeRefreshTrigger({ className }: { className?: s
             )}
           >
             {phase === "ready" && !adding ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="h-9 px-4"
-                onClick={() => {
-                  setAdding(true);
-                  setAddFormError(null);
-                }}
-              >
-                <Plus className="size-4" />
-                {intl.formatMessage({ id: "assistCode.dialog.add" })}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-9 px-4"
+                  onClick={() => setAdding(true)}
+                >
+                  <Plus className="size-4" />
+                  {intl.formatMessage({ id: "assistCode.dialog.add" })}
+                </Button>
+                {/* 桌面隧道模式（存在活动存储码）才可切回本地桌面；Web 的本机即当前页。 */}
+                {isDesktop && activeCode !== null ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="lg"
+                    className="h-9 px-4"
+                    onClick={returnToLocal}
+                  >
+                    {intl.formatMessage({ id: "assistCode.dialog.returnToLocal" })}
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
             {phase === "confirm" ? (
               <>

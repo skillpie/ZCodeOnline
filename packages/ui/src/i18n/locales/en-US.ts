@@ -1812,6 +1812,7 @@ const enUS: Record<string, string> = {
   "assistCode.dialog.refreshing": "Refreshing…",
   "assistCode.dialog.refreshed":
     "The assist code has been refreshed and old links no longer work. Share the new link below:",
+  "assistCode.dialog.returnToLocal": "Use this machine",
   "assistCode.dialog.retry": "Retry",
   "remote.title": "Connect remote environment",
   "remote.description":

@@ -96,6 +96,10 @@ export const controlRequestSchema = z.discriminatedUnion("command", [
   requestBase.extend({ command: z.literal("tunnel-enable"), relayUrl: z.string().url() }),
   requestBase.extend({ command: z.literal("tunnel-disable") }),
   requestBase.extend({ command: z.literal("tunnel-pair") }),
+  // 远程协助码（specs/web-tunnel.md §5.9）：桌面远程控制弹窗读取/轮换本机码。
+  // result 复用 tunnel-pair 的形状：pairingUrl 字段携带 16 位码（与回环发现端点同构）。
+  requestBase.extend({ command: z.literal("tunnel-assist-code") }),
+  requestBase.extend({ command: z.literal("tunnel-assist-refresh") }),
 ]);
 export type ControlRequest = z.infer<typeof controlRequestSchema>;
 
@@ -150,10 +154,11 @@ export type CoreMessage = z.infer<typeof coreMessageSchema>;
 export const coreCommandSchema = z.discriminatedUnion("command", [
   z.object({ command: z.literal("shutdown") }),
   // Supervisor → Core 的隧道控制转发；结果经 tunnel-control-result 关联回来。
+  // assist-code/assist-refresh：桌面远程控制读取/轮换本机远程码。
   z.object({
     command: z.literal("tunnel-control"),
     requestId: z.string().min(1).max(128),
-    action: z.enum(["status", "enable", "disable", "pair"]),
+    action: z.enum(["status", "enable", "disable", "pair", "assist-code", "assist-refresh"]),
     relayUrl: z.string().url().optional(),
   }),
 ]);

@@ -763,6 +763,10 @@ contextBridge.exposeInMainWorld("zcode", {
   tunnelEnable: (relayUrl: string) => ipcRenderer.invoke(PlatformChannels.TunnelEnable, relayUrl),
   tunnelDisable: () => ipcRenderer.invoke(PlatformChannels.TunnelDisable),
   tunnelPair: () => ipcRenderer.invoke(PlatformChannels.TunnelPair),
+  /** 远程协助码（§5.9）：本机码读取/轮换走 daemon 控制链；兑换由 main 代理 relay */
+  getRemoteAssistCode: () => ipcRenderer.invoke(PlatformChannels.GetRemoteAssistCode),
+  refreshRemoteAssistCode: () => ipcRenderer.invoke(PlatformChannels.RefreshRemoteAssistCode),
+  redeemAssistCode: (code: string) => ipcRenderer.invoke(PlatformChannels.RedeemAssistCode, code),
   /** 注册自动更新持续状态变化，返回 disposer */
   onUpdateStateChanged: (callback: (payload: UpdateStatePayload) => void): (() => void) => {
     updateStateCallbacks.add(callback);

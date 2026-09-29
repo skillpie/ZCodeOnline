@@ -383,10 +383,11 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               compact
             />
           ) : null}
-          {/* Web 版「远程控制」入口（specs/web-tunnel.md §5.9）：弹窗展示当前带码链接
-              + 复制/刷新；组件内部按 platform 能力自行隐藏（桌面未实现契约时不渲染），
-              位置固定在设置按钮左侧。 */}
-          <WorkspaceAssistCodeRefreshTrigger />
+          {/* 「远程控制」入口（specs/web-tunnel.md §5.9）：弹窗展示远程链接列表
+              （本机码/复制/刷新/切换），组件内部按 platform 能力自行隐藏（未实现契约时
+              不渲染），位置固定在设置按钮左侧；isDesktop 用于桌面分享链接域名与
+              「切回本机」出口。 */}
+          <WorkspaceAssistCodeRefreshTrigger isDesktop={isDesktop} />
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button
               type="button"

@@ -10,6 +10,8 @@ import {
   pairingPayloadSchema,
   hostControlFrameSchema,
   relayHostFrameSchema,
+  relayHttpOrigin,
+  relayWebOrigin,
   tunnelClientHelloSchema,
 } from "../src/tunnel.js";
 
@@ -26,6 +28,16 @@ function validPayload() {
     displayName: "Jensen 的台式机",
   };
 }
+
+test("relayHttpOrigin/relayWebOrigin 转换 ws/wss 地址", () => {
+  assert.equal(relayHttpOrigin("wss://x.example/relay"), "https://x.example/relay");
+  assert.equal(relayHttpOrigin("ws://x.example:8080"), "http://x.example:8080");
+  assert.equal(relayHttpOrigin("http://x.example"), "http://x.example");
+  // Web 站点源（分享链接 <origin>/<码> 用）：去掉 /relay 路径前缀。
+  assert.equal(relayWebOrigin("wss://zcode.skillpie.cn/relay"), "https://zcode.skillpie.cn");
+  assert.equal(relayWebOrigin("ws://127.0.0.1:8080/relay/"), "http://127.0.0.1:8080");
+  assert.equal(relayWebOrigin("wss://x.example"), "https://x.example");
+});
 
 test("pairing url 编码后可无损解析", () => {
   const payload = validPayload();

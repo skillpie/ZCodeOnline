@@ -1,18 +1,15 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, describe, test } from "node:test";
-import { maskAssistPsk, revealAssistPsk, generateTunnelSecret } from "@zcode/shared";
 import {
-  AssistRedeemError,
   clearStoredAssistCode,
   fetchAssistCodeViaDiscovery,
   loadStoredAssistCode,
-  redeemAssistCode,
   refreshAssistCodeViaDiscovery,
   saveStoredAssistCode,
 } from "../src/tunnel/assistSession.js";
 
-// 浏览器侧远程码会话（specs/web-tunnel.md §5.9）网络路径：
-// 兑换错误归类（invalid 驱动回退）、刷新端点成功后回写存储。
+// 浏览器侧远程码回环发现端点（specs/web-tunnel.md §5.9）：读取/刷新与存储回写。
+// 兑换错误归类用例随实现迁至 packages/client/test/assistRedeem.test.ts；
 // 存储语义（活动码/机器列表/改名）收口在 @zcode/ui/assist-machine-store，
 // 用例见 packages/ui/test/assistMachineStore.test.ts。
 
@@ -31,63 +28,6 @@ beforeEach(() => {
 after(() => {
   storage.clear();
   delete (globalThis as { localStorage?: Storage }).localStorage;
-});
-
-describe("redeemAssistCode 错误归类", () => {
-  const originalFetch = globalThis.fetch;
-
-  test("401 → invalid（码被轮换，调用方据此清存储回退）", async () => {
-    globalThis.fetch = (async () => new Response(null, { status: 401 })) as typeof fetch;
-    try {
-      await assert.rejects(
-        () => redeemAssistCode("1234567890123456"),
-        (cause: unknown) => cause instanceof AssistRedeemError && cause.kind === "invalid",
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  test("429 → rateLimited；网络异常 → network", async () => {
-    globalThis.fetch = (async () => new Response(null, { status: 429 })) as typeof fetch;
-    try {
-      await assert.rejects(
-        () => redeemAssistCode("1234567890123456"),
-        (cause: unknown) => cause instanceof AssistRedeemError && cause.kind === "rateLimited",
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-    globalThis.fetch = (async () => {
-      throw new Error("offline");
-    }) as typeof fetch;
-    try {
-      await assert.rejects(
-        () => redeemAssistCode("1234567890123456"),
-        (cause: unknown) => cause instanceof AssistRedeemError && cause.kind === "network",
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-
-  test("成功兑换：maskedPsk 经码还原出原 psk", async () => {
-    const psk = generateTunnelSecret();
-    const code = "1234567890123456";
-    const maskedPsk = await maskAssistPsk(psk, code);
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({ hostId: "h-1", connectToken: `tok-${"x".repeat(40)}`, maskedPsk }),
-        { status: 200 },
-      )) as typeof fetch;
-    try {
-      const redeemed = await redeemAssistCode(code);
-      assert.equal(redeemed.hostId, "h-1");
-      assert.equal(await revealAssistPsk(maskedPsk, code), redeemed.psk);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
 });
 
 describe("refreshAssistCodeViaDiscovery", () => {

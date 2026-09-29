@@ -48,6 +48,8 @@ import type {
   OpenInEditorOptions,
   TunnelManagerPairing,
   TunnelManagerStatus,
+  TunnelAssistCode,
+  RedeemAssistCodeResult,
 } from "@zcode/shared";
 
 /**
@@ -327,6 +329,10 @@ declare global {
       tunnelEnable?(relayUrl: string): Promise<TunnelManagerStatus>;
       tunnelDisable?(): Promise<TunnelManagerStatus>;
       tunnelPair?(): Promise<TunnelManagerPairing>;
+      /** 远程协助码（§5.9）：本机码读取/轮换走 daemon 控制链；兑换由 main 代理 relay */
+      getRemoteAssistCode?(): Promise<TunnelAssistCode>;
+      refreshRemoteAssistCode?(): Promise<TunnelAssistCode>;
+      redeemAssistCode?(code: string): Promise<RedeemAssistCodeResult>;
     };
   }
 }

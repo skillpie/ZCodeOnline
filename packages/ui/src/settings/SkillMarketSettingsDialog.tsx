@@ -128,12 +128,7 @@ export function SkillMarketSettingsDialog({
             {intl.formatMessage({ id: "settings.skills.marketSettings.reset" })}
           </Button>
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" size="lg" onClick={() => onOpenChange(false)}>
               {intl.formatMessage({ id: "common.cancel" })}
             </Button>
             <Button

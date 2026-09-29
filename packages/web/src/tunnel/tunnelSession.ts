@@ -5,6 +5,7 @@ import {
   TUNNEL_CONSTANTS,
   TUNNEL_DISCOVERY_PORT,
   parsePairingUrl,
+  relayHttpOrigin,
   tunnelDiscoveryResponseSchema,
   type PairingPayload,
 } from "@zcode/shared";
@@ -33,12 +34,7 @@ export class TunnelPairingError extends Error {
   }
 }
 
-/** relay 的 ws(s):// 地址转控制面 http(s):// 源。 */
-export function relayHttpOrigin(relayUrl: string): string {
-  if (relayUrl.startsWith("wss://")) return `https://${relayUrl.slice("wss://".length)}`;
-  if (relayUrl.startsWith("ws://")) return `http://${relayUrl.slice("ws://".length)}`;
-  return relayUrl;
-}
+// relayHttpOrigin 已收敛到 @zcode/shared（上方 import 供 pairWithCode 组装端点使用）。
 
 export function loadTunnelSession(now = Date.now): TunnelSession | null {
   try {

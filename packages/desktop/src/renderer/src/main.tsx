@@ -39,6 +39,8 @@ import {
   parseRemoteWorkspaceServicePortMessage,
   type RemoteWorkspaceServicePortRegistration,
 } from "./remoteWorkspaceServicePortBridge.js";
+import { DesktopTunnelRoot } from "./tunnel/DesktopTunnelRoot.js";
+import { loadStoredAssistCode } from "@zcode/ui/assist-machine-store";
 
 type DesktopRendererImportMetaEnv = {
   VITE_ZCODE_E2E_STORE_BRIDGE?: string;
@@ -160,6 +162,11 @@ let appInitialized = false;
 const databaseStartupAdmission = new DatabaseStartupAdmission();
 const appRoot =
   windowKind === "update-status" ? null : createRoot(document.getElementById("root")!);
+
+// 远程控制隧道模式（specs/web-tunnel.md §5.9 桌面「切换」语义）：localStorage 存有
+// 远程码时整窗切到远端机器——跳过本地数据库启动流（本地 Host 照常后台拉起但 UI 不用），
+// 由 DesktopTunnelRoot 兑换票据并建立端到端隧道；「切回本机」清码重载后走回本地流。
+const tunnelEntryActive = windowKind !== "update-status" && loadStoredAssistCode() !== null;
 const sendStartupControl = (control: DatabaseStartupControl) =>
   window.postMessage({ type: InternalChannels.DatabaseStartupControl, control }, "*");
 function renderDatabaseStartup(): void {
@@ -192,7 +199,7 @@ function enterAppIfPrepared(): void {
   if (port) initializeBusinessRoot(port);
 }
 const firstStartupStateTimer =
-  windowKind === "update-status"
+  windowKind === "update-status" || tunnelEntryActive
     ? undefined
     : setTimeout(() => {
         if (databaseStartupAdmission.state) return;
@@ -352,7 +359,19 @@ function initializeBusinessRoot(port: MessagePort): void {
 }
 
 window.addEventListener("message", handleServicePortMessage);
-if (windowKind !== "update-status") {
+if (tunnelEntryActive) {
+  appRoot?.render(
+    <AppErrorBoundary isDesktop isMacDesktop={isMacDesktop} isWindowsDesktop={isWindowsDesktop}>
+      <DesktopTunnelRoot
+        platform={desktopPlatform}
+        isMacDesktop={isMacDesktop}
+        isWindowsDesktop={isWindowsDesktop}
+        initialLocale={initialLocaleFlag ? initialLocale : undefined}
+        resolveSystemLocale={desktopPlatform.getSystemLocale}
+      />
+    </AppErrorBoundary>,
+  );
+} else if (windowKind !== "update-status") {
   renderDatabaseStartup();
   sendStartupControl({ action: "snapshot" });
 }

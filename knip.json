@@ -3,11 +3,7 @@
   "tags": ["-lintignore"],
   "workspaces": {
     ".": {
-      "entry": [
-        ".release-it.mjs",
-        "scripts/check-workspace-freshness.mjs",
-        "scripts/mise-run.mjs"
-      ]
+      "entry": [".release-it.mjs", "scripts/check-workspace-freshness.mjs", "scripts/mise-run.mjs"]
     },
     "packages/desktop": {
       "entry": [

@@ -1691,6 +1691,7 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.refreshing": "正在刷新…",
   "assistCode.dialog.refreshed": "远程码已刷新，旧链接已全部失效。请把新链接发给对方：",
   "assistCode.dialog.retry": "重试",
+  "assistCode.dialog.returnToLocal": "切回本机",
   "remote.title": "连接远程环境",
   "remote.description":
     "通过 SSH、Server、WSL 或 Docker 连接远程工作区，并在当前窗口中继续选择目录。",
