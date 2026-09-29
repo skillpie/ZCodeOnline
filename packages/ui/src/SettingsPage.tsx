@@ -1387,7 +1387,10 @@ export function SettingsPage({
           ) : null}
           <aside className="min-w-0">
             <div className="flex h-full flex-col">
-              <div className="h-12 [app-region:drag]"></div>
+              {/* 这格 h-12 留白只为桌面窗口标题栏（交通灯/自绘窗控）提供拖拽与避让区；
+                  Web 没有窗口标题栏，保留会把“返回工作区”上方压出一截纯空白，
+                  因此仅在桌面平台渲染。 */}
+              {isDesktop ? <div className="h-12 [app-region:drag]" /> : null}
               <div className="px-2 pb-3 pt-3">
                 {onBack ? (
                   <ControlHintTooltip
