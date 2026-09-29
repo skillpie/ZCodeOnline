@@ -11,7 +11,7 @@ import type {
   ProviderSettingsFormProvider,
   ProviderSettingsFormModel,
 } from "@/lib/providerSettingsFormTypes.js";
-import type { ModelConnectivityResult } from "@zcode/shared";
+import type { ModelConnectivityResult, ProviderModelListItem } from "@zcode/shared";
 import type { ProviderApiType } from "@zcode/provider";
 import {
   TID_MODEL_PROVIDER_ADD_MODEL_BUTTON,
@@ -22,7 +22,16 @@ import {
   TID_MODEL_PROVIDER_NAME_INPUT,
   testId,
 } from "@zcode/shared";
-import { InfoIcon, LockKeyholeIcon, Plus, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  CloudDownloadIcon,
+  InfoIcon,
+  Loader2Icon,
+  LockKeyholeIcon,
+  Plus,
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import {
@@ -356,6 +365,10 @@ export function ProviderModelsSection({
   onAddModel,
   onReorderModelIds,
   settingsRevision = 0,
+  onFetchModels,
+  fetchingModels = false,
+  fetchModelsError = null,
+  fetchedModels = null,
 }: {
   providerId: string;
   providerName?: string;
@@ -373,6 +386,11 @@ export function ProviderModelsSection({
   onAddModel: (model: ProviderSettingsFormModel) => void | Promise<void>;
   onReorderModelIds?: (modelIds: string[]) => void;
   settingsRevision?: number;
+  /** 一键拉取供应商模型列表（main 直连；web 端不提供则隐藏入口） */
+  onFetchModels?: () => void | Promise<void>;
+  fetchingModels?: boolean;
+  fetchModelsError?: string | null;
+  fetchedModels?: readonly ProviderModelListItem[] | null;
 }) {
   const { intl } = useZCodeIntl();
   const { providerSettingsService } = useServices();
@@ -470,18 +488,53 @@ export function ProviderModelsSection({
         <span className="text-ui-base text-foreground-subtle">
           {intl.formatMessage({ id: "settings.modelProvider.models" })}
         </span>
-        <Button
-          type="button"
-          variant="secondary"
-          size="default"
-          className="rounded-lg"
-          data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
-          onClick={openAddDialog}
-        >
-          <Plus data-icon="inline-start" aria-hidden="true" />
-          {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onFetchModels ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="default"
+              className="rounded-lg"
+              disabled={fetchingModels}
+              data-testid="model-provider-fetch-models"
+              onClick={() => void onFetchModels()}
+            >
+              {fetchingModels ? (
+                <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
+              ) : (
+                <CloudDownloadIcon data-icon="inline-start" aria-hidden="true" />
+              )}
+              {intl.formatMessage({ id: "settings.modelProvider.fetchModels" })}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            size="default"
+            className="rounded-lg"
+            data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
+            onClick={openAddDialog}
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
+          </Button>
+        </div>
       </div>
+      {fetchModelsError ? (
+        <p className="mb-1 text-ui-caption text-destructive" role="alert">
+          {intl.formatMessage({ id: "settings.modelProvider.fetchModelsFailed" })}
+          {fetchModelsError}
+        </p>
+      ) : fetchedModels && !fetchingModels ? (
+        <p className="mb-1 text-ui-caption text-foreground-subtle" role="status">
+          {fetchedModels.length > 0
+            ? intl.formatMessage(
+                { id: "settings.modelProvider.fetchModelsCount" },
+                { count: fetchedModels.length },
+              )
+            : intl.formatMessage({ id: "settings.modelProvider.fetchModelsEmpty" })}
+        </p>
+      ) : null}
       {models.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-input-border bg-input">
           <SortableProviderModelList
@@ -575,6 +628,11 @@ export function ProviderModelsSection({
           onModelIdBlur={() => {
             void editor.flush().catch(() => undefined);
           }}
+          modelIdSuggestions={
+            fetchedModels
+              ? fetchedModels.filter((item) => !models.some((m) => m.modelId === item.id))
+              : undefined
+          }
         />
       </>
     </div>

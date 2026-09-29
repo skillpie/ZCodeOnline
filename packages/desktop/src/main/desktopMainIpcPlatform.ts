@@ -25,6 +25,7 @@ import { getInstalledEditors } from "./editors.js";
 import { getApplicationIcon } from "./applicationIcons.js";
 import { exportLogs } from "./exportLogs.js";
 import { resolveCommunityUrl } from "./desktopCommandHandlers.js";
+import { listProviderModels } from "./desktopProviderModels.js";
 import { openInEditor } from "./openInEditor.js";
 import {
   openResourceManager,
@@ -318,6 +319,11 @@ export function registerPlatformIpcHandlers(options: {
   ipcMain.handle(PlatformChannels.OpenInFileManager, async (_event, rawPath: string) =>
     openPathInFileManager(rawPath, options.logger),
   );
+
+  ipcMain.handle(PlatformChannels.ProviderListModels, (_event, request: unknown) => {
+    // listProviderModels 自带参数校验（缺地址/Key 直接抛错给设置页展示）。
+    return listProviderModels(request as Parameters<typeof listProviderModels>[0]);
+  });
 
   registerCuaPermissionIpcHandlers({
     logger: options.logger,

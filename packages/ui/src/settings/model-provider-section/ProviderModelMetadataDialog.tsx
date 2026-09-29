@@ -24,6 +24,8 @@ import {
 } from "@/settings/model-provider-section/ProviderModelSettingsGroups.js";
 import { isImeComposingKeyEvent } from "@/lib/imeComposition.js";
 import { TECHNICAL_INPUT_ATTRIBUTES } from "@/lib/technicalInputAttributes.js";
+import type { ProviderModelListItem } from "@zcode/shared";
+import { ProviderModelIdField } from "@/settings/model-provider-section/ProviderModelIdSuggestions.js";
 import {
   ProviderModelMetadataDialogActions,
   ModelSmartConfigSwitch,
@@ -31,7 +33,6 @@ import {
   ModelConfigRestoreButton,
 } from "@/settings/model-provider-section/ProviderModelMetadataDialogActions.js";
 import { modelEditorControlStyle } from "@/settings/model-provider-section/modelEditorControlStyle.js";
-import { cn } from "@/components/lib/utils.js";
 import {
   ModelConfigHelp,
   ModelConfigInputLabel,
@@ -61,6 +62,7 @@ export function ProviderModelMetadataDialog({
   saving = false,
   modelDefaultsLoaded = false,
   onModelIdBlur,
+  modelIdSuggestions,
 }: {
   mode?: "add" | "edit";
   open: boolean;
@@ -79,6 +81,8 @@ export function ProviderModelMetadataDialog({
   saving?: boolean;
   modelDefaultsLoaded?: boolean;
   onModelIdBlur?: () => void;
+  /** 一键获取到的供应商模型候选（仅添加模式；选中后自动写入 ID 并补空的大小字段）。 */
+  modelIdSuggestions?: readonly ProviderModelListItem[];
 }) {
   const { intl } = useZCodeIntl();
   const [validationAttempt, setValidationAttempt] = useState(0);
@@ -178,24 +182,25 @@ export function ProviderModelMetadataDialog({
                 <label className="mb-1 block text-ui-base text-foreground-subtle">
                   {intl.formatMessage({ id: "settings.modelProvider.modelId" })}
                 </label>
-                <Input
-                  {...TECHNICAL_INPUT_ATTRIBUTES}
-                  type="text"
-                  autoFocus={shouldFocusModelIdInput}
-                  size="lg"
-                  className={cn("font-mono", modelEditorControlStyle(false))}
-                  readOnly={modelIdReadOnly}
+                <ProviderModelIdField
                   value={draft.idValue}
-                  placeholder={intl.formatMessage({
-                    id: "settings.modelProvider.modelId",
-                  })}
-                  onChange={(event) => {
-                    onDraftChange({ idValue: event.target.value });
-                  }}
+                  readOnly={modelIdReadOnly}
+                  autoFocus={shouldFocusModelIdInput}
+                  suggestions={modelIdSuggestions}
+                  onChange={(value) => onDraftChange({ idValue: value })}
                   onBlur={onModelIdBlur}
-                  onCompositionStart={handleCompositionStart}
-                  onCompositionEnd={handleCompositionEnd}
-                  onKeyDown={handleTechnicalInputKeyDown}
+                  onEnterKey={handleTechnicalInputKeyDown}
+                  onPick={(item) => {
+                    const patch: Partial<ProviderModelDraftValues> = { idValue: item.id };
+                    // API 明确给出大小且字段为空时自动补上；其余交给智能配置或手填。
+                    if (item.contextWindow && !draft.contextWindowValue) {
+                      patch.contextWindowValue = String(item.contextWindow);
+                    }
+                    if (item.maxOutputTokens && !draft.maxOutputTokensValue) {
+                      patch.maxOutputTokensValue = String(item.maxOutputTokens);
+                    }
+                    onDraftChange(patch);
+                  }}
                 />
               </div>
             </div>

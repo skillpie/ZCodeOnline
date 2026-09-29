@@ -214,11 +214,18 @@ function resolveAboutIconPath(isPackaged: boolean): string {
     : join(import.meta.dirname, "../../build/icon.png");
 }
 
+/** 已打开的 About 窗口：重复点击复用同一个，避免叠出多个不可见窗口。 */
+let activeAboutWindow: BrowserWindow | null = null;
+
 export async function showAboutDialog(
   parentWindow?: BrowserWindow,
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<MessageBoxReturnValue> {
-  const { app, BrowserWindow } = await import("electron");
+  const { app, BrowserWindow, nativeTheme } = await import("electron");
+  if (activeAboutWindow && !activeAboutWindow.isDestroyed()) {
+    activeAboutWindow.focus();
+    return { response: 0, checkboxChecked: false };
+  }
   const snapshot = createAboutSnapshot({
     appVersion: app.getVersion(),
     buildMetadata: readBuildMetadata(),
@@ -228,30 +235,55 @@ export async function showAboutDialog(
   // 问题原因：各平台原生消息框的排版、图标和按钮样式差异很大，无法复用 macOS 参考样式。
   // 这里统一使用自绘 modal，保证 About 的品牌展示和多语言文案在三端一致。
   const iconPath = resolveAboutIconPath(app.isPackaged);
+  // Linux：部分桌面环境（无合成器 / Wayland 回退 X11）下透明窗口永远不完成首次绘制，
+  // ready-to-show 不触发导致 About「点了没反应」。Linux 改为不透明实底窗口。
+  const isLinux = process.platform === "linux";
   const aboutWindow = new BrowserWindow({
     width: ABOUT_WINDOW_WIDTH,
     height: ABOUT_WINDOW_HEIGHT,
     parent: parentWindow && !parentWindow.isDestroyed() ? parentWindow : undefined,
-    modal: Boolean(parentWindow && !parentWindow.isDestroyed()),
+    modal: !isLinux && Boolean(parentWindow && !parentWindow.isDestroyed()),
     frame: false,
-    transparent: true,
+    transparent: !isLinux,
+    ...(isLinux
+      ? { backgroundColor: nativeTheme.shouldUseDarkColors ? "#171717" : "#f4f4f5" }
+      : {}),
     resizable: false,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
-    show: false,
+    // Linux 直接创建即显示：渲染进程在部分环境会冻结，ready-to-show/did-finish-load
+    // 都可能不触发；先显示实底窗口，内容就绪后自行覆盖背景色。
+    show: !isLinux,
     title: aboutMessages.aboutTitle,
     icon: existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      // sandbox 在部分 Linux 构建上会让 data: URL 渲染进程冻结，这里不需要沙箱能力。
+      sandbox: !isLinux,
     },
   });
-  aboutWindow.setMenuBarVisibility(false);
-  aboutWindow.once("ready-to-show", () => {
-    aboutWindow.show();
+  activeAboutWindow = aboutWindow;
+  aboutWindow.once("closed", () => {
+    if (activeAboutWindow === aboutWindow) {
+      activeAboutWindow = null;
+    }
   });
+  aboutWindow.setMenuBarVisibility(false);
+  // 三重兜底显示：ready-to-show / did-finish-load / 1.2s 定时器。
+  // 只要有任一路径触发就能显示；部分 Linux 环境前两者都不可靠。
+  let shown = false;
+  const showOnce = () => {
+    if (shown || aboutWindow.isDestroyed()) return;
+    shown = true;
+    aboutWindow.show();
+  };
+  aboutWindow.once("ready-to-show", showOnce);
+  aboutWindow.webContents.once("did-finish-load", () => {
+    setTimeout(showOnce, 50);
+  });
+  setTimeout(showOnce, 1200);
   void aboutWindow.loadURL(
     `data:text/html;charset=utf-8,${encodeURIComponent(
       createCustomAboutDialogHtml({

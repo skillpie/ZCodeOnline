@@ -6,13 +6,14 @@ import {
   type ProviderSettingsFormProvider,
   type ProviderSettingsFormModel,
 } from "@/lib/providerSettingsFormTypes.js";
-import type { ModelConnectivityResult } from "@zcode/shared";
+import type { ModelConnectivityResult, ProviderModelListItem } from "@zcode/shared";
 import {
   isApiKeyAccess,
   type ProviderApiType,
   type SavePersonalModelDraftInput,
 } from "@zcode/provider";
 import { logger } from "@/logger.js";
+import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { Switch } from "@/components/ui/switch.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
@@ -191,6 +192,30 @@ export function InlineEditableProviderCard({
   const [baseUrlValue, setBaseUrlValue] = useState(provider.config.api?.baseUrl ?? "");
   const [apiKeyValue, setApiKeyValue] = useState(getProviderFormApiKey(provider));
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  // 一键获取模型：结果只活在当前卡片内存里（不持久化），切换卡片随 key 重置。
+  const [fetchedModels, setFetchedModels] = useState<readonly ProviderModelListItem[] | null>(null);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchModelsError, setFetchModelsError] = useState<string | null>(null);
+  const platform = usePlatform();
+  const handleFetchModels = useCallback(async () => {
+    if (!platform.providerListModels || fetchingModels) return;
+    setFetchingModels(true);
+    setFetchModelsError(null);
+    try {
+      const result = await platform.providerListModels({
+        baseUrl: baseUrlValue,
+        apiKey: apiKeyValue,
+        apiFormat,
+      });
+      setFetchedModels(result.models);
+    } catch (error) {
+      setFetchedModels(null);
+      setFetchModelsError(error instanceof Error ? error.message : String(error));
+      logger.warn("[provider-models] 拉取模型列表失败", { error });
+    } finally {
+      setFetchingModels(false);
+    }
+  }, [platform, fetchingModels, baseUrlValue, apiKeyValue, apiFormat]);
   const [savingEnabled, setSavingEnabled] = useState(false);
   const authoritativeModels = useMemo(
     () => resolveVisibleProviderModelsForEdit(provider),
@@ -842,6 +867,10 @@ export function InlineEditableProviderCard({
         <ProviderModelsSection
           // 不同 Provider 可以有同名模型；不能复用上一供应商的打开中草稿和版本。
           key={provider.providerId}
+          onFetchModels={platform.providerListModels ? handleFetchModels : undefined}
+          fetchingModels={fetchingModels}
+          fetchModelsError={fetchModelsError}
+          fetchedModels={fetchedModels}
           providerId={provider.providerId}
           providerName={getProviderFormLabel(provider)}
           providerEnabled={provider.enabled}

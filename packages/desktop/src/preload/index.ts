@@ -77,6 +77,8 @@ import type {
   OpenCuaPermissionOnboardingOptions,
   ConfigureFinalArmsCustomEventE2ERequest,
   FinalArmsCustomEventE2EEntry,
+  ProviderListModelsRequest,
+  ProviderListModelsResult,
 } from "@zcode/shared";
 import {
   InternalChannels,
@@ -585,6 +587,8 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.invoke(PlatformChannels.CanOpenCommunity, locale),
   /** 在系统文件管理器中打开指定路径 */
   openInFileManager: (path: string) => ipcRenderer.invoke(PlatformChannels.OpenInFileManager, path),
+  providerListModels: (request: ProviderListModelsRequest): Promise<ProviderListModelsResult> =>
+    ipcRenderer.invoke(PlatformChannels.ProviderListModels, request),
   /** 使用系统默认应用打开本地文件 */
   openExternalFile: (path: string) => ipcRenderer.invoke(PlatformChannels.OpenExternalFile, path),
   /** 打开 ZCode Computer Use 完整权限引导 */

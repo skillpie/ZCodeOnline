@@ -79,3 +79,29 @@ export type ModelConnectivityResult =
         readonly code?: "provider-unavailable" | "model-unavailable";
       };
     };
+
+// ============================================================================
+// 供应商模型列表拉取（settings 一键获取模型，见 specs/model-fetch.md）
+// ============================================================================
+
+/** 拉取请求：直接使用设置页当前草稿的连接信息；凭据只在本次请求内使用。 */
+export interface ProviderListModelsRequest {
+  /** API Base URL（与供应商连接设置一致，如 https://api.openai.com/v1） */
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  /** 供应商 API 格式，决定 models 路径与鉴权头 */
+  readonly apiFormat: string;
+}
+
+/** 单个模型条目；大小字段仅当接口返回时才存在。 */
+export interface ProviderModelListItem {
+  readonly id: string;
+  readonly contextWindow?: number;
+  readonly maxOutputTokens?: number;
+}
+
+export interface ProviderListModelsResult {
+  readonly models: readonly ProviderModelListItem[];
+  /** 平台不支持（web 端）：UI 据此隐藏入口 */
+  readonly unsupported?: boolean;
+}

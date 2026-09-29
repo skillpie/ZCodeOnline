@@ -287,6 +287,8 @@ export const PlatformChannels = {
   CanOpenCommunity: "zcode:can-open-community",
   /** Renderer → Main：在系统文件管理器中打开路径 */
   OpenInFileManager: "zcode:open-in-file-manager",
+  /** Renderer → Main：从供应商接口拉取可用模型 ID 列表（main 直连避开 CORS） */
+  ProviderListModels: "zcode:provider-list-models",
   /** Renderer → Main：使用系统默认应用打开本地文件 */
   OpenExternalFile: "zcode:open-external-file",
   /** Renderer → Main：打开 ZCode Computer Use 权限引导 */
@@ -880,6 +882,10 @@ export interface PlatformChannelMap {
   [PlatformChannels.OpenInFileManager]: {
     request: string;
     response: { success: boolean; error?: string };
+  };
+  [PlatformChannels.ProviderListModels]: {
+    request: import("./model-provider-types.js").ProviderListModelsRequest;
+    response: import("./model-provider-types.js").ProviderListModelsResult;
   };
   [PlatformChannels.OpenExternalFile]: {
     request: string;

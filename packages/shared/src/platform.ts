@@ -14,6 +14,10 @@ import type {
   SaveCliMcpToUserDirectoryRequest,
 } from "./mcp.js";
 import type { OAuthStateRegistration } from "./oauth.js";
+import type {
+  ProviderListModelsRequest,
+  ProviderListModelsResult,
+} from "./model-provider-types.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { ArmsCustomEventPayload, RendererTelemetryEventPayload } from "./telemetry.js";
 import type {
@@ -654,6 +658,9 @@ export interface IPlatformService {
 
   /** 在系统文件管理器中打开指定路径 */
   openInFileManager(path: string): Promise<{ success: boolean; error?: string }>;
+
+  /** 从供应商接口拉取模型 ID 列表（main 直连；web 端不提供该方法） */
+  providerListModels?(request: ProviderListModelsRequest): Promise<ProviderListModelsResult>;
 
   /** 使用系统默认应用打开本地文件；普通 Web 平台返回 unsupported。 */
   openExternalFile?(path: string): Promise<{ success: boolean; error?: string }>;
