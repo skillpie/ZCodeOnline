@@ -14,7 +14,7 @@ import {
   ZCODE_ENV,
   ZCODE_PRODUCT_FLAVOR,
   buildZCodeEndpointUrls,
-  getCommunityUrlFromConfigs,
+  getCommunityUrlFromConfig,
   getFeedbackUrlFromConfig,
   resolveHelpAppConfig,
   normalizeZCodeEndpointOrigin,
@@ -220,19 +220,12 @@ export async function resolveFeedbackUrl(options: {
 
 export async function resolveCommunityUrl(options: {
   locale: Locale;
-  fetchRemoteConfig?: () => Promise<unknown>;
   readLocalConfig?: () => unknown;
   logger: {
     warn: (...args: unknown[]) => void;
   };
 }): Promise<string | undefined> {
-  let remoteConfig: unknown;
-  try {
-    remoteConfig = await fetchRemoteAppConfig(options.fetchRemoteConfig);
-  } catch (error) {
-    options.logger.warn("[community] failed to fetch remote config:", error);
-  }
-
+  // 社区入口只读内置配置，不请求远端下发：远端曾下发与实际社群不符的 applink 链接。
   let localConfig: unknown;
   try {
     localConfig = await readLocalAppConfig(options.readLocalConfig);
@@ -240,7 +233,7 @@ export async function resolveCommunityUrl(options: {
     options.logger.warn("[community] failed to read local config:", error);
   }
 
-  return getCommunityUrlFromConfigs(remoteConfig, localConfig, options.locale);
+  return getCommunityUrlFromConfig(localConfig, options.locale);
 }
 
 async function openFeedback(
@@ -274,11 +267,10 @@ async function openCommunity(
     warn: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
   },
-  fetchRemoteConfig?: () => Promise<unknown>,
 ) {
-  const communityUrl = await resolveCommunityUrl({ locale, logger, fetchRemoteConfig });
+  const communityUrl = await resolveCommunityUrl({ locale, logger });
   if (!communityUrl) {
-    logger.warn("[community] community_urls is missing from both remote and local config");
+    logger.warn("[community] community_urls is missing from local config");
     return;
   }
   await shell.openExternal(communityUrl);
@@ -603,11 +595,7 @@ export async function executeDesktopCommand(options: {
       await openFeedback(options.logger, targetWindow, options.fetchHelpConfig);
       return;
     case DesktopCommandIds.OpenCommunity:
-      await openCommunity(
-        options.currentApplicationLocale,
-        options.logger,
-        options.fetchHelpConfig,
-      );
+      await openCommunity(options.currentApplicationLocale, options.logger);
       return;
     case DesktopCommandIds.ExportLogs:
       await exportLogs();

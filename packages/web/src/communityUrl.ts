@@ -8,17 +8,21 @@ import {
 } from "@zcode/shared";
 import localDefaultAppConfig from "../../../config/default.json" with { type: "json" };
 
-interface ResolveWebCommunityUrlOptions {
+interface ResolveWebHelpConfigOptions {
   fetchImpl?: typeof fetch;
   localConfig?: unknown;
   endpointOrigin?: string;
+}
+
+interface ResolveWebCommunityUrlOptions {
+  localConfig?: unknown;
 }
 
 const readHelpConfig = createHelpAppConfigReader({
   fetchImpl: (input, init) => fetch(input, init),
 });
 
-export async function resolveWebHelpConfig(options: ResolveWebCommunityUrlOptions = {}) {
+export async function resolveWebHelpConfig(options: ResolveWebHelpConfigOptions = {}) {
   const env = import.meta.env;
   const endpoint =
     options.endpointOrigin ??
@@ -44,5 +48,7 @@ export async function resolveWebCommunityUrl(
   locale: Locale,
   options: ResolveWebCommunityUrlOptions = {},
 ): Promise<string | undefined> {
-  return (await resolveWebHelpConfig(options)).community_urls?.[locale];
+  // 社区入口只读内置配置，不请求远端下发：远端曾下发与实际社群不符的 applink 链接。
+  return resolveHelpAppConfig(undefined, options.localConfig ?? localDefaultAppConfig)
+    .community_urls?.[locale];
 }

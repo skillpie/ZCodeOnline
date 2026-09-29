@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { buildZCodeEndpointUrls } from "./zcodeEndpoint.js";
-import { getCommunityUrlFromConfigs, getFeedbackUrlFromConfig } from "./remoteAppConfig.js";
+import { getCommunityUrlFromConfig, getFeedbackUrlFromConfig } from "./remoteAppConfig.js";
 
 const helpConfigSchema = z.object({
   community_urls: z
@@ -34,9 +34,11 @@ export function resolveHelpAppConfig(remote: unknown, local: unknown): HelpAppCo
   const remoteConfig = helpConfigSchema.safeParse(remote).data;
   const localConfig = helpConfigSchema.safeParse(local).data;
   return {
+    // 社区入口只以内置配置为准，不使用远端下发的地址：远端配置由官方服务控制，
+    // 曾下发与实际社群不符的 applink 链接（link_token=a38rfc19-…），会覆盖本地修正。
     community_urls: {
-      "zh-CN": getCommunityUrlFromConfigs(remoteConfig, localConfig, "zh-CN"),
-      "en-US": getCommunityUrlFromConfigs(remoteConfig, localConfig, "en-US"),
+      "zh-CN": getCommunityUrlFromConfig(localConfig, "zh-CN"),
+      "en-US": getCommunityUrlFromConfig(localConfig, "en-US"),
     },
     feedback_url: getFeedbackUrlFromConfig(remoteConfig) ?? getFeedbackUrlFromConfig(localConfig),
     // false 是远端明确配置，不能按 truthy 判断后回退到本地 true。

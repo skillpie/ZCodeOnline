@@ -333,7 +333,6 @@ export function registerPlatformIpcHandlers(options: {
 
     const communityUrl = await resolveCommunityUrl({
       locale: result.data,
-      fetchRemoteConfig: options.fetchHelpConfig,
       logger: options.logger,
     });
 
