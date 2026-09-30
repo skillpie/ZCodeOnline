@@ -48,15 +48,15 @@ describe("refreshAssistCodeViaDiscovery", () => {
   });
 
   test("刷新成功 → 返回新码并覆盖本地存储", async () => {
-    saveStoredAssistCode("1111111111111111");
+    saveStoredAssistCode("11111111");
     globalThis.fetch = (async () =>
-      new Response(JSON.stringify({ code: "9999999999999999", expiresAt: 4102444800000 }), {
+      new Response(JSON.stringify({ code: "99999999", expiresAt: 4102444800000 }), {
         status: 200,
       })) as typeof fetch;
     try {
       const refreshed = await refreshAssistCodeViaDiscovery();
-      assert.equal(refreshed.code, "9999999999999999");
-      assert.equal(loadStoredAssistCode(), "9999999999999999");
+      assert.equal(refreshed.code, "99999999");
+      assert.equal(loadStoredAssistCode(), "99999999");
     } finally {
       globalThis.fetch = originalFetch;
       clearStoredAssistCode();
@@ -66,12 +66,12 @@ describe("refreshAssistCodeViaDiscovery", () => {
   test("读取当前码：返回宿主权威码且不写存储", async () => {
     clearStoredAssistCode();
     globalThis.fetch = (async () =>
-      new Response(JSON.stringify({ code: "8888888888888888", expiresAt: 4102444800000 }), {
+      new Response(JSON.stringify({ code: "88888888", expiresAt: 4102444800000 }), {
         status: 200,
       })) as typeof fetch;
     try {
       const current = await fetchAssistCodeViaDiscovery();
-      assert.equal(current.code, "8888888888888888");
+      assert.equal(current.code, "88888888");
       assert.equal(loadStoredAssistCode(), null);
     } finally {
       globalThis.fetch = originalFetch;

@@ -6,6 +6,7 @@
 import { randomBytes } from "node:crypto";
 import WebSocket from "ws";
 import {
+  TUNNEL_ASSIST_CODE_LENGTH,
   TUNNEL_ASSIST_TTL_MS,
   TUNNEL_CONSTANTS,
   TUNNEL_PROTOCOL_VERSION,
@@ -125,7 +126,9 @@ export class TunnelConnector {
 
   /** 远程协助：取当前机器码（持久化，无则生成并登记）；宿主重连自动补登记。 */
   async ensureAssistCode(): Promise<{ code: string; expiresAt: number }> {
-    if (!this.activeAssist) {
+    // 码长迁移：历史版本曾签发 16 位码，长度与当前协议不符时自动轮换为新码
+    // （relay 端同 hostId 只保留一份邀请，旧码哈希随之作废，旧链接立即失效）。
+    if (!this.activeAssist || this.activeAssist.code.length !== TUNNEL_ASSIST_CODE_LENGTH) {
       await this.regenerateAssistCode();
     }
     return { code: this.activeAssist!.code, expiresAt: this.activeAssist!.expiresAt };

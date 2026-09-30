@@ -17,7 +17,7 @@ test("401 → invalid（码被轮换，调用方据此清存储回退）", async
   await assert.rejects(
     () =>
       redeemAssistCodeViaEndpoint(
-        "1234567890123456",
+        "12345678",
         ENDPOINT,
         async () => new Response(null, { status: 401 }),
       ),
@@ -29,7 +29,7 @@ test("429 → rateLimited；网络异常 → network", async () => {
   await assert.rejects(
     () =>
       redeemAssistCodeViaEndpoint(
-        "1234567890123456",
+        "12345678",
         ENDPOINT,
         async () => new Response(null, { status: 429 }),
       ),
@@ -37,7 +37,7 @@ test("429 → rateLimited；网络异常 → network", async () => {
   );
   await assert.rejects(
     () =>
-      redeemAssistCodeViaEndpoint("1234567890123456", ENDPOINT, async () => {
+      redeemAssistCodeViaEndpoint("12345678", ENDPOINT, async () => {
         throw new Error("offline");
       }),
     (cause: unknown) => cause instanceof AssistRedeemError && cause.kind === "network",
@@ -46,7 +46,7 @@ test("429 → rateLimited；网络异常 → network", async () => {
 
 test("成功兑换：maskedPsk 经码还原出原 psk", async () => {
   const psk = generateTunnelSecret();
-  const code = "1234567890123456";
+  const code = "12345678";
   const maskedPsk = await maskAssistPsk(psk, code);
   const redeemed = await redeemAssistCodeViaEndpoint(
     code,

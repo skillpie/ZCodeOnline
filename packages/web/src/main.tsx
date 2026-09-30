@@ -536,7 +536,7 @@ async function bootstrapWebApp() {
   // 码不留在地址栏（防截图/投屏/历史记录泄露）：存入 localStorage（后到优先，最后一次
   // 传入的码生效）后立刻跳回干净域名首页，由 TunnelAppRoot 用存储码直连。
   const remoteAssistCode = (() => {
-    const match = /^\/(?:(?:remote\/)?(\d{16}))$/u.exec(window.location.pathname);
+    const match = /^\/(?:(?:remote\/)?(\d{8}))$/u.exec(window.location.pathname);
     return match?.[1];
   })();
   if (remoteAssistCode) {

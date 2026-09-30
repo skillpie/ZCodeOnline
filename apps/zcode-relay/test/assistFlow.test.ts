@@ -81,12 +81,13 @@ async function redeem(code: string): Promise<{ status: number; json: any }> {
 }
 
 test("远程码归一化与展示格式", () => {
-  assert.equal(normalizeAssistCode("1234 5678 9012 3456"), "1234567890123456");
-  assert.equal(normalizeAssistCode("12-34-56-78-90-12-34-56"), "1234567890123456");
+  assert.equal(normalizeAssistCode("1234 5678"), "12345678");
+  assert.equal(normalizeAssistCode("12-34-56-78"), "12345678");
   assert.equal(normalizeAssistCode("123"), null);
-  assert.equal(normalizeAssistCode("12345678901234567"), null);
-  assert.equal(formatAssistCode("1234567890123456"), "1234 5678 9012 3456");
-  assert.ok(generateAssistCode().match(/^\d{16}$/u));
+  assert.equal(normalizeAssistCode("123456789"), null);
+  assert.equal(normalizeAssistCode("1234567890123456"), null, "旧版 16 位码不再接受");
+  assert.equal(formatAssistCode("12345678"), "1234 5678");
+  assert.ok(generateAssistCode().match(/^\d{8}$/u));
 });
 
 test("掩码零知识：relay 视角的 maskedPsk 可被持码方还原", async () => {

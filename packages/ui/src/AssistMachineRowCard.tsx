@@ -3,6 +3,7 @@
 // 流程）与删除（仅非本机条目；当前连接条目禁用，需先切换）图标固定在卡片右上角；
 // 次行为完整链接与复制（所有条目）、切换（存为当前生效码并重连，当前连接条目禁用）。
 import type { AssistMachine } from "@/assistMachineStore.js";
+import { maskAssistCodeForDisplay } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -124,7 +125,8 @@ export function AssistMachineRowCard({
       </div>
       <div className="flex items-center gap-1.5">
         <code className="min-w-0 flex-1 truncate text-ui-base text-foreground-subtle">
-          {origin}/{machine.code}
+          {/* 链接展示脱敏中间 4 位（防旁人瞥见完整码）；复制走完整码（见 onCopy）。 */}
+          {origin}/{maskAssistCodeForDisplay(machine.code)}
         </code>
         <button
           type="button"

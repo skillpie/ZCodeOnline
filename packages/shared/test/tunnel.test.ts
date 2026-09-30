@@ -8,6 +8,7 @@ import {
   hashTunnelSecret,
   parsePairingUrl,
   parseAssistCodeInput,
+  maskAssistCodeForDisplay,
   pairingPayloadSchema,
   hostControlFrameSchema,
   relayHostFrameSchema,
@@ -40,29 +41,34 @@ test("relayHttpOrigin/relayWebOrigin 转换 ws/wss 地址", () => {
   assert.equal(relayWebOrigin("wss://x.example"), "https://x.example");
 });
 
-test("parseAssistCodeInput 从远程链接或裸码提取 16 位码", () => {
+test("parseAssistCodeInput 从远程链接或裸码提取 8 位码", () => {
   // 完整链接：产品部署、别名路径、带端口/查询参数。
+  assert.equal(parseAssistCodeInput("https://zcode.skillpie.cn/12345678"), "12345678");
+  assert.equal(parseAssistCodeInput("https://zcode.skillpie.cn/remote/12345678"), "12345678");
   assert.equal(
-    parseAssistCodeInput("https://zcode.skillpie.cn/1234567890123456"),
-    "1234567890123456",
-  );
-  assert.equal(
-    parseAssistCodeInput("https://zcode.skillpie.cn/remote/1234567890123456"),
-    "1234567890123456",
-  );
-  assert.equal(
-    parseAssistCodeInput("http://localhost:5173/1234567890123456?x=1"),
-    "1234567890123456",
+    parseAssistCodeInput("http://localhost:5173/12345678?x=1"),
+    "12345678",
     "端口/查询里的数字不参与提取",
   );
-  // 裸码与 4-4-4-4 分组形态。
-  assert.equal(parseAssistCodeInput("1234567890123456"), "1234567890123456");
-  assert.equal(parseAssistCodeInput("1234 5678 9012 3456"), "1234567890123456");
-  // 无法提取：空输入、位数不足、链接无路径、非链接的杂乱文本。
+  // 裸码与 4-4 分组形态。
+  assert.equal(parseAssistCodeInput("12345678"), "12345678");
+  assert.equal(parseAssistCodeInput("1234 5678"), "12345678");
+  // 无法提取：空输入、位数不足/超长（含旧版 16 位码）、链接无路径、杂乱文本。
   assert.equal(parseAssistCodeInput(""), null);
-  assert.equal(parseAssistCodeInput("12345678"), null);
+  assert.equal(parseAssistCodeInput("1234567"), null);
+  assert.equal(parseAssistCodeInput("1234567890123456"), null);
   assert.equal(parseAssistCodeInput("https://zcode.skillpie.cn/"), null);
   assert.equal(parseAssistCodeInput("not a code"), null);
+});
+
+test("maskAssistCodeForDisplay 隐藏码中间 4 位；复制/兑换始终用完整码", () => {
+  assert.equal(maskAssistCodeForDisplay("04428752"), "04****52");
+  assert.equal(
+    maskAssistCodeForDisplay("1234567890123456"),
+    "123456****123456",
+    "历史 16 位码同规则脱敏",
+  );
+  assert.equal(maskAssistCodeForDisplay("1234"), "1234", "过短原样返回");
 });
 
 test("pairing url 编码后可无损解析", () => {

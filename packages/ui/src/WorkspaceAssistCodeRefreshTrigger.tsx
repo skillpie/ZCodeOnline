@@ -36,7 +36,7 @@ import {
   type AssistMachine,
 } from "@/assistMachineStore.js";
 import { AssistMachineRowCard } from "@/AssistMachineRowCard.js";
-import { AssistMachineAddForm } from "@/AssistMachineAddForm.js";
+import { AssistMachineAddDialog } from "@/AssistMachineAddDialog.js";
 import { BotChannelPanel } from "@/BotChannelPanel.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
@@ -439,34 +439,23 @@ export function WorkspaceAssistCodeRefreshTrigger({
           ) : null}
         </DialogContent>
       </Dialog>
-      {/* 添加远程链接：独立弹窗（表单草稿态在 AssistMachineAddForm 内部，关闭即重置；
-          提交成功后入库并关闭，与卡片内列表共用同一套入库逻辑）。 */}
-      <Dialog
+      {/* 添加远程链接：独立弹窗（表单草稿态关闭即重置；提交成功后入库并关闭）。 */}
+      <AssistMachineAddDialog
         open={adding}
         onOpenChange={(nextOpen) => {
           if (phase === "refreshing") return;
           setAdding(nextOpen);
         }}
-      >
-        <DialogContent showCloseButton={false} className="gap-4 sm:max-w-md">
-          <DialogHeader className="gap-1">
-            <DialogTitle className="text-ui-lg font-semibold text-foreground">
-              {intl.formatMessage({ id: "assistCode.dialog.add" })}
-            </DialogTitle>
-          </DialogHeader>
-          <AssistMachineAddForm
-            localCode={localCode}
-            existingCodes={machines.map((machine) => machine.code)}
-            onSubmit={(code, name) => {
-              upsertAssistMachine(code);
-              if (name) renameAssistMachine(code, name);
-              setMachines(orderMachines(loadAssistMachines(), localCode));
-              closeAddForm();
-            }}
-            onCancel={closeAddForm}
-          />
-        </DialogContent>
-      </Dialog>
+        localCode={localCode}
+        existingCodes={machines.map((machine) => machine.code)}
+        onSubmit={(code, name) => {
+          upsertAssistMachine(code);
+          if (name) renameAssistMachine(code, name);
+          setMachines(orderMachines(loadAssistMachines(), localCode));
+          closeAddForm();
+        }}
+        onCancel={closeAddForm}
+      />
     </>
   );
 }

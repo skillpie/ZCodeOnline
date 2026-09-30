@@ -288,8 +288,8 @@ export type ConnectTokenResult = z.infer<typeof connectTokenResultSchema>;
 // 远程协助（specs/web-tunnel.md §5.9）：16 位码 = 一次性跨用户能力凭证。
 // ============================================================================
 
-/** 远程码长度（数字位数；10^16 ≈ 2^53 熵 + relay 每 IP 限流）。 */
-export const TUNNEL_ASSIST_CODE_LENGTH = 16;
+/** 远程码长度（数字位数；10^8 组合，防枚举依赖 relay 每 IP 限流；弹窗展示脱敏中间 4 位）。 */
+export const TUNNEL_ASSIST_CODE_LENGTH = 8;
 /**
  * 远程码长期有效（specs/web-tunnel.md §5.9 持久机器码）：直到用户「刷新」轮换或解绑。
  * expiresAt 仅为协议兼容字段（填远期）；真正的失效 = 轮换/宿主解绑/隧道停跑。
@@ -380,7 +380,7 @@ export const assistRegisterFrameSchema = z
 export type AssistRegisterFrame = z.infer<typeof assistRegisterFrameSchema>;
 
 // B 兑换：POST /api/v1/assist/connect。
-// max(64)：允许分组格式（含空格/连字符）；归一化后不足 16 位 → 与未知码同响应（防枚举）。
+// max(64)：允许分组格式（含空格/连字符）；归一化后不足 8 位 → 与未知码同响应（防枚举）。
 export const assistConnectRequestSchema = z.object({ code: z.string().min(4).max(64) }).strict();
 export const assistConnectResultSchema = z
   .object({
@@ -403,9 +403,19 @@ export type RedeemAssistCodeResult =
 
 /** 发现端点：A 侧展示自己的远程码。 */
 export const assistCodeResponseSchema = z
-  .object({ code: z.string().min(16).max(16), expiresAt: z.number().int().positive() })
+  .object({ code: z.string().min(8).max(8), expiresAt: z.number().int().positive() })
   .strict();
 export type TunnelAssistCode = z.infer<typeof assistCodeResponseSchema>;
+
+/**
+ * 展示脱敏：隐藏码中间 4 位（8 位码如 04428752 → 04****52），弹窗链接展示用；
+ * 复制/兑换始终携带完整码，不受影响。过短（历史异常数据）原样返回。
+ */
+export function maskAssistCodeForDisplay(code: string): string {
+  if (code.length < 6) return code;
+  const start = Math.floor(code.length / 2) - 2;
+  return `${code.slice(0, start)}****${code.slice(start + 4)}`;
+}
 
 // ============================================================================
 // 桌面管理面（specs/web-tunnel.md §5.5 路线 B）：IPlatformService 的隧道管理契约。
