@@ -75,7 +75,7 @@ import {
 } from "@/lib/workspaceSidePane.js";
 import { isSidePaneTabVisibleForParent } from "@/lib/workspaceSidePane.js";
 import { logger } from "@/logger.js";
-import { resolveInitialWorkspaceSidebarVisible } from "@/lib/workspaceSidebarInitialVisibility.js";
+import { resolveInitialWorkspaceSidebarVisible } from "@/lib/workspaceSidebarMobilePolicy.js";
 import { getPathLeaf, joinFilePath, toFileUrl } from "@/lib/path.js";
 import { shouldOpenWorkflowArtifactInBrowser } from "@/lib/workflowArtifactOpen.js";
 import { useWhiteboardStore } from "@/store/whiteboardStore.js";
@@ -1244,6 +1244,12 @@ export function useAppPanels(options: {
     setIsSidebarVisible((visible) => !visible);
   }, []);
 
+  // 手机等触摸设备从侧边栏「新建对话 / 进入会话」成功后，由 shell 调用强制收起侧栏。
+  // 与 handleToggleSidebar 语义区分：入口动作要求的是"收起"，不是"翻转"。
+  const handleCollapseSidebar = useCallback(() => {
+    setIsSidebarVisible(false);
+  }, []);
+
   const handleToggleSidePaneCollapse = useCallback(() => {
     setIsSidePaneCollapsed((collapsed) => {
       const nextCollapsed = !collapsed;
@@ -1605,6 +1611,7 @@ export function useAppPanels(options: {
     handleOpenWorkflowArtifact,
     handleToggleTerminal,
     handleToggleSidebar,
+    handleCollapseSidebar,
     handleToggleSidePaneCollapse,
     handleCloseCodeViewer,
     handleCloseGit,

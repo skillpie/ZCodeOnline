@@ -88,6 +88,8 @@ import {
 } from "@/lib/selectionSideChatRuntime.js";
 import { getActiveSelectionSideChatTab } from "@/lib/workspaceSidePane.js";
 import { logger } from "@/logger.js";
+import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
+import { shouldCollapseSidebarAfterConversationActivate } from "@/lib/workspaceSidebarMobilePolicy.js";
 import {
   areWorkspaceFilePathsEqual,
   isWorkspaceFilePathInside,
@@ -301,6 +303,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   handleBrowserUrlChange,
   handleBrowserPageMetadataChange,
   handleToggleSidebar,
+  handleCollapseSidebar,
   handleToggleTerminal,
   handleToggleBrowser,
   handleOpenBrowserTab,
@@ -827,17 +830,19 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     workspaceMainView === "plugin-store" ? handleManageInstalledPlugins : handleTaskNavBack;
   const canPrimaryNavigationBack = workspaceMainView === "plugin-store" || canTaskNavBack;
   const handleCreateTaskInChat = useCallback(
-    (request?: Parameters<typeof onCreateTask>[0]) => {
+    (request?: Parameters<typeof onCreateTask>[0]): boolean => {
       // workspaceReadOnlyReason 判定的是活动 workspace；当 request 显式带 targetWorkspace 时
       // 目标另属他项目（跨项目发起已保存工作流），
       // 活动 workspace 的只读性不适用，真正的守卫是 root 动作对 target 的 isWorkspaceReadOnly。
       const hasTargetWorkspace =
         typeof request === "object" && request !== null && Boolean(request.targetWorkspace);
       if (!hasTargetWorkspace && workspaceReadOnlyReason) {
-        return;
+        // 返回值供移动端侧栏收起策略使用：守卫拦截时没有真正进入会话，不能收起侧栏。
+        return false;
       }
       showChatMainView();
       onCreateTask(request);
+      return true;
     },
     [onCreateTask, showChatMainView, workspaceReadOnlyReason],
   );
@@ -876,7 +881,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       targetWorkspaceIdentity?: string,
       targetRemoteSessionId?: string,
       expectedUnreadAt?: number,
-    ) => {
+    ): boolean => {
       {
         const workspaceResult = ensureTaskNavigationWorkspace({
           workspacePath: targetWorkspacePath,
@@ -893,7 +898,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
             workspacePath: targetWorkspacePath,
           });
           toast(intl.formatMessage({ id: "automations.runs.openSessionFailed" }));
-          return;
+          // 返回值供移动端侧栏收起策略使用：导航失败时保留侧栏状态。
+          return false;
         }
         if (workspaceResult.openedLocalTab) {
           logger.info("[automations] 为运行历史会话补开本地 workspace tab", {
@@ -925,6 +931,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       } else {
         handleSelectTask(targetWorkspacePath, taskId, targetWorkspaceIdentity);
       }
+      return true;
     },
     [handleSelectTask, intl, shellWorkbenchBinding, showChatMainView, tabStoreApi, workspaceTabs],
   );
@@ -1110,6 +1117,58 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
       handleStartDraftInWorkspaceInChat(path, identity, undefined, "project"),
     [handleStartDraftInWorkspaceInChat],
   );
+  // 手机等触摸设备：侧边栏里的「新建对话 / 进入会话」成功后自动收起侧栏，把竖屏可视区
+  // 还给主会话；桌面（精确指针）行为不变。只包装传给 WorkspaceSidebar 的入口，
+  // 顶栏新建、quickpick 等其他调用方不受影响；导航失败（只读、远程未连接）不收起。
+  const collapseSidebarAfterSidebarConversationActivate = useCallback(
+    (proceeded: boolean) => {
+      if (
+        !shouldCollapseSidebarAfterConversationActivate({
+          proceeded,
+          isCoarseTouch: isCoarseTouchDevice(),
+        })
+      ) {
+        return;
+      }
+      handleCollapseSidebar();
+    },
+    [handleCollapseSidebar],
+  );
+  const handleSidebarSelectTask = useCallback(
+    (...args: Parameters<typeof handleSelectTaskInChat>) => {
+      const proceeded = handleSelectTaskInChat(...args);
+      collapseSidebarAfterSidebarConversationActivate(proceeded);
+    },
+    [collapseSidebarAfterSidebarConversationActivate, handleSelectTaskInChat],
+  );
+  const handleSidebarCreateTask = useCallback(
+    (request?: Parameters<typeof onCreateTask>[0]) => {
+      const proceeded = handleCreateTaskInChat(request);
+      collapseSidebarAfterSidebarConversationActivate(proceeded);
+    },
+    [collapseSidebarAfterSidebarConversationActivate, handleCreateTaskInChat],
+  );
+  const handleSidebarStartDraft = useCallback(
+    (path: string, identity?: string) => {
+      // 起草稿没有失败路径，触摸设备上进入草稿即视为成功。
+      handleCreateProjectDraft(path, identity);
+      collapseSidebarAfterSidebarConversationActivate(true);
+    },
+    [collapseSidebarAfterSidebarConversationActivate, handleCreateProjectDraft],
+  );
+  const handleSidebarCreateConversationTask = useCallback(() => {
+    if (onCreateConversationTask) {
+      onCreateConversationTask();
+      collapseSidebarAfterSidebarConversationActivate(true);
+      return;
+    }
+    const proceeded = handleCreateTaskInChat();
+    collapseSidebarAfterSidebarConversationActivate(proceeded);
+  }, [
+    collapseSidebarAfterSidebarConversationActivate,
+    handleCreateTaskInChat,
+    onCreateConversationTask,
+  ]);
   const handleSelectConversationWorkspace = useCallback(async () => {
     if (!onResolveConversationWorkspace) {
       return;
@@ -1540,13 +1599,13 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                     workspacePath={workspaceAbsPath}
                     workspaceRemoteSessionId={workspaceRemoteSessionId}
                     activePreviewPath={activePreviewPath}
-                    onSelectTask={handleSelectTaskInChat}
-                    onStartDraftInWorkspace={handleCreateProjectDraft}
+                    onSelectTask={handleSidebarSelectTask}
+                    onStartDraftInWorkspace={handleSidebarStartDraft}
                     onOpenCodeViewer={handleOpenCodeViewer}
                     onOpenBrowserUrl={handleOpenBrowserUrl}
                     fileTreeOpenRequest={fileTreeOpenRequest}
-                    onCreateTask={handleCreateTaskInChat}
-                    onCreateConversationTask={onCreateConversationTask ?? handleCreateTaskInChat}
+                    onCreateTask={handleSidebarCreateTask}
+                    onCreateConversationTask={handleSidebarCreateConversationTask}
                     onOpenFolderFromWorkspaceMenu={onOpenFolderFromWorkspaceMenu}
                     onOpenRemoteWorkspace={onOpenRemoteWorkspace}
                     theme={theme}

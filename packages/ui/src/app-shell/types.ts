@@ -246,6 +246,8 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   handleBrowserUrlChange: (tabId: string, url: string) => void;
   handleBrowserPageMetadataChange: (tabId: string, metadata: BrowserSidePaneMetadata) => void;
   handleToggleSidebar: () => void;
+  /** 手机等触摸设备从侧边栏进入会话后强制收起侧栏；与 toggle 语义区分，只收起不翻转。 */
+  handleCollapseSidebar: () => void;
   handleToggleTerminal: () => void;
   handleToggleBrowser: () => void;
   handleOpenBrowserTab: () => void;
