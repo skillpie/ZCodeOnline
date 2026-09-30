@@ -130,37 +130,69 @@ fi
 echo "[install] done."
 
 if [ "$START" = true ]; then
+  # ---- 启动 + 自愈（specs/web-tunnel.md §5.9）----
+  # serve --daemon 会替换同数据根上的旧 daemon，但可能被运行中任务拒绝；旧脚本
+  # 此时仍打印成功，把静默失败留给用户。这里以发现端点实测为准，失败时自动收敛：
+  # 先 zcode stop 优雅停（处理运行任务拒绝），再 pkill 强停残留 core，最后清
+  # daemon 运行态目录重建（~/.zcode 下会话/登录数据不受影响）。三步后仍失败才报错，
+  # 报错文案直接给出用户下一步动作。
+  # 启动 daemon：展示行直写终端（绝不能与 $() 组合，否则展示文本会被当作返回值）。
+  launch_daemon() {
+    "$INSTALL_DIR/bin/zcode" serve --daemon > "$TMP/serve.out" 2>&1
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+      if grep -q "Remote access" "$TMP/serve.out" 2>/dev/null; then break; fi
+      sleep 1
+    done
+    grep -E "ZCode Server ready|Remote access" "$TMP/serve.out" 2>/dev/null || true
+  }
+
+  # 查询发现端点：只输出码本身（供 $() 捕获）。
+  query_assist_code() {
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsS -m 5 -H "Origin: https://zcode.skillpie.cn" \
+        http://127.0.0.1:4950/tunnel/assist 2>/dev/null \
+        | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p'
+    elif command -v wget >/dev/null 2>&1; then
+      wget -qO- -T 5 --header "Origin: https://zcode.skillpie.cn" \
+        http://127.0.0.1:4950/tunnel/assist 2>/dev/null \
+        | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p'
+    fi
+  }
+
   echo "[install] registering boot-persistent service and starting..."
-  "$INSTALL_DIR/bin/zcode" serve --daemon > "$TMP/serve.out" 2>&1
-  # 轮询 ready + Remote access（core 启动后异步生成机器码）
-  for i in 1 2 3 4 5 6 7 8 9 10; do
-    if grep -q "Remote access" "$TMP/serve.out" 2>/dev/null; then break; fi
-    sleep 1
-  done
-  grep -E "ZCode Server ready|Remote access" "$TMP/serve.out" 2>/dev/null || true
-  # ---- 安装后自检（specs/web-tunnel.md §5.9）：发现端点必须返回 8 位码 ----
-  # 新版 core 在返回前做服务端 8 位校验，16 位只可能来自仍在运行的旧版 daemon
-  # （serve --daemon 的替换可能因运行中任务被拒、或服务管理器把旧进程拉回）。
-  # 本脚本绝不静默成功：serve.out 里的启动打印只是回显，这里以端点实测为准。
-  assist_code=""
-  if command -v curl >/dev/null 2>&1; then
-    assist_code=$(curl -fsS -m 5 -H "Origin: https://zcode.skillpie.cn" \
-      http://127.0.0.1:4950/tunnel/assist 2>/dev/null | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p')
-  elif command -v wget >/dev/null 2>&1; then
-    assist_code=$(wget -qO- -T 5 --header "Origin: https://zcode.skillpie.cn" \
-      http://127.0.0.1:4950/tunnel/assist 2>/dev/null | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p')
+  launch_daemon
+  assist_code=$(query_assist_code)
+  if [ -n "$assist_code" ] && [ "${#assist_code}" -ne 8 ]; then
+    # 16 位等异常码只可能来自旧版 daemon（新版 core 返回前有 8 位服务端校验）。
+    echo "[install] 旧版 daemon 未被替换（返回 ${#assist_code} 位码），自动修复中…"
+    "$INSTALL_DIR/bin/zcode" stop >/dev/null 2>&1 || true
+    sleep 2
+    launch_daemon
+    assist_code=$(query_assist_code)
   fi
-  if [ -z "$assist_code" ]; then
-    echo "[install] ⚠️ 未能从本机发现端点(4950)读到远程码；浏览器连不上时用 zcode status 排查后重跑本脚本。"
-  elif [ "${#assist_code}" -eq 8 ]; then
+  if [ -n "$assist_code" ] && [ "${#assist_code}" -ne 8 ]; then
+    echo "[install] 优雅停止后仍异常，强制结束残留 core 进程…"
+    pkill -f "server-core.js" >/dev/null 2>&1 || true
+    sleep 2
+    launch_daemon
+    assist_code=$(query_assist_code)
+  fi
+  if [ -n "$assist_code" ] && [ "${#assist_code}" -ne 8 ]; then
+    echo "[install] 仍有旧运行态残留，重置 daemon 运行态目录（~/.zcode/server；会话与登录数据不受影响）…"
+    rm -rf "$HOME/.zcode/server"
+    launch_daemon
+    assist_code=$(query_assist_code)
+  fi
+  if [ -n "$assist_code" ] && [ "${#assist_code}" -eq 8 ]; then
     echo "[install] 自检通过：发现端点返回 8 位远程码。"
+    echo "[install] 服务已注册为开机自启；电脑重启后会自动恢复，链接不变。"
   else
-    echo "[install] ❌ 发现端点返回 ${#assist_code} 位码：旧版 daemon 仍在运行，本次安装没有完成替换。"
-    echo "[install]    修复：zcode stop 后重跑本脚本；仍失败时 pkill -f server-core.js、"
-    echo "[install]    备份并删除 ~/.zcode/server 后重装（该目录只含 daemon 运行态，会话/登录数据在 ~/.zcode 下不受影响）。"
+    echo "[install] ❌ 自动修复未能让新版 daemon 提供服务（$( [ -n "$assist_code" ] && echo "仍返回 ${#assist_code} 位码" || echo "发现端点无响应" )）。"
+    echo "[install]    请把以下两条输出发给支持人员："
+    echo "[install]    1. zcode status"
+    echo "[install]    2. cat $TMP/serve.out"
     exit 1
   fi
-  echo "[install] 服务已注册为开机自启；电脑重启后会自动恢复，链接不变。"
 else
   echo "[install] --no-start: 仅安装。稍后运行 zcode serve 启动。"
 fi
