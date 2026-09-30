@@ -183,7 +183,7 @@ export class AssistInvitationStore {
   }
 }
 
-/** 每 IP 滑窗限流：兑换接口防 16 位码暴力枚举。 */
+/** 每 IP 滑窗限流：兑换接口防 8 位码暴力枚举。 */
 export class RateLimiter {
   private readonly hits = new Map<string, number[]>();
 

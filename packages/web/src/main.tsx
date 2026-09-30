@@ -531,7 +531,7 @@ async function bootstrapWebApp() {
     return;
   }
 
-  // 远程控制（specs/web-tunnel.md §5.9）：/<16位码>（或 /remote/<码> 别名）= 机器的
+  // 远程控制（specs/web-tunnel.md §5.9）：/<8位码>（或 /remote/<码> 别名）= 机器的
   // 公开地址，码即凭证（匿名、长期有效、可多浏览器同时连接）。
   // 码不留在地址栏（防截图/投屏/历史记录泄露）：存入 localStorage（后到优先，最后一次
   // 传入的码生效）后立刻跳回干净域名首页，由 TunnelAppRoot 用存储码直连。

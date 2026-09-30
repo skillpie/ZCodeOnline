@@ -1782,7 +1782,8 @@ const enUS: Record<string, string> = {
   "assistCode.dialog.description":
     "Anyone with a link below can remotely control that machine. Keep them safe and refresh immediately if one may have leaked.",
   "assistCode.dialog.section.title": "Remote links",
-  "assistCode.dialog.section.description": "Copy your link to let others control this machine / add a remote link to switch and control the remote.",
+  "assistCode.dialog.section.description":
+    "Copy your link to let others control this machine / add a remote link to switch and control the remote.",
   "assistCode.dialog.loading": "Loading the assist code…",
   "assistCode.dialog.localBadge": "This machine",
   "assistCode.dialog.remoteBadge": "Remote",
@@ -1795,16 +1796,17 @@ const enUS: Record<string, string> = {
   "assistCode.dialog.current": "Currently connected",
   "assistCode.dialog.rename": "Rename",
   "assistCode.dialog.add": "Add remote link",
-  "assistCode.dialog.addCodePlaceholder": "Paste an assist link or a 16-digit code",
+  "assistCode.dialog.addCodePlaceholder": "Paste an assist link or an 8-digit code",
   "assistCode.dialog.addNamePlaceholder": "Name (optional)",
   "assistCode.dialog.addConfirm": "Add",
-  "assistCode.dialog.addInvalid": "Invalid link or code: expected a 16-digit assist code.",
+  "assistCode.dialog.addInvalid": "Invalid link or code: expected an 8-digit assist code.",
   "assistCode.dialog.addDuplicate": "This assist code is already in the list.",
   "assistCode.dialog.delete": "Remove",
-  "assistCode.dialog.deleteConfirm": "The link will be removed from this list only; the other machine is not affected.",
+  "assistCode.dialog.deleteConfirm":
+    "The link will be removed from this list only; the other machine is not affected.",
   "assistCode.dialog.deleteActiveTitle": "Currently connected — switch away before removing",
   "assistCode.dialog.refreshWarning":
-    "Refreshing generates a new 16-digit assist code. Links containing the old code — including ones you already shared — stop working immediately and cannot be recovered. Refresh now?",
+    "Refreshing generates a new 8-digit assist code. Links containing the old code — including ones you already shared — stop working immediately and cannot be recovered. Refresh now?",
   "assistCode.dialog.refreshConfirm": "Confirm refresh",
   "assistCode.dialog.refreshing": "Refreshing…",
   "assistCode.dialog.refreshed":

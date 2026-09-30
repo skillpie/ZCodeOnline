@@ -16,7 +16,7 @@ export function AssistMachineAddForm({
   localCode: string | null;
   /** 已登记的远程码集合（提交时查重，防列表并发更新下的重复入库）。 */
   existingCodes: readonly string[];
-  /** 校验通过：code 为归一化 16 位码，name 为去除空白的可选名称。 */
+  /** 校验通过：code 为归一化 8 位码，name 为去除空白的可选名称。 */
   onSubmit: (code: string, name: string) => void;
   onCancel: () => void;
 }) {

@@ -198,7 +198,7 @@ M4：企业开关打开后浏览器无法接入，桌面不受影响。
 | 快照 + 重放缓冲（宿主侧权威）                                      | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts`                                               | 断线恢复不变                            |
 | web 全量 UI + 传输注入接缝                                         | `packages/web/src/main.tsx`、`packages/ui/src/v4/transport.ts`                                                        | 换隧道传输实现                          |
 | `relay_bridge` 类型槽位                                            | `packages/shared/src/task-realtime.ts:78`                                                                             | 隧道打通后接入实时投递（M3 后评估）     |
-| server-cli 更新/服务化基座                                         | `packages/zcode-server-cli/src/cli.ts`、`runtime/releaseDownload.ts`                                                  | M4 自动更新已接线（supervisor 调度器）   |
+| server-cli 更新/服务化基座                                         | `packages/zcode-server-cli/src/cli.ts`、`runtime/releaseDownload.ts`                                                  | M4 自动更新已接线（supervisor 调度器）  |
 | 隧道契约 + E2E 加密（M1 新增）                                     | `packages/shared/src/tunnel.ts`、`tunnelCrypto.ts`                                                                    | 帧 schema、配对编解码、密钥派生与加解密 |
 | relay 参考实现（M1 新增）                                          | `apps/zcode-relay`                                                                                                    | 控制面 REST + 数据面拼接                |
 | 宿主出站连接器（M1 新增）                                          | `packages/zcode-server-cli/src/tunnel/`                                                                               | 出站拨号/退避重连/加密桥/配对会话       |
