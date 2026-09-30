@@ -26,11 +26,26 @@ $target = "win32-x64"
 $tmp = Join-Path $env:TEMP ("zcode-install-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 
+function Download-Release([string]$Url, [string]$Destination) {
+    # curl.exe（Windows 10 1803+ 内置，与下方 tar.exe 同一代基线）带原生进度条；
+    # 注意 PowerShell 5.1 里裸 `curl` 是 Invoke-WebRequest 的别名，必须写 curl.exe。
+    $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+    if ($curl) {
+        & $curl.Source -fS --progress-bar -L -o $Destination $Url
+        if ($LASTEXITCODE -ne 0) { throw "curl download failed: $Url" }
+        return
+    }
+    # 老系统回退 Invoke-WebRequest：其默认进度条会显著拖慢大文件下载，这里关闭进度换取速度。
+    Write-Host "[install] curl.exe not found, falling back to Invoke-WebRequest (no progress)"
+    $ProgressPreference = "SilentlyContinue"
+    Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing
+}
+
 if ($Archive -eq "") {
     $Archive = Join-Path $tmp "zcode-server-$target.tar.gz"
-    Write-Host "[install] downloading release for $target from $BaseUrl"
+    Write-Host "[install] downloading release for $target from $BaseUrl (~70-90 MB)"
     try {
-        Invoke-WebRequest -Uri "$BaseUrl/zcode-server-$target.tar.gz" -OutFile $Archive -UseBasicParsing
+        Download-Release "$BaseUrl/zcode-server-$target.tar.gz" $Archive
     } catch {
         Write-Host "[install] ERROR: release download failed. Is it published on $BaseUrl ?" -ForegroundColor Red
         exit 1

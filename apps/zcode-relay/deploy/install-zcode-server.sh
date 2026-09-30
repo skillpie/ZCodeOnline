@@ -67,14 +67,15 @@ trap 'rm -rf "$TMP"' EXIT
 
 if [ -z "$ARCHIVE" ]; then
   ARCHIVE="$TMP/zcode-server-$TARGET.tar.gz"
-  echo "[install] downloading release for $TARGET from $BASE_URL"
+  echo "[install] downloading release for $TARGET from $BASE_URL (~70-90 MB)"
+  # 进度条输出在 stderr，不影响 `curl ... | sh` 管道；-S 保证出错信息仍然可见。
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$BASE_URL/zcode-server-$TARGET.tar.gz" -o "$ARCHIVE" || {
+    curl -fS --progress-bar -L "$BASE_URL/zcode-server-$TARGET.tar.gz" -o "$ARCHIVE" || {
       echo "[install] ERROR: release download failed ($TARGET). Is it published on $BASE_URL?" >&2
       exit 1
     }
   else
-    wget -qO "$ARCHIVE" "$BASE_URL/zcode-server-$TARGET.tar.gz" || {
+    wget --progress=bar:force -O "$ARCHIVE" "$BASE_URL/zcode-server-$TARGET.tar.gz" || {
       echo "[install] ERROR: release download failed ($TARGET)." >&2
       exit 1
     }
