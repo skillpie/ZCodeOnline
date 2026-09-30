@@ -3,6 +3,8 @@
 # （Windows 用 install.ps1 / install.cmd，见 DEPLOY.md）
 # 标准形态（平台自动探测 + 从本站下载）：
 #   curl -fsSL https://zcode.skillpie.cn/install.sh | sh
+# 强制卸载重装（旧 daemon 被系统服务反复复活时）：
+#   curl -fsSL https://zcode.skillpie.cn/install.sh | sh -s -- --force-clean
 # 等价显式形式：
 #   install-zcode-server.sh [--base-url <url>] [--install-dir <dir>] [--workspace <dir>] [--start]
 # 离线/自托管归档：
@@ -20,6 +22,7 @@ ARCHIVE=""
 INSTALL_DIR="/opt/zcode-server"
 WORKSPACE=""
 START=true
+FORCE_CLEAN=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -29,8 +32,9 @@ while [ $# -gt 0 ]; do
     --workspace) WORKSPACE="$2"; shift 2 ;;
     --start) START=true; shift ;;
     --no-start) START=false; shift ;;
+    --force-clean) FORCE_CLEAN=true; shift ;;
     --help|-h)
-      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
@@ -52,6 +56,37 @@ case "$ARCH" in
 esac
 TARGET="$OS_NAME-$ARCH_NAME"
 
+# ---- 卸载/自愈共用：注销服务 + 终止进程 ----
+# daemon 注册的服务是"异常退出自动复活"（launchd KeepAlive=SuccessfulExit:false /
+# systemd Restart=on-failure），不先注销，pkill 杀掉的旧 daemon 会被立即拉回——
+# 这是"重装换不掉旧 daemon"的根因。标签精确匹配 com.zhipu.zcode.server 前缀，
+# 不动桌面 App 等其它 zcode 服务。
+deregister_services() {
+  if command -v launchctl >/dev/null 2>&1; then
+    for label in $(launchctl list 2>/dev/null | awk '$3 ~ /^com\.zhipu\.zcode\.server/ {print $3}'); do
+      launchctl bootout "gui/$(id -u)/$label" >/dev/null 2>&1 || true
+    done
+    rm -f "$HOME/Library/LaunchAgents/"com.zhipu.zcode.server.* 2>/dev/null || true
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user disable --now 'com.zhipu.zcode.server.*' >/dev/null 2>&1 || true
+    rm -f "$HOME/.config/systemd/user/"com.zhipu.zcode.server.* 2>/dev/null || true
+    rm -f "/etc/systemd/system/"com.zhipu.zcode.server.* 2>/dev/null || true
+  fi
+}
+
+# 先 supervisor 后 core，双扫收敛：supervisor 存活会把被杀的 core 崩溃重启拉回，
+# 两个进程组都要终止；命令行特征与桌面端 zcode-cli 进程不相交。
+kill_daemon_processes() {
+  pkill -f "server-cli.js" >/dev/null 2>&1 || true
+  sleep 1
+  pkill -f "server-core.js" >/dev/null 2>&1 || true
+  sleep 1
+  pkill -f "server-cli.js" >/dev/null 2>&1 || true
+  pkill -f "server-core.js" >/dev/null 2>&1 || true
+  sleep 1
+}
+
 if [ -z "$BASE_URL" ]; then
   BASE_URL="$DEFAULT_BASE_URL"
 fi
@@ -60,6 +95,20 @@ fi
 if [ ! -w "$(dirname "$INSTALL_DIR")" ] && [ "$(id -u)" != "0" ]; then
   INSTALL_DIR="$HOME/.zcode-server"
   echo "[install] no permission for default dir, using $INSTALL_DIR"
+fi
+
+# ---- 强制卸载重装：注销服务 + 杀进程 + 清数据根/旧安装/PATH 链接 ----
+# ~/.zcode 下会话、登录凭据、技能均保留；机器身份重新生成（远程码会变）。
+if [ "$FORCE_CLEAN" = true ]; then
+  echo "[install] --force-clean：注销系统服务、终止 daemon 进程并清除旧安装…"
+  deregister_services
+  kill_daemon_processes
+  rm -rf "$HOME/.zcode/server"
+  for stale in /opt/zcode-server "$HOME/.zcode-server"; do
+    if [ "$stale" != "$INSTALL_DIR" ]; then rm -rf "$stale" 2>/dev/null || true; fi
+  done
+  rm -f /usr/local/bin/zcode "$HOME/.local/bin/zcode" /opt/homebrew/bin/zcode 2>/dev/null || true
+  echo "[install] 清理完成，开始全新安装。"
 fi
 
 TMP=$(mktemp -d)
@@ -182,8 +231,13 @@ if [ "$START" = true ]; then
     assist_code=$(query_assist_code)
   fi
   if [ -n "$assist_code" ] && [ "${#assist_code}" -ne 8 ]; then
-    echo "[install] 仍有旧运行态残留，重置 daemon 运行态目录（~/.zcode/server；会话与登录数据不受影响）…"
+    echo "[install] 旧 daemon 疑被系统服务复活（KeepAlive/Restart=on-failure），注销服务并重置运行态…"
+    deregister_services
+    kill_daemon_processes
     rm -rf "$HOME/.zcode/server"
+    for stale in /opt/zcode-server "$HOME/.zcode-server"; do
+      if [ "$stale" != "$INSTALL_DIR" ]; then rm -rf "$stale" 2>/dev/null || true; fi
+    done
     launch_daemon
     assist_code=$(query_assist_code)
   fi
