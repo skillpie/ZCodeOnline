@@ -97,6 +97,16 @@
         margin: 0;
       }
 
+      /* 修复说明：应用壳按视口等高布局，页面本身不可滚。iOS Safari 对整页有弹性回弹
+         （rubber-band），会话列表滚到边界后继续拖动、或在输入框/顶栏等非滚动区拖动时，
+         整页连同底部固定的 composer 一起被弹起来。根元素声明 overscroll-behavior: none
+         直接关掉视口级回弹（Safari 16+/Chrome 支持）；副作用是禁用 Chrome 下拉刷新，
+         对会话型应用壳符合预期（误触下拉会整页重载会话）。 */
+      html,
+      body {
+        overscroll-behavior: none;
+      }
+
       body {
         background: var(--zcode-bootstrap-bg, var(--color-background, #0f172a));
         color: var(--zcode-bootstrap-fg, var(--color-foreground, #e2e8f0));
