@@ -212,8 +212,17 @@ export function WorkspaceAssistCodeRefreshTrigger({
     setAdding(false);
   };
 
-  // 删除仅移除列表记录；活动行已被禁用，不会删掉当前连接目标。
-  const removeRow = (code: string) => {
+  // 删除走标准确认弹窗：仅移除本端登记的链接记录（不影响对方电脑）；当前连接目标
+  // 的删除按钮已禁用，不会删掉正在使用的连接。
+  const removeRow = async (code: string) => {
+    const confirmed = await requestConfirmation({
+      title: intl.formatMessage({ id: "assistCode.dialog.delete" }),
+      description: intl.formatMessage({ id: "assistCode.dialog.deleteConfirm" }),
+      confirmLabel: intl.formatMessage({ id: "assistCode.dialog.delete" }),
+      cancelLabel: intl.formatMessage({ id: "common.cancel" }),
+      confirmVariant: "destructive",
+    });
+    if (!confirmed) return;
     setMachines(orderMachines(removeAssistMachine(code), localCode));
   };
 
@@ -272,13 +281,10 @@ export function WorkspaceAssistCodeRefreshTrigger({
                   onCopy={() => copyShareUrl(machine.code)}
                   onRequestRefresh={() => void confirmRefresh()}
                   onSwitch={() => switchTo(machine.code)}
-                  onRemove={() => removeRow(machine.code)}
+                  onRemove={() => void removeRow(machine.code)}
                 />
               );
             })}
-            <p className="text-ui-sm/relaxed text-foreground-subtle">
-              {intl.formatMessage({ id: "assistCode.dialog.switchHint" })}
-            </p>
           </div>
         ) : null}
 

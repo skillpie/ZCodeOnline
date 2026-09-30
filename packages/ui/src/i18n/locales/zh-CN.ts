@@ -1661,7 +1661,7 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.description":
     "任何拥有此链接的人都可以远程控制对应的电脑。请妥善保管，怀疑泄露时立即刷新。",
   "assistCode.dialog.section.title": "远程链接",
-  "assistCode.dialog.section.description": "复制链接发给对方控制本机ZCode/添加对方链接切换控制对方ZCode。",
+  "assistCode.dialog.section.description": "复制链接发给对方控制本机/添加远程链接切换控制远端。",
   "assistCode.dialog.loading": "正在读取远程码…",
   "assistCode.dialog.localBadge": "本机",
   "assistCode.dialog.remoteBadge": "远端",
@@ -1672,8 +1672,6 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.switch": "切换",
   "assistCode.dialog.switchTitle": "切换并重新连接",
   "assistCode.dialog.current": "当前连接",
-  "assistCode.dialog.switchHint":
-    "点击「切换」会保存对应链接并重新连接到该电脑；本机的「刷新」会让旧链接立即失效。",
   "assistCode.dialog.rename": "重命名",
   "assistCode.dialog.add": "添加远程链接",
   "assistCode.dialog.addCodePlaceholder": "粘贴远程链接或 16 位远程码",
@@ -1682,6 +1680,7 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.addInvalid": "链接或远程码无效：应包含 16 位数字远程码。",
   "assistCode.dialog.addDuplicate": "该远程码已在列表中。",
   "assistCode.dialog.delete": "删除",
+  "assistCode.dialog.deleteConfirm": "将从列表移除该电脑的链接，可随时重新添加；不影响对方电脑。",
   "assistCode.dialog.deleteActiveTitle": "当前连接的电脑，请先切换再删除",
   "assistCode.dialog.refreshWarning":
     "刷新会生成新的 16 位远程码，旧码对应的链接（包括已分享出去的）会立即失效，且无法恢复。确定要刷新吗？",
