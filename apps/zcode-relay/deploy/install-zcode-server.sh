@@ -171,7 +171,11 @@ if [ "$START" = true ]; then
     assist_code=$(query_assist_code)
   fi
   if [ -n "$assist_code" ] && [ "${#assist_code}" -ne 8 ]; then
-    echo "[install] 优雅停止后仍异常，强制结束残留 core 进程…"
+    echo "[install] 优雅停止后仍异常，强制结束残留 daemon 进程…"
+    # 先杀 supervisor 再杀 core：只杀 core 会被存活的 supervisor 崩溃重启拉回
+    # （supervisor 命令行含 server-cli.js，与桌面端 zcode-cli 进程不相交）。
+    pkill -f "server-cli.js" >/dev/null 2>&1 || true
+    sleep 1
     pkill -f "server-core.js" >/dev/null 2>&1 || true
     sleep 2
     launch_daemon
@@ -187,10 +191,15 @@ if [ "$START" = true ]; then
     echo "[install] 自检通过：发现端点返回 8 位远程码。"
     echo "[install] 服务已注册为开机自启；电脑重启后会自动恢复，链接不变。"
   else
+    # 失败时把启动日志转移到持久位置（trap 会清理 $TMP，直接引用 serve.out 会
+    # No such file or directory），供排障使用。
+    cp "$TMP/serve.out" "$HOME/.zcode-install-serve.out" 2>/dev/null || true
     echo "[install] ❌ 自动修复未能让新版 daemon 提供服务（$( [ -n "$assist_code" ] && echo "仍返回 ${#assist_code} 位码" || echo "发现端点无响应" )）。"
-    echo "[install]    请把以下两条输出发给支持人员："
+    echo "[install]    请把以下几条输出发给支持人员："
     echo "[install]    1. zcode status"
-    echo "[install]    2. cat $TMP/serve.out"
+    echo "[install]    2. cat ~/.zcode-install-serve.out"
+    echo "[install]    3. ps auxww | grep -E 'server-cli.js|server-core.js' | grep -v grep"
+    echo "[install]    4. command -v zcode && ls -l \$(command -v zcode)"
     exit 1
   fi
 else
