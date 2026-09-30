@@ -77,12 +77,24 @@ deregister_services() {
 }
 
 # 先 supervisor 后 core，双扫收敛：supervisor 存活会把被杀的 core 崩溃重启拉回，
-# 两个进程组都要终止；命令行特征与桌面端 zcode-cli 进程不相交。
+# 两个进程组都要终止；命令行特征与桌面端 zcode-cli 进程不相交。特征杀完后按
+# 4950 端口占用者 PID 再兜底击杀——发现端点是固定端口，占用者必是 daemon，
+# 按 PID 杀绕开"命令行特征不匹配导致 pkill 杀不掉"的一切变体。
 kill_daemon_processes() {
   pkill -f "server-cli.js" >/dev/null 2>&1 || true
   sleep 1
   pkill -f "server-core.js" >/dev/null 2>&1 || true
   sleep 1
+  if command -v lsof >/dev/null 2>&1; then
+    for pid in $(lsof -tiTCP:4950 -sTCP:LISTEN 2>/dev/null); do
+      kill "$pid" >/dev/null 2>&1 || true
+    done
+    sleep 2
+    for pid in $(lsof -tiTCP:4950 -sTCP:LISTEN 2>/dev/null); do
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    done
+    sleep 1
+  fi
   pkill -f "server-cli.js" >/dev/null 2>&1 || true
   pkill -f "server-core.js" >/dev/null 2>&1 || true
   sleep 1
@@ -290,15 +302,42 @@ if [ "$START" = true ]; then
     echo "[install] 自检通过：发现端点返回 8 位远程码。"
     echo "[install] 服务已注册为开机自启；电脑重启后会自动恢复，链接不变。"
   else
-    # 失败时把启动日志转移到持久位置（trap 会清理 $TMP，直接引用 serve.out 会
-    # No such file or directory），供排障使用。
+    # 失败时把启动日志与排障证据转移到持久位置（trap 会清理 $TMP），一份文件
+    # 涵盖全部所需信息，用户只需发回该文件内容。
     cp "$TMP/serve.out" "$HOME/.zcode-install-serve.out" 2>/dev/null || true
+    {
+      echo "== zcode status =="
+      "$INSTALL_DIR/bin/zcode" status 2>&1 || true
+      echo "== serve.out（启动日志）=="
+      cat "$HOME/.zcode-install-serve.out" 2>/dev/null || true
+      echo "== daemon 进程 =="
+      ps auxww 2>/dev/null | grep -E "server-cli.js|server-core.js" | grep -v grep || echo "(无)"
+      echo "== 4950 端口占用者（决定性证据）=="
+      if command -v lsof >/dev/null 2>&1; then
+        lsof -nP -iTCP:4950 -sTCP:LISTEN 2>/dev/null || echo "(无监听)"
+        for pid in $(lsof -tiTCP:4950 -sTCP:LISTEN 2>/dev/null); do
+          ps -o pid,user,lstart,command -p "$pid" 2>/dev/null || true
+        done
+      else
+        echo "(lsof 不可用)"
+      fi
+      echo "== zcode 相关服务 =="
+      if command -v launchctl >/dev/null 2>&1; then
+        launchctl list 2>/dev/null | grep -i zcode || echo "(无)"
+      fi
+      command -v systemctl >/dev/null 2>&1 && systemctl --user list-units 2>/dev/null | grep -i zcode
+      echo "== 发现端点现状 =="
+      if command -v curl >/dev/null 2>&1; then
+        curl -fsS -m 5 -H "Origin: https://zcode.skillpie.cn" \
+          http://127.0.0.1:4950/tunnel/assist 2>&1 || true
+      elif command -v wget >/dev/null 2>&1; then
+        wget -qO- -T 5 --header "Origin: https://zcode.skillpie.cn" \
+          http://127.0.0.1:4950/tunnel/assist 2>&1 || true
+      fi
+      echo ""
+    } > "$HOME/.zcode-install-diagnose.txt" 2>&1
     echo "[install] ❌ 自动修复未能让新版 daemon 提供服务（$( [ -n "$assist_code" ] && echo "仍返回 ${#assist_code} 位码" || echo "发现端点无响应" )）。"
-    echo "[install]    请把以下几条输出发给支持人员："
-    echo "[install]    1. zcode status"
-    echo "[install]    2. cat ~/.zcode-install-serve.out"
-    echo "[install]    3. ps auxww | grep -E 'server-cli.js|server-core.js' | grep -v grep"
-    echo "[install]    4. command -v zcode && ls -l \$(command -v zcode)"
+    echo "[install]    请把 ~/.zcode-install-diagnose.txt 的内容发给支持人员。"
     exit 1
   fi
 else
