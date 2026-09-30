@@ -52,24 +52,35 @@ if ($Archive -eq "") {
     }
 }
 
-# tar.exe 自 Windows 10 1803 起内置
+# tar.exe 自 Windows 10 1803 起内置。
+# 整目录替换而非原地解压：归档内层为 zcode-server-<target>/，原地解压到已有
+# 安装目录时顶层 bin\zcode.cmd 已存在、嵌套子目录不会被拍平，旧文件继续服役——
+# 这是"重装永远不生效"的根因（与 install-zcode-server.sh 同源 bug）。先在临时
+# 目录拍平，再整体替换，并保留 env 文件。
 Write-Host "[install] extracting to $InstallDir"
-New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-tar -xzf $Archive -C $InstallDir
+$extract = Join-Path $tmp "extract"
+New-Item -ItemType Directory -Path $extract -Force | Out-Null
+tar -xzf $Archive -C $extract
 
-# stage 归档内层为 zcode-server-<target>/；兼容两种布局
-$launcher = Join-Path $InstallDir "bin\zcode.cmd"
-if (-not (Test-Path $launcher)) {
-    $inner = Get-ChildItem -Path $InstallDir -Directory -Filter "zcode-server-*" | Select-Object -First 1
+$extractLauncher = Join-Path $extract "bin\zcode.cmd"
+if (-not (Test-Path $extractLauncher)) {
+    $inner = Get-ChildItem -Path $extract -Directory -Filter "zcode-server-*" | Select-Object -First 1
     if ($inner) {
-        Get-ChildItem -Path $inner.FullName | Move-Item -Destination $InstallDir -Force
+        Get-ChildItem -Path $inner.FullName | Move-Item -Destination $extract -Force
         Remove-Item $inner.FullName -Force
     }
-    if (-not (Test-Path (Join-Path $InstallDir "bin\zcode.cmd"))) {
-        Write-Host "[install] ERROR: bin/zcode.cmd not found after extraction" -ForegroundColor Red
-        exit 1
-    }
 }
+if (-not (Test-Path (Join-Path $extract "bin\zcode.cmd"))) {
+    Write-Host "[install] ERROR: bin/zcode.cmd not found after extraction" -ForegroundColor Red
+    exit 1
+}
+
+$envBackup = $null
+$envFile = Join-Path $InstallDir "env"
+if (Test-Path $envFile) { $envBackup = Copy-Item $envFile (Join-Path $tmp "env.bak") -PassThru }
+if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
+Move-Item -Path $extract -Destination $InstallDir
+if ($envBackup) { Copy-Item $envBackup.FullName (Join-Path $InstallDir "env") -Force }
 
 # ---- 工作区环境：写入安装目录 env 文件（serve/systemd 同机自用场景） ----
 if ($Workspace -ne "") {

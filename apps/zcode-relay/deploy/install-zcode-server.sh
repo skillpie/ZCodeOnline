@@ -189,19 +189,24 @@ if [ -z "$ARCHIVE" ]; then
 fi
 
 echo "[install] extracting to $INSTALL_DIR"
-mkdir -p "$INSTALL_DIR"
-tar -xf "$ARCHIVE" -C "$INSTALL_DIR"
-
-# stage 归档内层为 zcode-server-<target>/；兼容两种布局
-if [ ! -x "$INSTALL_DIR/bin/zcode" ] && ls "$INSTALL_DIR"/zcode-server-*/bin/zcode >/dev/null 2>&1; then
-  mv "$INSTALL_DIR"/zcode-server-*/* "$INSTALL_DIR"/ 2>/dev/null || true
-  rmdir "$INSTALL_DIR"/zcode-server-* 2>/dev/null || true
+# 整目录替换而非原地解压：归档内层为 zcode-server-<target>/，原地解压到已有
+# 安装目录时顶层 bin/zcode 已存在、嵌套子目录不会被拍平，旧文件继续服役——
+# 这是"重装永远不生效"的根因。先在临时目录拍平，再整体替换，并保留 env 文件。
+EXTRACT="$TMP/extract"
+mkdir -p "$EXTRACT"
+tar -xf "$ARCHIVE" -C "$EXTRACT"
+if [ ! -x "$EXTRACT/bin/zcode" ] && ls "$EXTRACT"/zcode-server-*/bin/zcode >/dev/null 2>&1; then
+  mv "$EXTRACT"/zcode-server-*/* "$EXTRACT"/ 2>/dev/null || true
+  rmdir "$EXTRACT"/zcode-server-* 2>/dev/null || true
 fi
-
-if [ ! -x "$INSTALL_DIR/bin/zcode" ]; then
+if [ ! -x "$EXTRACT/bin/zcode" ]; then
   echo "[install] ERROR: bin/zcode not found after extraction" >&2
   exit 1
 fi
+if [ -f "$INSTALL_DIR/env" ]; then cp "$INSTALL_DIR/env" "$TMP/env.bak"; fi
+rm -rf "$INSTALL_DIR"
+mv "$EXTRACT" "$INSTALL_DIR"
+if [ -f "$TMP/env.bak" ]; then cp "$TMP/env.bak" "$INSTALL_DIR/env"; fi
 
 # ---- 工作区环境：写入安装目录 env 文件，serve 启动时读取 ----
 if [ -n "$WORKSPACE" ]; then
