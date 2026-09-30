@@ -1799,10 +1799,10 @@ const enUS: Record<string, string> = {
     "Clicking Switch saves that link and reconnects to the machine; refreshing this machine invalidates its old links immediately.",
   "assistCode.dialog.rename": "Rename",
   "assistCode.dialog.add": "Add remote link",
-  "assistCode.dialog.addCodePlaceholder": "Enter a 16-digit assist code",
+  "assistCode.dialog.addCodePlaceholder": "Paste an assist link or a 16-digit code",
   "assistCode.dialog.addNamePlaceholder": "Name (optional)",
   "assistCode.dialog.addConfirm": "Add",
-  "assistCode.dialog.addInvalid": "The assist code should be 16 digits.",
+  "assistCode.dialog.addInvalid": "Invalid link or code: expected a 16-digit assist code.",
   "assistCode.dialog.addDuplicate": "This assist code is already in the list.",
   "assistCode.dialog.delete": "Remove",
   "assistCode.dialog.deleteActiveTitle": "Currently connected — switch away before removing",
@@ -1812,7 +1812,6 @@ const enUS: Record<string, string> = {
   "assistCode.dialog.refreshing": "Refreshing…",
   "assistCode.dialog.refreshed":
     "The assist code has been refreshed and old links no longer work. Share the new link below:",
-  "assistCode.dialog.returnToLocal": "Use this machine",
   "assistCode.dialog.retry": "Retry",
   "remote.title": "Connect remote environment",
   "remote.description":

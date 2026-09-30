@@ -302,6 +302,28 @@ export function normalizeAssistCode(input: string): string | null {
   return digits.length === TUNNEL_ASSIST_CODE_LENGTH ? digits : null;
 }
 
+/**
+ * 从用户粘贴的「远程链接或远程码」中提取归一化远程码（specs/web-tunnel.md §5.9）：
+ * - 完整链接（如 https://zcode.skillpie.cn/<16位码>，含 4-4-4-4 分组形态）：取 URL 末段提取；
+ * - 裸码 / 分组码：直接归一化。
+ * 不能安全提取出 16 位码时返回 null（如链接末段混入其他数字，域名端口不参与提取）。
+ */
+export function parseAssistCodeInput(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      const segments = url.pathname.split("/").filter(Boolean);
+      const lastSegment = segments[segments.length - 1];
+      return lastSegment ? normalizeAssistCode(lastSegment) : null;
+    } catch {
+      return null;
+    }
+  }
+  return normalizeAssistCode(trimmed);
+}
+
 /** 生成 16 位随机数字码（展示按 4-4-4-4 分组，传输/存储用归一化形态）。 */
 export function generateAssistCode(): string {
   let code = "";

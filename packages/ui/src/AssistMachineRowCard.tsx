@@ -16,6 +16,8 @@ interface AssistMachineRowCardProps {
   editDraft: string;
   copied: boolean;
   origin: string;
+  /** 额外置灰「切换」（如桌面本机模式下切换到本机无意义）；行本体仍用于展示/复制/刷新。 */
+  switchDisabled?: boolean;
   onEditStart: () => void;
   onEditChange: (draft: string) => void;
   onEditCommit: () => void;
@@ -34,6 +36,7 @@ export function AssistMachineRowCard({
   editDraft,
   copied,
   origin,
+  switchDisabled = false,
   onEditStart,
   onEditChange,
   onEditCommit,
@@ -143,7 +146,7 @@ export function AssistMachineRowCard({
         <button
           type="button"
           className={cn(rowActionClass, "flex items-center gap-1")}
-          disabled={isActive}
+          disabled={isActive || switchDisabled}
           aria-label={intl.formatMessage({ id: "assistCode.dialog.switchTitle" })}
           title={
             isActive

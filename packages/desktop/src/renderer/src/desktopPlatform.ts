@@ -1,4 +1,5 @@
 import { recordArmsCustomEventForE2E } from "@zcode/ui";
+import { loadStoredAssistCode } from "@zcode/ui/assist-machine-store";
 import { DesktopCommandIds, buildLocalMediaPreviewUrl, type IPlatformService } from "@zcode/shared";
 
 import { desktopBrowserPlatformBridge } from "./desktopBrowserPlatformBridge.js";
@@ -160,9 +161,16 @@ export function createDesktopPlatform(options: {
       Promise.reject(new Error("Tunnel management requires the desktop app")),
     // 远程协助码契约（specs/web-tunnel.md §5.9）：实现后共享弹窗自动在桌面渲染。
     // 本机码权威所有者是 daemon（控制链读取/轮换）；redeem 供隧道模式组件注入使用。
-    getRemoteAssistCode: () =>
-      window.zcode.getRemoteAssistCode?.() ??
-      Promise.reject(new Error("Remote assist code requires the desktop app")),
+    getRemoteAssistCode: async () => {
+      try {
+        return (await window.zcode.getRemoteAssistCode?.()) ?? { code: "", expiresAt: null };
+      } catch {
+        // daemon 不可达或版本过旧不识别 assist 命令：按平台契约回退本地存储码
+        // （expiresAt=null 非权威，弹窗不打「本机」标记），已登记的远程链接仍可展示，
+        // 与 Web 端宿主不可达时的降级一致。
+        return { code: loadStoredAssistCode() ?? "", expiresAt: null };
+      }
+    },
     refreshRemoteAssistCode: () =>
       window.zcode.refreshRemoteAssistCode?.() ??
       Promise.reject(new Error("Remote assist code requires the desktop app")),

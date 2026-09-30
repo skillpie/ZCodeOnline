@@ -7,6 +7,7 @@ import {
   generateTunnelSecret,
   hashTunnelSecret,
   parsePairingUrl,
+  parseAssistCodeInput,
   pairingPayloadSchema,
   hostControlFrameSchema,
   relayHostFrameSchema,
@@ -37,6 +38,31 @@ test("relayHttpOrigin/relayWebOrigin 转换 ws/wss 地址", () => {
   assert.equal(relayWebOrigin("wss://zcode.skillpie.cn/relay"), "https://zcode.skillpie.cn");
   assert.equal(relayWebOrigin("ws://127.0.0.1:8080/relay/"), "http://127.0.0.1:8080");
   assert.equal(relayWebOrigin("wss://x.example"), "https://x.example");
+});
+
+test("parseAssistCodeInput 从远程链接或裸码提取 16 位码", () => {
+  // 完整链接：产品部署、别名路径、带端口/查询参数。
+  assert.equal(
+    parseAssistCodeInput("https://zcode.skillpie.cn/1234567890123456"),
+    "1234567890123456",
+  );
+  assert.equal(
+    parseAssistCodeInput("https://zcode.skillpie.cn/remote/1234567890123456"),
+    "1234567890123456",
+  );
+  assert.equal(
+    parseAssistCodeInput("http://localhost:5173/1234567890123456?x=1"),
+    "1234567890123456",
+    "端口/查询里的数字不参与提取",
+  );
+  // 裸码与 4-4-4-4 分组形态。
+  assert.equal(parseAssistCodeInput("1234567890123456"), "1234567890123456");
+  assert.equal(parseAssistCodeInput("1234 5678 9012 3456"), "1234567890123456");
+  // 无法提取：空输入、位数不足、链接无路径、非链接的杂乱文本。
+  assert.equal(parseAssistCodeInput(""), null);
+  assert.equal(parseAssistCodeInput("12345678"), null);
+  assert.equal(parseAssistCodeInput("https://zcode.skillpie.cn/"), null);
+  assert.equal(parseAssistCodeInput("not a code"), null);
 });
 
 test("pairing url 编码后可无损解析", () => {

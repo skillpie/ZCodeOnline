@@ -106,8 +106,15 @@ function handleSocket(socket: Socket, handler: ControlHandler): void {
 async function dispatch(socket: Socket, raw: unknown, handler: ControlHandler): Promise<void> {
   const parsed = controlRequestSchema.safeParse(raw);
   if (!parsed.success) {
+    // 错误应答必须回带请求自身的 id：客户端按 id 匹配应答，回随机 id 会让它一直等
+    // 到超时（表现为「Supervisor control request timed out」），而不是立刻看到
+    // invalid-request。版本不匹配（旧 daemon 收到新命令）就会走到这里。
+    const requestId =
+      typeof raw === "object" && raw !== null && typeof (raw as { id?: unknown }).id === "string"
+        ? (raw as { id: string }).id
+        : randomUUID();
     writeResponse(socket, {
-      id: randomUUID(),
+      id: requestId,
       ok: false,
       error: { code: "invalid-request", message: "Invalid control request" },
     });

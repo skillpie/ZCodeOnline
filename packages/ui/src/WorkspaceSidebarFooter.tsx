@@ -385,8 +385,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           ) : null}
           {/* 「远程控制」入口（specs/web-tunnel.md §5.9）：弹窗展示远程链接列表
               （本机码/复制/刷新/切换），组件内部按 platform 能力自行隐藏（未实现契约时
-              不渲染），位置固定在设置按钮左侧；isDesktop 用于桌面分享链接域名与
-              「切回本机」出口。 */}
+              不渲染），位置固定在设置按钮左侧；isDesktop 用于桌面分享链接域名，并让
+              「切换」到本机条目时退出隧道模式回本地桌面。 */}
           <WorkspaceAssistCodeRefreshTrigger isDesktop={isDesktop} />
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button

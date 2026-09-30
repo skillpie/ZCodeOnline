@@ -2,7 +2,7 @@
 // 表单——草稿态（码/名/错误）归本组件所有，校验通过才回调入库；父组件负责列表状态
 // 与入库（upsert + 可选改名）。独立于列表渲染：列表为空时也能添加。
 import { useState } from "react";
-import { normalizeAssistCode } from "@zcode/shared";
+import { parseAssistCodeInput } from "@zcode/shared";
 import { defaultAssistMachineName } from "@/assistMachineStore.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
@@ -24,19 +24,20 @@ export function AssistMachineAddForm({
   const [codeDraft, setCodeDraft] = useState("");
   const [nameDraft, setNameDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // 输入接受完整远程链接（https://host/<码>）或裸码/分组码，实时提取用于校验与默认名预览。
+  const parsedCode = parseAssistCodeInput(codeDraft);
 
   // 码校验通过才入库；可选名称立即生效，否则由父组件走默认名（<码>的ZCode）。
   const submit = () => {
-    const code = normalizeAssistCode(codeDraft);
-    if (!code) {
+    if (!parsedCode) {
       setError(intl.formatMessage({ id: "assistCode.dialog.addInvalid" }));
       return;
     }
-    if (code === localCode || existingCodes.includes(code)) {
+    if (parsedCode === localCode || existingCodes.includes(parsedCode)) {
       setError(intl.formatMessage({ id: "assistCode.dialog.addDuplicate" }));
       return;
     }
-    onSubmit(code, nameDraft.trim());
+    onSubmit(parsedCode, nameDraft.trim());
   };
 
   const inputClass =
@@ -47,7 +48,7 @@ export function AssistMachineAddForm({
       <input
         autoFocus
         value={codeDraft}
-        inputMode="numeric"
+        inputMode="url"
         aria-label={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
         placeholder={intl.formatMessage({ id: "assistCode.dialog.addCodePlaceholder" })}
         className={inputClass}
@@ -64,8 +65,8 @@ export function AssistMachineAddForm({
         value={nameDraft}
         aria-label={intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })}
         placeholder={
-          normalizeAssistCode(codeDraft)
-            ? defaultAssistMachineName(normalizeAssistCode(codeDraft) ?? "")
+          parsedCode
+            ? defaultAssistMachineName(parsedCode)
             : intl.formatMessage({ id: "assistCode.dialog.addNamePlaceholder" })
         }
         className={inputClass}

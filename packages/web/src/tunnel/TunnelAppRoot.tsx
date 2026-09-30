@@ -31,6 +31,7 @@ import {
   type TunnelSession,
 } from "./tunnelSession.js";
 import { initialGateState, nextGateState, type GateEvent, type GateState } from "./gateState.js";
+import { DisconnectedAppSkeleton } from "./DisconnectedAppSkeleton.js";
 import { ConnectionGateCard } from "./TunnelGateScreen.js";
 
 export type TunnelServices = ReturnType<typeof connectViaProtocol>;
@@ -40,42 +41,6 @@ const t = (zhText: string, enText: string) => (/^zh\b/i.test(navigator.language)
 // 自动重连窗口：6 次（1+2+4+8+16+30 ≈ 61s）覆盖 relay 重启空窗（秒级）+ 宿主退避重连
 // （最长 reconnectMaxMs）的典型恢复时长；超过后交还手动重连，保留换机重新配对的出口。
 const AUTO_RECONNECT_MAX_ATTEMPTS = 6;
-
-/** 未连接时的静态应用骨架：与主界面同构的空态，视觉占位而非假交互。 */
-export function DisconnectedAppSkeleton() {
-  const isZh = /^zh\b/i.test(navigator.language);
-  return (
-    <div className="flex h-full w-full select-none bg-background text-foreground" aria-hidden>
-      <aside className="hidden w-64 shrink-0 flex-col gap-2 border-r border-border p-3 md:flex">
-        <div className="px-2 py-1 text-ui-xs font-medium text-foreground-subtle">ZCode</div>
-        <div className="rounded-lg border border-border bg-surface px-3 py-2 text-ui-xs">
-          {isZh ? "新建任务" : "New task"}
-        </div>
-        {["搜索", "自动化", "插件市场", "技能市场"].map((label) => (
-          <div key={label} className="rounded-lg px-3 py-2 text-ui-xs text-foreground-subtle">
-            {isZh ? label : label === "搜索" ? "Search" : label}
-          </div>
-        ))}
-        <div className="mt-4 px-2 text-ui-xs font-medium text-foreground-subtle">
-          {isZh ? "项目" : "Projects"}
-        </div>
-        {[64, 52, 58, 44].map((width, index) => (
-          <div key={index} className="h-4 rounded bg-surface" style={{ width: `${width}%` }} />
-        ))}
-      </aside>
-      <main className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
-        <div className="text-ui-lg font-medium">
-          {isZh ? "下午好呀，接下来交给我吧" : "Good afternoon — what shall we build?"}
-        </div>
-        <div className="w-full max-w-xl rounded-xl border border-border bg-surface px-4 py-3 text-ui-xs text-foreground-subtle">
-          {isZh
-            ? "向 ZCode 提问，使用 @ 添加上下文，使用 / 选择命令或能力"
-            : "Ask ZCode — @ for context, / for commands"}
-        </div>
-      </main>
-    </div>
-  );
-}
 
 export function TunnelAppRoot({
   platform,

@@ -24,6 +24,7 @@
     "./workspace-hook-trust-store-file": "./src/workspace-hook-trust-store-file.ts"
   },
   "scripts": {
+    "test": "tsx --test test/*.test.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix"
   },

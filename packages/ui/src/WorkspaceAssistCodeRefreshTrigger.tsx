@@ -1,14 +1,14 @@
-// 远程控制弹窗（specs/web-tunnel.md §5.9）：侧栏设置按钮左侧的图标按钮，Web 与桌面共用。
-// 弹窗展示远程链接列表：本机（Web 经回环发现端点、桌面经 daemon 控制链的权威码）固定
-// 第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的旧本机条目不同码
-// （本机在别处换过码），由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底
-// 回退码不打标记。额外多一个「刷新」（二次确认后轮换本机码，旧链接立即失效）；其余
-// 条目来自本端登记的远程链接列表，均支持改名（默认名 = <远程码>的ZCode）、「复制」
-// 「切换」与手动添加/删除。本机条目卡片见 AssistMachineRowCard.tsx。
+// 远程控制弹窗（specs/web-tunnel.md §5.9）：侧栏设置按钮左侧的图标按钮，Web 与桌面共用，
+// 界面与 Web 版完全同构。弹窗展示远程链接列表：本机（Web 经回环发现端点、桌面经 daemon
+// 控制链的权威码）固定第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的
+// 旧本机条目不同码（本机在别处换过码），由 store 原位并入而不是新增，避免重复的
+// 「我的ZCode」；兜底回退码不打标记。额外多一个「刷新」（二次确认后轮换本机码，旧链接
+// 立即失效）；其余条目来自本端登记的远程链接列表，均支持改名（默认名 = <远程码>的ZCode）、
+// 「复制」「切换」与手动添加/删除。本机条目卡片见 AssistMachineRowCard.tsx。
 // 「切换」保存该链接为当前生效码并整页重连（Web reload 后走隧道 bootstrap；桌面由
-// main.tsx 的 tunnelEntryActive 分支接管）。桌面处于隧道模式（存在活动存储码）时额外
-// 提供「切回本机」：清码 + 重载，回到本地桌面。仅当 platform 实现了远程码契约时渲染
-// 本入口；轮换权威所有者在宿主 Core 隧道运行时。
+// main.tsx 的 tunnelEntryActive 分支接管）；桌面端「切换」到本机条目等价于退出隧道模式
+// 回到本地桌面（见 switchTo）。仅当 platform 实现了远程码契约时渲染本入口；轮换权威
+// 所有者在宿主 Core 隧道运行时。
 import { useState } from "react";
 import { Loader2, MonitorSmartphone, Plus } from "lucide-react";
 import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
@@ -87,13 +87,6 @@ export function WorkspaceAssistCodeRefreshTrigger({
   // 网页域名，用产品 relay 入口推导（relayWebOrigin 去掉 /relay 路径前缀）。
   const origin = isDesktop ? relayWebOrigin(DEFAULT_TUNNEL_RELAY_URL) : window.location.origin;
 
-  /** 桌面「切回本机」：清存储码后整页重载，本地启动流接管（见 desktop main.tsx）。 */
-  const returnToLocal = () => {
-    if (!isDesktop) return;
-    clearStoredAssistCode();
-    window.location.reload();
-  };
-
   const loadCurrent = () => {
     setPhase("loading");
     setErrorCode(null);
@@ -165,7 +158,15 @@ export function WorkspaceAssistCodeRefreshTrigger({
   };
 
   const switchTo = (code: string) => {
-    saveStoredAssistCode(code);
+    // 桌面端「切换」到本机条目（权威打 local 标记的）= 退出隧道模式回本地桌面：
+    // 清存储码后整页重载，由 main.tsx 的本地启动流接管。Web 的本机即当前页面，
+    // 维持原语义（存码重载）。兜底回退码不打 local 标记，不会误触本机分支。
+    const machine = machines.find((entry) => entry.code === code);
+    if (isDesktop && machine?.local === true) {
+      clearStoredAssistCode();
+    } else {
+      saveStoredAssistCode(code);
+    }
     // 整页重连：挂载流程会以存储的当前码直连目标机器（含失效回退）。
     window.location.reload();
   };
@@ -256,6 +257,10 @@ export function WorkspaceAssistCodeRefreshTrigger({
                     machine={machine}
                     isLocal={isLocal}
                     isActive={isActive}
+                    // 桌面本机模式下「切换」到本机无意义（已在本地），置灰；本机行
+                    // 退化为展示链接 + 复制 + 刷新，供把链接发到浏览器远程控制本机。
+                    // 隧道模式下本机行「切换」= 切回本机（见 switchTo），保持可点。
+                    switchDisabled={isDesktop && isLocal && activeCode === null}
                     editing={editingCode === machine.code}
                     editDraft={editingCode === machine.code ? editingDraft : ""}
                     copied={copiedCode === machine.code}
@@ -328,18 +333,6 @@ export function WorkspaceAssistCodeRefreshTrigger({
                   <Plus className="size-4" />
                   {intl.formatMessage({ id: "assistCode.dialog.add" })}
                 </Button>
-                {/* 桌面隧道模式（存在活动存储码）才可切回本地桌面；Web 的本机即当前页。 */}
-                {isDesktop && activeCode !== null ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="lg"
-                    className="h-9 px-4"
-                    onClick={returnToLocal}
-                  >
-                    {intl.formatMessage({ id: "assistCode.dialog.returnToLocal" })}
-                  </Button>
-                ) : null}
               </div>
             ) : null}
             {phase === "confirm" ? (
