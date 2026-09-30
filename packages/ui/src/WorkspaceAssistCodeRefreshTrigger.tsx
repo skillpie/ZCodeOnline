@@ -10,7 +10,7 @@
 // main.tsx 的 tunnelEntryActive 分支接管）；桌面端「切换」到本机条目等价于退出隧道模式
 // 回到本地桌面（见 switchTo）。仅当远程码契约与 Bot Channel 至少一个可用时渲染本入口；
 // 轮换权威所有者在宿主 Core 隧道运行时。
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link2, Loader2, MonitorSmartphone, Plus, XIcon } from "lucide-react";
 import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
@@ -79,6 +79,13 @@ export function WorkspaceAssistCodeRefreshTrigger({
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const [adding, setAdding] = useState(false);
+  // 卡片内滚动容器：点固定的「添加远程链接」后滚到底部，让末尾的表单立即可见。
+  const opsScrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!adding) return;
+    const container = opsScrollRef.current;
+    container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  }, [adding]);
 
   // 远程码契约（getRemoteAssistCode/refreshRemoteAssistCode）与 Bot Channel 至少一个
   // 可用才渲染合并入口；两者都可用时弹窗为双栏（左=远程码操作区，右=Bot Channel）。
@@ -219,7 +226,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
           </p>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto">
+      <div ref={opsScrollRef} className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto">
         {phase === "confirm" ? (
           <p className="text-ui-base/relaxed text-foreground">
             {intl.formatMessage({ id: "assistCode.dialog.refreshWarning" })}
@@ -300,6 +307,19 @@ export function WorkspaceAssistCodeRefreshTrigger({
         {phase === "error" ? (
           <p className="break-all text-ui-base/relaxed text-destructive">{errorCode}</p>
         ) : null}
+      </div>
+      {/* 添加入口固定在卡片底部（与右栏「机器人管理」同款样式），不随列表滚动。 */}
+      <div className="mt-3 shrink-0">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full justify-center gap-2 enabled:cursor-pointer"
+          onClick={() => setAdding(true)}
+        >
+          <Plus className="size-3.5" />
+          {intl.formatMessage({ id: "assistCode.dialog.add" })}
+        </Button>
       </div>
     </section>
   ) : null;
@@ -399,60 +419,38 @@ export function WorkspaceAssistCodeRefreshTrigger({
             </>
           )}
 
-          {/* 添加入口固定在 footer 左侧与「关闭」同行；内联表单展开期间隐藏避免重复入口。 */}
-          <DialogFooter
-            className={cn(
-              "gap-2",
-              phase === "ready" && !adding ? "sm:justify-between" : "sm:justify-end",
-            )}
-          >
-            {phase === "ready" && !adding ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  className="h-9 px-4"
-                  onClick={() => setAdding(true)}
-                >
-                  <Plus className="size-4" />
-                  {intl.formatMessage({ id: "assistCode.dialog.add" })}
+          {/* footer 只承载瞬态操作（刷新确认/刷新中/错误重试）；「添加远程链接」已固定在
+              左栏卡片底部，关闭统一走右上角 X，ready/loading 态不再渲染 footer。 */}
+          {phase === "confirm" || phase === "refreshing" || phase === "error" ? (
+            <DialogFooter className="gap-2">
+              {phase === "confirm" ? (
+                <>
+                  <AssistDialogSecondaryButton
+                    label={intl.formatMessage({ id: "common.cancel" })}
+                    onClick={() => setPhase("ready")}
+                  />
+                  <Button
+                    type="button"
+                    autoFocus
+                    size="lg"
+                    className="h-9 gap-3 px-4 justify-between sm:min-w-32"
+                    onClick={() => {
+                      if (localCode === null) return;
+                      runRefresh(localCode);
+                    }}
+                  >
+                    <span>{intl.formatMessage({ id: "assistCode.dialog.refreshConfirm" })}</span>
+                    <span className="font-mono text-ui-base text-primary-foreground/60">⏎</span>
+                  </Button>
+                </>
+              ) : null}
+              {phase === "refreshing" ? (
+                <Button type="button" size="lg" disabled className="h-9 gap-2 px-4">
+                  <Loader2 className="size-4 animate-spin" />
+                  {intl.formatMessage({ id: "assistCode.dialog.refreshing" })}
                 </Button>
-              </div>
-            ) : null}
-            {phase === "confirm" ? (
-              <>
-                <AssistDialogSecondaryButton
-                  label={intl.formatMessage({ id: "common.cancel" })}
-                  onClick={() => setPhase("ready")}
-                />
-                <Button
-                  type="button"
-                  autoFocus
-                  size="lg"
-                  className="h-9 gap-3 px-4 justify-between sm:min-w-32"
-                  onClick={() => {
-                    if (localCode === null) return;
-                    runRefresh(localCode);
-                  }}
-                >
-                  <span>{intl.formatMessage({ id: "assistCode.dialog.refreshConfirm" })}</span>
-                  <span className="font-mono text-ui-base text-primary-foreground/60">⏎</span>
-                </Button>
-              </>
-            ) : null}
-            {phase === "refreshing" ? (
-              <Button type="button" size="lg" disabled className="h-9 gap-2 px-4">
-                <Loader2 className="size-4 animate-spin" />
-                {intl.formatMessage({ id: "assistCode.dialog.refreshing" })}
-              </Button>
-            ) : null}
-            {phase === "error" ? (
-              <>
-                <AssistDialogSecondaryButton
-                  label={intl.formatMessage({ id: "common.close" })}
-                  onClick={() => setOpen(false)}
-                />
+              ) : null}
+              {phase === "error" ? (
                 <Button
                   type="button"
                   autoFocus
@@ -466,15 +464,9 @@ export function WorkspaceAssistCodeRefreshTrigger({
                 >
                   {intl.formatMessage({ id: "assistCode.dialog.retry" })}
                 </Button>
-              </>
-            ) : null}
-            {phase === "ready" || phase === "loading" ? (
-              <AssistDialogSecondaryButton
-                label={intl.formatMessage({ id: "common.close" })}
-                onClick={() => setOpen(false)}
-              />
-            ) : null}
-          </DialogFooter>
+              ) : null}
+            </DialogFooter>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>
