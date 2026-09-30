@@ -1441,7 +1441,7 @@ export function LexicalChatInput({
         "aria-placeholder": placeholder,
         placeholder: (
           <div
-            className={`pointer-events-none absolute left-0 top-0 ${compactPlaceholder ? "line-clamp-2" : ""} text-ui-base leading-5 text-foreground-subtlest`}
+            className={`pointer-events-none absolute left-0 top-0 ${compactPlaceholder ? "line-clamp-2" : ""} text-mobile-input-safe md:text-ui-base leading-5 text-foreground-subtlest`}
           >
             {placeholder}
           </div>
@@ -1455,7 +1455,12 @@ export function LexicalChatInput({
     <ContentEditable
       // mention node 使用固定行高的 inline-flex chip，普通正文如果继承浏览器 normal line-height，
       // 在 token 后继续输入文字时会按不同 line box 计算基线；这里显式收口正文行高。
-      className="min-h-10 max-h-40 overflow-y-auto text-ui-base leading-5 text-foreground outline-none"
+      // 修复说明：text-ui-base 跟随 --ui-font-size（小于 16px），iOS Safari 聚焦小于 16px 的
+      // 可编辑元素时会自动放大视口，手机 Web 端聚焦聊天输入框整个页面被顶开、顶部内容不可见。
+      // 按 DESIGN.md 规则改用 text-mobile-input-safe 固定 16px 下限，md 视口恢复 text-ui-base；
+      // placeholder 必须与输入框同字号，否则占位文字与正文错位。窄视口桌面窗口同样生效，
+      // 与 AutomationEditView/pptx 页码输入的既有取舍一致。
+      className="min-h-10 max-h-40 overflow-y-auto text-mobile-input-safe md:text-ui-base leading-5 text-foreground outline-none"
       data-testid={inputTestId}
       onFocus={onFocus}
       {...contentEditableProps}

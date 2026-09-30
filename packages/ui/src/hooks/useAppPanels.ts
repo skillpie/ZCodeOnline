@@ -75,6 +75,7 @@ import {
 } from "@/lib/workspaceSidePane.js";
 import { isSidePaneTabVisibleForParent } from "@/lib/workspaceSidePane.js";
 import { logger } from "@/logger.js";
+import { resolveInitialWorkspaceSidebarVisible } from "@/lib/workspaceSidebarInitialVisibility.js";
 import { getPathLeaf, joinFilePath, toFileUrl } from "@/lib/path.js";
 import { shouldOpenWorkflowArtifactInBrowser } from "@/lib/workflowArtifactOpen.js";
 import { useWhiteboardStore } from "@/store/whiteboardStore.js";
@@ -202,7 +203,9 @@ export function useAppPanels(options: {
   // 交互说明：侧栏显隐按钮放在 App 外层，而不是 Sidebar 内部。
   // 这样即使侧栏被隐藏，入口也仍然留在左上角，不会出现"收起后没有地方再展开"的问题；
   // 同时这里统一处理 macOS 红绿灯安全区，避免按钮和系统窗口控件重叠。
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  // 修复说明：手机等触摸设备打开 Web 端时，竖屏窄宽度下默认展开的侧栏会挤掉主会话可视区，
+  // 初始值改为触摸设备默认收起（仅首屏默认值，展开入口与手动切换行为不变）。
+  const [isSidebarVisible, setIsSidebarVisible] = useState(resolveInitialWorkspaceSidebarVisible);
   const [browserNavigationRequest, setBrowserNavigationRequest] =
     useState<BrowserNavigationRequest | null>(null);
   const [allRecentClosedSidePaneTabs, setAllRecentClosedSidePaneTabs] = useState<
