@@ -1,4 +1,5 @@
 import { defineConfig } from "tsup";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -9,7 +10,13 @@ const { loadBuiltinProviderConfig } = await import(
 
 const { content: zcodeBuiltinProviderConfigJson } = await loadBuiltinProviderConfig();
 
+// 版本号必须与 server/desktop/web 构建同源注入：漏掉 __ZCODE_VERSION__ 会让
+// 发行版 daemon 的 zcode status 永远回落显示 "0.0.0-dev"，无法排障与核对更新。
+const rootPackageJsonPath = resolve(import.meta.dirname, "../../package.json");
+const { version } = JSON.parse(readFileSync(rootPackageJsonPath, "utf-8")) as { version: string };
+
 export const SERVER_CLI_DEFINES = {
+  __ZCODE_VERSION__: JSON.stringify(version),
   __ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__: JSON.stringify(zcodeBuiltinProviderConfigJson),
 };
 
