@@ -16,12 +16,16 @@ import {
 import { createControlServer, type ControlHandler } from "../ipc/controlServer.js";
 import { ControlRequestError } from "../ipc/controlError.js";
 import { DataRootLock } from "../runtime/lock.js";
+import { resolveAutoUpdateSettings, type AutoUpdateSettings } from "../runtime/autoUpdateConfig.js";
+import { prepareOnlineUpdate } from "../runtime/updatePreparation.js";
 import { resolveServerLayout, type ServerLayout } from "../runtime/paths.js";
 import { ReleaseManager } from "../runtime/releaseManager.js";
 import { createStatusPersister } from "../runtime/statusSnapshot.js";
 import { recoverSupervisorStartup } from "../runtime/startupRecovery.js";
 import { waitForUpdateReady } from "../runtime/updateReadiness.js";
 import { createRollbackFailure, updateErrorMessage } from "../runtime/updateErrors.js";
+import { applyPreparedReleaseWithCleanup } from "./autoUpdateApply.js";
+import { AutoUpdateScheduler } from "./autoUpdateScheduler.js";
 import { CrashBudget } from "./crashBudget.js";
 
 // 生命周期事件按运维排障判据用 info/warn/error（出问题时运维要能在日志里看到）；
@@ -44,6 +48,11 @@ interface SupervisorOptions {
   coreKillTimeoutMs?: number;
   now?: () => number;
   onStopped?: () => void;
+  /**
+   * 自动更新配置；缺省从环境变量解析，显式传 null 可整体关闭（测试用）。
+   * 仅发行布局（activeRelease 非空）下才会启动调度器。
+   */
+  autoUpdateSettings?: AutoUpdateSettings | null;
 }
 
 type LifecycleOperationKind = "stop" | "restart" | "update" | "uninstall";
@@ -67,12 +76,18 @@ export class Supervisor {
     | { kind: LifecycleOperationKind; promise: Promise<unknown> }
     | undefined;
   private activeRelease: ReleaseManifest | null = null;
+  private readonly autoUpdateSettings: AutoUpdateSettings | null;
+  private autoUpdateScheduler: AutoUpdateScheduler | undefined;
 
   public constructor(private readonly options: SupervisorOptions) {
     this.layout = options.layout ?? resolveServerLayout();
     this.lock = new DataRootLock(this.layout.lockFile);
     this.crashBudget = new CrashBudget({ now: options.now });
     this.releaseManager = new ReleaseManager(this.layout);
+    this.autoUpdateSettings =
+      options.autoUpdateSettings === undefined
+        ? resolveAutoUpdateSettings(process.env)
+        : options.autoUpdateSettings;
     this.persistStatusSnapshot = createStatusPersister(
       this.layout.statusFile,
       () => this.status(),
@@ -110,6 +125,7 @@ export class Supervisor {
       });
       this.launchCore();
       await this.persistStatusSnapshot();
+      this.startAutoUpdateScheduler();
       return this.status();
     } catch (error) {
       // 只在 recovery 失败时释放锁是不够的：mkdir、control server、Core 启动或
@@ -166,6 +182,7 @@ export class Supervisor {
   }
 
   private async stopInternal(reason: string): Promise<ServerStatus> {
+    this.stopAutoUpdateScheduler();
     if (!this.core) {
       this.state = "stopped";
       await this.persistStatusSnapshot();
@@ -328,6 +345,35 @@ export class Supervisor {
       await this.persistStatusSnapshot();
       throw error;
     }
+  }
+
+  /**
+   * 自动更新只对发行布局生效：dev 直跑（无 current.json，Core 来自仓库源码）时
+   * activeRelease 为空，此时擅自切换会把 dev daemon 换成线上 release，故不启动调度器。
+   */
+  private startAutoUpdateScheduler(): void {
+    const settings = this.autoUpdateSettings;
+    if (!settings?.enabled || this.autoUpdateScheduler || !this.activeRelease) return;
+    this.autoUpdateScheduler = new AutoUpdateScheduler({
+      settings,
+      check: () => prepareOnlineUpdate(this.layout, { catalogUrl: settings.catalogUrl }),
+      canApply: () =>
+        this.state === "ready" &&
+        this.lifecycleOperation === undefined &&
+        this.runningTaskCount === 0,
+      apply: () =>
+        applyPreparedReleaseWithCleanup({
+          readPending: () => this.releaseManager.readPending(),
+          removePending: () => this.releaseManager.removePending(),
+          apply: () => this.runLifecycleOperation("update", () => this.applyUpdate(false)),
+        }),
+    });
+    this.autoUpdateScheduler.start();
+  }
+
+  private stopAutoUpdateScheduler(): void {
+    this.autoUpdateScheduler?.stop();
+    this.autoUpdateScheduler = undefined;
   }
 
   public status(): ServerStatus {

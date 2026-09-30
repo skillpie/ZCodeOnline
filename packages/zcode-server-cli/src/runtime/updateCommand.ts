@@ -1,6 +1,7 @@
 import { updatePreparationResultSchema } from "../contracts.js";
 import { requestControl } from "../ipc/controlClient.js";
 import { createServiceLogger } from "@zcode/services/node";
+import { isRunningTaskUpdateGuardError } from "./updateErrors.js";
 import type { ServerLayout } from "./paths.js";
 import { prepareOnlineUpdate } from "./updatePreparation.js";
 
@@ -10,12 +11,6 @@ interface UpdateCliIO {
 
 function stdout(io: UpdateCliIO, value: unknown): void {
   io.stdout?.write(`${typeof value === "string" ? value : JSON.stringify(value)}\n`);
-}
-
-function isRunningTaskUpdateGuard(error: unknown): boolean {
-  return (
-    error instanceof Error && error.message.includes("Running tasks require --force for update")
-  );
 }
 
 const log = createServiceLogger("server-update-command");
@@ -70,7 +65,7 @@ export async function runUpdateCommand(
         throw new Error("Running tasks require --force for update");
       }
     } catch (error: unknown) {
-      if (isRunningTaskUpdateGuard(error)) throw error;
+      if (isRunningTaskUpdateGuardError(error)) throw error;
       await discardPreparedUpdateBestEffort(discard);
       discardPreparedUpdate = undefined;
       throw error;
@@ -81,7 +76,7 @@ export async function runUpdateCommand(
     discardPreparedUpdate = undefined;
     return result;
   } catch (error: unknown) {
-    if (isRunningTaskUpdateGuard(error)) {
+    if (isRunningTaskUpdateGuardError(error)) {
       await discardPreparedUpdateBestEffort(discardPreparedUpdate);
       discardPreparedUpdate = undefined;
     }

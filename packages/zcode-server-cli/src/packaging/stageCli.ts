@@ -14,6 +14,7 @@ import {
   type ServerTarget,
 } from "../runtime/manifest.js";
 import { stageRelease } from "./stage.js";
+import { upsertReleaseCatalogEntry } from "./releaseCatalog.js";
 import { resolveNodeDistBase } from "./nodeDistMirror.js";
 
 const log = (...args: unknown[]): void => console.log("[stage]", ...args);
@@ -264,6 +265,31 @@ async function main(): Promise<void> {
     outputDir: join(packageRoot, "dist-release"),
     archive: !argv.includes("--no-archive"),
   });
+
+  // 自动更新（specs/web-tunnel.md 更新器 M4）：--release 部署循环里每个 target 调一次，
+  // 条目按 target 覆盖合并进同一份 catalog.json，最后由 deploy_web.sh rsync 上服务器。
+  const catalogIndex = argv.indexOf("--catalog");
+  if (catalogIndex >= 0) {
+    const catalogFile = argv[catalogIndex + 1];
+    const baseUrlIndex = argv.indexOf("--catalog-archive-base-url");
+    const baseUrl = baseUrlIndex >= 0 ? argv[baseUrlIndex + 1] : undefined;
+    if (!catalogFile || !baseUrl) {
+      throw new Error("--catalog requires a file path and --catalog-archive-base-url <url>");
+    }
+    if (!staged.archive || !staged.archivePath) {
+      throw new Error("--catalog requires a staged archive (drop --no-archive)");
+    }
+    const merged = await upsertReleaseCatalogEntry(catalogFile, {
+      version: appVersion,
+      target,
+      archiveUrl: `${baseUrl.replace(/\/+$/u, "")}/zcode-server-${target}.tar.gz`,
+      archiveSha256: staged.archive.sha256,
+      archiveSizeBytes: staged.archive.sizeBytes,
+    });
+    log(
+      `catalog entry upserted: ${target}@${appVersion} (${merged.releases.length} releases total)`,
+    );
+  }
 
   log(`release dir: ${staged.releaseDir}`);
   if (staged.archivePath) log(`archive: ${staged.archivePath}`);

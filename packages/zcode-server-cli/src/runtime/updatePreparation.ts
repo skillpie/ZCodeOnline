@@ -11,7 +11,8 @@ import { ReleaseManager } from "./releaseManager.js";
 
 type UpdatePreparation =
   | { status: "up-to-date"; version: string }
-  | { status: "prepared"; version: string; discard: () => Promise<void> }
+  // discard 缺省表示 pending 是复用的既有产物（非本次调用写下的），调用方不得回滚它。
+  | { status: "prepared"; version: string; discard?: () => Promise<void> }
   | { status: "prepared-offline"; version: string };
 
 async function pathExists(path: string): Promise<boolean> {
@@ -63,8 +64,14 @@ function createPreparedReleaseDiscarder(input: {
   };
 }
 
-export async function prepareOnlineUpdate(layout: ServerLayout): Promise<UpdatePreparation> {
-  const catalogUrl = process.env.ZCODE_SERVER_RELEASE_MANIFEST_URL?.trim();
+export async function prepareOnlineUpdate(
+  layout: ServerLayout,
+  options: { catalogUrl?: string } = {},
+): Promise<UpdatePreparation> {
+  // 手动 zcode update 保持"未配置 URL 即离线"的语义；自动调度器通过 options 显式
+  // 传入默认源，两种入口互不影响。
+  const catalogUrl =
+    options.catalogUrl?.trim() || process.env.ZCODE_SERVER_RELEASE_MANIFEST_URL?.trim();
   if (!catalogUrl) {
     const pending = await new ReleaseManager(layout).readPending();
     if (!pending) {
@@ -83,14 +90,19 @@ export async function prepareOnlineUpdate(layout: ServerLayout): Promise<UpdateP
   if (!release) throw new Error(`No release for target ${target} in catalog`);
   const releaseManager = new ReleaseManager(layout);
   const current = await releaseManager.readCurrent();
+  const existingPending = await releaseManager.readPending();
   if (current?.target === target && current.archiveSha256 === release.archiveSha256) {
-    const pending = await releaseManager.readPending();
-    if (pending && isStalePending(pending, current)) {
+    if (existingPending && isStalePending(existingPending, current)) {
       // 在线检查确认 current 已是 catalog 最新版本时，不能直接返回
       // up-to-date，却留下旧 pending.json；下一次无网络更新会误应用该指针并降级。
       await releaseManager.removePending();
     }
     return { status: "up-to-date", version: current.version };
+  }
+  // pending 已指向同一发行（例如自动更新已下载、正等待空闲应用）时不重复下载解压，
+  // 直接进入可应用状态；调用方不得对该结果调用 discard——pending 不是本次调用写下的。
+  if (existingPending && existingPending.archiveSha256 === release.archiveSha256) {
+    return { status: "prepared", version: existingPending.version };
   }
   if (release.manifestUrl && release.components && current?.components) {
     const assembled = await prepareComponentUpdate({

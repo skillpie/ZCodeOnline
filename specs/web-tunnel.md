@@ -168,7 +168,7 @@ relay 服务（独立部署；数据面 = 加密字节管道 + 路由表，控�
 ## 6. M4：规模化与运维
 
 - relay 多地域数据面部署（配对/鉴权控制面可中心化）；重连惊群削峰（抖动退避参数化 + 分批放行）。
-- server-cli 自动更新接线（release catalog/sha256/服务化基座已具备，`packages/zcode-server-cli/src/cli.ts`）；浏览器更新器语义 = 展示宿主版本与更新态。
+- server-cli 自动更新（已接线）：Supervisor 内置调度器（`packages/zcode-server-cli/src/supervisor/autoUpdateScheduler.ts`）定时拉取 `$SITE_URL/dl/catalog.json`（默认源，`ZCODE_SERVER_RELEASE_MANIFEST_URL` 可覆盖、`ZCODE_SERVER_AUTO_UPDATE=0` 关闭），下载准备 pending 后仅在空闲（无运行任务、无 lifecycle 操作）时走既有 update 事务原子切换，失败回滚并条件清理 pending；仅发行布局（current.json 存在）生效。catalog 由 `deploy_web.sh --release` 随各 target 归档生成上传（`stageCli.ts --catalog`）。浏览器更新器语义仍 = 展示宿主版本与更新态（UI 待接）。
 - 企业开关：宿主配置"禁用 web 接入"后拒绝一切隧道入站，桌面本地能力不受影响。
 - 带宽与成本监控：relay 侧按 hostId 维度统计字节数与连接时长（仅元数据）。
 
@@ -198,7 +198,7 @@ M4：企业开关打开后浏览器无法接入，桌面不受影响。
 | 快照 + 重放缓冲（宿主侧权威）                                      | `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts`                                               | 断线恢复不变                            |
 | web 全量 UI + 传输注入接缝                                         | `packages/web/src/main.tsx`、`packages/ui/src/v4/transport.ts`                                                        | 换隧道传输实现                          |
 | `relay_bridge` 类型槽位                                            | `packages/shared/src/task-realtime.ts:78`                                                                             | 隧道打通后接入实时投递（M3 后评估）     |
-| server-cli 更新/服务化基座                                         | `packages/zcode-server-cli/src/cli.ts`、`runtime/releaseDownload.ts`                                                  | M4 自动更新接线                         |
+| server-cli 更新/服务化基座                                         | `packages/zcode-server-cli/src/cli.ts`、`runtime/releaseDownload.ts`                                                  | M4 自动更新已接线（supervisor 调度器）   |
 | 隧道契约 + E2E 加密（M1 新增）                                     | `packages/shared/src/tunnel.ts`、`tunnelCrypto.ts`                                                                    | 帧 schema、配对编解码、密钥派生与加解密 |
 | relay 参考实现（M1 新增）                                          | `apps/zcode-relay`                                                                                                    | 控制面 REST + 数据面拼接                |
 | 宿主出站连接器（M1 新增）                                          | `packages/zcode-server-cli/src/tunnel/`                                                                               | 出站拨号/退避重连/加密桥/配对会话       |

@@ -75,17 +75,24 @@ fi
 
 # 终端用户发行发布：多平台 stage 归档 + install.sh → 服务器 $DL_DIR，
 # 供终端用户 curl 安装脚本使用（域名由 SITE_URL 决定，安装脚本本身随仓库分发）。
+# catalog.json 供已装宿主的自动更新（specs/web-tunnel.md 更新器 M4）拉取；
+# stage 每跑一个 target 就把条目按 target 合并进本地 catalog，最后整体上传。
 if [ "$RELEASES" = true ]; then
   step "构建并发布终端用户发行包（targets: $RELEASE_TARGETS）"
   DL_DIR="${DL_DIR:-/var/www/zcode-dl}"
+  CATALOG_FILE="$PROJECT_ROOT/packages/zcode-server-cli/dist-release/catalog.json"
   ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p $DL_DIR"
   for target in $RELEASE_TARGETS; do
-    (cd "$PROJECT_ROOT" && pnpm --filter @zcode/server-cli exec tsx src/packaging/stageCli.ts --target "$target")
+    (cd "$PROJECT_ROOT" && pnpm --filter @zcode/server-cli exec tsx src/packaging/stageCli.ts \
+      --target "$target" --catalog "$CATALOG_FILE" --catalog-archive-base-url "$SITE_URL/dl")
     archive="$PROJECT_ROOT/packages/zcode-server-cli/dist-release/zcode-server-$target.tar.gz"
     [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
     rsync -av --delete "$archive" "$SERVER_USER@$SERVER_HOST:$DL_DIR/zcode-server-$target.tar.gz"
     echo "[release] zcode-server-$target.tar.gz published"
   done
+  [ -f "$CATALOG_FILE" ] || { echo "catalog missing: $CATALOG_FILE" >&2; exit 1; }
+  rsync -av "$CATALOG_FILE" "$SERVER_USER@$SERVER_HOST:$DL_DIR/catalog.json"
+  echo "[release] catalog.json published（宿主自动更新源：$SITE_URL/dl/catalog.json）"
   rsync -av "$DEPLOY_ASSETS_DIR/install-zcode-server.sh" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.sh"
   rsync -av "$DEPLOY_ASSETS_DIR/install-zcode-server.ps1" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.ps1"
   rsync -av "$DEPLOY_ASSETS_DIR/install.cmd" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.cmd"

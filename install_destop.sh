@@ -32,7 +32,9 @@ log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"; }
 if [ "$SKIP_BUILD" = false ]; then
   log "构建桌面端（ZCodeOnline Preview，生产后端）..."
   # 构建输出全量进日志；pipefail 保证 pnpm 失败会传导，禁止带旧包继续安装。
-  if ! (cd "$SCRIPT_DIR" && ZCODE_PREVIEW_IDENTITY=1 pnpm bundle:desktop) 2>&1 | tee -a "$LOG_FILE"; then
+  # ZCODE_ENV=production 必须显式携带：缺省会被 desktop-product-identity 按
+  # fail-safe 视为测试后端，产物加 _TEST 后缀并连测试后端（与下行注释矛盾）。
+  if ! (cd "$SCRIPT_DIR" && ZCODE_ENV=production ZCODE_PREVIEW_IDENTITY=1 pnpm bundle:desktop) 2>&1 | tee -a "$LOG_FILE"; then
     log "构建失败，终止（未改动已安装应用）"
     exit 1
   fi
@@ -43,6 +45,12 @@ if [ -z "$DMG" ]; then
   log "未找到 DMG 产物（$DMG_DIR/ZCodeOnline-*.dmg），终止"
   exit 1
 fi
+
+# 只保留最新一份安装包：历史 DMG（旧版本/旧环境）构建后即清理，dist 永远只有当前包。
+ls -t "$DMG_DIR"/ZCodeOnline-*.dmg 2>/dev/null | tail -n +2 | while read -r old_dmg; do
+  rm -f "$old_dmg"
+  log "已清理旧安装包: $(basename "$old_dmg")"
+done
 log "使用产物: $DMG"
 
 # 清理历史残留挂载，避免 glob 命中旧卷。

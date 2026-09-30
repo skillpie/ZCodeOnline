@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- 发行包 staging 流程按步骤线性组装，oxfmt 换行后略超 400 行，拆分会增加跨步骤状态同步。 */
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { existsSync, readdirSync } from "node:fs";
 import { access, chmod, cp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
@@ -176,6 +177,8 @@ interface StageOptions {
 interface StagedRelease {
   releaseDir: string;
   archivePath: string | null;
+  /** 主归档完整性与大小；--no-archive 时为 null。catalog 发布（自动更新）依赖它。 */
+  archive: { sha256: string; sizeBytes: number } | null;
   componentArchivePaths: string[];
   packagedDependencies: string[];
 }
@@ -561,6 +564,7 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
   );
 
   let archivePath: string | null = null;
+  let archive: { sha256: string; sizeBytes: number } | null = null;
   if (options.archive !== false) {
     // 发行归档统一 tar.gz，win32 不再特例 zip：install.ps1 与 deploy-zcode.sh
     // --release 均按 <releaseName>.tar.gz 消费，Windows 10+ 内置 bsdtar 可直接解压。
@@ -571,14 +575,28 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
     if (process.platform === "win32") {
       await runCommand(tarCommand, ["-czf", archivePath, releaseName], outputRoot);
     } else await runCommand("tar", ["-czf", archivePath, releaseName], outputRoot);
+    archive = await hashArchiveFile(archivePath);
   }
 
   return {
     releaseDir,
     archivePath,
+    archive,
     componentArchivePaths,
     packagedDependencies: [...closure.keys()].sort(),
   };
+}
+
+async function hashArchiveFile(
+  archivePath: string,
+): Promise<{ sha256: string; sizeBytes: number }> {
+  const hash = createHash("sha256");
+  let sizeBytes = 0;
+  for await (const chunk of createReadStream(archivePath)) {
+    hash.update(chunk);
+    sizeBytes += (chunk as Buffer).byteLength;
+  }
+  return { sha256: hash.digest("hex"), sizeBytes };
 }
 
 async function pruneKoffiRuntime(
