@@ -1655,7 +1655,6 @@ const zhCN: Record<string, string> = {
   "webRemoteControl.botChannel.lark.description": "从 Lark 打开这个工作区。",
   "webRemoteControl.botChannel.telegram.title": "Telegram",
   "webRemoteControl.botChannel.telegram.description": "从 Telegram 打开这个工作区。",
-  "webRemoteControl.botChannel.configure": "去 Bot Channels 配置",
   "webRemoteControl.botChannel.manageBots": "机器人管理",
   "assistCode.dialog.trigger": "远程控制",
   "assistCode.dialog.title": "远程控制",

@@ -1776,7 +1776,6 @@ const enUS: Record<string, string> = {
   "webRemoteControl.botChannel.lark.description": "Open this workspace from Lark.",
   "webRemoteControl.botChannel.telegram.title": "Telegram",
   "webRemoteControl.botChannel.telegram.description": "Open this workspace from Telegram.",
-  "webRemoteControl.botChannel.configure": "Configure in bot channels",
   "webRemoteControl.botChannel.manageBots": "Manage bots",
   "assistCode.dialog.trigger": "Remote control",
   "assistCode.dialog.title": "Remote control",
