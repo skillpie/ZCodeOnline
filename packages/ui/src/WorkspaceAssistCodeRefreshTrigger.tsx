@@ -374,8 +374,9 @@ export function WorkspaceAssistCodeRefreshTrigger({
           {mergedLayout ? (
             // 左栏卡片绝对定位脱离文档流：行高完全由右栏（Bot Channel）内容决定，
             // 弹窗高度刚好包住右栏；左栏列表超出卡片高度时在卡内滚动。
-            <div className="relative grid gap-4 sm:grid-cols-2">
-              <div className="min-w-0 sm:absolute sm:inset-y-0 sm:left-0 sm:w-[calc(50%-0.5rem)]">
+            // 比例对齐官方版：左栏约 3/5、右栏约 2/5（左栏链接列表内容更多）。
+            <div className="relative grid gap-4 sm:grid-cols-[3fr_2fr]">
+              <div className="min-w-0 sm:absolute sm:inset-y-0 sm:left-0 sm:w-[calc((100%-1rem)*0.6)]">
                 {assistOperationsCard}
               </div>
               <div className="sm:col-start-2 sm:row-start-1">
