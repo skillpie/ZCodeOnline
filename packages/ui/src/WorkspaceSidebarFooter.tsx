@@ -45,7 +45,6 @@ import { useZCodeStore } from "@/store/StoreProvider.js";
 import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
 import { WorkspaceAssistCodeRefreshTrigger } from "@/WorkspaceAssistCodeRefreshTrigger.js";
-import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
 import { shouldRenderBotChannelTrigger } from "@/workspaceSidebarFooterLayout.js";
 import {
   WorkspaceSidebarFooterPlanBadge,
@@ -376,18 +375,17 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex shrink-0 items-center gap-0.75">
-          {botChannelTriggerWorkspacePath ? (
-            <WorkspaceWebRemoteControlTrigger
-              workspacePath={botChannelTriggerWorkspacePath}
-              workspaceIdentity={workspaceIdentity}
-              compact
-            />
-          ) : null}
-          {/* 「远程控制」入口（specs/web-tunnel.md §5.9）：弹窗展示远程链接列表
-              （本机码/复制/刷新/切换），组件内部按 platform 能力自行隐藏（未实现契约时
-              不渲染），位置固定在设置按钮左侧；isDesktop 用于桌面分享链接域名，并让
-              「切换」到本机条目时退出隧道模式回本地桌面。 */}
-          <WorkspaceAssistCodeRefreshTrigger isDesktop={isDesktop} />
+          {/* 「远程控制」统一入口（specs/web-tunnel.md §5.9）：合并原独立 Bot Channel
+              手机入口——弹窗左栏为远程链接操作区，右栏为 Bot Channel 渠道操作区
+              （workspacePath 已解析即可用）。组件内部按 platform 能力自行降级。 */}
+          <WorkspaceAssistCodeRefreshTrigger
+            isDesktop={isDesktop}
+            botChannel={
+              botChannelTriggerWorkspacePath
+                ? { workspacePath: botChannelTriggerWorkspacePath, workspaceIdentity }
+                : null
+            }
+          />
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button
               type="button"

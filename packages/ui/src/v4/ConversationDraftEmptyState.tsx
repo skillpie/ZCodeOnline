@@ -215,9 +215,7 @@ export function ConversationDraftEmptyState({ className }: { className?: string 
   );
 }
 
-/** 品牌空态 Logo（浅色线框 SVG + 深色渐变资源，主题类互斥显示）。Web 隧道骨架屏等未挂
- * IntlProvider 的占位场景经公开入口复用，保证与真实空态同一品牌资产。 */
-export function ZCodeEmptyStateLogo({ className }: { className?: string }) {
+function ZCodeEmptyStateLogo({ className }: { className?: string }) {
   return (
     <>
       {/* 夜间资源已自带渐变和透明度，公共容器叠加遮罩会让它重复变淡；渐隐效果只属于浅色线框。*/}

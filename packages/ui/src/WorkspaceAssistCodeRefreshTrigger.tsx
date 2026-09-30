@@ -1,14 +1,15 @@
 // 远程控制弹窗（specs/web-tunnel.md §5.9）：侧栏设置按钮左侧的图标按钮，Web 与桌面共用，
-// 界面与 Web 版完全同构。弹窗展示远程链接列表：本机（Web 经回环发现端点、桌面经 daemon
-// 控制链的权威码）固定第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的
-// 旧本机条目不同码（本机在别处换过码），由 store 原位并入而不是新增，避免重复的
-// 「我的ZCode」；兜底回退码不打标记。额外多一个「刷新」（二次确认后轮换本机码，旧链接
-// 立即失效）；其余条目来自本端登记的远程链接列表，均支持改名（默认名 = <远程码>的ZCode）、
-// 「复制」「切换」与手动添加/删除。本机条目卡片见 AssistMachineRowCard.tsx。
+// 是「远程控制」的统一入口——左栏为远程链接操作区（本机/远端机器列表、添加/复制/切换/
+// 刷新，内容超出滚动），右栏为 Bot Channel 渠道操作区（见 BotChannelPanel，可用时展示，
+// 窄屏退化为上下堆叠）。本机（Web 经回环发现端点、桌面经 daemon 控制链的权威码）固定
+// 第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的旧本机条目不同码
+// （本机在别处换过码），由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底
+// 回退码不打标记。「刷新」二次确认后轮换本机码，旧链接立即失效；其余条目支持改名
+// （默认名 = <远程码>的ZCode）、「复制」「切换」与删除。
 // 「切换」保存该链接为当前生效码并整页重连（Web reload 后走隧道 bootstrap；桌面由
 // main.tsx 的 tunnelEntryActive 分支接管）；桌面端「切换」到本机条目等价于退出隧道模式
-// 回到本地桌面（见 switchTo）。仅当 platform 实现了远程码契约时渲染本入口；轮换权威
-// 所有者在宿主 Core 隧道运行时。
+// 回到本地桌面（见 switchTo）。仅当远程码契约与 Bot Channel 至少一个可用时渲染本入口；
+// 轮换权威所有者在宿主 Core 隧道运行时。
 import { useState } from "react";
 import { Loader2, MonitorSmartphone, Plus } from "lucide-react";
 import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
@@ -37,6 +38,7 @@ import {
 } from "@/assistMachineStore.js";
 import { AssistDialogSecondaryButton, AssistMachineRowCard } from "@/AssistMachineRowCard.js";
 import { AssistMachineAddForm } from "@/AssistMachineAddForm.js";
+import { BotChannelPanel } from "@/BotChannelPanel.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -56,10 +58,13 @@ function orderMachines(list: AssistMachine[], localCode: string | null): AssistM
 export function WorkspaceAssistCodeRefreshTrigger({
   className,
   isDesktop = false,
+  botChannel = null,
 }: {
   className?: string;
-  /** 桌面端：分享链接用 relay 站点源（renderer origin 非网页域名）；并提供「切回本机」。 */
+  /** 桌面端：分享链接用 relay 站点源（renderer origin 非网页域名）。 */
   isDesktop?: boolean;
+  /** Bot Channel（移动端远程控制）可用时传入：弹窗右栏展示其渠道操作区（见 BotChannelPanel）。 */
+  botChannel?: { workspacePath: string; workspaceIdentity?: string } | null;
 }) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
@@ -75,14 +80,15 @@ export function WorkspaceAssistCodeRefreshTrigger({
   const [editingDraft, setEditingDraft] = useState("");
   const [adding, setAdding] = useState(false);
 
-  // 桌面端经 daemon 控制链路实现远程码契约（getRemoteAssistCode/refreshRemoteAssistCode），
-  // 未实现的平台直接不渲染入口。
-  if (typeof platform.refreshRemoteAssistCode !== "function") {
+  // 远程码契约（getRemoteAssistCode/refreshRemoteAssistCode）与 Bot Channel 至少一个
+  // 可用才渲染合并入口；两者都可用时弹窗为双栏（左=远程码操作区，右=Bot Channel）。
+  const assistAvailable = typeof platform.refreshRemoteAssistCode === "function";
+  if (!assistAvailable && !botChannel) {
     return null;
   }
 
   const getRemoteAssistCode = platform.getRemoteAssistCode?.bind(platform);
-  const refreshRemoteAssistCode = platform.refreshRemoteAssistCode.bind(platform);
+  const refreshRemoteAssistCode = platform.refreshRemoteAssistCode?.bind(platform);
   // 分享链接的站点源：Web 与 relay 同源直接取 location；桌面 renderer 的 origin 不是
   // 网页域名，用产品 relay 入口推导（relayWebOrigin 去掉 /relay 路径前缀）。
   const origin = isDesktop ? relayWebOrigin(DEFAULT_TUNNEL_RELAY_URL) : window.location.origin;
@@ -139,7 +145,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
   const runRefresh = (previousLocalCode: string) => {
     setPhase("refreshing");
     setErrorCode(null);
-    void refreshRemoteAssistCode()
+    void refreshRemoteAssistCode?.()
       .then((result) => {
         // 轮换后同步列表（旧码条目换成新码、保留名称）；活动码由平台实现已回写。
         replaceAssistMachineCode(previousLocalCode, result.code);
@@ -198,6 +204,95 @@ export function WorkspaceAssistCodeRefreshTrigger({
     setMachines(orderMachines(removeAssistMachine(code), localCode));
   };
 
+  // 远程码操作区：合并双栏时渲染进左栏滚动容器，单栏时作为弹窗主体直接铺开。
+  const assistOperations = assistAvailable ? (
+    <>
+      {phase === "confirm" ? (
+        <p className="text-ui-base/relaxed text-foreground">
+          {intl.formatMessage({ id: "assistCode.dialog.refreshWarning" })}
+        </p>
+      ) : null}
+
+      {/* min-w-0：弹窗外壳是 grid，列表作为 grid item 默认 min-width:auto，
+          行内 code+按钮的固有宽度会把轨道撑出横向滚动条。 */}
+      {machines.length > 0 ? (
+        <div className="min-w-0 space-y-2">
+          {rotated && phase === "ready" ? (
+            <div className="text-ui-sm text-foreground-subtle">
+              {intl.formatMessage({ id: "assistCode.dialog.refreshed" })}
+            </div>
+          ) : null}
+          {machines.map((machine) => {
+            const isLocal = machine.code === localCode;
+            const isActive = machine.code === activeCode;
+            return (
+              <AssistMachineRowCard
+                key={machine.code}
+                machine={machine}
+                isLocal={isLocal}
+                isActive={isActive}
+                // 桌面本机模式下「切换」到本机无意义（已在本地），置灰；本机行
+                // 退化为展示链接 + 复制 + 刷新，供把链接发到浏览器远程控制本机。
+                // 隧道模式下本机行「切换」= 切回本机（见 switchTo），保持可点。
+                switchDisabled={isDesktop && isLocal && activeCode === null}
+                editing={editingCode === machine.code}
+                editDraft={editingCode === machine.code ? editingDraft : ""}
+                copied={copiedCode === machine.code}
+                origin={origin}
+                onEditStart={() => {
+                  setEditingCode(machine.code);
+                  setEditingDraft(machine.name);
+                }}
+                onEditChange={setEditingDraft}
+                onEditCommit={() => commitRename(machine.code)}
+                onEditCancel={() => {
+                  setEditingCode(null);
+                  setEditingDraft("");
+                }}
+                onCopy={() => copyShareUrl(machine.code)}
+                onRequestRefresh={() => setPhase("confirm")}
+                onSwitch={() => switchTo(machine.code)}
+                onRemove={() => removeRow(machine.code)}
+              />
+            );
+          })}
+          <p className="text-ui-sm/relaxed text-foreground-subtle">
+            {intl.formatMessage({ id: "assistCode.dialog.switchHint" })}
+          </p>
+        </div>
+      ) : null}
+
+      {/* 添加表单独立于列表渲染：草稿态在 AssistMachineAddForm 内部，入库后收起。 */}
+      {adding ? (
+        <AssistMachineAddForm
+          localCode={localCode}
+          existingCodes={machines.map((machine) => machine.code)}
+          onSubmit={(code, name) => {
+            upsertAssistMachine(code);
+            if (name) renameAssistMachine(code, name);
+            setMachines(orderMachines(loadAssistMachines(), localCode));
+            closeAddForm();
+          }}
+          onCancel={closeAddForm}
+        />
+      ) : null}
+
+      {phase === "loading" ? (
+        <div className="flex items-center gap-2 text-ui-base text-foreground-subtle">
+          <Loader2 className="size-4 animate-spin" />
+          {intl.formatMessage({ id: "assistCode.dialog.loading" })}
+        </div>
+      ) : null}
+
+      {phase === "error" ? (
+        <p className="break-all text-ui-base/relaxed text-destructive">{errorCode}</p>
+      ) : null}
+    </>
+  ) : null;
+
+  // 双栏合并布局（远程码操作区 + Bot Channel 都可用）；移动窄屏退化为上下堆叠。
+  const mergedLayout = assistAvailable && botChannel !== null;
+
   return (
     <>
       <ControlHintTooltip title={intl.formatMessage({ id: "assistCode.dialog.trigger" })}>
@@ -222,7 +317,13 @@ export function WorkspaceAssistCodeRefreshTrigger({
       >
         <DialogContent
           showCloseButton={false}
-          className="max-h-[calc(100vh-6rem)] gap-5 overflow-y-auto rounded-2xl sm:max-w-lg"
+          className={cn(
+            "max-h-[calc(100vh-6rem)] gap-5 rounded-2xl",
+            // 双栏：外壳锁定高度不滚动，滚动收敛到左栏/右栏内部；单栏维持整页滚动。
+            mergedLayout
+              ? "grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-3xl"
+              : "overflow-y-auto sm:max-w-lg",
+          )}
         >
           <DialogHeader className="gap-2">
             <DialogTitle className="text-ui-lg font-semibold text-foreground">
@@ -233,86 +334,28 @@ export function WorkspaceAssistCodeRefreshTrigger({
             </DialogDescription>
           </DialogHeader>
 
-          {phase === "confirm" ? (
-            <p className="text-ui-base/relaxed text-foreground">
-              {intl.formatMessage({ id: "assistCode.dialog.refreshWarning" })}
-            </p>
-          ) : null}
-
-          {/* min-w-0：弹窗外壳是 grid，列表作为 grid item 默认 min-width:auto，
-              行内 code+按钮的固有宽度会把轨道撑出横向滚动条。 */}
-          {machines.length > 0 ? (
-            <div className="min-w-0 space-y-2">
-              {rotated && phase === "ready" ? (
-                <div className="text-ui-sm text-foreground-subtle">
-                  {intl.formatMessage({ id: "assistCode.dialog.refreshed" })}
-                </div>
+          {mergedLayout ? (
+            <div className="grid min-h-0 gap-4 overflow-y-auto sm:grid-cols-2 sm:overflow-hidden">
+              <div className="min-w-0 space-y-4 pr-1 sm:min-h-0 sm:overflow-y-auto">
+                {assistOperations}
+              </div>
+              <BotChannelPanel
+                workspacePath={botChannel.workspacePath}
+                workspaceIdentity={botChannel.workspaceIdentity}
+              />
+            </div>
+          ) : (
+            <>
+              {assistOperations}
+              {/* 仅 Bot Channel 可用（无远程码契约的平台）：单栏只展示渠道操作区。 */}
+              {botChannel && !assistAvailable ? (
+                <BotChannelPanel
+                  workspacePath={botChannel.workspacePath}
+                  workspaceIdentity={botChannel.workspaceIdentity}
+                />
               ) : null}
-              {machines.map((machine) => {
-                const isLocal = machine.code === localCode;
-                const isActive = machine.code === activeCode;
-                return (
-                  <AssistMachineRowCard
-                    key={machine.code}
-                    machine={machine}
-                    isLocal={isLocal}
-                    isActive={isActive}
-                    // 桌面本机模式下「切换」到本机无意义（已在本地），置灰；本机行
-                    // 退化为展示链接 + 复制 + 刷新，供把链接发到浏览器远程控制本机。
-                    // 隧道模式下本机行「切换」= 切回本机（见 switchTo），保持可点。
-                    switchDisabled={isDesktop && isLocal && activeCode === null}
-                    editing={editingCode === machine.code}
-                    editDraft={editingCode === machine.code ? editingDraft : ""}
-                    copied={copiedCode === machine.code}
-                    origin={origin}
-                    onEditStart={() => {
-                      setEditingCode(machine.code);
-                      setEditingDraft(machine.name);
-                    }}
-                    onEditChange={setEditingDraft}
-                    onEditCommit={() => commitRename(machine.code)}
-                    onEditCancel={() => {
-                      setEditingCode(null);
-                      setEditingDraft("");
-                    }}
-                    onCopy={() => copyShareUrl(machine.code)}
-                    onRequestRefresh={() => setPhase("confirm")}
-                    onSwitch={() => switchTo(machine.code)}
-                    onRemove={() => removeRow(machine.code)}
-                  />
-                );
-              })}
-              <p className="text-ui-sm/relaxed text-foreground-subtle">
-                {intl.formatMessage({ id: "assistCode.dialog.switchHint" })}
-              </p>
-            </div>
-          ) : null}
-
-          {/* 添加表单独立于列表渲染：草稿态在 AssistMachineAddForm 内部，入库后收起。 */}
-          {adding ? (
-            <AssistMachineAddForm
-              localCode={localCode}
-              existingCodes={machines.map((machine) => machine.code)}
-              onSubmit={(code, name) => {
-                upsertAssistMachine(code);
-                if (name) renameAssistMachine(code, name);
-                setMachines(orderMachines(loadAssistMachines(), localCode));
-                closeAddForm();
-              }}
-              onCancel={closeAddForm}
-            />
-          ) : null}
-
-          {phase === "loading" ? (
-            <div className="flex items-center gap-2 text-ui-base text-foreground-subtle">
-              <Loader2 className="size-4 animate-spin" />
-              {intl.formatMessage({ id: "assistCode.dialog.loading" })}
-            </div>
-          ) : null}
-
-          {phase === "error" ? (
-            <p className="break-all text-ui-base/relaxed text-destructive">{errorCode}</p>
-          ) : null}
+            </>
+          )}
 
           {/* 添加入口固定在 footer 左侧与「关闭」同行；内联表单展开期间隐藏避免重复入口。 */}
           <DialogFooter

@@ -1,5 +1,5 @@
 // 连接引导卡片（specs/web-tunnel.md）：受控组件——状态与回调由 TunnelAppRoot 持有，
-// 作为不可关闭的顶层模态内容渲染（仅定局失败/需要用户操作时弹出，平时不遮挡骨架主界面）。
+// 作为不可关闭的顶层模态内容渲染（仅定局失败/需要用户操作时弹出，平时不遮挡真实主界面）。
 // 未挂 ZCodeIntlProvider，与 WebBootstrapErrorScreen 同样用 navigator.language 内联双语。
 import { useState } from "react";
 import {

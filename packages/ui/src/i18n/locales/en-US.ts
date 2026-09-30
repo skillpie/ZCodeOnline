@@ -1766,9 +1766,6 @@ const enUS: Record<string, string> = {
   "remote.connectingStepTitle": "Connecting",
   "remote.connectingStepDescription":
     "We are establishing the {method} connection. You can follow the live setup progress here.",
-  "webRemoteControl.trigger": "Mobile remote control",
-  "webRemoteControl.title": "Mobile remote control",
-  "webRemoteControl.description": "Control ZCode workspaces through chat bots.",
   "webRemoteControl.botChannel.title": "Use a bot channel",
   "webRemoteControl.botChannel.description": "Connect a chat bot for longer-running mobile access.",
   "webRemoteControl.botChannel.weixin.title": "Weixin",

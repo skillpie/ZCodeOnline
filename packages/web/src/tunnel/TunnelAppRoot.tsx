@@ -1,7 +1,8 @@
-// 隧道应用根（specs/web-tunnel.md §3.3）：主界面常驻渲染——未连接时展示与主界面同构的
-// 静态骨架，连接在后台进行（刷新/首开不弹「连接到你的电脑」模态，底部只挂细状态条）；
-// 仅定局失败（不可重试错误、需登录、自动重连耗尽、本机无可连对象）才弹出连接引导模态。
-// 连接成功换入真实服务（Root 按 key 重挂载），断开则回到骨架并后台自动重连。
+// 隧道应用根（specs/web-tunnel.md §3.3）：主界面常驻渲染——未连接时用「挂起型 stub 服务」
+// 驱动真实 Root（所有 RPC 永不返回 → 界面呈加载态，等同未登录空态），连接在后台进行
+// （刷新/首开不弹「连接到你的电脑」模态，底部只挂细状态条）；仅定局失败（不可重试错误、
+// 需登录、自动重连耗尽、本机无可连对象）才弹出连接引导模态。连接成功换入真实服务
+// （Root 按 key 重挂载），断开则回到挂起态并后台自动重连。
 // 远程码（§5.9）路径：浏览器存储的 16 位码优先直连目标机器；码失效（已在别处刷新）
 // 时清存储回退本机链路，保证轮换后旧浏览器不被锁死。地址栏始终不出现码本身。
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -31,10 +32,14 @@ import {
   type TunnelSession,
 } from "./tunnelSession.js";
 import { initialGateState, nextGateState, type GateEvent, type GateState } from "./gateState.js";
-import { DisconnectedAppSkeleton } from "./DisconnectedAppSkeleton.js";
+import { createSuspendedServiceAccessor } from "./suspendedServices.js";
 import { ConnectionGateCard } from "./TunnelGateScreen.js";
 
 export type TunnelServices = ReturnType<typeof connectViaProtocol>;
+
+/** 挂起态占位工作区路径：仅用于让 Root 同步注入 workspace tab 进入草稿态真实 UI；
+ * 连接成功后由 host 上报的真实 workspace 路径整体重挂载替换。 */
+const SUSPENDED_WORKSPACE_PATH = "/";
 
 const t = (zhText: string, enText: string) => (/^zh\b/i.test(navigator.language) ? zhText : enText);
 
@@ -53,7 +58,7 @@ export function TunnelAppRoot({
 }) {
   const [services, setServices] = useState<TunnelServices | null>(null);
   const [bootstrap, setBootstrap] = useState<TunnelBootstrap | undefined>(undefined);
-  // 初始不弹门禁：刷新/首开直接展示骨架主界面，连接在后台进行（见 gateState.ts）。
+  // 初始不弹门禁：刷新/首开直接展示真实主界面（挂起态未登录空态），连接在后台进行（见 gateState.ts）。
   const [gate, setGate] = useState<GateState>(initialGateState);
   // 连接代际：旧连接的迟到 onClose 不得影响新连接的状态。
   const activeConnRef = useRef(0);
@@ -84,7 +89,7 @@ export function TunnelAppRoot({
     });
   }
 
-  // 断开/失败后的统一入口：后台重连（骨架 + 底部状态条，不弹模态），再由调度器按退避序列重跑连接链。
+  // 断开/失败后的统一入口：后台重连（回到挂起态 + 底部状态条，不弹模态），再由调度器按退避序列重跑连接链。
   const scheduleReconnect = useCallback(() => {
     dispatchGate({
       kind: "retryScheduled",
@@ -109,7 +114,7 @@ export function TunnelAppRoot({
           sessionCredential: session.sessionCredential,
           onClose: () => {
             if (activeConnRef.current !== seq) return;
-            // 断开：UI 回到骨架态（Root 换回骨架重挂载），scheduleReconnect 后台重连。
+            // 断开：UI 回到挂起态（Root 换回挂起服务重挂载），scheduleReconnect 后台重连。
             document.title = "ZCode Online";
             setServices(null);
             setBootstrap(undefined);
@@ -321,42 +326,54 @@ export function TunnelAppRoot({
 
   const hostWorkspace = services ? bootstrap?.workspaces[0] : undefined;
 
+  // 未连接时用挂起型服务驱动真实 Root（永不返回的 RPC → 界面呈加载态，等同未登录空态），
+  // 连接成功后 key 切换整体重挂载换入真实服务；连接代际变化同样触发重挂载。
+  const [suspendedServices] = useState(() => createSuspendedServiceAccessor());
+  const activeServices = services ?? suspendedServices;
+
   return (
     <div className="relative h-dvh w-screen">
-      {services ? (
-        <AppErrorBoundary>
-          <ZCodeIntlProvider
-            settingService={services.settingService}
-            broadcastService={services.broadcastService}
-          >
-            <Root
-              key={`tunnel-conn-${activeConnRef.current}`}
-              services={services}
-              platform={platform}
-              suppressAccountOnboarding
-              suppressJwtInvalidReload
-              preferDirectoryBrowser
-              supportsEmbeddedBrowser={false}
-              allowRemoteWorkspace={false}
-              loadZcodeSsoJwtToken={async () => getAccessToken()}
-              {...(hostWorkspace
-                ? {
-                    initialWorkspaceAbsPath: hostWorkspace.path,
-                    ...(hostWorkspace.workspaceIdentity
-                      ? { initialWorkspaceIdentity: hostWorkspace.workspaceIdentity }
-                      : {}),
-                  }
-                : {})}
-            />
-          </ZCodeIntlProvider>
-        </AppErrorBoundary>
-      ) : (
-        // 未连接：静态应用骨架（与主界面同构的空态），连接后换入真实应用。
-        <DisconnectedAppSkeleton />
-      )}
+      <AppErrorBoundary
+        key={services ? `tunnel-conn-${activeConnRef.current}` : "tunnel-suspended"}
+      >
+        {/* 挂起态不把 stub 的 settingService/broadcastService 给 IntlProvider：
+            语言走 localStorage + navigator 的未登录默认，也避开未处理的 get() 拒绝。 */}
+        <ZCodeIntlProvider
+          {...(services
+            ? {
+                settingService: services.settingService,
+                broadcastService: services.broadcastService,
+              }
+            : {})}
+        >
+          <Root
+            services={activeServices}
+            platform={platform}
+            suppressAccountOnboarding
+            suppressJwtInvalidReload
+            preferDirectoryBrowser
+            supportsEmbeddedBrowser={false}
+            allowRemoteWorkspace={false}
+            loadZcodeSsoJwtToken={async () => getAccessToken()}
+            {...(hostWorkspace
+              ? {
+                  initialWorkspaceAbsPath: hostWorkspace.path,
+                  ...(hostWorkspace.workspaceIdentity
+                    ? { initialWorkspaceIdentity: hostWorkspace.workspaceIdentity }
+                    : {}),
+                }
+              : services
+                ? // 已连接但 host 未上报 workspace：维持原状，不注入占位工作区。
+                  {}
+                : // 挂起态注入占位工作区：workspace tab 同步注入 + 进入草稿态，
+                  // 真实主界面（侧栏/问候/输入卡）立即可见，数据面呈加载态。
+                  { initialWorkspaceAbsPath: SUSPENDED_WORKSPACE_PATH })}
+          />
+        </ZCodeIntlProvider>
+      </AppErrorBoundary>
 
       {services === null && !gate.visible ? (
-        // 后台连接状态条：刷新/断线期间主界面（骨架）不被模态遮挡，仅以细条反馈进度；
+        // 后台连接状态条：刷新/断线期间真实主界面不被模态遮挡，仅以细条反馈进度；
         // 定局失败弹出上方门禁后即被其取代（两者互斥）。
         <div className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2">
           <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 shadow-lg">
