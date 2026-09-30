@@ -69,6 +69,10 @@ export interface WorkspaceHeaderActionSectionProps {
   isSidePaneOpen: boolean;
   onToggleTerminal: () => void;
   onToggleSidePane: () => void;
+  /** 浏览器快捷入口：仅支持内嵌浏览器（Electron webview）的壳层展示。 */
+  isBrowserOpen: boolean;
+  onToggleBrowser: () => void;
+  supportsEmbeddedBrowser?: boolean;
   toggleSidePaneShortcutLabel?: string;
   onSelectedEditorChange?: (editor: EditorInfo | null) => void;
   simplifyForNarrowRemote?: boolean;

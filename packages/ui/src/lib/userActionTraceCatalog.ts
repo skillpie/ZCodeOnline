@@ -26,7 +26,7 @@ export const CORE_USER_ACTION_FEATURES = {
   "conversation.background_work": ["open", "cancel"],
   "workbench.file": ["open_tree", "refresh", "open_file", "open_preview"],
   "workbench.terminal": ["open", "close"],
-  "workbench.browser": ["open", "navigate", "back", "forward", "refresh", "open_external"],
+  "workbench.browser": ["open", "close", "navigate", "back", "forward", "refresh", "open_external"],
   "workbench.git": ["open", "commit", "generate_commit_message", "run_action"],
   "extension.plugin": [
     "open_store",

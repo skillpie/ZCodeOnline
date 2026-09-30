@@ -1,6 +1,7 @@
 import { WorkspaceEditorButtonGroup } from "@/WorkspaceEditorButtonGroup.js";
 import { WorkspaceSidePaneToggleButton } from "@/WorkspaceSidePaneToggleButton.js";
 import { WorkspaceTerminalToggleButton } from "@/WorkspaceTerminalToggleButton.js";
+import { WorkspaceBrowserToggleButton } from "@/WorkspaceBrowserToggleButton.js";
 import { cn } from "@/components/lib/utils.js";
 import type { WorkspaceHeaderActionSectionProps } from "@/WorkspaceHeaderSections/shared.js";
 import { WorkspaceHelpMenuButton } from "@/WorkspaceHelpMenuButton.js";
@@ -23,6 +24,9 @@ export function WorkspaceHeaderActionSection({
   isSidePaneOpen,
   onToggleTerminal,
   onToggleSidePane,
+  isBrowserOpen,
+  onToggleBrowser,
+  supportsEmbeddedBrowser,
   toggleSidePaneShortcutLabel,
   onSelectedEditorChange,
   simplifyForNarrowRemote = false,
@@ -74,6 +78,15 @@ export function WorkspaceHeaderActionSection({
       {!simplifyForNarrowRemote ? (
         <>
           {!hideHelpMenu ? <WorkspaceHelpMenuButton isDesktop={Boolean(isDesktop)} /> : null}
+          {/* 浏览器快捷入口在终端按钮左侧；Web/移动端不支持内嵌浏览器，随终端入口同规则整体隐藏。*/}
+          {supportsEmbeddedBrowser ? (
+            <WorkspaceBrowserToggleButton
+              isBrowserOpen={isBrowserOpen}
+              onToggleBrowser={onToggleBrowser}
+              disabledReason={readOnlyReason}
+              useWindowsCaptionSpacing={useWindowsCaptionSpacing}
+            />
+          ) : null}
           {/* 远程控制移动端头部空间过窄，终端入口在这里会和核心操作争抢宽度。*/}
           <WorkspaceTerminalToggleButton
             isTerminalOpen={isTerminalOpen}

@@ -55,8 +55,11 @@ export function WorkspaceHeader({
   isSidebarVisible,
   isTerminalOpen,
   isSidePaneOpen,
+  isBrowserOpen,
+  supportsEmbeddedBrowser,
   onRefreshGit,
   onToggleTerminal,
+  onToggleBrowser,
   onToggleSidePane,
   toggleSidePaneShortcutLabel,
   onReloadSession,
@@ -99,6 +102,9 @@ export function WorkspaceHeader({
   isSidebarVisible: boolean;
   isTerminalOpen: boolean;
   isSidePaneOpen: boolean;
+  /** 浏览器快捷入口：仅支持内嵌浏览器（Electron webview）的壳层展示。 */
+  isBrowserOpen: boolean;
+  supportsEmbeddedBrowser?: boolean;
   onRefreshGit: () => void;
   onToggleTerminal: () => void;
   onToggleBrowser: () => void;
@@ -209,7 +215,10 @@ export function WorkspaceHeader({
           isDesktop={isDesktop}
           isTerminalOpen={isTerminalOpen}
           isSidePaneOpen={isSidePaneOpen}
+          isBrowserOpen={isBrowserOpen}
+          supportsEmbeddedBrowser={supportsEmbeddedBrowser}
           onToggleTerminal={onToggleTerminal}
+          onToggleBrowser={onToggleBrowser}
           onToggleSidePane={onToggleSidePane}
           toggleSidePaneShortcutLabel={toggleSidePaneShortcutLabel}
           simplifyForNarrowRemote={simplifyForNarrowRemote}
