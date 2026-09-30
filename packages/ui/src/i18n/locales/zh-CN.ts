@@ -1646,7 +1646,7 @@ const zhCN: Record<string, string> = {
   "remote.connectingStepTitle": "正在建立连接",
   "remote.connectingStepDescription": "正在建立 {method} 连接，你可以在这里查看实时的连接进度。",
   "webRemoteControl.botChannel.title": "IM 渠道",
-  "webRemoteControl.botChannel.description": "连接聊天 Bot，适合更长时间的移动端访问。",
+  "webRemoteControl.botChannel.description": "适合更长时间的移动端访问。",
   "webRemoteControl.botChannel.weixin.title": "微信",
   "webRemoteControl.botChannel.weixin.description": "从微信会话打开这个工作区。",
   "webRemoteControl.botChannel.feishu.title": "飞书",
@@ -1661,7 +1661,7 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.description":
     "任何拥有此链接的人都可以远程控制对应的电脑。请妥善保管，怀疑泄露时立即刷新。",
   "assistCode.dialog.section.title": "远程链接",
-  "assistCode.dialog.section.description": "复制链接发给对方控制这台电脑，或粘贴对方的链接切换过去。",
+  "assistCode.dialog.section.description": "复制链接发给对方控制本机ZCode/添加对方链接切换控制对方ZCode。",
   "assistCode.dialog.loading": "正在读取远程码…",
   "assistCode.dialog.localBadge": "本机",
   "assistCode.dialog.remoteBadge": "远端",

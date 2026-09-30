@@ -96,17 +96,18 @@ export function AssistMachineRowCard({
         {isLocal ? (
           <button
             type="button"
-            className={cn(rowActionClass, "ml-auto")}
+            className={cn(rowActionClass, "ml-auto flex items-center gap-1")}
             aria-label={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
             title={intl.formatMessage({ id: "assistCode.dialog.refreshTitle" })}
             onClick={onRequestRefresh}
           >
             <RefreshCw className="size-3.5" />
+            {intl.formatMessage({ id: "common.refresh" })}
           </button>
         ) : (
           <button
             type="button"
-            className={cn(rowActionClass, "ml-auto hover:text-destructive")}
+            className={cn(rowActionClass, "ml-auto flex items-center gap-1 hover:text-destructive")}
             disabled={isActive}
             aria-label={intl.formatMessage({ id: "assistCode.dialog.delete" })}
             title={
@@ -117,6 +118,7 @@ export function AssistMachineRowCard({
             onClick={onRemove}
           >
             <Trash2 className="size-3.5" />
+            {intl.formatMessage({ id: "assistCode.dialog.delete" })}
           </button>
         )}
       </div>

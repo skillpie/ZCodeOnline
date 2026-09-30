@@ -1767,7 +1767,7 @@ const enUS: Record<string, string> = {
   "remote.connectingStepDescription":
     "We are establishing the {method} connection. You can follow the live setup progress here.",
   "webRemoteControl.botChannel.title": "IM channels",
-  "webRemoteControl.botChannel.description": "Connect a chat bot for longer-running mobile access.",
+  "webRemoteControl.botChannel.description": "For longer-running mobile access.",
   "webRemoteControl.botChannel.weixin.title": "Weixin",
   "webRemoteControl.botChannel.weixin.description": "Open this workspace from Weixin chat.",
   "webRemoteControl.botChannel.feishu.title": "Feishu",
@@ -1782,7 +1782,7 @@ const enUS: Record<string, string> = {
   "assistCode.dialog.description":
     "Anyone with a link below can remotely control that machine. Keep them safe and refresh immediately if one may have leaked.",
   "assistCode.dialog.section.title": "Remote links",
-  "assistCode.dialog.section.description": "Share your link to let others control this machine, or paste a link to control another.",
+  "assistCode.dialog.section.description": "Copy your link to let others control this ZCode / add theirs to switch and control.",
   "assistCode.dialog.loading": "Loading the assist code…",
   "assistCode.dialog.localBadge": "This machine",
   "assistCode.dialog.remoteBadge": "Remote",

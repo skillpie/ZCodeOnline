@@ -10,9 +10,8 @@
 // main.tsx 的 tunnelEntryActive 分支接管）；桌面端「切换」到本机条目等价于退出隧道模式
 // 回到本地桌面（见 switchTo）。仅当远程码契约与 Bot Channel 至少一个可用时渲染本入口；
 // 轮换权威所有者在宿主 Core 隧道运行时。
-import { useEffect, useRef, useState } from "react";
-import { Link2, Loader2, MonitorSmartphone, Plus, XIcon } from "lucide-react";
-import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
+import { useState } from "react";
+import { Link2, Loader2, MonitorSmartphone, Plus, XIcon } from "lucide-react";import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -36,15 +35,16 @@ import {
   upsertLocalAssistMachine,
   type AssistMachine,
 } from "@/assistMachineStore.js";
-import { AssistDialogSecondaryButton, AssistMachineRowCard } from "@/AssistMachineRowCard.js";
+import { AssistMachineRowCard } from "@/AssistMachineRowCard.js";
 import { AssistMachineAddForm } from "@/AssistMachineAddForm.js";
 import { BotChannelPanel } from "@/BotChannelPanel.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 
-type AssistDialogPhase = "loading" | "ready" | "confirm" | "refreshing" | "error";
+type AssistDialogPhase = "loading" | "ready" | "refreshing" | "error";
 
 /** 本机条目置顶，其余按登记顺序。 */
 function orderMachines(list: AssistMachine[], localCode: string | null): AssistMachine[] {
@@ -68,6 +68,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
 }) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
+  const requestConfirmation = useConfirmDialog();
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<AssistDialogPhase>("loading");
   const [machines, setMachines] = useState<AssistMachine[]>([]);
@@ -79,13 +80,6 @@ export function WorkspaceAssistCodeRefreshTrigger({
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const [adding, setAdding] = useState(false);
-  // 卡片内滚动容器：点固定的「添加远程链接」后滚到底部，让末尾的表单立即可见。
-  const opsScrollRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!adding) return;
-    const container = opsScrollRef.current;
-    container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-  }, [adding]);
 
   // 远程码契约（getRemoteAssistCode/refreshRemoteAssistCode）与 Bot Channel 至少一个
   // 可用才渲染合并入口；两者都可用时弹窗为双栏（左=远程码操作区，右=Bot Channel）。
@@ -147,6 +141,18 @@ export function WorkspaceAssistCodeRefreshTrigger({
     setAdding(false);
     setOpen(true);
     loadCurrent();
+  };
+
+  // 「刷新」二次确认走标准确认弹窗：确认后轮换本机码，旧链接立即失效。
+  const confirmRefresh = async () => {
+    if (localCode === null) return;
+    const confirmed = await requestConfirmation({
+      title: intl.formatMessage({ id: "assistCode.dialog.refreshTitle" }),
+      description: intl.formatMessage({ id: "assistCode.dialog.refreshWarning" }),
+      confirmLabel: intl.formatMessage({ id: "assistCode.dialog.refreshConfirm" }),
+      cancelLabel: intl.formatMessage({ id: "common.cancel" }),
+    });
+    if (confirmed) runRefresh(localCode);
   };
 
   const runRefresh = (previousLocalCode: string) => {
@@ -226,13 +232,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
           </p>
         </div>
       </div>
-      <div ref={opsScrollRef} className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto">
-        {phase === "confirm" ? (
-          <p className="text-ui-base/relaxed text-foreground">
-            {intl.formatMessage({ id: "assistCode.dialog.refreshWarning" })}
-          </p>
-        ) : null}
-
+      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto">
         {/* min-w-0：列表作为 grid item 默认 min-width:auto，行内 code+按钮的
             固有宽度会把轨道撑出横向滚动条。 */}
         {machines.length > 0 ? (
@@ -270,7 +270,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
                     setEditingDraft("");
                   }}
                   onCopy={() => copyShareUrl(machine.code)}
-                  onRequestRefresh={() => setPhase("confirm")}
+                  onRequestRefresh={() => void confirmRefresh()}
                   onSwitch={() => switchTo(machine.code)}
                   onRemove={() => removeRow(machine.code)}
                 />
@@ -280,21 +280,6 @@ export function WorkspaceAssistCodeRefreshTrigger({
               {intl.formatMessage({ id: "assistCode.dialog.switchHint" })}
             </p>
           </div>
-        ) : null}
-
-        {/* 添加表单独立于列表渲染：草稿态在 AssistMachineAddForm 内部，入库后收起。 */}
-        {adding ? (
-          <AssistMachineAddForm
-            localCode={localCode}
-            existingCodes={machines.map((machine) => machine.code)}
-            onSubmit={(code, name) => {
-              upsertAssistMachine(code);
-              if (name) renameAssistMachine(code, name);
-              setMachines(orderMachines(loadAssistMachines(), localCode));
-              closeAddForm();
-            }}
-            onCancel={closeAddForm}
-          />
         ) : null}
 
         {phase === "loading" ? (
@@ -419,31 +404,10 @@ export function WorkspaceAssistCodeRefreshTrigger({
             </>
           )}
 
-          {/* footer 只承载瞬态操作（刷新确认/刷新中/错误重试）；「添加远程链接」已固定在
-              左栏卡片底部，关闭统一走右上角 X，ready/loading 态不再渲染 footer。 */}
-          {phase === "confirm" || phase === "refreshing" || phase === "error" ? (
+          {/* footer 只承载瞬态操作（刷新中/错误重试）；「添加远程链接」是独立弹窗、
+              入口固定在左栏卡片底部，关闭统一走右上角 X，ready/loading 态不渲染 footer。 */}
+          {phase === "refreshing" || phase === "error" ? (
             <DialogFooter className="gap-2">
-              {phase === "confirm" ? (
-                <>
-                  <AssistDialogSecondaryButton
-                    label={intl.formatMessage({ id: "common.cancel" })}
-                    onClick={() => setPhase("ready")}
-                  />
-                  <Button
-                    type="button"
-                    autoFocus
-                    size="lg"
-                    className="h-9 gap-3 px-4 justify-between sm:min-w-32"
-                    onClick={() => {
-                      if (localCode === null) return;
-                      runRefresh(localCode);
-                    }}
-                  >
-                    <span>{intl.formatMessage({ id: "assistCode.dialog.refreshConfirm" })}</span>
-                    <span className="font-mono text-ui-base text-primary-foreground/60">⏎</span>
-                  </Button>
-                </>
-              ) : null}
               {phase === "refreshing" ? (
                 <Button type="button" size="lg" disabled className="h-9 gap-2 px-4">
                   <Loader2 className="size-4 animate-spin" />
@@ -467,6 +431,34 @@ export function WorkspaceAssistCodeRefreshTrigger({
               ) : null}
             </DialogFooter>
           ) : null}
+        </DialogContent>
+      </Dialog>
+      {/* 添加远程链接：独立弹窗（表单草稿态在 AssistMachineAddForm 内部，关闭即重置；
+          提交成功后入库并关闭，与卡片内列表共用同一套入库逻辑）。 */}
+      <Dialog
+        open={adding}
+        onOpenChange={(nextOpen) => {
+          if (phase === "refreshing") return;
+          setAdding(nextOpen);
+        }}
+      >
+        <DialogContent showCloseButton={false} className="gap-4 sm:max-w-md">
+          <DialogHeader className="gap-1">
+            <DialogTitle className="text-ui-lg font-semibold text-foreground">
+              {intl.formatMessage({ id: "assistCode.dialog.add" })}
+            </DialogTitle>
+          </DialogHeader>
+          <AssistMachineAddForm
+            localCode={localCode}
+            existingCodes={machines.map((machine) => machine.code)}
+            onSubmit={(code, name) => {
+              upsertAssistMachine(code);
+              if (name) renameAssistMachine(code, name);
+              setMachines(orderMachines(loadAssistMachines(), localCode));
+              closeAddForm();
+            }}
+            onCancel={closeAddForm}
+          />
         </DialogContent>
       </Dialog>
     </>
