@@ -37,7 +37,12 @@ export const AGENT_INSTALL_GUIDE = `ZCode Server 安装指引（远程控制入�
 - "ZCode Server ready at 127.0.0.1:<端口>"
 - "Remote access: https://zcode.skillpie.cn/<8位数字码>"
 请把第二行的完整链接告知用户（这是这台机器的远程控制地址，长期有效）。
-⚠️ 自查：码必须是 8 位数字。若是 16 位，说明旧版 daemon 仍在运行、本次安装没有完成替换——执行 zcode stop 后从第一步重做，直到打出 8 位码。
+⚠️ 自查（以发现端点为准，启动打印行可能是旧持久化值的回显）：执行
+curl -s -H "Origin: https://zcode.skillpie.cn" http://127.0.0.1:4950/tunnel/assist
+- 返回 {"code":"<8位数字>",...} → 正常（首次查询会自动把历史 16 位旧码轮换为 8 位并回写），
+  用返回的 8 位码拼链接告知用户。
+- 返回 16 位码 → 旧版 daemon 仍在运行，本次安装没有完成替换：zcode stop 后从第一步重做。
+- 连接被拒 → daemon 没起来，检查第六步。
 
 **第六步：确认**
 运行 zcode status，确认 state 为 ready。遇到端口占用请检查 4950（本机发现端点）；遇到下载失败请重试或换工具。
