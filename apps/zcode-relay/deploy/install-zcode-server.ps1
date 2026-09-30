@@ -86,6 +86,17 @@ if (($userPath -split ";") -notcontains $binDir) {
 }
 
 Write-Host "[install] done."
+
+# ---- 旧 daemon 检查（specs/web-tunnel.md §5.9）：新版 core 的发现端点只可能返回 8 位码，
+# 16 位 = 旧版 daemon 仍在运行。serve 会尝试替换它；装完若仍 16 位，zcode stop 后重跑本脚本。
+try {
+    $assist = Invoke-RestMethod -Uri "http://127.0.0.1:4950/tunnel/assist" `
+        -Headers @{ Origin = "https://zcode.skillpie.cn" } -TimeoutSec 5
+    if ($assist.code -and $assist.code.Length -ne 8) {
+        Write-Warning "[install] 发现端点返回 $($assist.code.Length) 位码：旧版 daemon 正在运行，serve 将尝试替换；装完仍是 16 位时请 zcode stop 后重跑本脚本。"
+    }
+} catch { }
+
 if ($Start) {
     Write-Host "[install] starting zcode serve..."
     & (Join-Path $InstallDir "bin\zcode.cmd") serve

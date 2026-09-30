@@ -138,6 +138,28 @@ if [ "$START" = true ]; then
     sleep 1
   done
   grep -E "ZCode Server ready|Remote access" "$TMP/serve.out" 2>/dev/null || true
+  # ---- 安装后自检（specs/web-tunnel.md §5.9）：发现端点必须返回 8 位码 ----
+  # 新版 core 在返回前做服务端 8 位校验，16 位只可能来自仍在运行的旧版 daemon
+  # （serve --daemon 的替换可能因运行中任务被拒、或服务管理器把旧进程拉回）。
+  # 本脚本绝不静默成功：serve.out 里的启动打印只是回显，这里以端点实测为准。
+  assist_code=""
+  if command -v curl >/dev/null 2>&1; then
+    assist_code=$(curl -fsS -m 5 -H "Origin: https://zcode.skillpie.cn" \
+      http://127.0.0.1:4950/tunnel/assist 2>/dev/null | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p')
+  elif command -v wget >/dev/null 2>&1; then
+    assist_code=$(wget -qO- -T 5 --header "Origin: https://zcode.skillpie.cn" \
+      http://127.0.0.1:4950/tunnel/assist 2>/dev/null | sed -n 's/.*"code":"\([0-9]*\)".*/\1/p')
+  fi
+  if [ -z "$assist_code" ]; then
+    echo "[install] ⚠️ 未能从本机发现端点(4950)读到远程码；浏览器连不上时用 zcode status 排查后重跑本脚本。"
+  elif [ "${#assist_code}" -eq 8 ]; then
+    echo "[install] 自检通过：发现端点返回 8 位远程码。"
+  else
+    echo "[install] ❌ 发现端点返回 ${#assist_code} 位码：旧版 daemon 仍在运行，本次安装没有完成替换。"
+    echo "[install]    修复：zcode stop 后重跑本脚本；仍失败时 pkill -f server-core.js、"
+    echo "[install]    备份并删除 ~/.zcode/server 后重装（该目录只含 daemon 运行态，会话/登录数据在 ~/.zcode 下不受影响）。"
+    exit 1
+  fi
   echo "[install] 服务已注册为开机自启；电脑重启后会自动恢复，链接不变。"
 else
   echo "[install] --no-start: 仅安装。稍后运行 zcode serve 启动。"
