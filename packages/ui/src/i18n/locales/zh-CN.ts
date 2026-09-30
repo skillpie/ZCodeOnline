@@ -1645,7 +1645,7 @@ const zhCN: Record<string, string> = {
   "remote.history.empty": "没有匹配的历史连接",
   "remote.connectingStepTitle": "正在建立连接",
   "remote.connectingStepDescription": "正在建立 {method} 连接，你可以在这里查看实时的连接进度。",
-  "webRemoteControl.botChannel.title": "使用 Bot Channel",
+  "webRemoteControl.botChannel.title": "IM 渠道",
   "webRemoteControl.botChannel.description": "连接聊天 Bot，适合更长时间的移动端访问。",
   "webRemoteControl.botChannel.weixin.title": "微信",
   "webRemoteControl.botChannel.weixin.description": "从微信会话打开这个工作区。",

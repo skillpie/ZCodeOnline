@@ -1766,7 +1766,7 @@ const enUS: Record<string, string> = {
   "remote.connectingStepTitle": "Connecting",
   "remote.connectingStepDescription":
     "We are establishing the {method} connection. You can follow the live setup progress here.",
-  "webRemoteControl.botChannel.title": "Use a bot channel",
+  "webRemoteControl.botChannel.title": "IM channels",
   "webRemoteControl.botChannel.description": "Connect a chat bot for longer-running mobile access.",
   "webRemoteControl.botChannel.weixin.title": "Weixin",
   "webRemoteControl.botChannel.weixin.description": "Open this workspace from Weixin chat.",

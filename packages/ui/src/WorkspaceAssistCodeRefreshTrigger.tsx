@@ -319,10 +319,12 @@ export function WorkspaceAssistCodeRefreshTrigger({
           showCloseButton={false}
           className={cn(
             "max-h-[calc(100vh-6rem)] gap-5 rounded-2xl",
-            // 双栏：外壳锁定高度不滚动，滚动收敛到左栏/右栏内部；单栏维持整页滚动。
+            // 双栏：弹窗高度刚好包住右栏（Bot Channel）的自然内容高度——左栏在
+            // sm 起绝对定位脱离文档流，不参与行高计算，超出右栏高度时在栏内滚动；
+            // 仅在窗口过矮超出 max-h 时才裁切。单栏维持整页滚动。
             // 48rem 加宽 1/8：54rem，容纳左栏链接列表 + 右栏 Bot Channel 两列。
             mergedLayout
-              ? "grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-[54rem]"
+              ? "overflow-y-auto sm:max-h-[calc(100vh-6rem)] sm:max-w-[54rem] sm:overflow-hidden"
               : "overflow-y-auto sm:max-w-lg",
           )}
         >
@@ -336,16 +338,16 @@ export function WorkspaceAssistCodeRefreshTrigger({
           </DialogHeader>
 
           {mergedLayout ? (
-            // 内层行高必须显式锁定为 minmax(0,1fr)：隐式行按内容撑高会让双栏
-            // 跟着内容长高、被外层 overflow-hidden 裁掉而无法滚动。
-            <div className="grid min-h-0 gap-4 overflow-y-auto sm:grid-cols-2 sm:grid-rows-[minmax(0,1fr)] sm:overflow-hidden">
-              <div className="min-w-0 space-y-4 pr-1 sm:min-h-0 sm:overflow-y-auto">
+            <div className="relative grid gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-4 sm:absolute sm:inset-y-0 sm:left-0 sm:w-[calc(50%-0.5rem)] sm:overflow-y-auto sm:pr-1">
                 {assistOperations}
               </div>
-              <BotChannelPanel
-                workspacePath={botChannel.workspacePath}
-                workspaceIdentity={botChannel.workspaceIdentity}
-              />
+              <div className="sm:col-start-2 sm:row-start-1">
+                <BotChannelPanel
+                  workspacePath={botChannel.workspacePath}
+                  workspaceIdentity={botChannel.workspaceIdentity}
+                />
+              </div>
             </div>
           ) : (
             <>
