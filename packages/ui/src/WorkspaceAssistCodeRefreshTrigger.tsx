@@ -320,8 +320,9 @@ export function WorkspaceAssistCodeRefreshTrigger({
           className={cn(
             "max-h-[calc(100vh-6rem)] gap-5 rounded-2xl",
             // 双栏：外壳锁定高度不滚动，滚动收敛到左栏/右栏内部；单栏维持整页滚动。
+            // 48rem 加宽 1/8：54rem，容纳左栏链接列表 + 右栏 Bot Channel 两列。
             mergedLayout
-              ? "grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-3xl"
+              ? "grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-[54rem]"
               : "overflow-y-auto sm:max-w-lg",
           )}
         >
@@ -335,7 +336,9 @@ export function WorkspaceAssistCodeRefreshTrigger({
           </DialogHeader>
 
           {mergedLayout ? (
-            <div className="grid min-h-0 gap-4 overflow-y-auto sm:grid-cols-2 sm:overflow-hidden">
+            // 内层行高必须显式锁定为 minmax(0,1fr)：隐式行按内容撑高会让双栏
+            // 跟着内容长高、被外层 overflow-hidden 裁掉而无法滚动。
+            <div className="grid min-h-0 gap-4 overflow-y-auto sm:grid-cols-2 sm:grid-rows-[minmax(0,1fr)] sm:overflow-hidden">
               <div className="min-w-0 space-y-4 pr-1 sm:min-h-0 sm:overflow-y-auto">
                 {assistOperations}
               </div>
