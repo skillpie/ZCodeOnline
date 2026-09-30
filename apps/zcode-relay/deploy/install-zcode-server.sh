@@ -11,6 +11,7 @@
 #   install-zcode-server.sh --archive <file.tar.gz> [同上]
 #
 # 默认行为：安装 → 注册常驻服务（开机自启）→ 立即启动，并打印远程控制链接。
+# 重复安装命中本地缓存（~/.zcode/downloads，按 catalog.json 的 sha256 对账）不重下载。
 # --no-start 仅安装不启动；模型账号登录可在浏览器界面左下角完成（可选）。
 # 首次配对/日常使用：zcode status 查看；浏览器打开打印的 https://zcode.skillpie.cn/<码>。
 
@@ -34,7 +35,7 @@ while [ $# -gt 0 ]; do
     --no-start) START=false; shift ;;
     --force-clean) FORCE_CLEAN=true; shift ;;
     --help|-h)
-      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
@@ -114,20 +115,64 @@ fi
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
+# ---- 下载（带本地缓存：catalog sha256 对账命中则跳过下载）----
+# 缓存位于 ~/.zcode/downloads（--force-clean 不清除）。以 catalog.json 的
+# archiveSha256 为准：命中跳过、不匹配重下并校验后入缓存；catalog 不可达或本机
+# 无 sha256 工具时无法证明缓存即最新，回落为每次全量下载（与旧行为一致）。
+CACHE_DIR="${CACHE_DIR:-$HOME/.zcode/downloads}"
+
+file_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+  else echo ""
+  fi
+}
+
+# 从 catalog.json 提取本 target 的 archiveSha256（条目内 target 行先于 archiveSha256 行）。
+catalog_sha256() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -m 15 "$BASE_URL/catalog.json" 2>/dev/null
+  else
+    wget -qO- -T 15 "$BASE_URL/catalog.json" 2>/dev/null
+  fi | awk -v target="$TARGET" '
+    /"target":/ { inobj = ($0 ~ "\"" target "\"") }
+    inobj && /"archiveSha256":/ { gsub(/.*"archiveSha256": *"|".*/, ""); print; exit }
+  '
+}
+
 if [ -z "$ARCHIVE" ]; then
   ARCHIVE="$TMP/zcode-server-$TARGET.tar.gz"
-  echo "[install] downloading release for $TARGET from $BASE_URL (~70-90 MB)"
-  # 进度条输出在 stderr，不影响 `curl ... | sh` 管道；-S 保证出错信息仍然可见。
-  if command -v curl >/dev/null 2>&1; then
-    curl -fS --progress-bar -L "$BASE_URL/zcode-server-$TARGET.tar.gz" -o "$ARCHIVE" || {
-      echo "[install] ERROR: release download failed ($TARGET). Is it published on $BASE_URL?" >&2
-      exit 1
-    }
+  EXPECTED_SHA256=$(catalog_sha256)
+  CACHE_FILE="$CACHE_DIR/zcode-server-$TARGET.tar.gz"
+  if ! mkdir -p "$CACHE_DIR" 2>/dev/null; then CACHE_FILE=""; fi
+  if [ -n "$CACHE_FILE" ] && [ -n "$EXPECTED_SHA256" ] && [ -f "$CACHE_FILE" ] \
+    && [ "$(file_sha256 "$CACHE_FILE")" = "$EXPECTED_SHA256" ]; then
+    cp "$CACHE_FILE" "$ARCHIVE"
+    echo "[install] 使用本地缓存（sha256 与 catalog 一致，跳过下载）：$CACHE_FILE"
   else
-    wget --progress=bar:force -O "$ARCHIVE" "$BASE_URL/zcode-server-$TARGET.tar.gz" || {
-      echo "[install] ERROR: release download failed ($TARGET)." >&2
+    echo "[install] downloading release for $TARGET from $BASE_URL (~70-90 MB)"
+    # 进度条输出在 stderr，不影响 `curl ... | sh` 管道；-S 保证出错信息仍然可见。
+    if command -v curl >/dev/null 2>&1; then
+      curl -fS --progress-bar -L "$BASE_URL/zcode-server-$TARGET.tar.gz" -o "$ARCHIVE" || {
+        echo "[install] ERROR: release download failed ($TARGET). Is it published on $BASE_URL?" >&2
+        exit 1
+      }
+    else
+      wget --progress=bar:force -O "$ARCHIVE" "$BASE_URL/zcode-server-$TARGET.tar.gz" || {
+        echo "[install] ERROR: release download failed ($TARGET)." >&2
+        exit 1
+      }
+    fi
+    # 下载后按 catalog 校验（无 sha256 工具时跳过校验，保持旧行为），通过后写入缓存。
+    ACTUAL_SHA256=$(file_sha256 "$ARCHIVE")
+    if [ -n "$EXPECTED_SHA256" ] && [ -n "$ACTUAL_SHA256" ] \
+      && [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+      echo "[install] ERROR: sha256 mismatch (expected $EXPECTED_SHA256, got $ACTUAL_SHA256)" >&2
       exit 1
-    }
+    fi
+    if [ -n "$CACHE_FILE" ] && [ -n "$ACTUAL_SHA256" ]; then
+      cp "$ARCHIVE" "$CACHE_FILE"
+    fi
   fi
 fi
 
