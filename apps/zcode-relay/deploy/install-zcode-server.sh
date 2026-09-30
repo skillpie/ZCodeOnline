@@ -208,6 +208,13 @@ rm -rf "$INSTALL_DIR"
 mv "$EXTRACT" "$INSTALL_DIR"
 if [ -f "$TMP/env.bak" ]; then cp "$TMP/env.bak" "$INSTALL_DIR/env"; fi
 
+# ---- 受管安装标记（specs/web-tunnel.md 更新器 M4）：daemon 据此启用自动更新调度器 ----
+# 写入 data root（~/.zcode/server，与 daemon 默认根一致）；标记损坏时 daemon 侧
+# fail closed 不自更新，故保持最小 JSON。
+mkdir -p "$HOME/.zcode/server" 2>/dev/null || true
+printf '{"product":"zcode-server","managed":true,"installedAt":%s}\n' "$(date +%s)" \
+  > "$HOME/.zcode/server/managed-install.json"
+
 # ---- 工作区环境：写入安装目录 env 文件，serve 启动时读取 ----
 if [ -n "$WORKSPACE" ]; then
   printf 'ZCODE_SERVER_WORKSPACE=%s\n' "$WORKSPACE" > "$INSTALL_DIR/env"

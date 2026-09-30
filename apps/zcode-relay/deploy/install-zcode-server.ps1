@@ -82,6 +82,12 @@ if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
 Move-Item -Path $extract -Destination $InstallDir
 if ($envBackup) { Copy-Item $envBackup.FullName (Join-Path $InstallDir "env") -Force }
 
+# ---- 受管安装标记（specs/web-tunnel.md 更新器 M4）：daemon 据此启用自动更新调度器 ----
+$dataRoot = Join-Path $env:USERPROFILE ".zcode\server"
+New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
+$marker = @{ product = "zcode-server"; managed = $true; installedAt = [int][double]::Parse((Get-Date -UFormat %s)) }
+Set-Content -Path (Join-Path $dataRoot "managed-install.json") -Value ($marker | ConvertTo-Json -Compress)
+
 # ---- 工作区环境：写入安装目录 env 文件（serve/systemd 同机自用场景） ----
 if ($Workspace -ne "") {
     Set-Content -Path (Join-Path $InstallDir "env") -Value "ZCODE_SERVER_WORKSPACE=$Workspace"

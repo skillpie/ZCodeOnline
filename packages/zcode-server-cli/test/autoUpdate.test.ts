@@ -7,7 +7,10 @@ import {
   AUTO_UPDATE_DEFAULTS,
   DEFAULT_RELEASE_CATALOG_URL,
   resolveAutoUpdateSettings,
+  shouldEnableAutoUpdateScheduler,
 } from "../src/runtime/autoUpdateConfig.js";
+import { readManagedInstall } from "../src/runtime/managedInstall.js";
+import { resolveServerLayout } from "../src/runtime/paths.js";
 import { applyPreparedReleaseWithCleanup } from "../src/supervisor/autoUpdateApply.js";
 import {
   AutoUpdateScheduler,
@@ -317,6 +320,59 @@ test("catalog 落盘：不存在则创建，损坏文件报错而非静默重建
         }),
       /failed|invalid|Expected/,
     );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("调度器启用判定：开关 + 布局（发行/受管安装）组合，dev 直跑不启用", () => {
+  const cases: Array<[boolean, boolean, boolean, boolean]> = [
+    // [enabled, hasActiveRelease, hasManagedInstall, expected]
+    [true, true, false, true],
+    [true, false, true, true],
+    [true, true, true, true],
+    [true, false, false, false], // dev 直跑：两种布局标记皆无
+    [false, true, true, false], // 显式关闭
+  ];
+  for (const [enabled, hasActiveRelease, hasManagedInstall, expected] of cases) {
+    assert.equal(
+      shouldEnableAutoUpdateScheduler({ enabled, hasActiveRelease, hasManagedInstall }),
+      expected,
+      `enabled=${enabled} release=${hasActiveRelease} managed=${hasManagedInstall}`,
+    );
+  }
+});
+
+test("受管安装标记：合法内容启用；缺失/损坏/字段不符 fail closed", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "zcode-managed-install-"));
+  try {
+    const layout = resolveServerLayout(dir);
+    assert.equal(await readManagedInstall(layout), false, "缺失标记 = 非受管安装");
+
+    const marker = join(dir, "managed-install.json");
+    await writeFile(
+      marker,
+      '{"product":"zcode-server","managed":true,"installedAt":1790000000}\n',
+      "utf8",
+    );
+    assert.equal(await readManagedInstall(layout), true);
+
+    await writeFile(marker, "{ not json", "utf8");
+    assert.equal(await readManagedInstall(layout), false, "损坏 JSON fail closed");
+
+    await writeFile(
+      marker,
+      '{"product":"zcode-server","managed":false,"installedAt":1790000000}\n',
+      "utf8",
+    );
+    assert.equal(await readManagedInstall(layout), false, "managed:false 不算受管安装");
+
+    await writeFile(
+      marker,
+      '{"product":"zcode-server","managed":true,"installedAt":1790000000,"extra":1}\n',
+      "utf8",
+    );
+    assert.equal(await readManagedInstall(layout), false, "未知字段 fail closed");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

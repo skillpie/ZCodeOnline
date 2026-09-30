@@ -16,7 +16,12 @@ import {
 import { createControlServer, type ControlHandler } from "../ipc/controlServer.js";
 import { ControlRequestError } from "../ipc/controlError.js";
 import { DataRootLock } from "../runtime/lock.js";
-import { resolveAutoUpdateSettings, type AutoUpdateSettings } from "../runtime/autoUpdateConfig.js";
+import {
+  resolveAutoUpdateSettings,
+  shouldEnableAutoUpdateScheduler,
+  type AutoUpdateSettings,
+} from "../runtime/autoUpdateConfig.js";
+import { readManagedInstall } from "../runtime/managedInstall.js";
 import { prepareOnlineUpdate } from "../runtime/updatePreparation.js";
 import { resolveServerLayout, type ServerLayout } from "../runtime/paths.js";
 import { ReleaseManager } from "../runtime/releaseManager.js";
@@ -125,7 +130,7 @@ export class Supervisor {
       });
       this.launchCore();
       await this.persistStatusSnapshot();
-      this.startAutoUpdateScheduler();
+      await this.startAutoUpdateScheduler();
       return this.status();
     } catch (error) {
       // 只在 recovery 失败时释放锁是不够的：mkdir、control server、Core 启动或
@@ -348,12 +353,23 @@ export class Supervisor {
   }
 
   /**
-   * 自动更新只对发行布局生效：dev 直跑（无 current.json，Core 来自仓库源码）时
-   * activeRelease 为空，此时擅自切换会把 dev daemon 换成线上 release，故不启动调度器。
+   * 自动更新对可自更新布局生效：发行布局（current.json）或 install.sh 受管安装
+   * （managed-install.json 标记）。仓库 dev 直跑两者皆无，不启动调度器——避免开发机
+   * daemon 被线上 release 覆盖。首次成功更新会把安装布局迁移为发行布局。
    */
-  private startAutoUpdateScheduler(): void {
+  private async startAutoUpdateScheduler(): Promise<void> {
     const settings = this.autoUpdateSettings;
-    if (!settings?.enabled || this.autoUpdateScheduler || !this.activeRelease) return;
+    if (!settings || this.autoUpdateScheduler) return;
+    const hasManagedInstall = await readManagedInstall(this.layout);
+    if (
+      !shouldEnableAutoUpdateScheduler({
+        enabled: settings.enabled,
+        hasActiveRelease: this.activeRelease !== null,
+        hasManagedInstall,
+      })
+    ) {
+      return;
+    }
     this.autoUpdateScheduler = new AutoUpdateScheduler({
       settings,
       check: () => prepareOnlineUpdate(this.layout, { catalogUrl: settings.catalogUrl }),

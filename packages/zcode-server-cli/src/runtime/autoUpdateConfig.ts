@@ -50,3 +50,16 @@ export function resolveAutoUpdateSettings(
     maxJitterMs: AUTO_UPDATE_DEFAULTS.maxJitterMs,
   };
 }
+
+/**
+ * 调度器启用判定（specs/web-tunnel.md 更新器 M4）：开关打开，且属于可安全自更新的
+ * 布局——已迁移到发行布局（current.json 存在）或 install.sh 受管安装（managed-install.json
+ * 标记存在）。仓库 dev 直跑两者皆无，不启用（避免开发机 daemon 被线上 release 覆盖）。
+ */
+export function shouldEnableAutoUpdateScheduler(input: {
+  enabled: boolean;
+  hasActiveRelease: boolean;
+  hasManagedInstall: boolean;
+}): boolean {
+  return input.enabled && (input.hasActiveRelease || input.hasManagedInstall);
+}

@@ -10,6 +10,7 @@ export interface ServerLayout {
   readonly currentFile: string;
   readonly pendingFile: string;
   readonly installFile: string;
+  readonly managedInstallFile: string;
   readonly componentsCacheDir: string;
   readonly stableBinDir: string;
   readonly statusFile: string;
@@ -36,6 +37,7 @@ export function resolveServerLayout(serverRoot = getDefaultServerDataRoot()): Se
     currentFile: join(root, "current.json"),
     pendingFile: join(root, "pending.json"),
     installFile: join(root, "install.json"),
+    managedInstallFile: join(root, "managed-install.json"),
     componentsCacheDir: join(root, "cache", "components"),
     stableBinDir: join(root, "bin"),
     statusFile: join(runDir, "status.json"),
