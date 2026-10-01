@@ -1,17 +1,19 @@
 // 远程控制弹窗（specs/web-tunnel.md §5.9）：侧栏设置按钮左侧的图标按钮，Web 与桌面共用，
-// 是「远程控制」的统一入口——左栏为远程链接操作区（本机/远端机器列表、添加/复制/切换/
-// 刷新，内容超出滚动），右栏为 Bot Channel 渠道操作区（见 BotChannelPanel，可用时展示，
+// 是「远程控制」的统一入口——左栏为远程链接操作区（本机/远端机器列表、添加/复制/刷新，
+// 内容超出滚动），右栏为 Bot Channel 渠道操作区（见 BotChannelPanel，可用时展示，
 // 窄屏退化为上下堆叠）。本机（Web 经回环发现端点、桌面经 daemon 控制链的权威码）固定
 // 第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的旧本机条目不同码
 // （本机在别处换过码），由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底
 // 回退码不打标记。「刷新」二次确认后轮换本机码，旧链接立即失效；其余条目支持改名
-// （默认名 = <远程码>的ZCode）、「复制」「切换」与删除。
-// 「切换」保存该链接为当前生效码并整页重连（Web reload 后走隧道 bootstrap；桌面由
-// main.tsx 的 tunnelEntryActive 分支接管）；桌面端「切换」到本机条目等价于退出隧道模式
-// 回到本地桌面（见 switchTo）。仅当远程码契约与 Bot Channel 至少一个可用时渲染本入口；
-// 轮换权威所有者在宿主 Core 隧道运行时。
+// （默认名 = <远程码>的ZCode）、「复制」与删除；列表无独立「切换」按钮，整卡即选中
+// 入口：点击非当前卡片把该链接存为当前生效码并整页重连（Web reload 后走隧道 bootstrap；
+// 桌面由 main.tsx 的 tunnelEntryActive 分支接管），当前卡片高亮边框 + 「当前」徽标。
+// 桌面端点击本机条目等价于退出隧道模式回到本地桌面（见 switchTo）；桌面本地模式（无
+// 活动码）本机即当前、不可点（见 resolveCurrentAssistCode）。仅当远程码契约与 Bot
+// Channel 至少一个可用时渲染本入口；轮换权威所有者在宿主 Core 隧道运行时。
 import { useState } from "react";
-import { Link2, Loader2, MonitorSmartphone, Plus, XIcon } from "lucide-react";import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
+import { Link2, Loader2, MonitorSmartphone, Plus, XIcon } from "lucide-react";
+import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -37,6 +39,7 @@ import {
 } from "@/assistMachineStore.js";
 import { AssistMachineRowCard } from "@/AssistMachineRowCard.js";
 import { AssistMachineAddDialog } from "@/AssistMachineAddDialog.js";
+import { resolveCurrentAssistCode } from "@/assistMachineCurrentCode.js";
 import { BotChannelPanel } from "@/BotChannelPanel.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
@@ -93,6 +96,9 @@ export function WorkspaceAssistCodeRefreshTrigger({
   // 分享链接的站点源：Web 与 relay 同源直接取 location；桌面 renderer 的 origin 不是
   // 网页域名，用产品 relay 入口推导（relayWebOrigin 去掉 /relay 路径前缀）。
   const origin = isDesktop ? relayWebOrigin(DEFAULT_TUNNEL_RELAY_URL) : window.location.origin;
+  // 当前生效码 = 卡片高亮与「当前」徽标的唯一事实：存储活动码优先；桌面本地模式（无
+  // 活动码）本机即当前；Web 无活动码时不视任何条目为当前（卡片全部可点）。
+  const currentCode = resolveCurrentAssistCode(activeCode, localCode, isDesktop);
 
   const loadCurrent = () => {
     setPhase("loading");
@@ -177,9 +183,10 @@ export function WorkspaceAssistCodeRefreshTrigger({
   };
 
   const switchTo = (code: string) => {
-    // 桌面端「切换」到本机条目（权威打 local 标记的）= 退出隧道模式回本地桌面：
-    // 清存储码后整页重载，由 main.tsx 的本地启动流接管。Web 的本机即当前页面，
-    // 维持原语义（存码重载）。兜底回退码不打 local 标记，不会误触本机分支。
+    // 点击卡片选中（原「切换」按钮语义）。桌面端选本机条目（权威打 local 标记的）=
+    // 退出隧道模式回本地桌面：清存储码后整页重载，由 main.tsx 的本地启动流接管。Web
+    // 的本机即当前页面，维持原语义（存码重载）。兜底回退码不打 local 标记，不会误触
+    // 本机分支。
     const machine = machines.find((entry) => entry.code === code);
     if (isDesktop && machine?.local === true) {
       clearStoredAssistCode();
@@ -253,17 +260,13 @@ export function WorkspaceAssistCodeRefreshTrigger({
             ) : null}
             {machines.map((machine) => {
               const isLocal = machine.code === localCode;
-              const isActive = machine.code === activeCode;
+              const isActive = machine.code === currentCode;
               return (
                 <AssistMachineRowCard
                   key={machine.code}
                   machine={machine}
                   isLocal={isLocal}
                   isActive={isActive}
-                  // 桌面本机模式下「切换」到本机无意义（已在本地），置灰；本机行
-                  // 退化为展示链接 + 复制 + 刷新，供把链接发到浏览器远程控制本机。
-                  // 隧道模式下本机行「切换」= 切回本机（见 switchTo），保持可点。
-                  switchDisabled={isDesktop && isLocal && activeCode === null}
                   editing={editingCode === machine.code}
                   editDraft={editingCode === machine.code ? editingDraft : ""}
                   copied={copiedCode === machine.code}
@@ -280,7 +283,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
                   }}
                   onCopy={() => copyShareUrl(machine.code)}
                   onRequestRefresh={() => void confirmRefresh()}
-                  onSwitch={() => switchTo(machine.code)}
+                  onSelect={() => switchTo(machine.code)}
                   onRemove={() => void removeRow(machine.code)}
                 />
               );
@@ -363,9 +366,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
             onClick={() => setOpen(false)}
           >
             <XIcon />
-            <span className="sr-only">
-              {intl.formatMessage({ id: "common.close" })}
-            </span>
+            <span className="sr-only">{intl.formatMessage({ id: "common.close" })}</span>
           </Button>
           <DialogHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center">
             {/* 图标徽标（对齐官方版布局）：远程控制的统一视觉锚点。 */}

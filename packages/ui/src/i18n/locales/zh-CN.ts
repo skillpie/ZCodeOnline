@@ -1661,7 +1661,8 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.description":
     "任何拥有此链接的人都可以远程控制对应的电脑。请妥善保管，怀疑泄露时立即刷新。",
   "assistCode.dialog.section.title": "远程链接",
-  "assistCode.dialog.section.description": "复制链接发给对方控制本机/添加远程链接切换控制远端。",
+  "assistCode.dialog.section.description":
+    "复制链接发给对方控制本机，或添加远程链接；点击卡片切换控制的电脑。",
   "assistCode.dialog.loading": "正在读取远程码…",
   "assistCode.dialog.localBadge": "本机",
   "assistCode.dialog.remoteBadge": "远端",
@@ -1669,9 +1670,8 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.copy": "复制",
   "assistCode.dialog.copied": "已复制",
   "assistCode.dialog.refreshTitle": "刷新本机远程码",
-  "assistCode.dialog.switch": "切换",
-  "assistCode.dialog.switchTitle": "切换并重新连接",
-  "assistCode.dialog.current": "当前连接",
+  "assistCode.dialog.switchTitle": "点击切换并重新连接",
+  "assistCode.dialog.current": "当前",
   "assistCode.dialog.rename": "重命名",
   "assistCode.dialog.add": "添加远程链接",
   "assistCode.dialog.addCodePlaceholder": "粘贴远程链接或 8 位远程码",
