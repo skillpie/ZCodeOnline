@@ -1671,7 +1671,6 @@ const zhCN: Record<string, string> = {
   "assistCode.dialog.copied": "已复制",
   "assistCode.dialog.refreshTitle": "刷新本机远程码",
   "assistCode.dialog.switchTitle": "点击切换并重新连接",
-  "assistCode.dialog.current": "当前",
   "assistCode.dialog.rename": "重命名",
   "assistCode.dialog.add": "添加远程链接",
   "assistCode.dialog.addCodePlaceholder": "粘贴远程链接或 8 位远程码",

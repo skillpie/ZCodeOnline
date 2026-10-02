@@ -7,9 +7,9 @@
 // 回退码不打标记。「刷新」二次确认后轮换本机码，旧链接立即失效；其余条目支持改名
 // （默认名 = <远程码>的ZCode）、「复制」与删除；列表无独立「切换」按钮，整卡即选中
 // 入口：点击非当前卡片把该链接存为当前生效码并整页重连（Web reload 后走隧道 bootstrap；
-// 桌面由 main.tsx 的 tunnelEntryActive 分支接管），当前卡片高亮边框 + 「当前」徽标。
-// 桌面端点击本机条目等价于退出隧道模式回到本地桌面（见 switchTo）；桌面本地模式（无
-// 活动码）本机即当前、不可点（见 resolveCurrentAssistCode）。仅当远程码契约与 Bot
+// 桌面由 main.tsx 的 tunnelEntryActive 分支接管），当前卡片以品牌色边框 + accent 背景
+// 高亮。桌面端点击本机条目等价于退出隧道模式回到本地桌面（见 switchTo）；桌面本地模式
+// （无活动码）本机即当前、不可点（见 resolveCurrentAssistCode）。仅当远程码契约与 Bot
 // Channel 至少一个可用时渲染本入口；轮换权威所有者在宿主 Core 隧道运行时。
 import { useState } from "react";
 import { Link2, Loader2, MonitorSmartphone, Plus, XIcon } from "lucide-react";
@@ -96,7 +96,7 @@ export function WorkspaceAssistCodeRefreshTrigger({
   // 分享链接的站点源：Web 与 relay 同源直接取 location；桌面 renderer 的 origin 不是
   // 网页域名，用产品 relay 入口推导（relayWebOrigin 去掉 /relay 路径前缀）。
   const origin = isDesktop ? relayWebOrigin(DEFAULT_TUNNEL_RELAY_URL) : window.location.origin;
-  // 当前生效码 = 卡片高亮与「当前」徽标的唯一事实：存储活动码优先；桌面本地模式（无
+  // 当前生效码 = 卡片选中高亮的唯一事实：存储活动码优先；桌面本地模式（无
   // 活动码）本机即当前；Web 无活动码时不视任何条目为当前（卡片全部可点）。
   const currentCode = resolveCurrentAssistCode(activeCode, localCode, isDesktop);
 

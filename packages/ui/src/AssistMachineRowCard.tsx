@@ -1,9 +1,9 @@
 // 远程控制弹窗的单条机器卡片（specs/web-tunnel.md §5.9）：从弹窗组件拆出以控制文件体量。
 // 整卡即「切换」入口：点击非当前卡片把该链接存为当前生效码并重连（回调由弹窗提供），
-// 当前连接卡片高亮边框 + 「当前」徽标、不再响应选中，改名中的卡片暂不响应。
-// 首行展示本机/远端标签、「当前」徽标与名称（可就地改名），刷新（仅本机，触发由弹窗
-// 持有的二次确认流程）与删除（仅非本机条目；当前连接条目禁用，需先切换）图标固定在
-// 卡片右上角；次行为完整链接与复制（所有条目）。卡内按钮/输入框的交互不冒泡触发选中。
+// 当前连接卡片以品牌色边框 + accent 背景高亮、不再响应选中，改名中的卡片暂不响应。
+// 首行展示本机/远端标签与名称（可就地改名），刷新（仅本机，触发由弹窗持有的二次确认
+// 流程）与删除（仅非本机条目；当前连接条目禁用，需先切换）图标固定在卡片右上角；
+// 次行为完整链接与复制（所有条目）。卡内按钮/输入框的交互不冒泡触发选中。
 import type { AssistMachine } from "@/assistMachineStore.js";
 import { maskAssistCodeForDisplay } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
@@ -14,7 +14,7 @@ import { Check, Copy, Pencil, RefreshCw, Trash2 } from "lucide-react";
 interface AssistMachineRowCardProps {
   machine: AssistMachine;
   isLocal: boolean;
-  /** 当前连接（高亮边框 + 「当前」徽标）：唯一事实由弹窗侧 resolveCurrentAssistCode 解析。 */
+  /** 当前连接（品牌色边框 + accent 背景高亮）：唯一事实由弹窗侧 resolveCurrentAssistCode 解析。 */
   isActive: boolean;
   editing: boolean;
   editDraft: string;
@@ -76,9 +76,10 @@ export function AssistMachineRowCard({
       }}
       className={cn(
         "min-w-0 space-y-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
-        // 当前连接边框用品牌色（对齐 StorageDiskCard 选中卡的 border-brand），与
-        // 可选卡片灰色 focus 色的悬停/键盘焦点边框明确区分。
-        isActive ? "border-brand bg-surface-hover/40" : "border-border bg-surface",
+        // 当前连接以品牌色边框 + accent 背景高亮（对齐 StorageDiskCard 选中卡的
+        // border-brand；accent 按 DESIGN.md 用于选中高亮），与可选卡片灰色 focus
+        // 色的悬停/键盘焦点边框明确区分。
+        isActive ? "border-brand bg-accent" : "border-border bg-surface",
         selectable &&
           "cursor-pointer hover:border-input-border-focused hover:bg-surface-hover/40 focus-visible:border-input-border-focused",
       )}
@@ -89,12 +90,6 @@ export function AssistMachineRowCard({
             id: isLocal ? "assistCode.dialog.localBadge" : "assistCode.dialog.remoteBadge",
           })}
         </span>
-        {/* 当前连接徽标（对齐 MigrationCandidatesCard 的 border-primary + bg-accent 选中高亮）。 */}
-        {isActive ? (
-          <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-primary/40 bg-accent px-2 text-ui-xs font-medium leading-none text-primary">
-            {intl.formatMessage({ id: "assistCode.dialog.current" })}
-          </span>
-        ) : null}
         {editing ? (
           <input
             autoFocus

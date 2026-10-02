@@ -1792,7 +1792,6 @@ const enUS: Record<string, string> = {
   "assistCode.dialog.copied": "Copied",
   "assistCode.dialog.refreshTitle": "Refresh this machine's assist code",
   "assistCode.dialog.switchTitle": "Click to switch and reconnect",
-  "assistCode.dialog.current": "Current",
   "assistCode.dialog.rename": "Rename",
   "assistCode.dialog.add": "Add remote link",
   "assistCode.dialog.addCodePlaceholder": "Paste an assist link or an 8-digit code",
