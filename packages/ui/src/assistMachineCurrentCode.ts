@@ -10,3 +10,13 @@ export function resolveCurrentAssistCode(
   if (activeCode) return activeCode;
   return isDesktop ? localCode : null;
 }
+
+/**
+ * 「本机」语义门控（specs/web-tunnel.md §5.9「宿主不在本机时无本机条目与刷新能力」）：
+ * 仅权威回环发现（expiresAt 非 null，浏览器与宿主同机）返回本机码。移动端 127.0.0.1
+ * 永不可达、当不了宿主机，getRemoteAssistCode 回退返回的存储码可能是正在远控的其他
+ * 机器——返回 null，本机徽标、刷新、置顶、添加查重与桌面本地模式当前判定一律不生效。
+ */
+export function resolveLocalAssistCode(code: string | null, authoritative: boolean): string | null {
+  return authoritative ? code : null;
+}

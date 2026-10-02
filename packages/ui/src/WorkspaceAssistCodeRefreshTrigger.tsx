@@ -4,7 +4,8 @@
 // 窄屏退化为上下堆叠）。本机（Web 经回环发现端点、桌面经 daemon 控制链的权威码）固定
 // 第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的旧本机条目不同码
 // （本机在别处换过码），由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底
-// 回退码不打标记。「刷新」二次确认后轮换本机码，旧链接立即失效；其余条目支持改名
+// 回退码不打标记、也不计入本机语义（见 resolveLocalAssistCode）——移动端回环永不可
+// 达，正在远控的远端机器不得显示「本机」或提供刷新。「刷新」二次确认后轮换本机码，旧链接立即失效；其余条目支持改名
 // （默认名 = <远程码>的ZCode）、「复制」与删除；列表无独立「切换」按钮，整卡即选中
 // 入口：点击非当前卡片把该链接存为当前生效码并整页重连（Web reload 后走隧道 bootstrap；
 // 桌面由 main.tsx 的 tunnelEntryActive 分支接管），当前卡片以品牌色边框 + accent 背景
@@ -39,7 +40,7 @@ import {
 } from "@/assistMachineStore.js";
 import { AssistMachineRowCard } from "@/AssistMachineRowCard.js";
 import { AssistMachineAddDialog } from "@/AssistMachineAddDialog.js";
-import { resolveCurrentAssistCode } from "@/assistMachineCurrentCode.js";
+import { resolveCurrentAssistCode, resolveLocalAssistCode } from "@/assistMachineCurrentCode.js";
 import { BotChannelPanel } from "@/BotChannelPanel.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
@@ -108,16 +109,24 @@ export function WorkspaceAssistCodeRefreshTrigger({
     // 平台实现内部已做"宿主不可达 → 回退本地存储"的兜底；local 为空时仍可展示已登记
     // 的远程链接（仅缺本机条目与刷新能力）。
     const finish = (local: string | null, authoritative: boolean) => {
-      // 本机条目默认名叫「我的ZCode」；曾被用户改过名的条目不会被覆盖。
-      // 仅权威回环发现（expiresAt 非 null）才打本机标记并参与换码合并：兜底回退的
-      // 存储码可能指向正在远控的其他机器，误标会让后续合并吃掉远端条目。
+      // 本机语义（徽标/刷新/置顶/添加查重/桌面本地模式当前判定）只认权威回环发现
+      // （见 resolveLocalAssistCode）：移动端回环永不可达，兜底回退的存储码可能是
+      // 正在远控的其他机器，误当本机会让远端条目显示「本机」并可误刷新。回退码仍作为
+      // 普通条目登记展示，但不升级「我的ZCode」默认名；本机默认名仅权威路径写入，
+      // 曾被用户改过名的条目不会被覆盖。
       if (local) {
-        const localDefaultName = intl.formatMessage({ id: "assistCode.dialog.localDefaultName" });
-        if (authoritative) upsertLocalAssistMachine(local, localDefaultName);
-        else upsertAssistMachine(local, localDefaultName);
+        if (authoritative) {
+          upsertLocalAssistMachine(
+            local,
+            intl.formatMessage({ id: "assistCode.dialog.localDefaultName" }),
+          );
+        } else {
+          upsertAssistMachine(local);
+        }
       }
-      setLocalCode(local);
-      setMachines(orderMachines(loadAssistMachines(), local));
+      const resolvedLocal = resolveLocalAssistCode(local, authoritative);
+      setLocalCode(resolvedLocal);
+      setMachines(orderMachines(loadAssistMachines(), resolvedLocal));
       setPhase("ready");
     };
     if (!getRemoteAssistCode) {
