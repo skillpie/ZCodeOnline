@@ -1783,7 +1783,7 @@ const enUS: Record<string, string> = {
     "Anyone with a link below can remotely control that machine. Keep them safe and refresh immediately if one may have leaked.",
   "assistCode.dialog.section.title": "Remote links",
   "assistCode.dialog.section.description":
-    "Copy your link to let others control this machine, or add a remote link; click a card to switch machines.",
+    "Copy this machine's link to let others control it, or add a remote link to switch and control the remote.",
   "assistCode.dialog.loading": "Loading the assist code…",
   "assistCode.dialog.localBadge": "This machine",
   "assistCode.dialog.remoteBadge": "Remote",
