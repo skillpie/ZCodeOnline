@@ -76,7 +76,9 @@ export function AssistMachineRowCard({
       }}
       className={cn(
         "min-w-0 space-y-1.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
-        isActive ? "border-input-border-focused bg-surface-hover/40" : "border-border bg-surface",
+        // 当前连接边框用品牌色（对齐 StorageDiskCard 选中卡的 border-brand），与
+        // 可选卡片灰色 focus 色的悬停/键盘焦点边框明确区分。
+        isActive ? "border-brand bg-surface-hover/40" : "border-border bg-surface",
         selectable &&
           "cursor-pointer hover:border-input-border-focused hover:bg-surface-hover/40 focus-visible:border-input-border-focused",
       )}
