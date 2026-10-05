@@ -9,6 +9,13 @@
 #   ./deploy_web.sh --web      # 仅更新静态 Web
 #   ./deploy_web.sh --relay    # 仅更新 relay（上传 + 重启服务）
 #   ./deploy_web.sh --ng       # 仅上传 nginx conf 并 reload
+#   ./deploy_web.sh --release  # 仅构建并发布终端用户发行包（server-cli 归档 + 安装脚本）
+#   ./deploy_web.sh --desktop [dmg|exe ...]
+#                             # 仅上传桌面版安装包到 $DL_DIR/desktop/（文件名固定为
+#                             # ZCode-latest-*.dmg/.exe，必须与 packages/ui/src/desktopDownloadUrl.ts
+#                             # 的 DESKTOP_DOWNLOAD_PATHS 一致；带文件参数时按扩展名归类，
+#                             # 缺省自动取 packages/desktop/dist 里最新的 mac-arm64 dmg 与 win-x64 exe；
+#                             # 某平台产物缺失时跳过该平台，一个都找不到才报错）
 #   ./deploy_web.sh --check    # 只做部署后验证
 #
 # 服务器与站点信息不写入本文件（本文件曾因此出库）：从
@@ -46,6 +53,15 @@ BUILD_RELAY=true
 UPLOAD_NGINX=false
 CHECK_ONLY=false
 RELEASES=false
+DESKTOP_RELEASE=false
+# --desktop 之后的参数全部视为待上传安装包文件（按扩展名归类）；该模式不构建、不重启服务。
+if [ "${1:-}" = "--desktop" ]; then
+  DESKTOP_RELEASE=true
+  BUILD_WEB=false
+  BUILD_RELAY=false
+  shift
+fi
+RELEASE_FILES=("$@")
 RELEASE_TARGETS="${RELEASE_TARGETS:-darwin-arm64 linux-x64}"
 case "${1:-}" in
   --web)   BUILD_RELAY=false ;;
@@ -97,6 +113,53 @@ if [ "$RELEASES" = true ]; then
   rsync -av "$DEPLOY_ASSETS_DIR/install-zcode-server.ps1" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.ps1"
   rsync -av "$DEPLOY_ASSETS_DIR/install.cmd" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.cmd"
   echo "[release] install.sh / install.ps1 / install.cmd published"
+fi
+
+# 桌面版安装包发布：Web 端「下载桌面版」弹窗打开的就是这两个固定名直链。
+# 文件名与 packages/ui/src/desktopDownloadUrl.ts 的 DESKTOP_DOWNLOAD_PATHS 严格对齐，
+# 改名必须两处同步（UI 侧单测锁定了路径，避免只改一边导致 404）。
+if [ "$DESKTOP_RELEASE" = true ]; then
+  step "上传桌面版安装包"
+  DL_DIR="${DL_DIR:-/var/www/zcode-dl}"
+  DESKTOP_DIST_DIR="$PROJECT_ROOT/packages/desktop/dist"
+  MAC_SRC=""
+  WIN_SRC=""
+  for file in "${RELEASE_FILES[@]:-}"; do
+    [ -n "$file" ] || continue
+    case "$file" in
+      *.dmg) MAC_SRC="$file" ;;
+      *.exe) WIN_SRC="$file" ;;
+      *) echo "忽略无法归类的文件（仅接受 .dmg / .exe）: $file" >&2 ;;
+    esac
+  done
+  # 未传参的平台自动取 dist 里最新产物；本机只构建了一个平台时允许部分发布。
+  if [ -z "$MAC_SRC" ]; then
+    MAC_SRC="$(ls -t "$DESKTOP_DIST_DIR"/*-mac-arm64.dmg 2>/dev/null | head -1 || true)"
+  fi
+  if [ -z "$WIN_SRC" ]; then
+    WIN_SRC="$(ls -t "$DESKTOP_DIST_DIR"/*-win-x64.exe 2>/dev/null | head -1 || true)"
+  fi
+  if [ -z "$MAC_SRC" ] && [ -z "$WIN_SRC" ]; then
+    echo "未找到桌面安装包：传入 .dmg/.exe 文件参数，或先构建出 packages/desktop/dist/*-mac-arm64.dmg 与 *-win-x64.exe" >&2
+    exit 1
+  fi
+  ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p $DL_DIR/desktop"
+  if [ -n "$MAC_SRC" ]; then
+    [ -f "$MAC_SRC" ] || { echo "Mac 安装包不存在: $MAC_SRC" >&2; exit 1; }
+    rsync -av "$MAC_SRC" "$SERVER_USER@$SERVER_HOST:$DL_DIR/desktop/ZCode-latest-mac-arm64.dmg"
+    echo "[desktop] Mac 包已发布：$SITE_URL/dl/desktop/ZCode-latest-mac-arm64.dmg"
+    echo "[desktop]   sha256: $(shasum -a 256 "$MAC_SRC" | awk '{print $1}')"
+  else
+    echo "[desktop] 未提供 Mac 安装包，跳过（站点保留旧文件）"
+  fi
+  if [ -n "$WIN_SRC" ]; then
+    [ -f "$WIN_SRC" ] || { echo "Windows 安装包不存在: $WIN_SRC" >&2; exit 1; }
+    rsync -av "$WIN_SRC" "$SERVER_USER@$SERVER_HOST:$DL_DIR/desktop/ZCode-latest-win-x64.exe"
+    echo "[desktop] Windows 包已发布：$SITE_URL/dl/desktop/ZCode-latest-win-x64.exe"
+    echo "[desktop]   sha256: $(shasum -a 256 "$WIN_SRC" | awk '{print $1}')"
+  else
+    echo "[desktop] 未提供 Windows 安装包，跳过（站点保留旧文件）"
+  fi
 fi
 
 if [ "$CHECK_ONLY" != true ]; then

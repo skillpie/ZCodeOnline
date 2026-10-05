@@ -32,12 +32,14 @@ import {
   LogInIcon,
   LogOut,
   Maximize,
+  MonitorDown,
   Palette,
   Settings,
   User,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { DesktopDownloadDialog } from "@/DesktopDownloadDialog.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
@@ -181,6 +183,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       : intl.formatMessage({ id: "settings.title" });
   const usageButtonClick = onUsageClick ?? onSettingsButtonClick;
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  // Web 端「下载桌面版」弹窗；桌面端本身就是桌面版，菜单项不渲染、状态不置位。
+  const [desktopDownloadOpen, setDesktopDownloadOpen] = useState(false);
   const [desktopZoomLevel, setDesktopZoomLevel] = useState(0);
   const runDesktopZoomCommand = useCallback(
     (command: (typeof DesktopCommandIds)["ZoomIn" | "ZoomOut" | "ResetZoom"]) => {
@@ -354,6 +358,20 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               onUsageClick={usageButtonClick}
               onUpgradeClick={onUpgradeClick}
             />
+            {/* 下载桌面版仅 Web 端提供：桌面端已是桌面版。安装包为站点自传（desktopDownloadUrl.ts）。
+                onSelect 里延后一拍再开弹窗：Radix 菜单收起时的焦点恢复会把同拍打开的
+                Dialog 立即当外部交互关掉，先让菜单完成收起再置位。 */}
+            {!isDesktop ? (
+              <DropdownMenuItem
+                data-testid="sidebar-desktop-download-menu-item"
+                onSelect={() => {
+                  setTimeout(() => setDesktopDownloadOpen(true), 0);
+                }}
+              >
+                <MonitorDown className="size-4" />
+                {intl.formatMessage({ id: "sidebar.desktopDownload.menuItem" })}
+              </DropdownMenuItem>
+            ) : null}
             {onLogin && !user ? (
               <>
                 <DropdownMenuSeparator />
@@ -401,6 +419,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </ControlHintTooltip>
         </div>
       </div>
+      {/* 弹窗挂在 footer 根级：菜单项选中后 Radix 菜单先收起，受控 Dialog 不受菜单卸载影响。 */}
+      <DesktopDownloadDialog open={desktopDownloadOpen} onOpenChange={setDesktopDownloadOpen} />
     </footer>
   );
 });
