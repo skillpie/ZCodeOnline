@@ -358,7 +358,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               onUsageClick={usageButtonClick}
               onUpgradeClick={onUpgradeClick}
             />
-            {/* 下载桌面版仅 Web 端提供：桌面端已是桌面版。安装包为站点自传（desktopDownloadUrl.ts）。
+            {/* 下载桌面版仅 Web 端提供：桌面端已是桌面版。安装包为站点自传（@zcode/shared desktopDownload）。
                 onSelect 里延后一拍再开弹窗：Radix 菜单收起时的焦点恢复会把同拍打开的
                 Dialog 立即当外部交互关掉，先让菜单完成收起再置位。 */}
             {!isDesktop ? (

@@ -310,3 +310,4 @@ export { redactFeedbackText } from "./feedbackPrivacy.js";
 export * from "./dataSource.js";
 export * from "./tunnel.js";
 export * from "./tunnelCrypto.js";
+export * from "./desktopDownload.js";

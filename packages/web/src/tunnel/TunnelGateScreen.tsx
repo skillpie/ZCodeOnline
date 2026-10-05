@@ -3,6 +3,11 @@
 // 未挂 ZCodeIntlProvider，与 WebBootstrapErrorScreen 同样用 navigator.language 内联双语。
 import { useState } from "react";
 import {
+  detectDesktopDownloadPlatform,
+  resolveDesktopDownloadUrl,
+  type DesktopDownloadPlatform,
+} from "@zcode/shared";
+import {
   AGENT_INSTALL_URL,
   detectTunnelInstallPlatform,
   tunnelInstallCommands,
@@ -58,6 +63,34 @@ function InstallCommandRow({
   );
 }
 
+/** 桌面版安装包直链行：两个平台并列，与侧栏「下载桌面版」弹窗共用同一组固定文件名。 */
+function DesktopDownloadRow({ isZh }: { isZh: boolean }) {
+  // 门禁卡片只在浏览器渲染，origin 取当前站点；链接是安装包直链，浏览器原生触发下载。
+  const entries: Array<{ platform: DesktopDownloadPlatform; label: string }> = [
+    { platform: "mac", label: isZh ? "Mac 版（dmg）" : "Mac (.dmg)" },
+    { platform: "windows", label: isZh ? "Windows 版（exe）" : "Windows (.exe)" },
+  ];
+  const recommended = detectDesktopDownloadPlatform(navigator.userAgent);
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2">
+      <span className="text-ui-sm text-foreground-subtle">
+        {isZh ? "偏好图形界面？下载桌面版：" : "Prefer a GUI? Download the desktop app:"}
+      </span>
+      {entries.map(({ platform, label }) => (
+        <a
+          key={platform}
+          href={resolveDesktopDownloadUrl(platform, window.location.origin)}
+          className="text-ui-sm text-foreground underline underline-offset-2 hover:text-foreground-subtle"
+          data-testid={`gate-desktop-download-${platform}`}
+        >
+          {label}
+          {recommended === platform ? (isZh ? "（推荐）" : " (recommended)") : ""}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /** 未配对时展示的安装引导（specs/web-tunnel.md §5.7）：按平台给出对应一键命令 + Agent 代装入口。 */
 function InstallGuide({ isZh }: { isZh: boolean }) {
   // 默认展开：需要安装的用户第一眼就能看到命令，少一次点击。
@@ -83,6 +116,9 @@ function InstallGuide({ isZh }: { isZh: boolean }) {
               isZh={isZh}
               label={isZh ? "发给 AI 助手代装" : "Or let an AI agent install"}
             />
+          </div>
+          <div className="mt-1">
+            <DesktopDownloadRow isZh={isZh} />
           </div>
         </div>
       ) : null}

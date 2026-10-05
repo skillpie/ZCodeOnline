@@ -1,13 +1,13 @@
 // 「下载桌面版」弹窗：两个整卡选项分别打开站点上传的 Mac/Windows 安装包。
 // 链接解析与 UA 推荐逻辑在 desktopDownloadUrl.ts，本组件只负责展示与跳转。
 import { Apple, LayoutGrid, MonitorDown } from "lucide-react";
-import { usePlatform } from "@/hooks/usePlatform.js";
 import {
   detectDesktopDownloadPlatform,
   resolveDefaultDesktopDownloadSiteOrigin,
   resolveDesktopDownloadUrl,
   type DesktopDownloadPlatform,
-} from "@/desktopDownloadUrl.js";
+} from "@zcode/shared";
+import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { cn } from "@/components/lib/utils.js";
 import {

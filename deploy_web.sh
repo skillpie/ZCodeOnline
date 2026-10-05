@@ -12,7 +12,7 @@
 #   ./deploy_web.sh --release  # 仅构建并发布终端用户发行包（server-cli 归档 + 安装脚本）
 #   ./deploy_web.sh --desktop [dmg|exe ...]
 #                             # 仅上传桌面版安装包到 $DL_DIR/desktop/（文件名固定为
-#                             # ZCode-latest-*.dmg/.exe，必须与 packages/ui/src/desktopDownloadUrl.ts
+#                             # ZCode-latest-*.dmg/.exe，必须与 packages/shared/src/desktopDownload.ts
 #                             # 的 DESKTOP_DOWNLOAD_PATHS 一致；带文件参数时按扩展名归类，
 #                             # 缺省自动取 packages/desktop/dist 里最新的 mac-arm64 dmg 与 win-x64 exe；
 #                             # 某平台产物缺失时跳过该平台，一个都找不到才报错）
@@ -116,7 +116,7 @@ if [ "$RELEASES" = true ]; then
 fi
 
 # 桌面版安装包发布：Web 端「下载桌面版」弹窗打开的就是这两个固定名直链。
-# 文件名与 packages/ui/src/desktopDownloadUrl.ts 的 DESKTOP_DOWNLOAD_PATHS 严格对齐，
+# 文件名与 packages/shared/src/desktopDownload.ts 的 DESKTOP_DOWNLOAD_PATHS 严格对齐，
 # 改名必须两处同步（UI 侧单测锁定了路径，避免只改一边导致 404）。
 if [ "$DESKTOP_RELEASE" = true ]; then
   step "上传桌面版安装包"
