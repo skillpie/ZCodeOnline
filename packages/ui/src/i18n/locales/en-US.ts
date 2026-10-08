@@ -3623,8 +3623,8 @@ const enUS: Record<string, string> = {
   "sidebar.usage.plan.resetAt": "Resets {time}",
   "sidebar.usage.plan.modelUsage": "Model usage",
   "sidebar.usage.plan.openStats": "Usage stats",
-  "sidebar.desktopDownload.menuItem": "Download Desktop App",
-  "sidebar.desktopDownload.dialogTitle": "Download Desktop App",
+  "sidebar.desktopDownload.menuItem": "Install Desktop App",
+  "sidebar.desktopDownload.dialogTitle": "Install Desktop App",
   "sidebar.desktopDownload.dialogDescription":
     "Choose your operating system to download the installer.",
   "sidebar.desktopDownload.mac": "For Mac",

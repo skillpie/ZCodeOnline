@@ -1,7 +1,7 @@
-// 桌面版安装包直链（Web 端「下载桌面版」弹窗与隧道门禁卡片共用）。
+// 桌面版安装包直链（Web 端「安装桌面版」弹窗与隧道门禁卡片共用）。
 // 安装包由人工上传到站点 /var/www/zcode-dl/desktop/（nginx `location ^~ /dl/` 直出），
 // 不用官方 zcode.z.ai CDN 包。文件名固定不带版本号：发版时同名覆盖即可，前端链接长期不变；
-// 换名必须与 deploy_web.sh --desktop 的上传目标同步（packages/ui 侧单测锁定路径防 404）。
+// 换名必须与 deploy_web.sh --desktop 的上传目标同步（packages/shared 侧单测锁定路径防 404）。
 import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "./tunnel.js";
 
 export type DesktopDownloadPlatform = "mac" | "windows";

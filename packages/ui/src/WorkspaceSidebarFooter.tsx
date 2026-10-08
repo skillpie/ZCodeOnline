@@ -183,7 +183,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       : intl.formatMessage({ id: "settings.title" });
   const usageButtonClick = onUsageClick ?? onSettingsButtonClick;
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  // Web 端「下载桌面版」弹窗；桌面端本身就是桌面版，菜单项不渲染、状态不置位。
+  // Web 端「安装桌面版」弹窗；桌面端本身就是桌面版，菜单项不渲染、状态不置位。
   const [desktopDownloadOpen, setDesktopDownloadOpen] = useState(false);
   const [desktopZoomLevel, setDesktopZoomLevel] = useState(0);
   const runDesktopZoomCommand = useCallback(
@@ -358,7 +358,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               onUsageClick={usageButtonClick}
               onUpgradeClick={onUpgradeClick}
             />
-            {/* 下载桌面版仅 Web 端提供：桌面端已是桌面版。安装包为站点自传（@zcode/shared desktopDownload）。
+            {/* 安装桌面版仅 Web 端提供：桌面端已是桌面版。安装包为站点自传（@zcode/shared desktopDownload）。
                 onSelect 里延后一拍再开弹窗：Radix 菜单收起时的焦点恢复会把同拍打开的
                 Dialog 立即当外部交互关掉，先让菜单完成收起再置位。 */}
             {!isDesktop ? (

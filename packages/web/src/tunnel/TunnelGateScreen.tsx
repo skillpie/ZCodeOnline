@@ -63,7 +63,7 @@ function InstallCommandRow({
   );
 }
 
-/** 桌面版安装包直链行：两个平台并列，与侧栏「下载桌面版」弹窗共用同一组固定文件名。 */
+/** 桌面版安装包直链行：两个平台并列，与侧栏「安装桌面版」弹窗共用同一组固定文件名。 */
 function DesktopDownloadRow({ isZh }: { isZh: boolean }) {
   // 门禁卡片只在浏览器渲染，origin 取当前站点；链接是安装包直链，浏览器原生触发下载。
   const entries: Array<{ platform: DesktopDownloadPlatform; label: string }> = [
