@@ -5,9 +5,11 @@ import type { GitChangeSourceId, GitDiffResult } from "@zcode/shared";
 import { TID_GIT_PANE } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
+import { toast } from "@/components/ui/toast.js";
 import { FileTextIcon, RefreshCw, SparklesIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { type GitPaneFileChange, type GitPaneRepositoryState } from "@/hooks/useGitRepository.js";
+import { useAlertDialog } from "@/hooks/useAlertDialog.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
@@ -88,7 +90,9 @@ export function GitPane({
     workspaceIdentity,
   });
   const resolvedTheme = resolveTheme(theme);
+  const requestAlert = useAlertDialog();
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
+  const [discardPendingPath, setDiscardPendingPath] = useState<string | null>(null);
   const [diffStateByKey, setDiffStateByKey] = useState<Record<string, GitDiffLoadState>>({});
   const diffGenerationRef = useRef(0);
   const pendingDiffKeysRef = useRef(new Set<string>());
@@ -447,6 +451,62 @@ export function GitPane({
     [onRevealFileInTree, resolveChangePath],
   );
 
+  // 撤销只对未暂存来源开放：丢弃是破坏性动作，先经全局确认弹窗，再走 gitService.discardPaths。
+  // 服务端对未跟踪文件会删除、对冲突文件以 HEAD 覆盖（见 gitCliRepo.discard），成功后手动刷新列表。
+  const handleDiscardChange = useCallback(
+    (change: GitPaneFileChange) => {
+      void (async () => {
+        const confirmed = await requestAlert({
+          title: intl.formatMessage({ id: "git.change.discard.confirmTitle" }),
+          description: intl.formatMessage(
+            {
+              id:
+                change.section === "untracked"
+                  ? "git.change.discard.confirmDeleteDescription"
+                  : "git.change.discard.confirmDescription",
+            },
+            { path: change.workspaceRelativePath },
+          ),
+          actionLabel: intl.formatMessage({ id: "git.change.discard.confirmAction" }),
+        });
+        if (!confirmed) {
+          return;
+        }
+
+        setDiscardPendingPath(change.path);
+        try {
+          await gitService.discardPaths({ workspacePath, paths: [change.path] });
+          logger.info("[GitPane] 撤销文件改动成功", {
+            workspacePath,
+            source: currentSourceOption.id,
+            path: change.path,
+          });
+          toast(
+            intl.formatMessage(
+              { id: "git.change.discard.success" },
+              {
+                path: change.workspaceRelativePath,
+              },
+            ),
+          );
+          onRefresh();
+        } catch (error: unknown) {
+          const message = getErrorMessage(error);
+          logger.warn("[GitPane] 撤销文件改动失败", {
+            workspacePath,
+            source: currentSourceOption.id,
+            path: change.path,
+            error: message,
+          });
+          toast(intl.formatMessage({ id: "git.change.discard.error" }, { error: message }));
+        } finally {
+          setDiscardPendingPath(null);
+        }
+      })();
+    },
+    [currentSourceOption.id, gitService, intl, onRefresh, requestAlert, workspacePath],
+  );
+
   const contextMenuLabels = useMemo(
     () => ({
       copyAbsolutePath: intl.formatMessage({
@@ -460,6 +520,9 @@ export function GitPane({
       }),
       revealInFileTree: intl.formatMessage({
         id: "git.changeContext.revealInFileTree",
+      }),
+      discard: intl.formatMessage({
+        id: "git.change.discard",
       }),
     }),
     [intl],
@@ -550,6 +613,10 @@ export function GitPane({
                       onRevealInFileTree={
                         onRevealFileInTree ? handleRevealChangeInFileTree : undefined
                       }
+                      onDiscardChange={
+                        currentSourceOption.id === "unstaged" ? handleDiscardChange : undefined
+                      }
+                      isDiscardPending={discardPendingPath === change.path}
                     />
                   </div>
                 );

@@ -1182,6 +1182,15 @@ const enUS: Record<string, string> = {
   "git.action.hideTree": "Hide file tree",
   "git.changeContext.revealInFileManager": "Open in file manager",
   "git.changeContext.revealInFileTree": "Reveal in file tree",
+  "git.change.discard": "Discard changes",
+  "git.change.discard.confirmTitle": "Discard changes to this file?",
+  "git.change.discard.confirmDescription":
+    "This will discard the unstaged changes in “{path}”. This action cannot be undone.",
+  "git.change.discard.confirmDeleteDescription":
+    "“{path}” is an untracked file and will be deleted. This action cannot be undone.",
+  "git.change.discard.confirmAction": "Discard changes",
+  "git.change.discard.success": "Discarded changes in “{path}”",
+  "git.change.discard.error": "Failed to discard changes: {error}",
   "git.close": "Close Git pane",
   "git.tree.toggleFolder": "Toggle folder",
   "git.tree.searchPlaceholder": "Filter files...",

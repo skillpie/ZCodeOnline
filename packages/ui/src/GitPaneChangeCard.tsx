@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { GitDiffResult } from "@zcode/shared";
-import { ChevronDownIcon, CopyIcon, FolderOpenIcon, ListTreeIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, FolderOpenIcon, ListTreeIcon, Undo2Icon } from "lucide-react";
 import { DiffViewer } from "@/components/ui/diff-viewer.js";
 import { useGitBlameLineResolver } from "@/hooks/useGitBlame.js";
 import { cn } from "@/components/lib/utils.js";
@@ -33,6 +33,8 @@ export function GitPaneChangeCard({
   onOpenChange,
   onRevealInFileManager,
   onRevealInFileTree,
+  onDiscardChange,
+  isDiscardPending,
   workspacePath,
 }: {
   change: GitPaneFileChange;
@@ -41,6 +43,7 @@ export function GitPaneChangeCard({
     copyRelativePath: string;
     revealInFileManager: string;
     revealInFileTree: string;
+    discard: string;
   };
   diffState: GitDiffResult | null;
   isDiffLoading: boolean;
@@ -53,6 +56,8 @@ export function GitPaneChangeCard({
   onOpenChange: (change: GitPaneFileChange, nextOpen: boolean) => void;
   onRevealInFileManager: (change: GitPaneFileChange) => void;
   onRevealInFileTree?: (change: GitPaneFileChange) => void;
+  onDiscardChange?: (change: GitPaneFileChange) => void;
+  isDiscardPending?: boolean;
   workspacePath?: string;
 }) {
   const { intl } = useZCodeIntl();
@@ -136,6 +141,30 @@ export function GitPaneChangeCard({
                   <ListTreeIcon className="size-4 shrink-0" />
                 </span>
               ) : null}
+              {/* 撤销该文件的未暂存改动：与定位文件树同为 span[role=button]（整行已是 button），
+                  stopPropagation 避免触发展开；仅在未暂存来源由父级注入回调时渲染。 */}
+              {onDiscardChange ? (
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label={contextMenuLabels.discard}
+                  title={contextMenuLabels.discard}
+                  aria-disabled={isDiscardPending}
+                  className={cn(
+                    "shrink-0 rounded-md p-0.5 text-foreground-subtle transition-colors hover:bg-hover hover:text-foreground",
+                    isDiscardPending && "pointer-events-none opacity-50",
+                  )}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (isDiscardPending) {
+                      return;
+                    }
+                    onDiscardChange(change);
+                  }}
+                >
+                  <Undo2Icon className="size-4 shrink-0" />
+                </span>
+              ) : null}
               <ChevronDownIcon
                 className={cn(
                   "size-4 shrink-0 text-foreground-subtle transition-transform",
@@ -169,6 +198,15 @@ export function GitPaneChangeCard({
             <ListTreeIcon className="size-4" />
             {contextMenuLabels.revealInFileTree}
           </ContextMenuItem>
+          {onDiscardChange ? (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem disabled={isDiscardPending} onSelect={() => onDiscardChange(change)}>
+                <Undo2Icon className="size-4" />
+                {contextMenuLabels.discard}
+              </ContextMenuItem>
+            </>
+          ) : null}
         </ContextMenuContent>
       </ContextMenu>
       {isExpanded ? (

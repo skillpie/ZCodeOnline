@@ -1528,14 +1528,75 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         return;
       }
 
-      const result = await commandProvider.run({
+      if (staged) {
+        const result = await commandProvider.run({
+          cwd: resolution.repoRoot,
+          args: ["restore", "--source=HEAD", "--staged", "--worktree", "--", ...repoPaths],
+          timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        });
+        ensureGitCommandSucceeded("git restore", result);
+        invalidate(workspacePath);
+        return;
+      }
+
+      // 未暂存撤销要覆盖工作区三类状态：普通改动可 `git restore --worktree`；
+      // 未跟踪路径不在索引里，restore 会报 pathspec 不识别，须用 clean 删除（含 porcelain
+      // 折叠出的 `dir/` 未跟踪目录）；冲突路径 restore 会报 unmerged，需以 HEAD 覆盖
+      // 索引与工作区。先按 porcelain v2 分派，clean 对已消失的路径静默成功，天然容错竞态。
+      const statusResult = await commandProvider.run({
         cwd: resolution.repoRoot,
-        args: staged
-          ? ["restore", "--source=HEAD", "--staged", "--worktree", "--", ...repoPaths]
-          : ["restore", "--worktree", "--", ...repoPaths],
+        args: ["status", "--porcelain=v2", "-z", "--", ...repoPaths],
         timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
       });
-      ensureGitCommandSucceeded("git restore", result);
+      ensureGitCommandSucceeded("git status", statusResult);
+      const entries = parseStatusPorcelain(statusResult.stdout).entries;
+      // 入参经 normalizeInputPath 已去掉目录尾部斜杠，而 porcelain 的折叠未跟踪目录
+      // （`?? build/`）自带斜杠，匹配前先归一，否则目录撤销会误入 restore 分支报错。
+      const untrackedPaths = new Set(
+        entries
+          .filter((entry) => entry.isUntracked)
+          .map((entry) => (entry.path.endsWith("/") ? entry.path.slice(0, -1) : entry.path)),
+      );
+      const unmergedPaths = new Set(
+        entries.filter((entry) => entry.isConflicted).map((entry) => entry.path),
+      );
+      const cleanPaths = repoPaths.filter((path) => untrackedPaths.has(path));
+      const headRestorePaths = repoPaths.filter((path) => unmergedPaths.has(path));
+      const worktreeRestorePaths = repoPaths.filter(
+        (path) => !untrackedPaths.has(path) && !unmergedPaths.has(path),
+      );
+
+      const runDiscardCommand = async (label: string, args: string[]) => {
+        const result = await commandProvider.run({
+          cwd: resolution.repoRoot,
+          args,
+          timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        });
+        ensureGitCommandSucceeded(label, result);
+      };
+
+      if (cleanPaths.length > 0) {
+        await runDiscardCommand("git clean", ["clean", "-f", "-d", "--", ...cleanPaths]);
+      }
+      if (headRestorePaths.length > 0) {
+        await runDiscardCommand("git restore", [
+          "restore",
+          "--source=HEAD",
+          "--staged",
+          "--worktree",
+          "--",
+          ...headRestorePaths,
+        ]);
+      }
+      if (worktreeRestorePaths.length > 0) {
+        await runDiscardCommand("git restore", [
+          "restore",
+          "--worktree",
+          "--",
+          ...worktreeRestorePaths,
+        ]);
+      }
       invalidate(workspacePath);
     },
 
