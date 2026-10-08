@@ -27,6 +27,7 @@ import { prepareWorkspaceWithZCodeSessionService } from "@/hooks/useWorkspacePre
 import { useZCodeSessionService } from "@/hooks/useZCodeSessionService.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import { parseModelPickerValue } from "@/lib/zcodeSessionProjection.js";
+import { writeDataSourceSelectionRecent } from "@/lib/dataSourceSelectionRecent.js";
 import { initializeNewTaskDraft } from "@/v4/composer/newTaskDraft.js";
 import {
   clearV4ComposerDraft,
@@ -100,7 +101,7 @@ interface DraftConfigControl {
   handleDraftSelectModel: (modelProvider: string, model: string) => void;
   handleDraftSelectThought: (thought: string) => void;
   handleDraftSwitchMode: (mode: string) => void;
-  /** 会话级数据源选择（specs/data-source.md §7）；null = 恢复未选择。 */
+  /** 会话级数据源选择（specs/data-source.md §7）；null = 恢复未选择。选择/取消都写入 workspace 记忆。 */
   handleDraftSelectDataSource: (dataSourceId: string | null) => void;
 }
 
@@ -474,14 +475,16 @@ export function useDraftConfigControl(params: {
   );
 
   // 会话级数据源绑定随草稿 scope 持久化；promote 整体转移时自动带到真实会话。
+  // 同时写入 workspace 级记忆（含取消）：新对话初始化按上一次显式操作恢复（specs/data-source.md §7.1）。
   const handleDraftSelectDataSource = useCallback(
     (dataSourceId: string | null) => {
+      writeDataSourceSelectionRecent(workspacePath, workspaceIdentity, dataSourceId);
       updateComposerDraft((current) => ({
         ...current,
         ...(dataSourceId ? { dataSourceId } : { dataSourceId: undefined }),
       }));
     },
-    [updateComposerDraft],
+    [updateComposerDraft, workspaceIdentity, workspacePath],
   );
 
   return {

@@ -24,7 +24,7 @@ export interface V4ComposerDraft {
   lastPlanTransitionId?: string;
   lastPermissionGrantId?: string;
   modelSelection?: ModelSelection;
-  /** 会话级数据源绑定（specs/data-source.md §7）；缺省 = 未选择（新建对话默认态）。 */
+  /** 会话级数据源绑定（specs/data-source.md §7）；缺省 = 未选择。新任务初始化会按 workspace 记忆恢复上一次选择（dataSourceSelectionRecent）。 */
   dataSourceId?: string;
   /** 会话级评审开关；缺省 = 关闭。开启后本轮注入评审指令（先拷问达成共识再实现）。 */
   reviewEnabled?: boolean;

@@ -1,5 +1,6 @@
 import type { ModelSelectionView } from "@zcode/services";
 import { readComposerRecent, resolveDraftInitialModelSelection } from "@/lib/composerRecent.js";
+import { readDataSourceSelectionRecent } from "@/lib/dataSourceSelectionRecent.js";
 import {
   persistV4ComposerDraft,
   readV4ComposerDraft,
@@ -15,6 +16,9 @@ export function initializeNewTaskDraft(
   view: ModelSelectionView,
 ): V4ComposerDraft {
   const recent = readComposerRecent(workspacePath, workspaceIdentity);
+  // 跨会话记忆（specs/data-source.md §7.1）：草稿自身意图优先，其次恢复该 workspace
+  // 上一次显式选择/取消的结果；null（取消或无记忆）回到缺省未选择态。
+  const lastDataSourceId = readDataSourceSelectionRecent(workspacePath, workspaceIdentity);
   return {
     ...draft,
     initializeFromNewTask: undefined,
@@ -24,6 +28,7 @@ export function initializeNewTaskDraft(
       recent?.modelSelection ??
       resolveDraftInitialModelSelection(view, null).selection ??
       undefined,
+    dataSourceId: draft.dataSourceId ?? lastDataSourceId ?? undefined,
   };
 }
 

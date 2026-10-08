@@ -89,7 +89,8 @@ interface IDataSourceService {
 
 ## 7. 会话级数据源选择与 DB 工具提权
 
-DB 工具不再对 UI 会话无条件可见：**新建对话默认未选择数据源，用户为该对话选择数据源后，
+DB 工具不再对 UI 会话无条件可见：**新建对话默认未选择数据源（同一 workspace 会在
+初始化时恢复上一次的选择，见 §7.1 跨会话记忆），用户为该对话选择数据源后，
 Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择数据源的对话轮对模型隐藏四个 DB 工具。
 
 ### 7.1 产品规则
@@ -101,6 +102,11 @@ Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择�
     §6 的工具侧 fallback 解析（`data_source` 入参缺省 → `activeId`）不变。
 - 面板无独立的「不使用数据源」按钮：**再次点击已勾选的列表项**即把当前对话恢复为
   未选择（收回提权）；点击未勾选项则为该对话选择并激活新源。
+- **跨会话记忆（workspace 级）**：同一 workspace 的新对话初始化时恢复上一次显式
+  选择的结果——选择与取消选择都记忆，以最后一次操作为准；不同 workspace
+  （key = `workspaceIdentity?.trim() || workspacePath`）互相隔离。记忆只是新对话的
+  初始勾选态：恢复的绑定随提交轮正常走 §7.4 门控与 Agent 侧绑定解析（§6 显式参数
+  → 会话绑定 → activeId），恢复时不额外触发全局激活。
 - 选择是纯 renderer 意图：不改变数据源配置事实，唯一的 Host 侧痕迹是激活与表结构同步。
 
 ### 7.2 状态所有者
@@ -109,6 +115,8 @@ Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择�
 UI（composerDraftStore，per-scope 会话草稿）
   └─ V4ComposerDraft.dataSourceId  本对话选择；draft scope 默认缺省（未选择），
      promote 到真实会话 scope 时随草稿整体转移
+UI（dataSourceSelectionRecent，per-workspace 偏好 localStorage）
+  └─ 上一次显式选择/取消的 dataSourceId；选择回调时写入，新任务草稿初始化时读入
 UI（dataSourceStore，投影缓存）
   └─ 列表 / activeId 仍是 Host 的投影，会话选择校验以投影列表为准
 Host（zcodeAgentService 信封装配）
@@ -151,3 +159,5 @@ CLI（bootstrap / core）
 4. 删除已被某对话选择的数据源后再发送 → 按未选择处理（工具隐藏），不报悬空绑定。
 5. 数据源面板勾选、按钮文案跟随会话级选择；不同会话互不影响。
 6. automation（cron）轮会话中 DB 工具仍可用；手机 / Web 与桌面行为一致（同一 Host 信封）。
+7. 同一 workspace 选源 A 后新开对话 → 初始即勾选 A；再次点击取消后新开对话 → 初始未选择。
+8. 切换到另一 workspace：新对话不带入前一个 workspace 的记忆（identity/路径隔离）。
