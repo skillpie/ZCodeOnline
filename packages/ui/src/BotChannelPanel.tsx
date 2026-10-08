@@ -107,12 +107,12 @@ export const BotChannelPanel = memo(function BotChannelPanelComponent({
                       </span>
                     ) : null}
                   </span>
-                          <span className="block text-ui-base/relaxed text-foreground-subtle">
-                            {intl.formatMessage({
-                              id: `webRemoteControl.botChannel.${entry.provider}.description`,
-                            })}
-                          </span>
-                        </span>
+                  <span className="block text-ui-base/relaxed text-foreground-subtle">
+                    {intl.formatMessage({
+                      id: `webRemoteControl.botChannel.${entry.provider}.description`,
+                    })}
+                  </span>
+                </span>
               </button>
             );
           })}
