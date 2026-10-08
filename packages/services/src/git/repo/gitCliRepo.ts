@@ -1465,9 +1465,30 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         return;
       }
 
+      // 已暂存的删除（porcelain x=D）在索引和工作区都不存在该文件，`git add` 的
+      // pathspec 匹配不到任何文件会直接 fatal（"did not match any files"），导致
+      // 提交弹窗"包含未暂存更改"整批暂存失败。该状态本身已是提交所需终态，先剔除。
+      const statusResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["status", "--porcelain=v2", "-z", "--", ...repoPaths],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git status", statusResult);
+      const stagedDeletedPaths = new Set(
+        parseStatusPorcelain(statusResult.stdout)
+          .entries.filter((entry) => !entry.isConflicted && entry.x === "D")
+          .map((entry) => entry.path),
+      );
+      const addablePaths = repoPaths.filter((path) => !stagedDeletedPaths.has(path));
+      if (addablePaths.length === 0) {
+        invalidate(workspacePath);
+        return;
+      }
+
       const result = await commandProvider.run({
         cwd: resolution.repoRoot,
-        args: ["add", "--", ...repoPaths],
+        args: ["add", "--", ...addablePaths],
         timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
       });
       ensureGitCommandSucceeded("git add", result);
