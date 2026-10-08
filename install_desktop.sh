@@ -6,8 +6,10 @@
 #   ./install_desktop.sh --skip-build   # 跳过构建，使用 dist 里现有的 ZCodeOnline DMG 重装
 #
 # 注意：
-# - 运行会退出正在运行的 ZCodeOnline 并替换应用；如果本脚本是在 ZCode 会话里执行的，
-#   该会话会随应用退出而中断，安装仍会继续完成。
+# - 启动后自动转入后台执行，前台只跟随日志；会话中断（如桌面 app 被退出）不影响安装完成。
+# - 运行会退出正在运行的 ZCodeOnline 并替换应用。替换需要 macOS「应用管理」权限：
+#   桌面会话继承 app 自身授权可直接执行；Web 会话（daemon）或终端需先在
+#   系统设置 → 隐私与安全性 → 应用管理 中授权对应进程。
 # - 产物未签名；重启后若被 Gatekeeper 拦截，右键图标选「打开」一次即可。
 # - 正式版 /Applications/ZCode.app 不受影响（Preview 身份可与正式版并排）。
 set -euo pipefail
@@ -22,12 +24,38 @@ SKIP_BUILD=false
 case "${1:-}" in
   "") ;;
   --skip-build) SKIP_BUILD=true ;;
-  -h|--help) grep '^#' "$0" | grep -v '^#!' | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '1,/^set -euo pipefail$/p' "$0" | grep '^#' | grep -v '^#!' | sed 's/^# \{0,1\}//'; exit 0 ;;
   *) echo "未知参数: $1（支持 --skip-build / -h）"; exit 1 ;;
 esac
 
 mkdir -p "$LOG_DIR"
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"; }
+
+# 桌面会话里执行时，"退出正在运行的 ZCodeOnline" 会连带杀掉脚本所在进程树，
+# 安装会停在替换之前（2026-10-08 实测：日志止于退出步骤，/Applications 仍是旧包）。
+# 这里把真正的安装流程交给脱离会话的后台 worker：前台只跟随日志，app 退出只中断
+# 跟随、不影响安装；worker 落在新会话（macOS 无 setsid 命令，用 perl POSIX::setsid）
+# 并忽略 HUP/INT/TERM——替换是原子性要求，一旦开始必须走到完成，半途退出会留下残缺 app。
+if [ "${ZCODE_INSTALL_DESKTOP_DETACHED:-}" != "1" ]; then
+  touch "$LOG_FILE"
+  echo "安装已在后台执行，实时日志: tail -f $LOG_FILE"
+  if command -v perl >/dev/null 2>&1; then
+    ZCODE_INSTALL_DESKTOP_DETACHED=1 nohup perl -MPOSIX=setsid -e 'setsid or die "setsid: $!"; exec @ARGV' -- "$0" "$@" >/dev/null 2>&1 </dev/null &
+  else
+    # 无 perl 的环境退化为仅屏蔽 HUP：防会话正常终止，防不了整组 SIGKILL。
+    ZCODE_INSTALL_DESKTOP_DETACHED=1 nohup "$0" "$@" >/dev/null 2>&1 </dev/null &
+  fi
+  worker_pid=$!
+  tail -n 40 -f "$LOG_FILE" &
+  tail_pid=$!
+  trap 'kill "$tail_pid" 2>/dev/null || true' EXIT
+  status=0
+  wait "$worker_pid" || status=$?
+  exit "$status"
+fi
+# worker 模式：会话终止信号不影响安装；如需人工中止用 kill -9。
+trap '' HUP INT TERM
+log "后台 worker 已启动（pid $$，独立会话）"
 
 if [ "$SKIP_BUILD" = false ]; then
   log "构建桌面端（ZCodeOnline Preview，生产后端）..."
