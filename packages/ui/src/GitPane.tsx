@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/toast.js";
 import { FileTextIcon, RefreshCw, SparklesIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { type GitPaneFileChange, type GitPaneRepositoryState } from "@/hooks/useGitRepository.js";
-import { useAlertDialog } from "@/hooks/useAlertDialog.js";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
@@ -90,7 +90,7 @@ export function GitPane({
     workspaceIdentity,
   });
   const resolvedTheme = resolveTheme(theme);
-  const requestAlert = useAlertDialog();
+  const requestConfirmation = useConfirmDialog();
   const [expandedPath, setExpandedPath] = useState<string | null>(null);
   const [discardPendingPath, setDiscardPendingPath] = useState<string | null>(null);
   const [diffStateByKey, setDiffStateByKey] = useState<Record<string, GitDiffLoadState>>({});
@@ -456,7 +456,7 @@ export function GitPane({
   const handleDiscardChange = useCallback(
     (change: GitPaneFileChange) => {
       void (async () => {
-        const confirmed = await requestAlert({
+        const confirmed = await requestConfirmation({
           title: intl.formatMessage({ id: "git.change.discard.confirmTitle" }),
           description: intl.formatMessage(
             {
@@ -467,7 +467,9 @@ export function GitPane({
             },
             { path: change.workspaceRelativePath },
           ),
-          actionLabel: intl.formatMessage({ id: "git.change.discard.confirmAction" }),
+          confirmLabel: intl.formatMessage({ id: "git.change.discard.confirmAction" }),
+          // 丢弃未提交改动不可恢复，按共享确认弹窗约定使用危险色确认键；取消键为默认「取消」。
+          confirmVariant: "destructive",
         });
         if (!confirmed) {
           return;
@@ -504,7 +506,7 @@ export function GitPane({
         }
       })();
     },
-    [currentSourceOption.id, gitService, intl, onRefresh, requestAlert, workspacePath],
+    [currentSourceOption.id, gitService, intl, onRefresh, requestConfirmation, workspacePath],
   );
 
   const contextMenuLabels = useMemo(
