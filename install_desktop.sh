@@ -15,6 +15,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# worker 重新拉起必须用绝对路径：`sh install_desktop.sh` 这类不带 ./ 的调用里
+# $0 无斜杠，exec 只查 PATH 不查当前目录，会静默找不到脚本。
+SELF_PATH="$SCRIPT_DIR/$(basename "$0")"
 DMG_DIR="$SCRIPT_DIR/packages/desktop/dist"
 APP_PATH="/Applications/ZCodeOnline.app"
 LOG_DIR="$HOME/.zcode/logs"
@@ -39,11 +42,13 @@ log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG_FILE"; }
 if [ "${ZCODE_INSTALL_DESKTOP_DETACHED:-}" != "1" ]; then
   touch "$LOG_FILE"
   echo "安装已在后台执行，实时日志: tail -f $LOG_FILE"
+  # worker 的 stderr 落进安装日志（exec 失败等错误可见），stdout 丢弃避免与 log() 的
+  # tee 双写；exec 失败必须 die 透传非零退出码，否则 perl 会静默以 0 结束。
   if command -v perl >/dev/null 2>&1; then
-    ZCODE_INSTALL_DESKTOP_DETACHED=1 nohup perl -MPOSIX=setsid -e 'setsid or die "setsid: $!"; exec @ARGV' -- "$0" "$@" >/dev/null 2>&1 </dev/null &
+    ZCODE_INSTALL_DESKTOP_DETACHED=1 nohup perl -MPOSIX=setsid -e 'setsid or die "setsid: $!"; exec @ARGV or die "exec: $!"' -- "$SELF_PATH" "$@" >/dev/null 2>>"$LOG_FILE" </dev/null &
   else
     # 无 perl 的环境退化为仅屏蔽 HUP：防会话正常终止，防不了整组 SIGKILL。
-    ZCODE_INSTALL_DESKTOP_DETACHED=1 nohup "$0" "$@" >/dev/null 2>&1 </dev/null &
+    ZCODE_INSTALL_DESKTOP_DETACHED=1 nohup "$SELF_PATH" "$@" >/dev/null 2>>"$LOG_FILE" </dev/null &
   fi
   worker_pid=$!
   tail -n 40 -f "$LOG_FILE" &
