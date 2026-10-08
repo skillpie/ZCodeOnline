@@ -65,6 +65,17 @@ export interface IFileService {
    * 内容超过 MAX_TEXT_WRITE_BYTES 时抛错，防止把大文本误写进 Host。
    */
   writeTextFile(params: { path: string; content: string }): Promise<void>;
+  /**
+   * 重命名同一目录下的文件或目录（文件树右键「重命名」）。
+   * nextName 只允许单段名称（拒绝 `/`、`\`、`.`、`..` 与空白名），
+   * 目标已存在时抛错——POSIX rename 会静默覆盖同名文件，必须在服务端挡住。
+   */
+  renameEntry(params: { path: string; nextName: string }): Promise<void>;
+  /**
+   * 删除文件或目录（文件树右键「删除」，UI 侧已做二次确认）。
+   * 目录递归删除且不可恢复；拒绝空路径与文件系统根，避免把整棵根目录交给 rm。
+   */
+  deleteEntry(params: { path: string }): Promise<void>;
   readMediaPreview(params: { path: string; maxBytes?: number }): Promise<FileMediaPreview>;
   /**
    * 按偏移读取文件的一段原始字节，供大二进制文件（如 PDF）按需分段加载。

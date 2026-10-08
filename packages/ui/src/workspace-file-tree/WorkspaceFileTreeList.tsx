@@ -65,6 +65,11 @@ export function WorkspaceFileTreeList({
   gitStatusLabelByStatus,
   contextMenuLabels,
   editorState,
+  renamingPath,
+  canStartRename,
+  onRenameStart,
+  onRenameSubmit,
+  onDeleteStart,
   onSelect,
   onToggleDirectory,
   onOpenPreview,
@@ -88,6 +93,11 @@ export function WorkspaceFileTreeList({
   gitStatusLabelByStatus: WorkspaceFileGitStatusLabels;
   contextMenuLabels: WorkspaceFileTreeContextMenuLabels;
   editorState: WorkspaceFileTreeEditorState;
+  renamingPath: string | null;
+  canStartRename: () => boolean;
+  onRenameStart: (row: WorkspaceFileTreeRow) => void;
+  onRenameSubmit: (row: WorkspaceFileTreeRow, nextName: string) => void;
+  onDeleteStart: (row: WorkspaceFileTreeRow) => void;
   onSelect: (path: string) => void;
   onToggleDirectory: (row: WorkspaceFileTreeRow) => void;
   onOpenPreview: (row: WorkspaceFileTreeRow) => void;
@@ -133,6 +143,11 @@ export function WorkspaceFileTreeList({
       installedEditors={editorState.installedEditors}
       isRemoteWorkspaceFileTree={editorState.isRemoteWorkspaceFileTree}
       remoteTarget={editorState.remoteTarget}
+      renaming={renamingPath !== null && areWorkspaceFilePathsEqual(renamingPath, row.path)}
+      canStartRename={canStartRename}
+      onRenameStart={onRenameStart}
+      onRenameSubmit={onRenameSubmit}
+      onDeleteStart={onDeleteStart}
       workspacePath={workspacePath}
       workspaceIdentity={workspaceIdentity}
       style={style}

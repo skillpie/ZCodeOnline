@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- 文件树行集中维护拖拽、打开方式、Git 状态与上下文菜单交互。 */
 import type { EditorInfo, OpenInEditorRemoteTarget } from "@zcode/shared";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
 import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
@@ -65,6 +66,11 @@ export function WorkspaceFileTreeRowView({
   installedEditors,
   isRemoteWorkspaceFileTree,
   remoteTarget,
+  renaming = false,
+  canStartRename,
+  onRenameStart,
+  onRenameSubmit,
+  onDeleteStart,
   workspacePath,
   workspaceIdentity,
   style,
@@ -85,6 +91,11 @@ export function WorkspaceFileTreeRowView({
   installedEditors: EditorInfo[];
   isRemoteWorkspaceFileTree: boolean;
   remoteTarget?: OpenInEditorRemoteTarget;
+  renaming?: boolean;
+  canStartRename?: () => boolean;
+  onRenameStart?: (row: WorkspaceFileTreeRow) => void;
+  onRenameSubmit?: (row: WorkspaceFileTreeRow, nextName: string) => void;
+  onDeleteStart?: (row: WorkspaceFileTreeRow) => void;
   workspacePath: string;
   workspaceIdentity?: string;
   style: CSSProperties;
@@ -104,6 +115,31 @@ export function WorkspaceFileTreeRowView({
   const relativePath = getWorkspaceFileRelativePath(workspacePath, row.path);
   const isDirectory = row.type === "directory";
   const isDeletedFile = isWorkspaceFileTreeDeletedFile(row, gitStatus);
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
+  const [renameDraft, setRenameDraft] = useState(row.name);
+  const canRename =
+    !isDeletedFile && Boolean(onRenameStart && onRenameSubmit && canStartRename?.());
+  useEffect(() => {
+    if (!renaming) {
+      return;
+    }
+    setRenameDraft(row.name);
+    const input = renameInputRef.current;
+    if (!input) {
+      return;
+    }
+    // 菜单关闭后焦点会先回到行节点；输入框挂载后立即接管焦点并预选名称。
+    // 文件默认只选中主干（保留扩展名），目录与无主干隐藏文件全选。
+    input.focus();
+    const dotIndex = isDirectory ? -1 : row.name.lastIndexOf(".");
+    input.setSelectionRange(0, dotIndex > 0 ? dotIndex : row.name.length);
+  }, [isDirectory, renaming, row.name]);
+  const submitRenameDraft = (nextName: string) => {
+    if (!onRenameSubmit) {
+      return;
+    }
+    onRenameSubmit(row, nextName);
+  };
   const wslFileManagerEditor = resolveWorkspaceFileManagerEditor(installedEditors, remoteTarget);
   const rowStyle = {
     ...style,
@@ -213,7 +249,7 @@ export function WorkspaceFileTreeRowView({
       data-testid={testId(TID_WORKSPACE_FILE_TREE_ROW, row.path)}
       aria-expanded={isDirectory ? row.expanded : undefined}
       tabIndex={0}
-      draggable={!isDeletedFile}
+      draggable={!isDeletedFile && !renaming}
       className={cn(
         "group/file-tree-row relative flex h-7 w-full min-w-0 items-center gap-1.5 rounded-lg border pr-2 py-1 text-left text-ui-base text-foreground outline-none transition-[background-color,border-color,box-shadow]",
         isDeletedFile ? "cursor-default" : "cursor-pointer",
@@ -279,11 +315,47 @@ export function WorkspaceFileTreeRowView({
       ) : null}
       <span className="flex min-w-0 flex-1 items-center gap-1.5">
         {fileIconSrc ? <FileDisplayIcon src={fileIconSrc} className="shrink-0 size-4" /> : null}
-        <WorkspaceFileTreeRowName
-          name={row.name}
-          className={cn("min-w-0 flex-1 truncate", rowStatusTextClassName)}
-          slashClassName="mx-1 text-foreground-subtlest"
-        />
+        {renaming ? (
+          <input
+            ref={renameInputRef}
+            value={renameDraft}
+            aria-label={contextMenuLabels.rename}
+            spellCheck={false}
+            className={cn(
+              "h-5 min-w-0 flex-1 rounded-sm border px-1 text-ui-base",
+              "border-input-border-focused bg-surface outline-none",
+            )}
+            onClick={(event) => {
+              // 输入框内的点击不能冒泡成行点击（选中态切换/预览/目录展开）。
+              event.stopPropagation();
+            }}
+            onChange={(event) => setRenameDraft(event.target.value)}
+            onKeyDown={(event) => {
+              // 键盘事件不能冒泡给行级 onKeyDown（上下键树导航）。
+              event.stopPropagation();
+              if (event.nativeEvent.isComposing) {
+                return;
+              }
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submitRenameDraft(renameDraft);
+                return;
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                // 名字未变的提交在树侧只退出编辑态，等价于取消。
+                submitRenameDraft(row.name);
+              }
+            }}
+            onBlur={() => submitRenameDraft(renameDraft)}
+          />
+        ) : (
+          <WorkspaceFileTreeRowName
+            name={row.name}
+            className={cn("min-w-0 flex-1 truncate", rowStatusTextClassName)}
+            slashClassName="mx-1 text-foreground-subtlest"
+          />
+        )}
       </span>
       {gitStatusText && gitStatusLabel ? (
         <ControlHintTooltip
@@ -386,6 +458,15 @@ export function WorkspaceFileTreeRowView({
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => void handleCopyRelativePath()}>
             {contextMenuLabels.copyRelativePath}
+          </ContextMenuItem>
+          <ContextMenuItem disabled={!canRename} onSelect={() => onRenameStart?.(row)}>
+            {contextMenuLabels.rename}
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled={isDeletedFile || !onDeleteStart}
+            onSelect={() => void onDeleteStart?.(row)}
+          >
+            {isDirectory ? contextMenuLabels.deleteFolder : contextMenuLabels.deleteFile}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onSelect={() => dispatchWorkspaceFileAddToChat(workspaceFilePayload)}>

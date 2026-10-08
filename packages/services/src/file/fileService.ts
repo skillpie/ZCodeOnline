@@ -1,8 +1,18 @@
 /* eslint-disable max-lines */
 import type { Dirent } from "node:fs";
-import { mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { homedir } from "node:os";
-import { extname, join, relative, sep } from "node:path";
+import { dirname, extname, join, parse, relative, sep } from "node:path";
 import type {
   FileBinaryPreview,
   FileEntry,
@@ -641,6 +651,46 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       // 预览编辑只覆写已存在的文件：不隐式建目录、不创建新文件，
       // 避免把拼写错误的路径静默落成一个新文件。
       await writeFile(params.path, params.content, "utf-8");
+    },
+    async renameEntry(params: { path: string; nextName: string }): Promise<void> {
+      const nextName = params.nextName.trim();
+      if (
+        nextName.length === 0 ||
+        nextName === "." ||
+        nextName === ".." ||
+        nextName.includes("/") ||
+        nextName.includes("\\")
+      ) {
+        throw new Error(`Invalid entry name: ${params.nextName}`);
+      }
+      const sourceStat = await stat(params.path).catch(() => null);
+      if (!sourceStat) {
+        throw new Error(`Path does not exist: ${params.path}`);
+      }
+      const targetPath = join(dirname(params.path), nextName);
+      if (targetPath === params.path) {
+        return;
+      }
+      // POSIX rename 会静默覆盖同名文件；目标存在时必须在服务端拒绝，
+      // 目录场景下覆盖行为更是不可逆（EXDEV/ENOTEMPTY 之外都是替换）。
+      const targetStat = await stat(targetPath).catch(() => null);
+      if (targetStat) {
+        throw new Error(`Target already exists: ${targetPath}`);
+      }
+      await rename(params.path, targetPath);
+    },
+    async deleteEntry(params: { path: string }): Promise<void> {
+      const targetPath = params.path.trim();
+      if (targetPath.length === 0 || parse(targetPath).root === targetPath) {
+        // 根目录删除是灾难性误操作；UI 二次确认挡不住路径拼接错误，Host 侧必须兜底。
+        throw new Error(`Refusing to delete filesystem root: ${params.path}`);
+      }
+      const sourceStat = await stat(targetPath).catch(() => null);
+      if (!sourceStat) {
+        throw new Error(`Path does not exist: ${targetPath}`);
+      }
+      // 递归删除目录：不可恢复性由 UI 的二次确认兜底，Host 不做回收站。
+      await rm(targetPath, { recursive: true, force: false });
     },
     async readFileRange(params: {
       path: string;

@@ -1707,6 +1707,18 @@ const enUS: Record<string, string> = {
   "workspaceFileTree.openWith": "Open with",
   "workspaceFileTree.openInBrowser": "Open in built-in browser",
   "workspaceFileTree.openFailed": "Could not open this item",
+  "workspaceFileTree.rename": "Rename",
+  "workspaceFileTree.renameFailed": "Could not rename this item",
+  "workspaceFileTree.deleteFile": "Delete file",
+  "workspaceFileTree.deleteFolder": "Delete folder",
+  "workspaceFileTree.deleteFailed": "Could not delete this item",
+  "workspaceFileTree.deleteFileConfirmTitle": 'Delete file "{name}"?',
+  "workspaceFileTree.deleteFileConfirmDescription":
+    "The file will be permanently deleted. This action cannot be undone.",
+  "workspaceFileTree.deleteFolderConfirmTitle": 'Delete folder "{name}"?',
+  "workspaceFileTree.deleteFolderConfirmDescription":
+    "The folder and all of its contents will be permanently deleted. This action cannot be undone.",
+  "workspaceFileTree.deleteConfirmAction": "Delete",
   "workspaceFileTree.addToChat": "Add to chat",
   "workspaceFileTree.gitStatus.ignored": "Ignored",
 

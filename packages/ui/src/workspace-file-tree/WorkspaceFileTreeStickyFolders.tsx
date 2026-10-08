@@ -22,6 +22,11 @@ export function WorkspaceFileTreeStickyFolders({
   gitStatusLabelByStatus,
   contextMenuLabels,
   editorState,
+  renamingPath,
+  canStartRename,
+  onRenameStart,
+  onRenameSubmit,
+  onDeleteStart,
   workspacePath,
   workspaceIdentity,
   onSelect,
@@ -38,6 +43,11 @@ export function WorkspaceFileTreeStickyFolders({
   gitStatusLabelByStatus: WorkspaceFileGitStatusLabels;
   contextMenuLabels: WorkspaceFileTreeContextMenuLabels;
   editorState: WorkspaceFileTreeEditorState;
+  renamingPath: string | null;
+  canStartRename: () => boolean;
+  onRenameStart: (row: WorkspaceFileTreeRow) => void;
+  onRenameSubmit: (row: WorkspaceFileTreeRow, nextName: string) => void;
+  onDeleteStart: (row: WorkspaceFileTreeRow) => void;
   workspacePath: string;
   workspaceIdentity?: string;
   onSelect: (path: string) => void;
@@ -79,6 +89,11 @@ export function WorkspaceFileTreeStickyFolders({
               installedEditors={editorState.installedEditors}
               isRemoteWorkspaceFileTree={editorState.isRemoteWorkspaceFileTree}
               remoteTarget={editorState.remoteTarget}
+              renaming={renamingPath !== null && areWorkspaceFilePathsEqual(renamingPath, row.path)}
+              canStartRename={canStartRename}
+              onRenameStart={onRenameStart}
+              onRenameSubmit={onRenameSubmit}
+              onDeleteStart={onDeleteStart}
               workspacePath={workspacePath}
               workspaceIdentity={workspaceIdentity}
               style={{}}

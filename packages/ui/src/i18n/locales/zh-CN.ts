@@ -1590,6 +1590,17 @@ const zhCN: Record<string, string> = {
   "workspaceFileTree.openWith": "打开方式",
   "workspaceFileTree.openInBrowser": "用内置浏览器打开",
   "workspaceFileTree.openFailed": "无法打开该条目",
+  "workspaceFileTree.rename": "重命名",
+  "workspaceFileTree.renameFailed": "重命名失败",
+  "workspaceFileTree.deleteFile": "删除文件",
+  "workspaceFileTree.deleteFolder": "删除文件夹",
+  "workspaceFileTree.deleteFailed": "删除失败",
+  "workspaceFileTree.deleteFileConfirmTitle": "删除文件“{name}”？",
+  "workspaceFileTree.deleteFileConfirmDescription": "该文件将被永久删除，此操作无法撤销。",
+  "workspaceFileTree.deleteFolderConfirmTitle": "删除文件夹“{name}”？",
+  "workspaceFileTree.deleteFolderConfirmDescription":
+    "该文件夹及其全部内容将被永久删除，此操作无法撤销。",
+  "workspaceFileTree.deleteConfirmAction": "删除",
   "workspaceFileTree.addToChat": "添加到聊天",
   "workspaceFileTree.gitStatus.ignored": "已忽略",
 

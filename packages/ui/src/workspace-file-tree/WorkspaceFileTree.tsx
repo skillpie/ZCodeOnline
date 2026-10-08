@@ -31,6 +31,8 @@ import {
 import { toast } from "@/components/ui/toast.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
+import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
   TID_WORKSPACE_FILE_TREE_PANEL,
@@ -105,6 +107,7 @@ export function WorkspaceFileTree({
   const pendingActivePreviewRevealPathRef = useRef<string | null>(null);
   const pendingSearchDirectoryRevealPathRef = useRef<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [fileSearchQuery, setFileSearchQuery] = useState("");
   const [showChangedOnly, setShowChangedOnly] = useState(false);
   const [showScrollBottomMask, setShowScrollBottomMask] = useState(false);
@@ -124,6 +127,12 @@ export function WorkspaceFileTree({
     workspaceRemoteSessionId,
     enableWorkspaceFeatures: !temporaryExternalDirectory,
   });
+  const { fileService } = useWorkspaceServices(
+    workspacePath,
+    workspaceRemoteSessionId,
+    workspaceIdentity,
+  );
+  const confirmDialog = useConfirmDialog();
   const { installedEditors } = useInstalledFileTreeEditors();
   const isRemoteWorkspaceFileTree = Boolean(workspaceRemoteSessionId || workspaceIdentity);
   const { remoteTarget } = useWorkspaceOpenInEditorTarget({
@@ -197,6 +206,7 @@ export function WorkspaceFileTree({
 
   useEffect(() => {
     setSelectedPath(null);
+    setRenamingPath(null);
     setFileSearchQuery("");
     setShowChangedOnly(false);
   }, [workspaceIdentity, workspacePath]);
@@ -258,6 +268,11 @@ export function WorkspaceFileTree({
       }),
       openFailed: intl.formatMessage({ id: "workspaceFileTree.openFailed" }),
       openWith: intl.formatMessage({ id: "workspaceFileTree.openWith" }),
+      rename: intl.formatMessage({ id: "workspaceFileTree.rename" }),
+      renameFailed: intl.formatMessage({ id: "workspaceFileTree.renameFailed" }),
+      deleteFile: intl.formatMessage({ id: "workspaceFileTree.deleteFile" }),
+      deleteFolder: intl.formatMessage({ id: "workspaceFileTree.deleteFolder" }),
+      deleteFailed: intl.formatMessage({ id: "workspaceFileTree.deleteFailed" }),
       reveal: fileManagerLabel,
     }),
     [fileManagerLabel, intl],
@@ -536,6 +551,87 @@ export function WorkspaceFileTree({
     },
     [handleRevealSearchDirectory, handleToggleDirectory, hasFileSearchQuery],
   );
+  // 重命名只对树态行开放：搜索结果是平铺索引行，提交后无法回写树节点；
+  // Git deleted 虚拟行由 RowView 内的 isDeletedFile 再行禁用。
+  const canStartRename = useCallback(() => !hasFileSearchQuery, [hasFileSearchQuery]);
+  const handleRenameStart = useCallback((row: WorkspaceFileTreeRow) => {
+    setSelectedPath(row.path);
+    setRenamingPath(row.path);
+  }, []);
+  const handleRenameSubmit = useCallback(
+    async (row: WorkspaceFileTreeRow, nextName: string) => {
+      setRenamingPath(null);
+      const trimmed = nextName.trim();
+      if (!trimmed || trimmed === row.name) {
+        return;
+      }
+      try {
+        await fileService.renameEntry({ path: row.path, nextName: trimmed });
+        // watcher 刷新有 debounce 且远程链路可能延迟；重命名成功后主动刷新，
+        // 让树和 Git 状态（rename 会产生 deleted/added 配对）立即反映新路径。
+        void treeData.loadGitStatus();
+        void treeData.refreshLoadedDirectories();
+      } catch (error) {
+        logger.warn("[WorkspaceFileTree] 重命名文件失败", {
+          path: row.path,
+          nextName: trimmed,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        toast(fileContextMenuLabels.renameFailed);
+      }
+    },
+    [fileContextMenuLabels.renameFailed, fileService, treeData],
+  );
+  const handleDeleteStart = useCallback(
+    async (row: WorkspaceFileTreeRow) => {
+      const isDirectoryRow = row.type === "directory";
+      const confirmed = await confirmDialog({
+        title: intl.formatMessage(
+          {
+            id: isDirectoryRow
+              ? "workspaceFileTree.deleteFolderConfirmTitle"
+              : "workspaceFileTree.deleteFileConfirmTitle",
+          },
+          { name: row.name },
+        ),
+        description: intl.formatMessage({
+          id: isDirectoryRow
+            ? "workspaceFileTree.deleteFolderConfirmDescription"
+            : "workspaceFileTree.deleteFileConfirmDescription",
+        }),
+        confirmLabel: intl.formatMessage({ id: "workspaceFileTree.deleteConfirmAction" }),
+        confirmVariant: "destructive",
+      });
+      if (!confirmed) {
+        return;
+      }
+      try {
+        await fileService.deleteEntry({ path: row.path });
+        // 删除不会触发被删路径上的 watcher 事件；主动刷新树、Git 状态和搜索索引，
+        // 让行立即消失（尤其搜索态下行由索引驱动，不刷新会残留已删文件）。
+        void treeData.loadGitStatus();
+        void treeData.refreshLoadedDirectories();
+        if (hasFileSearchQuery) {
+          refreshSearchIndex();
+        }
+      } catch (error) {
+        logger.warn("[WorkspaceFileTree] 删除文件失败", {
+          path: row.path,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        toast(fileContextMenuLabels.deleteFailed);
+      }
+    },
+    [
+      confirmDialog,
+      fileContextMenuLabels.deleteFailed,
+      fileService,
+      hasFileSearchQuery,
+      intl,
+      refreshSearchIndex,
+      treeData,
+    ],
+  );
   const handleOpenPreview = useCallback(
     (row: WorkspaceFileTreeRow) => {
       if (row.type === "directory") {
@@ -748,6 +844,11 @@ export function WorkspaceFileTree({
             gitStatusLabelByStatus={gitStatusLabelByStatus}
             contextMenuLabels={fileContextMenuLabels}
             editorState={editorState}
+            renamingPath={renamingPath}
+            canStartRename={canStartRename}
+            onRenameStart={handleRenameStart}
+            onRenameSubmit={handleRenameSubmit}
+            onDeleteStart={handleDeleteStart}
             workspacePath={workspacePath}
             workspaceIdentity={workspaceIdentity}
             onSelect={setSelectedPath}
@@ -781,6 +882,11 @@ export function WorkspaceFileTree({
             gitStatusLabelByStatus={gitStatusLabelByStatus}
             contextMenuLabels={fileContextMenuLabels}
             editorState={editorState}
+            renamingPath={renamingPath}
+            canStartRename={canStartRename}
+            onRenameStart={handleRenameStart}
+            onRenameSubmit={handleRenameSubmit}
+            onDeleteStart={handleDeleteStart}
             onSelect={setSelectedPath}
             onToggleDirectory={handleDirectoryAction}
             onOpenPreview={handleOpenPreview}
