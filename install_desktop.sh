@@ -2,8 +2,8 @@
 # 打包桌面端（ZCodeOnline Preview 身份，生产后端）并替换安装到本机 /Applications。
 #
 # 用法：
-#   ./install_destop.sh                # 构建 + 重装
-#   ./install_destop.sh --skip-build   # 跳过构建，使用 dist 里现有的 ZCodeOnline DMG 重装
+#   ./install_desktop.sh                # 构建 + 重装
+#   ./install_desktop.sh --skip-build   # 跳过构建，使用 dist 里现有的 ZCodeOnline DMG 重装
 #
 # 注意：
 # - 运行会退出正在运行的 ZCodeOnline 并替换应用；如果本脚本是在 ZCode 会话里执行的，

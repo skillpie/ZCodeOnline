@@ -1,8 +1,8 @@
 # 打包桌面端 Windows 版（ZCodeOnline Preview 身份，生产后端）并静默安装到本机。
 #
 # 用法（PowerShell，需在仓库根执行）：
-#   .\install_destop.ps1                # 构建 + 安装
-#   .\install_destop.ps1 -SkipBuild     # 跳过构建，使用 dist 里现有的 NSIS 安装包
+#   .\install_desktop.ps1                # 构建 + 安装
+#   .\install_desktop.ps1 -SkipBuild     # 跳过构建，使用 dist 里现有的 NSIS 安装包
 #
 # 前提：
 # - 仅支持在 Windows 本机构建并安装（Node/pnpm 与打包工具链就绪）；

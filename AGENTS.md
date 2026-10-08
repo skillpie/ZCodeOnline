@@ -35,8 +35,8 @@
 | 模块阅读包                               | `pnpm architecture:context <module-id>`                                                  |
 | 未使用依赖与导出                         | `pnpm knip`                                                                              |
 | 导出引用查询                             | `pnpm dep:refs --list-exports <file>`                                                    |
-| 桌面端打包并重装本机（macOS）            | `./install_destop.sh`（`--skip-build` 只重装）                                           |
-| 桌面端打包并安装本机（Windows）          | `.\install_destop.ps1`（`-SkipBuild` 只安装）                                            |
+| 桌面端打包并重装本机（macOS）            | `./install_desktop.sh`（`--skip-build` 只重装）                                          |
+| 桌面端打包并安装本机（Windows）          | `.\install_desktop.ps1`（`-SkipBuild` 只安装）                                           |
 | Web 隧道部署                             | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库） |
 | 宿主 daemon 重建并重启（网页会话 Agent） | `./install_cli.sh`（`--skip-build` 只重启，`--no-restart` 只构建）                       |
 

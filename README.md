@@ -95,11 +95,11 @@ sudo xattr -rd com.apple.quarantine /Applications/ZCodeOnline.app
 也可用根目录一键脚本完成「打包 + 替换本机安装」（可与正式版并排；`--skip-build` / `-SkipBuild` 只重装不构建）：
 
 ```bash
-./install_destop.sh                # macOS
+./install_desktop.sh                # macOS
 ```
 
 ```powershell
-.\install_destop.ps1               # Windows（NSIS 静默安装）
+.\install_desktop.ps1               # Windows（NSIS 静默安装）
 ```
 
 ### Web 隧道部署
