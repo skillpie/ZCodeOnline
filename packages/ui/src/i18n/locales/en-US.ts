@@ -4945,10 +4945,8 @@ const enUS: Record<string, string> = {
   "chat.toolbar.mode.label": "Switch mode",
   // CUA composer entry button
   "chat.toolbar.computerUse.label": "Computer Use",
-  // Review mode toggle (default off): enabled inputs inject a review directive agent-side
-  "chat.toolbar.review.label": "Review",
-  "chat.toolbar.review.tooltip":
-    "When on, the agent grill-reviews your plan first (walks every design branch, one question at a time with a recommended answer) and only implements after you confirm consensus",
+  // Review mode (mode menu checkbox, mutually exclusive with plan mode): enabled inputs inject a review directive agent-side
+  "chat.review.removeMarker": "Turn off review mode",
   "chat.toolbar.dataSource.label": "Data Sources",
   "chat.toolbar.dataSource.tooltip":
     "Pick a data source for this conversation; the agent can query databases only after you select one (MySQL / PostgreSQL)",
@@ -6056,14 +6054,17 @@ const enUS: Record<string, string> = {
 
   // Modes
   "mode.plan": "Plan",
+  "mode.review": "Review",
   "mode.label.glm.build": "Requires approval",
   "mode.label.glm.edit": "Edit automatically",
   "mode.label.glm.plan": "Plan mode",
   "mode.label.glm.yolo": "Full access",
+  "mode.label.glm.review": "Review mode",
   "mode.description.glm.build": "Ask before file changes.",
   "mode.description.glm.edit": "Edit files automatically.",
   "mode.description.glm.plan": "Plan before editing.",
   "mode.description.glm.yolo": "Run with fewer confirmations.",
+  "mode.description.glm.review": "Key decisions go through review.",
   "todo.panel.title": "Todo",
   "todo.panel.currentTask": "Current task",
   "todo.panel.completed": "Todo completed",

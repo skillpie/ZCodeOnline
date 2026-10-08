@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from "react";
-import { LightbulbIcon, XIcon, ChevronDownIcon } from "lucide-react";
+import { LightbulbIcon, XIcon, ChevronDownIcon, SearchCheckIcon } from "lucide-react";
 import {
   TID_CHAT_MODE_SELECT_TRIGGER,
   TID_CHAT_MODE_SELECT_ITEM,
@@ -37,10 +37,11 @@ import type { V4ComposerToolbarProps } from "@/v4/composer/V4ComposerToolbar.js"
 
 function noop(): void {}
 
-/** Plan 是独立勾选项，三种权限仍为单选；只编辑草稿，不向 Runtime 发切换命令。 */
+/** Plan / Review 是独立勾选项（二者互斥），三种权限仍为单选；只编辑草稿，不向 Runtime 发切换命令。 */
 function V4ComposerModeSwitchImpl({
   provider,
   draftConfig,
+  reviewEnabled,
   disabled,
   activeConfigPicker,
   onConfigPickerOpenChange,
@@ -55,7 +56,10 @@ function V4ComposerModeSwitchImpl({
   | "activeConfigPicker"
   | "onConfigPickerOpenChange"
   | "onSwitchMode"
->) {
+> & {
+  /** 会话级评审开关（与计划互斥）；状态由 SessionPane 经草稿 scope 提供。 */
+  reviewEnabled: boolean;
+}) {
   const { intl } = useZCodeIntl();
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
   const modeShortcutLabel = useShortcutCommandLabel("cycleSessionMode");
@@ -156,6 +160,21 @@ function V4ComposerModeSwitchImpl({
               )}
             </span>
           </DropdownMenuCheckboxItem>
+          {/* 评审模式：原独立开关迁移为菜单勾选项；与计划互斥，切换经同一 onSwitchMode 通道。 */}
+          <DropdownMenuCheckboxItem
+            checked={reviewEnabled}
+            onCheckedChange={(checked) => onSwitchMode(checked ? "review" : "review-off")}
+            data-testid={testId(TID_CHAT_MODE_SELECT_ITEM, "review")}
+            className="min-h-13 items-start gap-3 py-2"
+          >
+            <SearchCheckIcon className="mt-0.5 size-4.5 shrink-0" />
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span>{intl.formatMessage({ id: "mode.label.glm.review" })}</span>
+              <span className="text-ui-sm text-foreground-subtle">
+                {intl.formatMessage({ id: "mode.description.glm.review" })}
+              </span>
+            </span>
+          </DropdownMenuCheckboxItem>
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup value={selected.id} onValueChange={onSwitchMode}>
             {permissions.map((mode) => {
@@ -207,6 +226,34 @@ function V4ComposerModeSwitchImpl({
               <XIcon className="hidden size-4 group-hover/plan:block group-focus-visible/plan:block" />
               <span className="inline group-data-[composer-compact=true]/plan:hidden">
                 {intl.formatMessage({ id: "mode.plan" })}
+              </span>
+            </Button>
+          </ControlHintTooltip>
+        </span>
+      )}
+      {/* 评审标记与计划标记同款：菜单关闭后仍可感知评审开启，悬停出现 X 可直接关闭。 */}
+      {reviewEnabled && (
+        <span data-testid="v4-composer-review-marker" className="flex items-center gap-1">
+          <span
+            role="separator"
+            aria-orientation="vertical"
+            className="h-3 w-px shrink-0 bg-border"
+          />
+          <ControlHintTooltip title={intl.formatMessage({ id: "chat.review.removeMarker" })}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              data-composer-collapse-priority="2"
+              onClick={() => onSwitchMode("review-off")}
+              aria-label={intl.formatMessage({ id: "chat.review.removeMarker" })}
+              className="group/review h-7 gap-1 rounded-lg px-2 text-ui-base text-foreground-subtle hover:text-foreground-subtle data-[composer-compact=true]:w-7 data-[composer-compact=true]:px-0"
+            >
+              <SearchCheckIcon className="size-4 group-hover/review:hidden group-focus-visible/review:hidden" />
+              <XIcon className="hidden size-4 group-hover/review:block group-focus-visible/review:block" />
+              <span className="inline group-data-[composer-compact=true]/review:hidden">
+                {intl.formatMessage({ id: "mode.review" })}
               </span>
             </Button>
           </ControlHintTooltip>

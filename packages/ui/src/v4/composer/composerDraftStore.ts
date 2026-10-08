@@ -118,6 +118,13 @@ function readDraft(value: unknown): V4ComposerDraft | null {
     ["files", "skills", "commands", "subagents", "whiteboards", "sessions", "plugins"].includes(
       String(mention.category),
     );
+  // 旧版 UI 允许计划与评审同时开启；读取时按新约束（互斥）保留计划、丢弃评审。
+  const planEnabled =
+    typeof value.planEnabled === "boolean"
+      ? value.planEnabled
+      : mode.success
+        ? mode.data === "plan"
+        : undefined;
   return {
     text: value.text,
     ...(typeof value.editorStateJson === "string"
@@ -125,11 +132,7 @@ function readDraft(value: unknown): V4ComposerDraft | null {
       : {}),
     ...(hasMention ? { mention: mention as unknown as ComposerMentionPrefill } : {}),
     ...(mode.success ? { mode: mode.data === "plan" ? ("build" as const) : mode.data } : {}),
-    ...(typeof value.planEnabled === "boolean"
-      ? { planEnabled: value.planEnabled }
-      : mode.success
-        ? { planEnabled: mode.data === "plan" }
-        : {}),
+    ...(planEnabled !== undefined ? { planEnabled } : {}),
     ...(typeof value.lastPermissionGrantId === "string"
       ? { lastPermissionGrantId: value.lastPermissionGrantId }
       : {}),
@@ -140,7 +143,9 @@ function readDraft(value: unknown): V4ComposerDraft | null {
     ...(typeof value.dataSourceId === "string" && value.dataSourceId
       ? { dataSourceId: value.dataSourceId }
       : {}),
-    ...(value.reviewEnabled === true ? { reviewEnabled: true as const } : {}),
+    ...(value.reviewEnabled === true && planEnabled !== true
+      ? { reviewEnabled: true as const }
+      : {}),
     ...(value.initializeFromNewTask === true && !mode.success
       ? { initializeFromNewTask: true as const }
       : {}),

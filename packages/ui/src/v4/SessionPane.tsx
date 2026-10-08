@@ -1255,7 +1255,6 @@ export function SessionPane({
     handleDraftSwitchMode,
     composerDraftRef,
     handleDraftSelectDataSource,
-    handleDraftSetReviewEnabled,
     promoteComposerDraft,
     captureAcceptedModelSelection,
     replaceComposerDraft,
@@ -4450,9 +4449,8 @@ export function SessionPane({
       // 会话级数据源绑定（specs/data-source.md §7）：入口的勾选与文案以此为准。
       selectedDataSourceId={composerDraft.dataSourceId ?? null}
       onSelectDataSource={handleDraftSelectDataSource}
-      // 会话级评审开关（默认关闭）：开启的输入按轮注入评审指令。
+      // 会话级评审开关（默认关闭，与计划模式互斥）：入口在模式菜单，开启的输入按轮注入评审指令。
       reviewEnabled={composerDraft.reviewEnabled === true}
-      onSetReviewEnabled={handleDraftSetReviewEnabled}
       onStop={handleStopFromButton}
       onSelectModel={handleSelectModel}
       onSelectThought={handleSelectThought}

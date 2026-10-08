@@ -156,7 +156,6 @@ import { useConversationSelectionReferences } from "@/v4/composer/useConversatio
 import { ConversationBackgroundWorkTrigger } from "@/v4/composer/ConversationBackgroundWorkTrigger.js";
 import { V4ComposerCuaEntry } from "@/v4/composer/V4ComposerCuaEntry.js";
 import { V4ComposerDataSourceEntry } from "@/v4/composer/V4ComposerDataSourceEntry.js";
-import { V4ComposerReviewEntry } from "@/v4/composer/V4ComposerReviewEntry.js";
 import {
   V4ComposerModeSwitch,
   V4ComposerModelControls,
@@ -373,10 +372,8 @@ interface ConversationComposerProps {
   selectedDataSourceId: string | null;
   /** 面板选择回调；null 表示取消选择。 */
   onSelectDataSource: (dataSourceId: string | null) => void;
-  /** 会话级评审开关（默认关闭）；开启后本轮注入评审指令（先评审达成共识再实现）。 */
+  /** 会话级评审开关（默认关闭，与计划模式互斥）；入口在模式菜单，开启后本轮注入评审指令。 */
   reviewEnabled: boolean;
-  /** 评审开关回调；关闭是显式事实，必须以 false 回调。 */
-  onSetReviewEnabled: (reviewEnabled: boolean) => void;
   updateComposerContent: (
     content: Pick<V4ComposerDraft, "text" | "editorStateJson" | "mention">,
   ) => void;
@@ -504,7 +501,6 @@ function ConversationComposerImpl({
   selectedDataSourceId,
   onSelectDataSource,
   reviewEnabled,
-  onSetReviewEnabled,
   updateComposerContent,
   replaceComposerDraft,
   submissionReady = true,
@@ -2221,6 +2217,7 @@ function ConversationComposerImpl({
           workspaceIdentity={workspaceIdentity}
           provider={provider}
           draftConfig={draftConfig}
+          reviewEnabled={reviewEnabled}
           disabled={disabled}
           activeConfigPicker={activeConfigPicker}
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
@@ -2240,11 +2237,6 @@ function ConversationComposerImpl({
           selectedDataSourceId={selectedDataSourceId}
           onSelectDataSource={onSelectDataSource}
         />
-        {/* 评审入口：开关状态由 SessionPane 经草稿 scope 提供；按轮透传给 Agent。 */}
-        <V4ComposerReviewEntry
-          reviewEnabled={reviewEnabled}
-          onSetReviewEnabled={onSetReviewEnabled}
-        />
         <ConversationBackgroundWorkTrigger
           backgroundWorks={snapshot?.backgroundWorks ?? []}
           runningSubagentCount={runningSubagentCount}
@@ -2263,7 +2255,6 @@ function ConversationComposerImpl({
       onOpenRunningBackgroundWorks,
       onSwitchMode,
       onSelectDataSource,
-      onSetReviewEnabled,
       provider,
       remoteSessionId,
       runningSubagentCount,

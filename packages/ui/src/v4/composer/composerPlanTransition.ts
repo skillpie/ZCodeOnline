@@ -11,5 +11,7 @@ export function applyComposerPlanTransition(
     ...draft,
     lastPlanTransitionId: transition.toolCallId,
     planEnabled: transition.planEnabled,
+    // 计划与评审互斥：Agent 侧进入计划时同样要退出评审，避免两条指令同时注入。
+    ...(transition.planEnabled ? { reviewEnabled: undefined } : {}),
   };
 }

@@ -4638,10 +4638,8 @@ const zhCN: Record<string, string> = {
   "chat.toolbar.mode.label": "切换模式",
   // CUA 输入框常驻入口按钮
   "chat.toolbar.computerUse.label": "电脑操作",
-  // 评审模式开关（默认关闭）：开启的输入在 Agent 侧注入评审指令
-  "chat.toolbar.review.label": "评审",
-  "chat.toolbar.review.tooltip":
-    "开启后，Agent 会先对你的方案做拷问式评审（遍历设计分支、每次一个问题并附推荐答案），达成共识后再实现",
+  // 评审模式（模式菜单勾选项，与计划模式互斥）：开启的输入在 Agent 侧注入评审指令
+  "chat.review.removeMarker": "关闭评审模式",
   "chat.toolbar.dataSource.label": "数据源",
   "chat.toolbar.dataSource.tooltip":
     "为本对话选择数据源；选择后 Agent 才能在对话中查询数据库（MySQL / PostgreSQL）",
@@ -5797,14 +5795,17 @@ const zhCN: Record<string, string> = {
 
   // 模式
   "mode.plan": "计划",
+  "mode.review": "评审",
   "mode.label.glm.build": "需要授权",
   "mode.label.glm.edit": "自动编辑",
   "mode.label.glm.plan": "计划模式",
   "mode.label.glm.yolo": "完全访问",
+  "mode.label.glm.review": "评审模式",
   "mode.description.glm.build": "改文件前先问我。",
   "mode.description.glm.edit": "自动编辑文件。",
   "mode.description.glm.plan": "编辑前先出计划。",
   "mode.description.glm.yolo": "减少确认次数。",
+  "mode.description.glm.review": "关键决策参与评审。",
   "todo.panel.title": "待办",
   "todo.panel.currentTask": "当前任务",
   "todo.panel.completed": "todo 已完成",

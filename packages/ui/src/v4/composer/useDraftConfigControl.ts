@@ -8,6 +8,7 @@ import { applyComposerPermissionGrant } from "@/v4/composer/composerPermissionGr
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ZCODE_AGENT_PROVIDER, resolveExecutionState } from "@zcode/shared";
 import { applyComposerPlanTransition } from "@/v4/composer/composerPlanTransition.js";
+import { applyComposerModeSwitch } from "@/v4/composer/composerModeSwitch.js";
 import type {
   ZCodeConfigOption,
   ModelSelection,
@@ -101,8 +102,6 @@ interface DraftConfigControl {
   handleDraftSwitchMode: (mode: string) => void;
   /** 会话级数据源选择（specs/data-source.md §7）；null = 恢复未选择。 */
   handleDraftSelectDataSource: (dataSourceId: string | null) => void;
-  /** 会话级评审开关；false = 关闭（默认态）。 */
-  handleDraftSetReviewEnabled: (reviewEnabled: boolean) => void;
 }
 
 export function useDraftConfigControl(params: {
@@ -468,23 +467,8 @@ export function useDraftConfigControl(params: {
 
   const handleDraftSwitchMode = useCallback(
     (mode: string) => {
-      if (mode === "plan" || mode === "plan-off") {
-        updateComposerDraft((current) => ({
-          ...current,
-          mode: current.mode === "plan" ? "build" : (current.mode ?? "build"),
-          planEnabled: mode === "plan",
-          initializeFromNewTask: undefined,
-        }));
-        return;
-      }
-      // 模式与模型同属当前 scope；不再写全局偏好，避免别的任务反向覆盖。
-      const parsed = submissionModeSchema.safeParse(mode);
-      if (parsed.success)
-        updateComposerDraft((current) => ({
-          ...current,
-          mode: parsed.data,
-          initializeFromNewTask: undefined,
-        }));
+      // 计划/评审互斥与权限单选的草稿迁移收敛在纯函数中（见 applyComposerModeSwitch）。
+      updateComposerDraft((current) => applyComposerModeSwitch(current, mode) ?? current);
     },
     [updateComposerDraft],
   );
@@ -495,17 +479,6 @@ export function useDraftConfigControl(params: {
       updateComposerDraft((current) => ({
         ...current,
         ...(dataSourceId ? { dataSourceId } : { dataSourceId: undefined }),
-      }));
-    },
-    [updateComposerDraft],
-  );
-
-  // 评审开关与数据源绑定同 scope 持久化；发送时冻结进本次 Submission。
-  const handleDraftSetReviewEnabled = useCallback(
-    (reviewEnabled: boolean) => {
-      updateComposerDraft((current) => ({
-        ...current,
-        ...(reviewEnabled ? { reviewEnabled: true } : { reviewEnabled: undefined }),
       }));
     },
     [updateComposerDraft],
@@ -526,7 +499,6 @@ export function useDraftConfigControl(params: {
     handleDraftSelectThought,
     handleDraftSwitchMode,
     handleDraftSelectDataSource,
-    handleDraftSetReviewEnabled,
   };
 }
 
