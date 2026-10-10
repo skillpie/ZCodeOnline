@@ -10,9 +10,9 @@ import { resolveHelpAppConfig } from "../src/helpAppConfig.js";
 const localConfig = {
   community_urls: {
     "zh-CN":
-      "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=8fan16c9-5687-489b-afd2-ec9a42261659",
+      "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=e9ch50de-7cb0-4cb2-9adf-2ba13d632868",
     "en-US":
-      "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=8fan16c9-5687-489b-afd2-ec9a42261659",
+      "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=e9ch50de-7cb0-4cb2-9adf-2ba13d632868",
   },
   feedback_url: "https://local.example.com/feedback",
 };
@@ -29,7 +29,7 @@ const remoteConfig = {
 test("getCommunityUrlFromConfig 按语言取值并对缺失语言保持隐藏", () => {
   assert.equal(
     getCommunityUrlFromConfig(localConfig, "zh-CN"),
-    "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=8fan16c9-5687-489b-afd2-ec9a42261659",
+    "https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=e9ch50de-7cb0-4cb2-9adf-2ba13d632868",
   );
   assert.equal(getCommunityUrlFromConfig(localConfig, "ja-JP"), undefined);
   assert.equal(getCommunityUrlFromConfig(undefined, "zh-CN"), undefined);

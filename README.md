@@ -4,7 +4,7 @@
   <img src="public/logo/icons/1024x1024.png" alt="ZCodeOnline" width="128" height="128" />
 </div>
 <p align="center">
-  <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=8fan16c9-5687-489b-afd2-ec9a42261659">飞书社群</a> ·
+  <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=e9ch50de-7cb0-4cb2-9adf-2ba13d632868">飞书社群</a> ·
   <a href="https://discord.gg/z9aBcQXZQ3">Discord</a>
 </p>
 <p align="center">
