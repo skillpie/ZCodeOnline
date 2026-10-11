@@ -1195,7 +1195,7 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.mergeAction": "合入",
   "git.branchSwitcher.mergeAction.ariaLabel": "把分支 {branchName} 合并到当前分支",
   "git.branchSwitcher.mergePrompt":
-    "请将分支 {branchName} 合并到本地当前分支，如遇冲突请解决冲突后完成合并。",
+    "请先获取远端更新（git fetch），然后将远端分支 {branchName} 的最新提交合并到本地当前分支；若远端不存在该分支，则改为合并本地分支 {branchName}。如遇冲突请解决冲突后完成合并。",
   "git.branchSwitcher.pullAction": "拉取",
   "git.branchSwitcher.pullAction.ariaLabel": "拉取分支 {branchName} 的远程更新",
   "git.branchSwitcher.pullPrompt": "请拉取当前分支（{branchName}）的远程更新。",

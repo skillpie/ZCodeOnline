@@ -1294,7 +1294,7 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.mergeAction": "Merge",
   "git.branchSwitcher.mergeAction.ariaLabel": "Merge branch {branchName} into the current branch",
   "git.branchSwitcher.mergePrompt":
-    "Please merge branch {branchName} into the local current branch. If there are conflicts, resolve them and complete the merge.",
+    "Please fetch from the remote first (git fetch), then merge the latest commits of the remote branch {branchName} into the local current branch; if the branch does not exist on the remote, merge the local branch {branchName} instead. Resolve any conflicts and complete the merge.",
   "git.branchSwitcher.pullAction": "Pull",
   "git.branchSwitcher.pullAction.ariaLabel": "Pull remote updates for branch {branchName}",
   "git.branchSwitcher.pullPrompt":
