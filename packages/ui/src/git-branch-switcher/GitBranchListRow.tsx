@@ -7,7 +7,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import type { WorkspaceConversationPromptScope } from "@/lib/workspaceConversationPromptRuntime.js";
 import { cn } from "@/components/lib/utils.js";
-import { FolderGit2, GitBranchIcon } from "lucide-react";
+import { ChevronRightIcon, FolderGit2, GitBranchIcon } from "lucide-react";
 
 interface GitBranchListRowProps {
   branch: GitLocalBranch;
@@ -20,8 +20,12 @@ interface GitBranchListRowProps {
   conversationPromptScope: WorkspaceConversationPromptScope;
   /** 先于提示词发送调用，用于关闭分支弹层。 */
   onConversationActionTriggered: () => void;
-  /** 非当前分支行尾提供「检出为 Worktree」动作；当前分支已在主树检出，不提供。 */
+  /** 行尾「检出为 Worktree」动作：非当前分支直接检出；已有 worktree 或当前分支走并行副本语义。 */
   onCheckoutAsWorktree?: (branchName: string) => void;
+  /** 该分支名下的 worktree 数量；大于 0 时行首展示树形展开箭头（默认折叠）。 */
+  worktreeCount?: number;
+  expanded?: boolean;
+  onToggleWorktrees?: () => void;
 }
 
 /**
@@ -40,16 +44,18 @@ export function GitBranchListRow({
   conversationPromptScope,
   onConversationActionTriggered,
   onCheckoutAsWorktree,
+  worktreeCount = 0,
+  expanded = false,
+  onToggleWorktrees,
 }: GitBranchListRowProps) {
   const { intl } = useZCodeIntl();
   const [hovered, setHovered] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
   const shouldMountConversationAction =
     enableConversationAction && (isCoarseTouchDevice() || hovered || focusWithin);
+  // 所有分支行（含当前分支）都提供 worktree 动作：当前分支在该动作下走“并行副本”语义。
   const shouldMountWorktreeAction =
-    !isCurrent &&
-    Boolean(onCheckoutAsWorktree) &&
-    (isCoarseTouchDevice() || hovered || focusWithin);
+    Boolean(onCheckoutAsWorktree) && (isCoarseTouchDevice() || hovered || focusWithin);
 
   return (
     <CommandItem
@@ -80,6 +86,26 @@ export function GitBranchListRow({
         onSwitch(branch.name);
       }}
     >
+      {worktreeCount > 0 && onToggleWorktrees ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={intl.formatMessage(
+            { id: "git.branchSwitcher.worktreeToggle.ariaLabel" },
+            { branchName: branch.name, count: worktreeCount },
+          )}
+          className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm text-foreground-subtle hover:text-foreground"
+          onClick={(event) => {
+            // 阻止冒泡到 cmdk Item：展开箭头只切换树形子列表，不触发分支切换。
+            event.stopPropagation();
+            onToggleWorktrees();
+          }}
+        >
+          <ChevronRightIcon
+            className={cn("size-3.5 transition-transform", expanded && "rotate-90")}
+          />
+        </button>
+      ) : null}
       <GitBranchIcon className="mt-0.5 size-4 text-foreground-subtle" />
       <div className="min-w-0 flex-1 flex flex-col gap-1 text-left">
         <div

@@ -168,6 +168,8 @@ export interface GitAddWorktreeRequest extends GitRepositoryRequest {
   branchName?: string;
   /** 基于当前 HEAD 新建分支并检出为 worktree。 */
   newBranchName?: string;
+  /** 新分支的起点引用（分支名 / tag / commit）；缺省为当前 HEAD，仅 newBranchName 模式生效。 */
+  newBranchStartPoint?: string;
 }
 
 export type GitWorktreeMutationIssueCode =
@@ -179,6 +181,7 @@ export type GitWorktreeMutationIssueCode =
   | "worktree-name-conflict"
   | "worktree-dirty"
   | "worktree-not-found"
+  | "worktree-detached"
   | "operation-in-progress"
   | "not-repository"
   | "unknown";
@@ -199,6 +202,13 @@ export interface GitWorktreeMutationResult {
 export interface GitRemoveWorktreeRequest extends GitRepositoryRequest {
   /** 必须出现在 `git worktree list` 输出中，拒绝删除任意输入路径。 */
   worktreePath: string;
+}
+
+export interface GitRenameWorktreeRequest extends GitRepositoryRequest {
+  /** 必须出现在 `git worktree list` 输出中，拒绝重命名任意输入路径。 */
+  worktreePath: string;
+  /** 目标分支名；目录随之移动到主树 `.worktrees/<净化名>`，保持“目录名 = 净化分支名”约定。 */
+  newBranchName: string;
 }
 
 export interface GitChangesRequest extends GitRepositoryRequest {

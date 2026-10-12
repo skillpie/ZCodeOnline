@@ -26,6 +26,7 @@ import type {
   GitRefreshRequest,
   GitRefreshResult,
   GitRemoveWorktreeRequest,
+  GitRenameWorktreeRequest,
   GitRepositoryRequest,
   GitRepositorySummary,
   GitWorkspaceRepositoryInfo,
@@ -47,6 +48,7 @@ export interface IGitService {
   listWorktrees(params: GitRepositoryRequest): Promise<GitWorktreeListResult>;
   addWorktree(params: GitAddWorktreeRequest): Promise<GitWorktreeMutationResult>;
   removeWorktree(params: GitRemoveWorktreeRequest): Promise<GitWorktreeMutationResult>;
+  renameWorktree(params: GitRenameWorktreeRequest): Promise<GitWorktreeMutationResult>;
   getChanges(params: GitChangesRequest): Promise<GitFileChange[]>;
   getIgnoredPaths(params: GitIgnoredPathsRequest): Promise<string[]>;
   getDiff(params: GitDiffQuery): Promise<GitDiffResult>;

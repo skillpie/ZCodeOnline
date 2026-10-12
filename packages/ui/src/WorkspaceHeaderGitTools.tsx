@@ -18,7 +18,7 @@
  * 两者可用性与按钮展示规则同源，键位可在设置-键盘快捷键改绑。
  */
 import { useCallback, useState } from "react";
-import { ArrowDownToLine, LoaderIcon } from "lucide-react";
+import { CloudDownloadIcon, LoaderIcon } from "lucide-react";
 import type { GitRepositorySummary, ZCodeTaskChangeSummary } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
@@ -129,10 +129,11 @@ export function WorkspaceHeaderGitTools({
             className="h-7 w-fit gap-1 rounded-lg px-1.5 [app-region:no-drag]"
             onClick={handlePull}
           >
+            {/* 2026-10-13 按用户决策：拉取与推送入口统一云朵形态（CloudDownload / CloudUpload）。 */}
             {pullPending ? (
               <LoaderIcon className="size-4 shrink-0 animate-spin text-foreground" aria-hidden />
             ) : (
-              <ArrowDownToLine className="size-4 shrink-0 text-foreground" aria-hidden />
+              <CloudDownloadIcon className="size-4 shrink-0 text-foreground" aria-hidden />
             )}
             <span className="min-w-0 whitespace-nowrap text-ui-sm text-foreground">
               {pullLabel}

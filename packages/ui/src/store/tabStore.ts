@@ -123,6 +123,11 @@ export interface TabStoreState {
   openSettingsTab: () => void;
   /** 通过 workspace 路径激活 tab（跨窗口 focus 用），返回是否找到 */
   activateTabByPath: (path: string, options?: { workspaceIdentity?: string }) => boolean;
+  /**
+   * 本地 workspace 目录重命名后，把指向旧路径的本地标签页迁移到新路径（标签文案同步更新）。
+   * 只迁移无 remote identity 的本地标签页；会话/任务历史仍按旧路径键保留，不在此迁移。
+   */
+  migrateWorkspaceTabPath: (oldPath: string, newPath: string) => void;
   /** 切换 workspace 的展开/收起态 */
   toggleWorkspaceExpanded: (path: string) => void;
   /** 展开当前任务区里的全部 workspace */
@@ -569,6 +574,45 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
 
       set(nextState);
       return true;
+    },
+
+    migrateWorkspaceTabPath: (oldPath: string, newPath: string) => {
+      if (oldPath === newPath) {
+        return;
+      }
+
+      const stateBefore = get();
+      let migrated = false;
+      const tabs = stateBefore.tabs.map((tab) => {
+        // 只迁移本地 workspace 标签页：远端标签页的 identity 体系不按本地路径迁移。
+        if (
+          !isWorkspaceTab(tab) ||
+          tab.workspaceIdentity ||
+          tab.remoteSessionId ||
+          tab.workspacePath !== oldPath
+        ) {
+          return tab;
+        }
+
+        migrated = true;
+        return { ...tab, workspacePath: newPath, label: labelFromPath(newPath) };
+      });
+      if (!migrated) {
+        return;
+      }
+
+      const nextState: Partial<TabStoreState> = { tabs };
+      if (stateBefore.activeWorkspacePath === oldPath) {
+        nextState.activeWorkspacePath = newPath;
+      }
+      if (stateBefore.expandedWorkspacePaths.has(oldPath)) {
+        const expandedWorkspacePaths = new Set(stateBefore.expandedWorkspacePaths);
+        expandedWorkspacePaths.delete(oldPath);
+        expandedWorkspacePaths.add(newPath);
+        nextState.expandedWorkspacePaths = expandedWorkspacePaths;
+      }
+
+      set(nextState);
     },
 
     restoreTabs: (tabsInput, activeIndex: number) => {

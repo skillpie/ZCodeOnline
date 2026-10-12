@@ -4,12 +4,16 @@ import { Button } from "@/components/ui/button.js";
 import { CommandItem } from "@/components/ui/command.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
-import { FolderGit2, Trash2Icon } from "lucide-react";
+import { cn } from "@/components/lib/utils.js";
+import { FolderGit2, SquarePenIcon, Trash2Icon } from "lucide-react";
 
 interface GitWorktreeListRowProps {
   worktree: GitWorktreeRecord;
   mutationPending: boolean;
+  /** 嵌在来源分支行下方的树形子项时为 true，行内缩进一层。 */
+  nested?: boolean;
   onOpen: (worktreePath: string) => void;
+  onRename: (worktree: GitWorktreeRecord) => void;
   onRemove: (worktree: GitWorktreeRecord) => void;
 }
 
@@ -19,27 +23,35 @@ function labelFromWorktreePath(path: string): string {
 }
 
 /**
- * worktree 分组的单行。点击行 = 在本窗口打开该 worktree 标签页；
- * 行尾移除动作与分支行对话动作同模式（hover / focus-within 挂载，触屏常驻），
- * 当前行以「当前」标识替代移除入口——移除自己所在的 workspace 危险且无意义。
+ * worktree 单行。点击行 = 在本窗口打开该 worktree 标签页；
+ * 行尾重命名 / 移除动作与分支行对话动作同模式（hover / focus-within 挂载，触屏常驻）。
+ * 当前行不提供重命名与移除（动到正打开的 workspace 危险），行内以「当前」标识替代。
+ * detached worktree 没有分支可改，重命名入口隐藏。
  */
 export function GitWorktreeListRow({
   worktree,
   mutationPending,
+  nested = false,
   onOpen,
+  onRename,
   onRemove,
 }: GitWorktreeListRowProps) {
   const { intl } = useZCodeIntl();
   const [hovered, setHovered] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
-  const shouldMountRemoveAction =
-    !worktree.isCurrentWorkspace && (isCoarseTouchDevice() || hovered || focusWithin);
+  const canMutate = !worktree.isCurrentWorkspace;
+  const shouldMountMutateActions = canMutate && (isCoarseTouchDevice() || hovered || focusWithin);
+  const canRename = canMutate && Boolean(worktree.branchName);
 
   return (
     <CommandItem
       value={labelFromWorktreePath(worktree.path)}
       disabled={mutationPending}
-      className="items-start gap-3 rounded-lg px-3 py-2 text-ui-base"
+      title={worktree.path}
+      className={cn(
+        "items-center gap-3 rounded-lg py-2 pr-3 text-ui-base",
+        nested ? "pl-9" : "px-3",
+      )}
       onMouseEnter={() => {
         setHovered(true);
       }}
@@ -58,21 +70,36 @@ export function GitWorktreeListRow({
         onOpen(worktree.path);
       }}
     >
-      <FolderGit2 className="mt-0.5 size-4 text-foreground-subtle" />
-      <div className="min-w-0 flex-1 flex flex-col gap-1 text-left">
-        <div className="truncate text-ui-base font-medium text-foreground">
-          {labelFromWorktreePath(worktree.path)}
-        </div>
-        <p className="truncate text-ui-base text-foreground-subtle">
-          {worktree.branchName ?? worktree.path}
-        </p>
-      </div>
+      <FolderGit2 className="size-4 shrink-0 text-foreground-subtle" />
+      <span className="min-w-0 flex-1 truncate text-left text-ui-base font-medium text-foreground">
+        {labelFromWorktreePath(worktree.path)}
+      </span>
       {worktree.isCurrentWorkspace ? (
-        <span className="shrink-0 self-center text-ui-caption text-foreground-subtle">
+        <span className="shrink-0 text-ui-caption text-foreground-subtle">
           {intl.formatMessage({ id: "git.worktree.current" })}
         </span>
       ) : null}
-      {shouldMountRemoveAction ? (
+      {shouldMountMutateActions && canRename ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          disabled={mutationPending}
+          aria-label={intl.formatMessage(
+            { id: "git.worktree.renameAction.ariaLabel" },
+            { name: labelFromWorktreePath(worktree.path) },
+          )}
+          className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          onClick={(event) => {
+            // 阻止冒泡到 cmdk Item，避免行内动作被当作“打开 worktree”。
+            event.stopPropagation();
+            onRename(worktree);
+          }}
+        >
+          <SquarePenIcon className="size-3.5" />
+        </Button>
+      ) : null}
+      {shouldMountMutateActions ? (
         <Button
           type="button"
           variant="outline"
@@ -82,7 +109,7 @@ export function GitWorktreeListRow({
             { id: "git.worktree.removeAction.ariaLabel" },
             { name: labelFromWorktreePath(worktree.path) },
           )}
-          className="-mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
             // 阻止冒泡到 cmdk Item，避免移除动作被当作“打开 worktree”。
             event.stopPropagation();

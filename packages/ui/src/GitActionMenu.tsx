@@ -1368,12 +1368,10 @@ export function GitActionMenu({
 
   return (
     <>
-      {/* 触发器 hover 提示随主动作裁决切换「提交/推送」，并展示当前生效的 gitCommit 键位
-          （与头部「拉取」按钮的 tooltip 角标同一形态）；未分配键位时不渲染角标。 */}
+      {/* 触发器文案与图标固定为「推送」（2026-10-13 按用户决策），hover 提示展示当前生效的
+          gitCommit 键位（与头部「拉取」按钮的 tooltip 角标同一形态）；未分配键位时不渲染角标。 */}
       <ControlHintTooltip
-        title={intl.formatMessage({
-          id: primaryActionId === "push" ? "git.actionMenu.push" : "git.actionMenu.trigger",
-        })}
+        title={intl.formatMessage({ id: "git.actionMenu.push" })}
         shortcut={commitShortcutLabel}
         side="bottom"
       >
@@ -1401,13 +1399,7 @@ export function GitActionMenu({
             variant="ghost"
             size="default"
             disabled={primaryActionDisabled}
-            aria-label={intl.formatMessage({
-              // 主动作是推送（已提交未推送）时按钮叫「推送」，与图标、行为一致。
-              id:
-                primaryActionId === "push"
-                  ? "git.actionMenu.push"
-                  : "git.actionMenu.trigger.ariaLabel",
-            })}
+            aria-label={intl.formatMessage({ id: "git.actionMenu.push" })}
             className={cn(
               "h-7 rounded-lg border-0 gap-1 px-1.5 @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0 @max-[560px]/workspace-header:[&>span]:hidden",
               triggerIconOnly && "w-7 px-0 [&>span]:hidden",
@@ -1418,19 +1410,17 @@ export function GitActionMenu({
               isStatusRowTrigger && !triggerIconOnly ? undefined : () => handlePrimaryAction()
             }
           >
-            {/* 主按钮进入 pending 时直接替换左侧动作图标，避免在紧凑头部里额外追加 loading 图标把按钮挤宽。*/}
+            {/* 主按钮进入 pending 时直接替换左侧动作图标，避免在紧凑头部里额外追加 loading 图标把按钮挤宽。
+                2026-10-13 按用户决策：图标与文案统一为「推送 / CloudUpload」，不再随主动作切换；
+                主动作裁决只决定点击后打开提交弹窗还是推送弹窗。 */}
             {triggerPending ? (
               <LoaderIcon className="size-4 animate-spin text-foreground-subtle" />
-            ) : primaryActionId === "push" ? (
-              <ArrowUpFromLine className="size-4 text-foreground" />
             ) : (
-              <GitCommitIcon className="size-4 text-foreground" />
+              <CloudUploadIcon className="size-4 text-foreground" />
             )}
             {/* 头部形态与「拉取」/分支切换器同档（text-ui-sm）；状态面板行保持 text-ui-base。 */}
             <span className={cn(isStatusRowTrigger ? "min-w-0 truncate" : "text-ui-sm")}>
-              {intl.formatMessage({
-                id: primaryActionId === "push" ? "git.actionMenu.push" : "git.actionMenu.trigger",
-              })}
+              {intl.formatMessage({ id: "git.actionMenu.push" })}
             </span>
           </Button>
         </div>

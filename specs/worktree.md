@@ -8,8 +8,13 @@
 - 分支切换器（`GitBranchSwitcher`）下拉列表新增「Worktrees」分组：列出当前仓库全部 linked
   worktree（不含主树），支持「打开」（在本窗口开新 workspace 标签页并回到新任务草稿）与
   「移除」。
-- 分支列表中**非当前分支**的行尾提供「检出为 Worktree」动作（hover / focus-within 挂载，
-  触屏常驻，与行尾对话动作同模式）：把该分支检出为独立 worktree，不动当前工作区。
+- **所有分支行**（含当前分支）的行尾提供「检出为 Worktree」动作（hover / focus-within 挂载，
+  触屏常驻，与行尾对话动作同模式），统一为**并行副本语义**：每次点击都基于该分支新建
+  `{分支名}-{MMddHHmm}` 分支并检出为独立 worktree，不动当前工作区、不携带未提交更改。
+  git 不允许同一分支检出两个 worktree，副本命名天然规避该限制，因此重复点击、对当前分支
+  点击都能持续产出并行副本；默认名与现有分支撞车时降级为秒级 `{...}-{MMddHHmmss}`，仍撞车
+  追加 `-2`、`-3` 序号。无弹窗、无底部独立入口（行尾的「合入 / 拉取」是既有对话动作，与
+  worktree 无关）。
 - worktree 目录统一落在**主树根**的 `.worktrees/<净化后的分支名>`；当前 workspace 本身已是
   linked worktree 时同样锚定主树根（从 `git worktree list` 第一条解析），保证同一仓库的所有
   worktree 聚在一处。
@@ -20,7 +25,8 @@
 - 移除：clean worktree 经确认后 `git worktree remove`；dirty（有未提交更改）**阻止**并提示，
   不提供 force；目标 workspace 有运行中会话/任务时由 renderer 侧阻止；目录已被外部删除的
   悬空记录在移除时自动 `git worktree prune`。主树不提供移除。
-- 不做：worktree 重命名、独立的 worktree 管理面板、基于任意 ref（非分支）的检出。
+- 不做：worktree 重命名、独立的 worktree 管理面板、创建时自定义命名的弹窗、基于任意 ref
+  （非分支）的检出。
 
 ## 2. 状态所有者
 
@@ -67,8 +73,10 @@ interface GitWorktreeListResult {
 interface GitAddWorktreeRequest extends GitRepositoryRequest {
   /** 检出已有分支；与 newBranchName 互斥 */
   branchName?: string;
-  /** 基于当前 HEAD 新建分支并检出为 worktree */
+  /** 新建分支并检出为 worktree */
   newBranchName?: string;
+  /** 新分支的起点引用（分支 / tag / commit）；缺省为当前 HEAD，仅 newBranchName 模式生效 */
+  newBranchStartPoint?: string;
 }
 
 interface GitWorktreeMutationIssue {
@@ -81,6 +89,7 @@ interface GitWorktreeMutationIssue {
     | "worktree-name-conflict"
     | "worktree-dirty"
     | "worktree-not-found"
+    | "worktree-detached"
     | "operation-in-progress"
     | "not-repository"
     | "unknown";
@@ -101,6 +110,11 @@ interface IGitService {
     workspacePath: string;
     worktreePath: string;
   }): Promise<GitWorktreeMutationResult>;
+  renameWorktree(params: {
+    workspacePath: string;
+    worktreePath: string;
+    newBranchName: string;
+  }): Promise<GitWorktreeMutationResult>;
 }
 ```
 
@@ -109,16 +123,20 @@ interface IGitService {
 
 ## 4. 事件顺序与失败语义
 
-**创建（分支行「检出为 Worktree」）**
+**创建（分支行「检出为 Worktree」，统一并行副本语义）**
 
 ```text
-行尾动作点击
+行尾动作点击（renderer）
+  → 生成默认名 buildWorktreeBranchSuggestion：{分支名}-{MMddHHmm}，
+    与本地分支投影撞车时降级 {..}-{MMddHHmmss}、{..}-{MMddHHmmss}-{n}
+  → gitService.addWorktree({ newBranchName, newBranchStartPoint: 来源分支 })
+Host
   → resolveRepository（workspace 当前 git 上下文）
-  → 解析主树根（worktree list 第一条）+ 校验分支名（check-ref-format）
-  → newBranchName 时查重（branch-already-exists）
-  → 生成净化目录名；.worktrees/<name> 已存在 → worktree-name-conflict
+  → 校验新分支名（check-ref-format）+ 查重（branch-already-exists）
+  → 校验起点引用存在（rev-parse --verify --end-of-options；失败 → branch-not-found）
+  → 解析主树根（worktree list 第一条）+ 生成净化目录名；已存在 → worktree-name-conflict
   → 幂等写 .git/info/exclude（追加缺失的 .worktrees/ 行）
-  → git worktree add（git 原生拒绝：branch-in-other-worktree 等翻译为 issue）
+  → git worktree add -b <新分支> <path> -- <起点>（git 原生拒绝翻译为 issue）
   → invalidate(workspacePath)（主树 status/exclude 缓存失效）
   → 返回 { ok, worktree }
 renderer 收到成功
@@ -150,18 +168,19 @@ useRootWorkspaceActions 打开目录一致）；否则 addTab + startDraft
 
 ## 5. 验收场景
 
-1. 主树选非当前分支 → 行尾「检出为 Worktree」→ `.worktrees/<name>` 生成、`.git/info/exclude`
-   出现 `.worktrees/`、主工作区 Review 面板不出现该目录、新标签页自动打开并停在空草稿。
-2. 基于当前 workspace 为 linked worktree 的仓库执行创建 → 新 worktree 仍落在主树 `.worktrees/` 下。
-3. 选已被其它 worktree 占用的分支 → 命中 `branch-in-other-worktree`，主工作区不变。
-4. 目录名冲突（同名分支先检出、删除分支后重复检出残留目录）→ `worktree-name-conflict` 提示。
-5. 下拉「Worktrees」分组列出全部 linked worktree；点击行打开对应标签页；当前 workspace 对应
+1. 选非当前分支 → 行尾「检出为 Worktree」→ 新分支 `{分支名}-{MMddHHmm}` 生成并检出为
+   `.worktrees/<净化名>`、`.git/info/exclude` 出现 `.worktrees/`、主工作区 Review 面板不出现
+   该目录、新标签页自动打开并停在空草稿，且 HEAD 与来源分支一致。
+2. 对同一分支再次点击、以及对当前分支（如 main）点击 → 各自创建 `{分支名}-{MMddHHmm}` 并行
+   副本；同一分钟内重复创建时自动降级秒级后缀，多副本可共存。
+3. 基于当前 workspace 为 linked worktree 的仓库执行创建 → 新 worktree 仍落在主树 `.worktrees/` 下。
+4. 下拉「Worktrees」分组列出全部 linked worktree；点击行打开对应标签页；当前 workspace 对应
    行显示「当前」标识。
-6. 移除 clean worktree：确认后目录与 git 记录消失；移除 dirty worktree：被阻止并提示未提交更改；
+5. 移除 clean worktree：确认后目录与 git 记录消失；移除 dirty worktree：被阻止并提示未提交更改；
    目标 workspace 会话运行中：renderer 阻止；手动删目录后的悬空记录：移除动作自动 prune。
-7. 终端手工 `git worktree add/remove` 后重新展开下拉 → 列表反映最新事实（无第二事实漂移）。
-8. Web 与桌面行为一致（同一 gitService 通道）；服务层单测覆盖 porcelain 解析、目录名净化、
-   创建/移除的 issue 翻译。
+6. 终端手工 `git worktree add/remove` 后重新展开下拉 → 列表反映最新事实（无第二事实漂移）。
+7. Web 与桌面行为一致（同一 gitService 通道）；服务层单测覆盖 porcelain 解析、目录名净化、
+   startPoint 并行副本、创建/移除的 issue 翻译。
 
 ## 6. 边界与不变量
 

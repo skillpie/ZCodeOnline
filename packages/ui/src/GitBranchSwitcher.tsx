@@ -1,19 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { GitRepositorySummary } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandList,
-} from "@/components/ui/command.js";
+import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { cn } from "@/components/lib/utils.js";
 import {
   GitBranchCreateDialog,
   GitBranchSwitchAssistDialog,
 } from "@/git-branch-switcher/GitBranchDialogs.js";
+import { GitBranchTreeGroup } from "@/git-branch-switcher/GitBranchTreeGroup.js";
 import { GitGraphDialog } from "@/git-graph/GitGraphDialog.js";
 import { useGitBranchSwitcher } from "@/hooks/useGitBranchSwitcher.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -25,10 +20,11 @@ import {
   isCoarseTouchDevice,
   shouldRestoreChatInputFocusAfterPickerClose,
 } from "@/lib/pickerFocus.js";
-import { GitBranchListRow } from "@/git-branch-switcher/GitBranchListRow.js";
-import { GitWorktreeListRow } from "@/git-branch-switcher/GitWorktreeListRow.js";
+import { GitBranchPopoverFooter } from "@/git-branch-switcher/GitBranchPopoverFooter.js";
+import { GitWorktreeRenameDialog } from "@/git-branch-switcher/GitWorktreeRenameDialog.js";
 import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
-import { ChevronDownIcon, GitBranchIcon, GitGraph, LoaderIcon, PlusIcon } from "lucide-react";
+import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
+import { ChevronDownIcon, GitBranchIcon, LoaderIcon } from "lucide-react";
 
 interface GitBranchSwitcherProps {
   workspacePath: string;
@@ -100,7 +96,13 @@ export function GitBranchSwitcher({
     openWorktreeTab,
     checkoutBranchAsWorktree,
     removeWorktree,
-  } = useGitWorktreeActions({ workspacePath, open });
+    renameTarget,
+    renameBranchName,
+    setRenameBranchName,
+    openRenameDialog,
+    closeRenameDialog,
+    submitRename,
+  } = useGitWorktreeActions({ workspacePath, open, branchesResult });
   // 分支与 worktree 是同一仓库的两类 git 变更，任一进行中都统一禁用列表动作，避免并发变更。
   const listMutationPending = mutationPending || worktreePending;
   const handleOpenWorktree = useCallback(
@@ -110,6 +112,9 @@ export function GitBranchSwitcher({
     },
     [openWorktreeTab, setOpen],
   );
+
+  const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
+  const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
   const handleCheckoutAsWorktree = useCallback(
     (branchName: string) => {
       setOpen(false);
@@ -117,9 +122,6 @@ export function GitBranchSwitcher({
     },
     [checkoutBranchAsWorktree, setOpen],
   );
-
-  const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
-  const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
   const triggerLabel = useMemo(
     () =>
       resolveGitBranchTriggerLabel({
@@ -294,81 +296,37 @@ export function GitBranchSwitcher({
                     ? intl.formatMessage({ id: "common.loading" })
                     : intl.formatMessage({ id: "git.branchSwitcher.empty" })}
                 </CommandEmpty>
-                <CommandGroup
-                  heading={intl.formatMessage({
-                    id: "git.branchSwitcher.section.branches",
-                  })}
-                  className="space-y-0.5 p-1 **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-ui-base **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-foreground-subtle"
-                >
-                  {(branchesResult?.branches ?? []).map((branch) => (
-                    <GitBranchListRow
-                      key={branch.name}
-                      branch={branch}
-                      isCurrent={branch.name === displayedCurrentBranchName}
-                      currentDirtyLabel={currentBranchDirtyLabel}
-                      mutationPending={listMutationPending}
-                      onSwitch={switchBranch}
-                      enableConversationAction={enableConversationActions}
-                      conversationPromptScope={conversationPromptScope}
-                      onConversationActionTriggered={() => {
-                        setOpen(false);
-                      }}
-                      onCheckoutAsWorktree={handleCheckoutAsWorktree}
-                    />
-                  ))}
-                </CommandGroup>
-                {(worktreesResult?.worktrees.length ?? 0) > 0 ? (
-                  <CommandGroup
-                    heading={intl.formatMessage({
-                      id: "git.branchSwitcher.section.worktrees",
-                    })}
-                    className="space-y-0.5 p-1 **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-ui-base **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-foreground-subtle"
-                  >
-                    {(worktreesResult?.worktrees ?? []).map((worktree) => (
-                      <GitWorktreeListRow
-                        key={worktree.path}
-                        worktree={worktree}
-                        mutationPending={listMutationPending}
-                        onOpen={handleOpenWorktree}
-                        onRemove={removeWorktree}
-                      />
-                    ))}
-                  </CommandGroup>
-                ) : null}
+                <GitBranchTreeGroup
+                  branches={branchesResult?.branches ?? []}
+                  displayedCurrentBranchName={displayedCurrentBranchName}
+                  currentDirtyLabel={currentBranchDirtyLabel}
+                  mutationPending={listMutationPending}
+                  worktrees={worktreesResult?.worktrees ?? []}
+                  onSwitch={switchBranch}
+                  enableConversationAction={enableConversationActions}
+                  conversationPromptScope={conversationPromptScope}
+                  onClosePopover={() => {
+                    setOpen(false);
+                  }}
+                  onCheckoutAsWorktree={handleCheckoutAsWorktree}
+                  onOpenWorktree={handleOpenWorktree}
+                  onRenameWorktree={openRenameDialog}
+                  onRemoveWorktree={removeWorktree}
+                />
               </CommandList>
             </Command>
             {showFooterActions ? (
-              <div className="border-t border-border p-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="lg"
-                  className="w-full justify-start px-2 text-foreground hover:bg-menu-hover hover:text-foreground"
-                  disabled={mutationPending}
-                  onClick={() => {
-                    setOpen(false);
-                    setCreateDialogOpen(true);
-                  }}
-                >
-                  <PlusIcon className="size-4 text-foreground-subtle" />
-                  {intl.formatMessage({
-                    id: "git.branchSwitcher.createAction",
-                  })}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="lg"
-                  className="w-full justify-start px-2 text-foreground hover:bg-menu-hover hover:text-foreground"
-                  onClick={() => {
-                    setOpen(false);
-                    setGitGraphDialogOpen(true);
-                  }}
-                >
-                  <GitGraph className="size-4 text-foreground-subtle" />
-                  {intl.formatMessage({ id: "gitGraph.menuAction" })}
-                </Button>
-              </div>
+              <GitBranchPopoverFooter
+                disabled={listMutationPending}
+                onCreateBranchClick={() => {
+                  setOpen(false);
+                  setCreateDialogOpen(true);
+                }}
+                onOpenGitGraphClick={() => {
+                  setOpen(false);
+                  setGitGraphDialogOpen(true);
+                }}
+              />
             ) : null}
           </PopoverContent>
         </Popover>
@@ -391,6 +349,22 @@ export function GitBranchSwitcher({
         }}
         onSubmit={() => {
           void createBranchAndSwitch();
+        }}
+      />
+
+      <GitWorktreeRenameDialog
+        open={Boolean(renameTarget)}
+        branchName={renameBranchName}
+        mutationPending={worktreePending}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeRenameDialog();
+          }
+        }}
+        onBranchNameChange={setRenameBranchName}
+        onCancel={closeRenameDialog}
+        onSubmit={() => {
+          void submitRename();
         }}
       />
 

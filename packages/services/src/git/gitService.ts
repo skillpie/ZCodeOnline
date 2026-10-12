@@ -219,11 +219,20 @@ export function createGitService(options?: {
       return await repo.addWorktree(params.workspacePath, {
         branchName: params.branchName,
         newBranchName: params.newBranchName,
+        newBranchStartPoint: params.newBranchStartPoint,
       });
     },
 
     async removeWorktree(params) {
       return await repo.removeWorktree(params.workspacePath, params.worktreePath);
+    },
+
+    async renameWorktree(params) {
+      return await repo.renameWorktree(
+        params.workspacePath,
+        params.worktreePath,
+        params.newBranchName,
+      );
     },
 
     async getChanges(params) {

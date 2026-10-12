@@ -758,6 +758,20 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     return result.exitCode === 0;
   }
 
+  /** 校验任意起点引用（分支 / tag / commit）是否存在；外部输入经 -- 隔离后才进 git 命令。 */
+  async function resolveRefExists(repoRoot: string, ref: string): Promise<boolean> {
+    const result = await commandProvider.run({
+      cwd: repoRoot,
+      args: ["rev-parse", "--verify", "--quiet", "--end-of-options", ref],
+      timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+    });
+    if (result.timedOut || result.outputTruncated) {
+      ensureGitCommandSucceeded("git rev-parse --verify", result);
+    }
+
+    return result.exitCode === 0;
+  }
+
   async function hasOperationInProgress(resolution: GitResolvedRepository): Promise<boolean> {
     // 进行中的 merge / rebase / cherry-pick 在不同 Git 版本上的报错并不完全稳定，
     // 这里先通过 git-dir 标记位做一次轻量探测，让上层能拿到更稳定的阻塞原因。
@@ -1485,6 +1499,22 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         ]);
       }
 
+      // 起点引用只对新建分支模式生效；先验证存在，避免 git 原生报错直接透给 UI。
+      // 输入显式插入 `--` 终止选项解析，防止以 `-` 开头的值被当成命令选项。
+      const normalizedStartPoint = params.newBranchStartPoint?.trim() || null;
+      if (params.newBranchName && normalizedStartPoint) {
+        const startRefExists = await resolveRefExists(resolution.repoRoot, normalizedStartPoint);
+        if (!startRefExists) {
+          return toWorktreeMutationFailure([
+            {
+              code: "branch-not-found",
+              message: "Start point was not found.",
+              detail: normalizedStartPoint,
+            },
+          ]);
+        }
+      }
+
       const listResult = await commandProvider.run({
         cwd: resolution.repoRoot,
         args: ["worktree", "list", "--porcelain"],
@@ -1526,7 +1556,14 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       const addResult = await commandProvider.run({
         cwd: resolution.repoRoot,
         args: params.newBranchName
-          ? ["worktree", "add", "-b", normalizedBranchName, worktreePath]
+          ? [
+              "worktree",
+              "add",
+              "-b",
+              normalizedBranchName,
+              worktreePath,
+              ...(normalizedStartPoint ? ["--", normalizedStartPoint] : []),
+            ]
           : ["worktree", "add", worktreePath, normalizedBranchName],
         timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
         maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
@@ -1611,6 +1648,141 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
 
       invalidate(workspacePath);
       return { ok: true, worktree: null, issues: [] };
+    },
+
+    async renameWorktree(
+      workspacePath: string,
+      worktreePath: string,
+      newBranchName: string,
+    ): Promise<GitWorktreeMutationResult> {
+      const status = await this.getStatus(workspacePath);
+      const resolution = ensureRepositoryAvailable(status.resolution, "rename worktree");
+      const normalizedBranchName = newBranchName.trim();
+      if (normalizedBranchName.length === 0) {
+        return toWorktreeMutationFailure([
+          {
+            code: "invalid-branch-name",
+            message: "Branch name is invalid.",
+            detail: null,
+          },
+        ]);
+      }
+
+      const invalidBranchIssue = await validateBranchName(resolution, normalizedBranchName);
+      if (invalidBranchIssue) {
+        return toWorktreeMutationFailure([
+          {
+            code: "invalid-branch-name",
+            message: invalidBranchIssue.message,
+            detail: invalidBranchIssue.detail,
+          },
+        ]);
+      }
+
+      // 目标必须出现在 worktree 注册表里：既挡住主树，也挡住重命名任意用户输入路径。
+      const listResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["worktree", "list", "--porcelain"],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git worktree list --porcelain", listResult);
+      const entries = parseWorktreePorcelain(listResult.stdout);
+      const mainTreeRoot = entries[0]?.path ?? resolution.repoRoot;
+      const target = entries.slice(1).find((entry) => isSameWorktreePath(entry.path, worktreePath));
+      if (!target) {
+        return toWorktreeMutationFailure([
+          {
+            code: "worktree-not-found",
+            message: "Worktree does not exist or is not renamable.",
+            detail: worktreePath,
+          },
+        ]);
+      }
+      if (!target.branchName) {
+        // detached worktree 没有分支可改；“改名”在我们的语义里就是改分支名 + 随之移动目录。
+        return toWorktreeMutationFailure([
+          {
+            code: "worktree-detached",
+            message: "Detached worktree cannot be renamed.",
+            detail: target.path,
+          },
+        ]);
+      }
+
+      // 步骤一：分支重命名。幂等（已是目标名则跳过）——上一步成功、后一步失败的重试在这里自愈。
+      if (target.branchName !== normalizedBranchName) {
+        if (await resolveLocalBranchExists(resolution.repoRoot, normalizedBranchName)) {
+          return toWorktreeMutationFailure([
+            {
+              code: "branch-already-exists",
+              message: "Branch already exists.",
+              detail: normalizedBranchName,
+            },
+          ]);
+        }
+
+        const branchRenameResult = await commandProvider.run({
+          cwd: resolution.repoRoot,
+          args: ["branch", "-m", target.branchName, normalizedBranchName],
+          timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+          maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+        });
+        if (branchRenameResult.exitCode !== 0) {
+          return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(branchRenameResult));
+        }
+      }
+
+      // 步骤二：目录移动到主树 .worktrees/<净化名>，保持“目录名 = 净化分支名”约定。同样幂等。
+      const dirName = sanitizeWorktreeDirName(normalizedBranchName);
+      if (dirName.length === 0) {
+        return toWorktreeMutationFailure([
+          {
+            code: "invalid-worktree-name",
+            message: "Branch name cannot be converted into a worktree directory name.",
+            detail: normalizedBranchName,
+          },
+        ]);
+      }
+      const newWorktreePath = join(mainTreeRoot, ".worktrees", dirName);
+      if (!isSameWorktreePath(target.path, newWorktreePath)) {
+        const newPathTaken =
+          entries.some(
+            (entry) =>
+              !isSameWorktreePath(entry.path, target.path) &&
+              isSameWorktreePath(entry.path, newWorktreePath),
+          ) || (await fileExists(newWorktreePath));
+        if (newPathTaken) {
+          return toWorktreeMutationFailure([
+            {
+              code: "worktree-name-conflict",
+              message: "A worktree directory already exists for this branch name.",
+              detail: newWorktreePath,
+            },
+          ]);
+        }
+
+        const moveResult = await commandProvider.run({
+          cwd: resolution.repoRoot,
+          args: ["worktree", "move", target.path, newWorktreePath],
+          timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+          maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+        });
+        if (moveResult.exitCode !== 0) {
+          return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(moveResult));
+        }
+      }
+
+      invalidate(workspacePath);
+      const refreshedList = await this.listWorktrees(workspacePath);
+      return {
+        ok: true,
+        worktree:
+          refreshedList.worktrees.find((entry) =>
+            isSameWorktreePath(entry.path, newWorktreePath),
+          ) ?? null,
+        issues: [],
+      };
     },
 
     async getDiff(params: GitDiffQuery): Promise<GitDiffResult> {

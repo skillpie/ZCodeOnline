@@ -1228,7 +1228,6 @@ const enUS: Record<string, string> = {
     "The frontend validation is satisfied. The real commit will work once the service layer is connected.",
   "git.commit.placeholder":
     "Enter a commit message (UI placeholder only, no real git commit will run yet)",
-  "git.actionMenu.trigger": "Commit",
   "git.actionMenu.trigger.ariaLabel": "Commit or push",
   "git.actionMenu.push": "Push",
   "git.pull.action": "Pull",
@@ -1353,9 +1352,20 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
   "git.branchSwitcher.section.worktrees": "Worktrees",
+  "git.branchSwitcher.worktreeToggle.ariaLabel":
+    "Expand or collapse {count} worktrees of branch {branchName}",
   "git.worktree.checkoutAction": "Check out as worktree",
-  "git.worktree.checkoutAction.ariaLabel": "Check out branch {branchName} as a separate worktree",
+  "git.worktree.checkoutAction.ariaLabel": "Create a parallel worktree from branch {branchName}",
   "git.worktree.current": "Current",
+  "git.worktree.renameAction.ariaLabel": "Rename worktree {name}",
+  "git.worktree.renameDialog.title": "Rename worktree",
+  "git.worktree.renameDialog.description":
+    "Renames the branch and moves the directory under the main tree's .worktrees/. Commits and uncommitted changes are untouched.",
+  "git.worktree.renameDialog.nameLabel": "New branch name",
+  "git.worktree.renameDialog.placeholder": "e.g. feature/my-experiment",
+  "git.worktree.renameDialog.confirm": "Rename",
+  "git.worktree.toast.renamed": "Worktree renamed: {path}",
+  "git.worktree.error.detached": "This worktree is in detached HEAD state and cannot be renamed.",
   "git.worktree.removeAction.ariaLabel": "Remove worktree {name}",
   "git.worktree.removeConfirm.title": "Remove worktree",
   "git.worktree.removeConfirm.description":

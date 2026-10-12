@@ -16,7 +16,6 @@ import type {
   GitBlameQuery,
   GitBlameResult,
 } from "@zcode/shared";
-
 export interface GitLineStat {
   added: number;
   removed: number;
@@ -95,9 +94,14 @@ export interface GitCliRepo {
   listWorktrees(workspacePath: string): Promise<GitWorktreeListResult>;
   addWorktree(
     workspacePath: string,
-    params: Pick<GitAddWorktreeRequest, "branchName" | "newBranchName">,
+    params: Pick<GitAddWorktreeRequest, "branchName" | "newBranchName" | "newBranchStartPoint">,
   ): Promise<GitWorktreeMutationResult>;
   removeWorktree(workspacePath: string, worktreePath: string): Promise<GitWorktreeMutationResult>;
+  renameWorktree(
+    workspacePath: string,
+    worktreePath: string,
+    newBranchName: string,
+  ): Promise<GitWorktreeMutationResult>;
   getDiff(params: GitDiffQuery): Promise<GitDiffResult>;
   getBlame(params: GitBlameQuery): Promise<GitBlameResult | null>;
   getBranchComparison(workspacePath: string): Promise<GitBranchComparisonSnapshot>;
