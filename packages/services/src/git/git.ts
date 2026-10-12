@@ -13,6 +13,7 @@ import type {
   GitDiffQuery,
   GitDiffResult,
   GitDiscardPathsRequest,
+  GitAddWorktreeRequest,
   GitGenerateCommitMessageRequest,
   GitGenerateCommitMessageResult,
   GitIdentity,
@@ -24,10 +25,13 @@ import type {
   GitPushResult,
   GitRefreshRequest,
   GitRefreshResult,
+  GitRemoveWorktreeRequest,
   GitRepositoryRequest,
   GitRepositorySummary,
   GitWorkspaceRepositoryInfo,
   GitFileChange,
+  GitWorktreeListResult,
+  GitWorktreeMutationResult,
   GitSwitchBranchRequest,
 } from "@zcode/shared";
 import { ServiceChannels } from "@zcode/shared";
@@ -40,6 +44,9 @@ export interface IGitService {
   getCommitGraph(params: GitCommitGraphRequest): Promise<GitCommitGraphResult>;
   switchBranch(params: GitSwitchBranchRequest): Promise<GitBranchMutationResult>;
   createBranchAndSwitch(params: GitCreateBranchRequest): Promise<GitBranchMutationResult>;
+  listWorktrees(params: GitRepositoryRequest): Promise<GitWorktreeListResult>;
+  addWorktree(params: GitAddWorktreeRequest): Promise<GitWorktreeMutationResult>;
+  removeWorktree(params: GitRemoveWorktreeRequest): Promise<GitWorktreeMutationResult>;
   getChanges(params: GitChangesRequest): Promise<GitFileChange[]>;
   getIgnoredPaths(params: GitIgnoredPathsRequest): Promise<string[]>;
   getDiff(params: GitDiffQuery): Promise<GitDiffResult>;

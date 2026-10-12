@@ -1,11 +1,13 @@
 import { useState } from "react";
 import type { GitLocalBranch } from "@zcode/shared";
+import { Button } from "@/components/ui/button.js";
 import { CommandItem } from "@/components/ui/command.js";
 import { GitBranchConversationAction } from "@/git-branch-switcher/GitBranchConversationAction.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import type { WorkspaceConversationPromptScope } from "@/lib/workspaceConversationPromptRuntime.js";
 import { cn } from "@/components/lib/utils.js";
-import { GitBranchIcon } from "lucide-react";
+import { FolderGit2, GitBranchIcon } from "lucide-react";
 
 interface GitBranchListRowProps {
   branch: GitLocalBranch;
@@ -18,6 +20,8 @@ interface GitBranchListRowProps {
   conversationPromptScope: WorkspaceConversationPromptScope;
   /** 先于提示词发送调用，用于关闭分支弹层。 */
   onConversationActionTriggered: () => void;
+  /** 非当前分支行尾提供「检出为 Worktree」动作；当前分支已在主树检出，不提供。 */
+  onCheckoutAsWorktree?: (branchName: string) => void;
 }
 
 /**
@@ -35,11 +39,17 @@ export function GitBranchListRow({
   enableConversationAction,
   conversationPromptScope,
   onConversationActionTriggered,
+  onCheckoutAsWorktree,
 }: GitBranchListRowProps) {
+  const { intl } = useZCodeIntl();
   const [hovered, setHovered] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
   const shouldMountConversationAction =
     enableConversationAction && (isCoarseTouchDevice() || hovered || focusWithin);
+  const shouldMountWorktreeAction =
+    !isCurrent &&
+    Boolean(onCheckoutAsWorktree) &&
+    (isCoarseTouchDevice() || hovered || focusWithin);
 
   return (
     <CommandItem
@@ -92,6 +102,27 @@ export function GitBranchListRow({
           mutationPending={mutationPending}
           onTriggered={onConversationActionTriggered}
         />
+      ) : null}
+      {shouldMountWorktreeAction && onCheckoutAsWorktree ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          disabled={mutationPending}
+          aria-label={intl.formatMessage(
+            { id: "git.worktree.checkoutAction.ariaLabel" },
+            { branchName: branch.name },
+          )}
+          title={intl.formatMessage({ id: "git.worktree.checkoutAction" })}
+          className="-mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          onClick={(event) => {
+            // 阻止冒泡到 cmdk Item，避免行内动作被当作分支切换。
+            event.stopPropagation();
+            onCheckoutAsWorktree(branch.name);
+          }}
+        >
+          <FolderGit2 className="size-3.5" />
+        </Button>
       ) : null}
     </CommandItem>
   );

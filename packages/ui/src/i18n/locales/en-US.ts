@@ -1352,6 +1352,25 @@ const enUS: Record<string, string> = {
     "That branch is already checked out in another worktree.",
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
+  "git.branchSwitcher.section.worktrees": "Worktrees",
+  "git.worktree.checkoutAction": "Check out as worktree",
+  "git.worktree.checkoutAction.ariaLabel": "Check out branch {branchName} as a separate worktree",
+  "git.worktree.current": "Current",
+  "git.worktree.removeAction.ariaLabel": "Remove worktree {name}",
+  "git.worktree.removeConfirm.title": "Remove worktree",
+  "git.worktree.removeConfirm.description":
+    "This deletes the {path} directory and unregisters the git worktree. The branch itself is kept. Make sure there are no unpushed commits in this directory.",
+  "git.worktree.removeConfirm.confirm": "Remove",
+  "git.worktree.toast.created": "Worktree created: {path}",
+  "git.worktree.toast.removed": "Worktree removed: {path}",
+  "git.worktree.toast.runningTaskBlocked":
+    "This worktree still has running tasks. Finish them before removing it.",
+  "git.worktree.error.invalidName":
+    "The branch name cannot be converted into a valid worktree directory name.",
+  "git.worktree.error.nameConflict": "A worktree with the same name already exists: {detail}",
+  "git.worktree.error.dirty":
+    "This worktree has uncommitted changes and cannot be removed. Commit or resolve them first.",
+  "git.worktree.error.notFound": "The worktree does not exist or cannot be removed.",
   "gitGraph.title": "Git Graph",
   "gitGraph.subtitle": "{count} commits across {lanes} lanes",
   "gitGraph.subtitle.hasMore": "Latest {count} commits across {lanes} lanes",

@@ -1,4 +1,5 @@
 import type {
+  GitAddWorktreeRequest,
   GitBranchMutationResult,
   GitChangeKind,
   GitCommitGraphCommit,
@@ -9,6 +10,8 @@ import type {
   GitPullResult,
   GitPushResult,
   GitRepositorySummary,
+  GitWorktreeListResult,
+  GitWorktreeMutationResult,
   GitWorkspaceRepositoryInfo,
   GitBlameQuery,
   GitBlameResult,
@@ -89,6 +92,12 @@ export interface GitCliRepo {
     branchName: string,
     startPoint?: string,
   ): Promise<GitBranchMutationResult>;
+  listWorktrees(workspacePath: string): Promise<GitWorktreeListResult>;
+  addWorktree(
+    workspacePath: string,
+    params: Pick<GitAddWorktreeRequest, "branchName" | "newBranchName">,
+  ): Promise<GitWorktreeMutationResult>;
+  removeWorktree(workspacePath: string, worktreePath: string): Promise<GitWorktreeMutationResult>;
   getDiff(params: GitDiffQuery): Promise<GitDiffResult>;
   getBlame(params: GitBlameQuery): Promise<GitBlameResult | null>;
   getBranchComparison(workspacePath: string): Promise<GitBranchComparisonSnapshot>;

@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import type {
   GitBranchMutationAction,
   GitBranchMutationIssue,
@@ -16,6 +16,10 @@ import type {
   GitLocalBranch,
   GitLocalBranchListResult,
   GitPullResult,
+  GitWorktreeListResult,
+  GitWorktreeMutationIssue,
+  GitWorktreeMutationResult,
+  GitWorktreeRecord,
   GitWorkspaceRepositoryInfo,
   GitPushResult,
 } from "@zcode/shared";
@@ -46,6 +50,7 @@ import {
   isNotRepositoryResult,
   normalizeInputPath,
   parseGitBranchMutationIssues,
+  parseGitWorktreeMutationIssues,
   parseGitConfigValue,
   parseBlamePorcelain,
   parseNumstat,
@@ -351,6 +356,128 @@ function toBranchMutationSuccess(params: {
   };
 }
 
+function toWorktreeMutationFailure(issues: GitWorktreeMutationIssue[]): GitWorktreeMutationResult {
+  return {
+    ok: false,
+    worktree: null,
+    issues,
+  };
+}
+
+/** `git worktree list --porcelain` 的单条记录（路径已归一为绝对路径字符串原样）。 */
+interface GitWorktreeListEntry {
+  path: string;
+  head: string | null;
+  branchName: string | null;
+  isBare: boolean;
+}
+
+function parseWorktreePorcelain(stdout: string): GitWorktreeListEntry[] {
+  const entries: GitWorktreeListEntry[] = [];
+  let current: Partial<GitWorktreeListEntry> | null = null;
+
+  for (const rawLine of stdout.replace(/\r\n/g, "\n").split("\n")) {
+    const line = rawLine.trim();
+    if (line.length === 0) {
+      if (current?.path) {
+        entries.push({
+          path: current.path,
+          head: current.head ?? null,
+          branchName: current.branchName ?? null,
+          isBare: current.isBare ?? false,
+        });
+      }
+      current = null;
+      continue;
+    }
+
+    if (line.startsWith("worktree ")) {
+      current = { path: line.slice("worktree ".length).trim() };
+      continue;
+    }
+    if (!current) {
+      continue;
+    }
+    if (line.startsWith("HEAD ")) {
+      current.head = line.slice("HEAD ".length).trim() || null;
+    } else if (line.startsWith("branch ")) {
+      const ref = line.slice("branch ".length).trim();
+      current.branchName = ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : ref;
+    } else if (line === "bare") {
+      current.isBare = true;
+    }
+    // `detached` / `locked` 等标记：detached 体现为 branchName=null，locked v1 不支持解锁，留给 unknown 报错。
+  }
+
+  if (current?.path) {
+    entries.push({
+      path: current.path,
+      head: current.head ?? null,
+      branchName: current.branchName ?? null,
+      isBare: current.isBare ?? false,
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * 分支名 → worktree 目录名：文件系统与 Git ref 的非法字符统一折叠为 `-`，
+ * 防御路径穿越；净化后为空（全非法字符）返回空串，由调用方报 invalid-worktree-name。
+ */
+function sanitizeWorktreeDirName(branchName: string): string {
+  const sanitized = branchName
+    .replace(/[\\/]+/g, "-")
+    // Git ref 非法字符（空格 ~ ^ : ? * [ ] \ @{）叠加 Windows 文件系统保留字符（< > " |），
+    // 以及 ASCII 控制字符；统一剔除而不是转义，避免目录名出现转义噪音。
+    // 控制字符用 \p{Cc} 表达，避免正则里出现字面控制字符触发 no-control-regex。
+    .replace(/[~^:?*[\]\\@{|<>"]|@\{|\p{Cc}/gu, "")
+    .replace(/\s+/g, "-")
+    .replace(/\.{2,}/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "");
+  return sanitized;
+}
+
+function isSameWorktreePath(left: string, right: string): boolean {
+  return normalizeWatchPath(left) === normalizeWatchPath(right);
+}
+
+const WORKTREES_EXCLUDE_LINE = ".worktrees/";
+
+/**
+ * 幂等地把 `.worktrees/` 追加进 repo 本地的 `.git/info/exclude`：
+ * 不改用户的 .gitignore，也让主工作区 git status 与 Review 面板不被嵌套 worktree 目录污染。
+ * bare 主树的 git 目录就是主树目录本身，exclude 落在 `<main>/info/exclude`。
+ */
+async function ensureWorktreesExcluded(mainTreeRoot: string, isBareMain: boolean): Promise<void> {
+  const excludePath = isBareMain
+    ? join(mainTreeRoot, "info", "exclude")
+    : join(mainTreeRoot, ".git", "info", "exclude");
+  try {
+    const existing = await readFile(excludePath, "utf-8").catch(() => null);
+    const alreadyExcluded =
+      existing !== null &&
+      existing.split(/\r?\n/).some((line) => line.trim() === WORKTREES_EXCLUDE_LINE);
+    if (alreadyExcluded) {
+      return;
+    }
+
+    const nextContent =
+      existing === null
+        ? `${WORKTREES_EXCLUDE_LINE}\n`
+        : `${existing}${existing.endsWith("\n") ? "" : "\n"}${WORKTREES_EXCLUDE_LINE}\n`;
+    await mkdir(dirname(excludePath), { recursive: true });
+    await writeFile(excludePath, nextContent, "utf-8");
+  } catch (error) {
+    // exclude 只是体验优化；写失败不阻塞 worktree 创建，主工作区最多多一条 untracked 目录。
+    log.warn("[git-repo] 写入 .git/info/exclude 失败", {
+      excludePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 function parseBranchRefRecords(stdout: string, currentBranchName: string | null): GitLocalBranch[] {
   return stdout
     .replace(/\r\n/g, "\n")
@@ -615,6 +742,20 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     }
 
     return result.exitCode === 0 ? null : toInvalidBranchNameIssue(result.stderr);
+  }
+
+  async function resolveLocalBranchExists(repoRoot: string, branchName: string): Promise<boolean> {
+    // --verify --quiet 下分支不存在返回非零且无输出；超时/截断仍按命令失败处理。
+    const result = await commandProvider.run({
+      cwd: repoRoot,
+      args: ["rev-parse", "--verify", "--quiet", `refs/heads/${branchName}`],
+      timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+    });
+    if (result.timedOut || result.outputTruncated) {
+      ensureGitCommandSucceeded("git rev-parse --verify", result);
+    }
+
+    return result.exitCode === 0;
   }
 
   async function hasOperationInProgress(resolution: GitResolvedRepository): Promise<boolean> {
@@ -1251,6 +1392,225 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         created: true,
         summary: nextStatus.summary,
       });
+    },
+
+    async listWorktrees(workspacePath: string): Promise<GitWorktreeListResult> {
+      const resolution = await this.resolveRepository(workspacePath);
+      const result = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["worktree", "list", "--porcelain"],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git worktree list --porcelain", result);
+
+      const entries = parseWorktreePorcelain(result.stdout);
+      // porcelain 输出的第一条是主树（bare 仓库为 bare 目录本身），作为 .worktrees 的锚点；
+      // 当前 workspace 本身是 linked worktree 时也锚定主树，让同一仓库的 worktree 聚在一处。
+      const mainTreeRoot = entries[0]?.path ?? resolution.repoRoot;
+      // git 输出的路径是 realpath 形式（macOS /tmp 等符号链接下与输入路径不同形）；
+      // 当前 workspace 判定需要同时容纳两种形式，否则「当前」标识在链接路径下会丢失。
+      const currentWorkspacePaths = new Set([normalizeWatchPath(resolution.workspacePath)]);
+      try {
+        currentWorkspacePaths.add(normalizeWatchPath(await realpath(resolution.workspacePath)));
+      } catch {
+        // workspace 目录读不到 realpath 时保留原始形式参与比较。
+      }
+      return {
+        worktrees: entries
+          .slice(1)
+          .filter((entry) => !entry.isBare)
+          .map(
+            (entry): GitWorktreeRecord => ({
+              path: entry.path,
+              branchName: entry.branchName,
+              head: entry.head,
+              isMain: false,
+              isCurrentWorkspace: currentWorkspacePaths.has(normalizeWatchPath(entry.path)),
+            }),
+          )
+          .sort((left, right) => left.path.localeCompare(right.path)),
+        mainTreeRoot,
+        worktreeBaseDir: join(mainTreeRoot, ".worktrees"),
+      };
+    },
+
+    async addWorktree(workspacePath, params): Promise<GitWorktreeMutationResult> {
+      const status = await this.getStatus(workspacePath);
+      const resolution = ensureRepositoryAvailable(status.resolution, "add worktree");
+      // worktree add 不触碰主树的 HEAD / index，主树脏不脏、是否在 merge 中都无需前置检查；
+      // 并行实验而不干扰当前更改正是这个功能的用途。
+      const normalizedBranchName = (params.newBranchName ?? params.branchName ?? "").trim();
+      if (normalizedBranchName.length === 0) {
+        return toWorktreeMutationFailure([
+          {
+            code: "invalid-branch-name",
+            message: "Branch name is invalid.",
+            detail: null,
+          },
+        ]);
+      }
+
+      const invalidBranchIssue = await validateBranchName(resolution, normalizedBranchName);
+      if (invalidBranchIssue) {
+        // validateBranchName 返回的是分支变更 issue 类型；这里平铺成 worktree issue，
+        // 避免两套 issue code 联合类型之间的不兼容。
+        return toWorktreeMutationFailure([
+          {
+            code: "invalid-branch-name",
+            message: invalidBranchIssue.message,
+            detail: invalidBranchIssue.detail,
+          },
+        ]);
+      }
+
+      // 新建分支模式查重、检出已有分支模式确认存在，都用同一条件反转表达。
+      const branchExists = await resolveLocalBranchExists(
+        resolution.repoRoot,
+        normalizedBranchName,
+      );
+      if (params.newBranchName ? branchExists : !branchExists) {
+        return toWorktreeMutationFailure([
+          params.newBranchName
+            ? {
+                code: "branch-already-exists",
+                message: "Branch already exists.",
+                detail: normalizedBranchName,
+              }
+            : {
+                code: "branch-not-found",
+                message: "Branch was not found.",
+                detail: normalizedBranchName,
+              },
+        ]);
+      }
+
+      const listResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["worktree", "list", "--porcelain"],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git worktree list --porcelain", listResult);
+      const entries = parseWorktreePorcelain(listResult.stdout);
+      const mainTreeRoot = entries[0]?.path ?? resolution.repoRoot;
+
+      const dirName = sanitizeWorktreeDirName(normalizedBranchName);
+      if (dirName.length === 0) {
+        return toWorktreeMutationFailure([
+          {
+            code: "invalid-worktree-name",
+            message: "Branch name cannot be converted into a worktree directory name.",
+            detail: normalizedBranchName,
+          },
+        ]);
+      }
+      const worktreePath = join(mainTreeRoot, ".worktrees", dirName);
+      const worktreePathTaken =
+        entries.some((entry) => isSameWorktreePath(entry.path, worktreePath)) ||
+        (await fileExists(worktreePath));
+      if (worktreePathTaken) {
+        return toWorktreeMutationFailure([
+          {
+            code: "worktree-name-conflict",
+            message: "A worktree directory already exists for this branch name.",
+            detail: worktreePath,
+          },
+        ]);
+      }
+
+      // `.worktrees/` 嵌在主树里会让主工作区 git status 出现整目录 untracked、watcher 也跟着抖动。
+      // 排除规则写进 repo 本地的 .git/info/exclude（不碰用户的 .gitignore）；失败只降级不阻塞创建。
+      await ensureWorktreesExcluded(mainTreeRoot, entries[0]?.isBare ?? false);
+
+      const addResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: params.newBranchName
+          ? ["worktree", "add", "-b", normalizedBranchName, worktreePath]
+          : ["worktree", "add", worktreePath, normalizedBranchName],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      if (addResult.exitCode !== 0) {
+        return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(addResult));
+      }
+
+      invalidate(workspacePath);
+
+      // 重新拉一次列表，让返回记录的 HEAD / 分支名与 git 事实一致，而不是本地拼装。
+      const refreshedList = await this.listWorktrees(workspacePath);
+      const created =
+        refreshedList.worktrees.find((entry) => isSameWorktreePath(entry.path, worktreePath)) ??
+        null;
+      return {
+        ok: true,
+        worktree: created ?? {
+          path: worktreePath,
+          branchName: normalizedBranchName,
+          head: null,
+          isMain: false,
+          isCurrentWorkspace: isSameWorktreePath(worktreePath, workspacePath),
+        },
+        issues: [],
+      };
+    },
+
+    async removeWorktree(
+      workspacePath: string,
+      worktreePath: string,
+    ): Promise<GitWorktreeMutationResult> {
+      const status = await this.getStatus(workspacePath);
+      const resolution = ensureRepositoryAvailable(status.resolution, "remove worktree");
+
+      // 目标必须出现在 worktree 注册表里：既挡住主树，也挡住删除任意用户输入路径。
+      const listResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["worktree", "list", "--porcelain"],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git worktree list --porcelain", listResult);
+      const target = parseWorktreePorcelain(listResult.stdout)
+        .slice(1)
+        .find((entry) => isSameWorktreePath(entry.path, worktreePath));
+      if (!target) {
+        return toWorktreeMutationFailure([
+          {
+            code: "worktree-not-found",
+            message: "Worktree does not exist or is not removable.",
+            detail: worktreePath,
+          },
+        ]);
+      }
+
+      // 目录已被外部删除时，不同 git 版本对普通 remove 的表现不一致（新版本成功、
+      // 旧版本报 validation failed）。这里前置判断目录存在性：丢失直接 prune 悬空注册。
+      if (!(await fileExists(target.path))) {
+        const pruneResult = await commandProvider.run({
+          cwd: resolution.repoRoot,
+          args: ["worktree", "prune"],
+          timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+          maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+        });
+        if (pruneResult.exitCode !== 0) {
+          return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(pruneResult));
+        }
+        invalidate(workspacePath);
+        return { ok: true, worktree: null, issues: [] };
+      }
+
+      const removeResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["worktree", "remove", target.path],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      if (removeResult.exitCode !== 0) {
+        return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(removeResult));
+      }
+
+      invalidate(workspacePath);
+      return { ok: true, worktree: null, issues: [] };
     },
 
     async getDiff(params: GitDiffQuery): Promise<GitDiffResult> {

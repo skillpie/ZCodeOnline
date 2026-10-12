@@ -26,6 +26,8 @@ import {
   shouldRestoreChatInputFocusAfterPickerClose,
 } from "@/lib/pickerFocus.js";
 import { GitBranchListRow } from "@/git-branch-switcher/GitBranchListRow.js";
+import { GitWorktreeListRow } from "@/git-branch-switcher/GitWorktreeListRow.js";
+import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
 import { ChevronDownIcon, GitBranchIcon, GitGraph, LoaderIcon, PlusIcon } from "lucide-react";
 
 interface GitBranchSwitcherProps {
@@ -92,6 +94,29 @@ export function GitBranchSwitcher({
     headRefType: gitSummary.headRefType,
     onRefreshGit,
   });
+  const {
+    worktreesResult,
+    worktreePending,
+    openWorktreeTab,
+    checkoutBranchAsWorktree,
+    removeWorktree,
+  } = useGitWorktreeActions({ workspacePath, open });
+  // 分支与 worktree 是同一仓库的两类 git 变更，任一进行中都统一禁用列表动作，避免并发变更。
+  const listMutationPending = mutationPending || worktreePending;
+  const handleOpenWorktree = useCallback(
+    (worktreePath: string) => {
+      setOpen(false);
+      openWorktreeTab(worktreePath);
+    },
+    [openWorktreeTab, setOpen],
+  );
+  const handleCheckoutAsWorktree = useCallback(
+    (branchName: string) => {
+      setOpen(false);
+      void checkoutBranchAsWorktree(branchName);
+    },
+    [checkoutBranchAsWorktree, setOpen],
+  );
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
   const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
@@ -281,16 +306,35 @@ export function GitBranchSwitcher({
                       branch={branch}
                       isCurrent={branch.name === displayedCurrentBranchName}
                       currentDirtyLabel={currentBranchDirtyLabel}
-                      mutationPending={mutationPending}
+                      mutationPending={listMutationPending}
                       onSwitch={switchBranch}
                       enableConversationAction={enableConversationActions}
                       conversationPromptScope={conversationPromptScope}
                       onConversationActionTriggered={() => {
                         setOpen(false);
                       }}
+                      onCheckoutAsWorktree={handleCheckoutAsWorktree}
                     />
                   ))}
                 </CommandGroup>
+                {(worktreesResult?.worktrees.length ?? 0) > 0 ? (
+                  <CommandGroup
+                    heading={intl.formatMessage({
+                      id: "git.branchSwitcher.section.worktrees",
+                    })}
+                    className="space-y-0.5 p-1 **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-ui-base **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-foreground-subtle"
+                  >
+                    {(worktreesResult?.worktrees ?? []).map((worktree) => (
+                      <GitWorktreeListRow
+                        key={worktree.path}
+                        worktree={worktree}
+                        mutationPending={listMutationPending}
+                        onOpen={handleOpenWorktree}
+                        onRemove={removeWorktree}
+                      />
+                    ))}
+                  </CommandGroup>
+                ) : null}
               </CommandList>
             </Command>
             {showFooterActions ? (

@@ -8,6 +8,7 @@ import type {
   GitHeadRefType,
   GitBlameLine,
   GitBlameResult,
+  GitWorktreeMutationIssue,
 } from "@zcode/shared";
 import {
   GIT_UNTRACKED_STAT_CHUNK_BYTES,
@@ -163,6 +164,86 @@ export function parseGitBranchMutationIssues(
     {
       code: "unknown",
       message: "Git could not complete the branch operation.",
+      detail,
+    },
+  ];
+}
+
+export function parseGitWorktreeMutationIssues(
+  result: GitCommandExecutionResult,
+): GitWorktreeMutationIssue[] {
+  const detail = result.stderr.trim() || result.stdout.trim() || null;
+  const normalizedDetail = detail?.toLowerCase() ?? "";
+
+  // worktree 操作是否被阻塞，最终以 Git 原生命令的真实报错为准，
+  // 与 parseGitBranchMutationIssues 同一策略：把易变 stderr 归一成稳定 issue code。
+  if (normalizedDetail.includes("is already used by worktree at")) {
+    return [
+      {
+        code: "branch-in-other-worktree",
+        message: "Branch is already checked out in another worktree.",
+        detail,
+      },
+    ];
+  }
+
+  if (normalizedDetail.includes("already registered")) {
+    return [
+      {
+        code: "worktree-name-conflict",
+        message: "A worktree is already registered at this path.",
+        detail,
+      },
+    ];
+  }
+
+  if (normalizedDetail.includes("contains modified or untracked files")) {
+    return [
+      {
+        code: "worktree-dirty",
+        message: "Worktree has uncommitted changes.",
+        detail,
+      },
+    ];
+  }
+
+  if (
+    normalizedDetail.includes("is not a working tree") ||
+    normalizedDetail.includes("does not exist")
+  ) {
+    return [
+      {
+        code: "worktree-not-found",
+        message: "Worktree does not exist or is not removable.",
+        detail,
+      },
+    ];
+  }
+
+  if (normalizedDetail.includes("already exists")) {
+    return [
+      {
+        code: "branch-already-exists",
+        message: "Branch already exists.",
+        detail,
+      },
+    ];
+  }
+
+  if (normalizedDetail.includes("invalid reference")) {
+    return [
+      {
+        code: "branch-not-found",
+        message: "Branch was not found.",
+        detail,
+      },
+    ];
+  }
+
+  return [
+    {
+      code: "unknown",
+      message: "Git could not complete the worktree operation.",
       detail,
     },
   ];

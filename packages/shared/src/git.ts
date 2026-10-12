@@ -145,6 +145,62 @@ export interface GitCreateBranchRequest extends GitRepositoryRequest {
   startPoint?: string;
 }
 
+export interface GitWorktreeRecord {
+  path: string;
+  /** detached HEAD 的 worktree 没有分支名。 */
+  branchName: string | null;
+  head: string | null;
+  isMain: boolean;
+  /** path 与发起请求的 workspacePath 一致。 */
+  isCurrentWorkspace: boolean;
+}
+
+export interface GitWorktreeListResult {
+  /** 仅 linked worktree，按路径排序；主树不在列表中。 */
+  worktrees: GitWorktreeRecord[];
+  /** `.worktrees` 的锚点：即使当前 workspace 本身是 linked worktree，也指向主树根。 */
+  mainTreeRoot: string;
+  worktreeBaseDir: string;
+}
+
+export interface GitAddWorktreeRequest extends GitRepositoryRequest {
+  /** 检出已有分支；与 newBranchName 互斥，同时提供时以 newBranchName 为准。 */
+  branchName?: string;
+  /** 基于当前 HEAD 新建分支并检出为 worktree。 */
+  newBranchName?: string;
+}
+
+export type GitWorktreeMutationIssueCode =
+  | "invalid-branch-name"
+  | "branch-already-exists"
+  | "branch-not-found"
+  | "branch-in-other-worktree"
+  | "invalid-worktree-name"
+  | "worktree-name-conflict"
+  | "worktree-dirty"
+  | "worktree-not-found"
+  | "operation-in-progress"
+  | "not-repository"
+  | "unknown";
+
+export interface GitWorktreeMutationIssue {
+  code: GitWorktreeMutationIssueCode;
+  message: string;
+  detail?: string | null;
+}
+
+export interface GitWorktreeMutationResult {
+  ok: boolean;
+  /** remove 成功时为 null。 */
+  worktree: GitWorktreeRecord | null;
+  issues: GitWorktreeMutationIssue[];
+}
+
+export interface GitRemoveWorktreeRequest extends GitRepositoryRequest {
+  /** 必须出现在 `git worktree list` 输出中，拒绝删除任意输入路径。 */
+  worktreePath: string;
+}
+
 export interface GitChangesRequest extends GitRepositoryRequest {
   sourceId: Extract<GitRepositoryChangeSourceId, "unstaged" | "staged">;
 }

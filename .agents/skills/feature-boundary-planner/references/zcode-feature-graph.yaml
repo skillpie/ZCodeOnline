@@ -355,7 +355,40 @@ nodes:
     codeSeeds:
       - file: apps/zcode-cli/packages/core/src/runtime/methods/turn-model.ts
         symbol: applySubmissionExecutionState
+  - id: capability.git-worktree
+    kind: capability
+    label: Git worktree
+    aliases:
+      - worktree
+      - linked worktree
+      - 工作树
+      - 并行工作树
+      - 检出为 worktree
+    codeSeeds:
+      - file: packages/services/src/git/repo/gitCliRepo.ts
+        symbol: listWorktrees
+      - file: packages/services/src/git/repo/gitCliRepo.ts
+        symbol: addWorktree
+      - file: packages/services/src/git/repo/gitCliRepo.ts
+        symbol: removeWorktree
+      - file: packages/ui/src/git-branch-switcher/useGitWorktreeActions.ts
+        symbol: useGitWorktreeActions
+      - file: packages/ui/src/git-branch-switcher/GitWorktreeListRow.tsx
+        symbol: GitWorktreeListRow
+    invariants:
+      - "git worktree metadata is the single source of truth; the branch switcher keeps only a
+        projection refetched on popover open and persists no worktree registry."
+      - "addWorktree anchors .worktrees under the main tree root and idempotently appends .worktrees/
+        to .git/info/exclude; removeWorktree only accepts paths present in git worktree list."
 edges:
+  - from: capability.git-worktree
+    to: boundary.workspace-key
+    type: opens-workspace-tabs-keyed-by
+    rank: should-inspect
+    condition:
+      Opening or creating a worktree runs addTab plus startDraft in the renderer; the worktree
+      path becomes an independent workspace key, so sessions and drafts stay isolated from the
+      main tree.
   - from: capability.model-selection
     to: surface.conversation-model-control
     type: renders-in
