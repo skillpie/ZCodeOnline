@@ -88,6 +88,7 @@ import {
   buildDraftCreateConfigPayload,
   useDraftConfigControl,
 } from "@/v4/composer/useDraftConfigControl.js";
+import { seedForkedSessionDraft } from "@/v4/composer/newTaskDraft.js";
 import type { ModelSelectionSource } from "@/v4/composer/V4ComposerToolbar.js";
 import { formatModelChangeLabel } from "@/v4/composer/modelTriggerDisplay.js";
 import { resolveAppFollowupMode } from "@/v4/composer/followupModeSettings.js";
@@ -3073,12 +3074,21 @@ export function SessionPane({
           return;
         }
         if (ack.result?.type === "forkAssistant") {
+          // 数据源绑定是纯 renderer 状态（specs/data-source.md §7.1 fork 继承），CLI
+          // forkAssistant 不感知；切到 child 前把父会话草稿的绑定播种到 child scope，
+          // 避免新 scope 空草稿初始化丢掉父会话的数据源选择。
+          seedForkedSessionDraft({
+            workspacePath,
+            workspaceIdentity,
+            parentSessionId: sessionId,
+            childSessionId: ack.result.sessionId,
+          });
           // 原地切到 child session（与新建会话同一选择路径）。
           onSessionCreated?.(ack.result.sessionId);
         }
       });
     },
-    [dispatchCommand, onSessionCreated, sessionId],
+    [dispatchCommand, onSessionCreated, sessionId, workspaceIdentity, workspacePath],
   );
 
   const handleEdit = useCallback(

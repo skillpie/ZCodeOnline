@@ -107,6 +107,12 @@ Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择�
   （key = `workspaceIdentity?.trim() || workspacePath`）互相隔离。记忆只是新对话的
   初始勾选态：恢复的绑定随提交轮正常走 §7.4 门控与 Agent 侧绑定解析（§6 显式参数
   → 会话绑定 → activeId），恢复时不额外触发全局激活。
+- **fork 继承（会话级）**：fork 出的 child 会话初始化时继承**父会话草稿**的会话级
+  选择（fork 语义是分支父对话，不是「新对话」，不读 workspace 记忆——后者是整个
+  workspace 最后一次显式操作，可能来自其他会话）。CLI `forkAssistant` 不感知绑定，
+  由 renderer 在 fork ACK 接纳后、切到 child 前把父草稿 `dataSourceId` 播种到
+  child scope（`seedForkedSessionDraft`）；父会话未选择时不预填。只播种
+  `dataSourceId`：mode/模型选择仍由 child 会话自身投影初始化，正文不继承。
 - 选择是纯 renderer 意图：不改变数据源配置事实，唯一的 Host 侧痕迹是激活与表结构同步。
 
 ### 7.2 状态所有者
@@ -114,7 +120,8 @@ Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择�
 ```text
 UI（composerDraftStore，per-scope 会话草稿）
   └─ V4ComposerDraft.dataSourceId  本对话选择；draft scope 默认缺省（未选择），
-     promote 到真实会话 scope 时随草稿整体转移
+     promote 到真实会话 scope 时随草稿整体转移；fork 时由 seedForkedSessionDraft
+     从父 scope 播种到 child scope
 UI（dataSourceSelectionRecent，per-workspace 偏好 localStorage）
   └─ 上一次显式选择/取消的 dataSourceId；选择回调时写入，新任务草稿初始化时读入
 UI（dataSourceStore，投影缓存）

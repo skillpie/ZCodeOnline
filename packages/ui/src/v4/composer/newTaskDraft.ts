@@ -58,3 +58,28 @@ export function seedImportedSessionDraft(result: {
       : { text: "", initializeFromNewTask: true },
   );
 }
+
+/**
+ * fork ACK 接纳后、切到 child session 前调用（specs/data-source.md §7.1 fork 继承）。
+ * 数据源绑定是纯 renderer 状态，CLI forkAssistant 不感知；child 是全新 scope，
+ * 不播种会按空草稿初始化丢掉父会话的选择。只带 dataSourceId：mode/modelSelection
+ * 由 child 会话自身投影初始化，正文与父草稿其余意图不继承。
+ */
+export function seedForkedSessionDraft(result: {
+  workspacePath: string;
+  workspaceIdentity?: string;
+  parentSessionId: string;
+  childSessionId: string;
+}): void {
+  const { workspacePath, workspaceIdentity, parentSessionId, childSessionId } = result;
+  const targetSessionId = childSessionId.trim();
+  if (!targetSessionId) return;
+  // child 由 CLI 新建，正常无既有草稿；已有（异常重放）时不覆盖。
+  if (readV4ComposerDraft(workspacePath, workspaceIdentity, targetSessionId)) return;
+  const parent = readV4ComposerDraft(workspacePath, workspaceIdentity, parentSessionId);
+  if (!parent?.dataSourceId) return;
+  persistV4ComposerDraft(workspacePath, workspaceIdentity, targetSessionId, {
+    text: "",
+    dataSourceId: parent.dataSourceId,
+  });
+}
