@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { GitRepositorySummary } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command.js";
@@ -22,7 +22,6 @@ import {
 } from "@/lib/pickerFocus.js";
 import { GitBranchPopoverFooter } from "@/git-branch-switcher/GitBranchPopoverFooter.js";
 import { GitWorktreeRenameDialog } from "@/git-branch-switcher/GitWorktreeRenameDialog.js";
-import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
 import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
 import { ChevronDownIcon, GitBranchIcon, LoaderIcon } from "lucide-react";
 

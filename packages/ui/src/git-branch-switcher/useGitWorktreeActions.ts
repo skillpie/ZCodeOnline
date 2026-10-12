@@ -52,34 +52,35 @@ interface UseGitWorktreeActionsOptions {
   branchesResult: GitLocalBranchListResult | null;
 }
 
+/** 并行副本的固定分支名前缀：`feat-` + 时间戳。 */
+const WORKTREE_BRANCH_PREFIX = "feat-";
+
 /**
- * 并行副本的默认分支名：`{来源分支}-{MMddHHmm}`；与现有分支撞车时降级为秒级 `{...}-{MMddHHmmss}`，
- * 仍撞车则追加序号。所有 worktree 都以并行副本语义创建（git 不允许同一分支检出两个 worktree），
- * 时间戳保证默认名即可用且可追溯来源。
+ * 并行副本的默认分支名：`feat-{MMddHHmm}`；与现有分支撞车时降级为秒级 `feat-{MMddHHmmss}`，
+ * 仍撞车则追加序号。所有 worktree 都以并行副本语义创建（git 不允许同一分支检出两个
+ * worktree），固定 `feat-` 前缀让副本在分支列表里天然聚在一处。
  */
 export function buildWorktreeBranchSuggestion(
-  sourceBranchName: string,
   existingBranchNames: ReadonlySet<string>,
   now: Date,
 ): string {
-  const base = sourceBranchName.trim() || "worktree";
   const pad = (value: number) => String(value).padStart(2, "0");
-  const minuteStamp = `${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(
-    now.getMinutes(),
-  )}`;
-  const secondStamp = `${minuteStamp}${pad(now.getSeconds())}`;
-  if (!existingBranchNames.has(`${base}-${minuteStamp}`)) {
-    return `${base}-${minuteStamp}`;
+  const minuteName = `${WORKTREE_BRANCH_PREFIX}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(
+    now.getHours(),
+  )}${pad(now.getMinutes())}`;
+  const secondName = `${minuteName}${pad(now.getSeconds())}`;
+  if (!existingBranchNames.has(minuteName)) {
+    return minuteName;
   }
-  if (!existingBranchNames.has(`${base}-${secondStamp}`)) {
-    return `${base}-${secondStamp}`;
+  if (!existingBranchNames.has(secondName)) {
+    return secondName;
   }
 
   let index = 2;
-  while (existingBranchNames.has(`${base}-${secondStamp}-${index}`)) {
+  while (existingBranchNames.has(`${secondName}-${index}`)) {
     index += 1;
   }
-  return `${base}-${secondStamp}-${index}`;
+  return `${secondName}-${index}`;
 }
 
 /**
@@ -218,11 +219,7 @@ export function useGitWorktreeActions({
       const existingBranchNames = new Set(
         (branchesResult?.branches ?? []).map((branch) => branch.name),
       );
-      const parallelBranchName = buildWorktreeBranchSuggestion(
-        branchName,
-        existingBranchNames,
-        new Date(),
-      );
+      const parallelBranchName = buildWorktreeBranchSuggestion(existingBranchNames, new Date());
       return submitAddWorktree(
         { newBranchName: parallelBranchName, newBranchStartPoint: branchName },
         "新建并行副本",
