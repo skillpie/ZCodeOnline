@@ -108,12 +108,15 @@ test("addWorktree 用 newBranchStartPoint 基于指定分支建并行副本", as
 
   assert.equal(result.ok, true);
   assert.equal(result.worktree?.branchName, "feature/base-copy");
+  assert.equal(result.worktree?.sourceBranchName, "feature/base");
   const baseHeadSha = (await git("rev-parse", "feature/base")).trim();
   const worktreeHead = await execFileAsync("git", ["rev-parse", "HEAD"], {
     cwd: result.worktree?.path,
   });
   assert.equal(worktreeHead.stdout.trim(), baseHeadSha);
   await access(join(result.worktree?.path ?? "", "base.txt"));
+  const recordedSource = await git("config", "--get", "branch.feature/base-copy.worktreeSource");
+  assert.equal(recordedSource.trim(), "feature/base");
 
   // 起点引用不存在 → branch-not-found。
   const missingStart = await repo.addWorktree(root, {

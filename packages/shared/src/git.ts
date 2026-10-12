@@ -149,6 +149,9 @@ export interface GitWorktreeRecord {
   path: string;
   /** detached HEAD 的 worktree 没有分支名。 */
   branchName: string | null;
+  /** 创建该 worktree 时记录的来源分支（repo 本地 config `branch.<名>.worktreeSource`）；
+   * 旧数据或来源不可考时为 null。 */
+  sourceBranchName: string | null;
   head: string | null;
   isMain: boolean;
   /** path 与发起请求的 workspacePath 一致。 */

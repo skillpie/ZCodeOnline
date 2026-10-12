@@ -11,10 +11,15 @@
   标签页并回到新任务草稿。detached / 分支已删除等无主 worktree 落到兜底「Worktrees」分组。
 - **所有分支行**（含当前分支）的行尾提供「检出为 Worktree」动作（hover / focus-within 挂载，
   触屏常驻，与行尾对话动作同模式），统一为**并行副本语义**：每次点击都基于该分支新建
-  `feat-{MMddHHmm}` 分支并检出为独立 worktree，不动当前工作区、不携带未提交更改。git 不允许
-  同一分支检出两个 worktree，副本命名天然规避该限制，因此重复点击、对当前分支点击都能持续
-  产出并行副本；默认名与现有分支撞车时降级为秒级 `feat-{MMddHHmmss}`，仍撞车追加 `-2`、`-3`
-  序号。无弹窗、无底部独立入口（行尾的「合入 / 拉取」是既有对话动作，与 worktree 无关）。
+  `{源分支名}-{MMddHHmm}` 分支并检出为独立 worktree，不动当前工作区、不携带未提交更改。
+  git 不允许同一分支检出两个 worktree，副本命名天然规避该限制，因此重复点击、对当前分支
+  点击都能持续产出并行副本；默认名与现有分支撞车时降级为秒级 `{...}-{MMddHHmmss}`，仍撞车
+  追加 `-2`、`-3` 序号。无弹窗、无底部独立入口（行尾的「合入 / 拉取」是既有对话动作，与
+  worktree 无关）。
+- 创建副本成功后，把来源分支写入 repo 本地 config `branch.<副本>.worktreeSource`（与 git 自身
+  存 upstream 元数据同一模式；`git branch -m` 会自动迁移该键）。树形分组据此把副本挂到来源
+  分支行下，顶层不再重复展示副本分支行；无记录（旧数据）或来源分支已删除时回退挂在副本自身
+  分支行下，detached 落到兜底「Worktrees」分组。
 - worktree 目录统一落在**主树根**的 `.worktrees/<净化后的分支名>`；当前 workspace 本身已是
   linked worktree 时同样锚定主树根（从 `git worktree list` 第一条解析），保证同一仓库的所有
   worktree 聚在一处。
@@ -131,7 +136,7 @@ interface IGitService {
 
 ```text
 行尾动作点击（renderer）
-  → 生成默认名 buildWorktreeBranchSuggestion：feat-{MMddHHmm}，
+  → 生成默认名 buildWorktreeBranchSuggestion：{源分支名}-{MMddHHmm}，
     与本地分支投影撞车时降级 {..}-{MMddHHmmss}、{..}-{MMddHHmmss}-{n}
   → gitService.addWorktree({ newBranchName, newBranchStartPoint: 来源分支 })
 Host
@@ -142,6 +147,7 @@ Host
   → 幂等写 .git/info/exclude（追加缺失的 .worktrees/ 行）
   → git worktree add -b <新分支> <path> -- <起点>（git 原生拒绝翻译为 issue）
   → invalidate(workspacePath)（主树 status/exclude 缓存失效）
+  → 起点为本地分支时写 branch.<副本>.worktreeSource = 起点（失败只 warn，不阻塞）
   → 返回 { ok, worktree }
 renderer 收到成功
   → toast 成功 → tabStore.addTab(worktree.path) → sessionStore.startDraft(worktree.path)
@@ -193,14 +199,15 @@ renderer 收到成功
 
 ## 5. 验收场景
 
-1. 选任意分支 → 行尾「检出为 Worktree」→ 新分支 `feat-{MMddHHmm}` 生成并检出为
+1. 选任意分支 → 行尾「检出为 Worktree」→ 新分支 `{源分支名}-{MMddHHmm}` 生成并检出为
    `.worktrees/<净化名>`、`.git/info/exclude` 出现 `.worktrees/`、主工作区 Review 面板不出现
    该目录、新标签页自动打开并停在空草稿，且 HEAD 与来源分支一致。
-2. 对同一分支再次点击、以及对当前分支（如 main）点击 → 各自创建 `feat-{MMddHHmm}` 并行
+2. 对同一分支再次点击、以及对当前分支（如 main）点击 → 各自创建 `{源分支名}-{MMddHHmm}` 并行
    副本；同一分钟内重复创建时自动降级秒级后缀，多副本可共存。
 3. 基于当前 workspace 为 linked worktree 的仓库执行创建 → 新 worktree 仍落在主树 `.worktrees/` 下。
-4. 树形二级菜单：有 worktree 的分支行首出现折叠箭头（默认折叠），展开后子项单行缩进展示；
-   点击子项打开对应标签页；当前 workspace 对应子项显示「当前」标识；无主 worktree 落到兜底
+4. 树形二级菜单：副本挂在**来源分支**行下（如在 linchuncheng 上创建的两个副本都折叠在
+   linchuncheng 行内），副本分支行不再在顶层重复出现；行首折叠箭头默认折叠，子项单行缩进；
+   点击子项打开对应标签页；当前 workspace 子项显示「当前」标识；无主 worktree 落到兜底
    「Worktrees」分组。
 5. 重命名：子项行尾「重命名」→ 输入新分支名 → 分支与目录同步更新（HEAD 与未提交更改不变）、
    已打开标签页迁移到新路径；重名分支 / 目录被占 / 非法名分别命中对应 issue；当前 workspace

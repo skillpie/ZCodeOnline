@@ -53,19 +53,19 @@ interface UseGitWorktreeActionsOptions {
 }
 
 /** 并行副本的固定分支名前缀：`feat-` + 时间戳。 */
-const WORKTREE_BRANCH_PREFIX = "feat-";
-
 /**
- * 并行副本的默认分支名：`feat-{MMddHHmm}`；与现有分支撞车时降级为秒级 `feat-{MMddHHmmss}`，
- * 仍撞车则追加序号。所有 worktree 都以并行副本语义创建（git 不允许同一分支检出两个
- * worktree），固定 `feat-` 前缀让副本在分支列表里天然聚在一处。
+ * 并行副本的默认分支名：`{源分支名}-{MMddHHmm}`；与现有分支撞车时降级为秒级
+ * `{...}-{MMddHHmmss}`，仍撞车则追加序号。所有 worktree 都以并行副本语义创建
+ * （git 不允许同一分支检出两个 worktree），名字携带来源分支，树形分组据此挂在来源分支下。
  */
 export function buildWorktreeBranchSuggestion(
+  sourceBranchName: string,
   existingBranchNames: ReadonlySet<string>,
   now: Date,
 ): string {
+  const base = sourceBranchName.trim() || "worktree";
   const pad = (value: number) => String(value).padStart(2, "0");
-  const minuteName = `${WORKTREE_BRANCH_PREFIX}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(
+  const minuteName = `${base}-${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(
     now.getHours(),
   )}${pad(now.getMinutes())}`;
   const secondName = `${minuteName}${pad(now.getSeconds())}`;
@@ -219,7 +219,11 @@ export function useGitWorktreeActions({
       const existingBranchNames = new Set(
         (branchesResult?.branches ?? []).map((branch) => branch.name),
       );
-      const parallelBranchName = buildWorktreeBranchSuggestion(existingBranchNames, new Date());
+      const parallelBranchName = buildWorktreeBranchSuggestion(
+        branchName,
+        existingBranchNames,
+        new Date(),
+      );
       return submitAddWorktree(
         { newBranchName: parallelBranchName, newBranchStartPoint: branchName },
         "新建并行副本",

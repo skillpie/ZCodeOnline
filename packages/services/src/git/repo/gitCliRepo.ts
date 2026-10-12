@@ -772,6 +772,70 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     return result.exitCode === 0;
   }
 
+  /**
+   * 读取 repo 本地 config 里记录的 worktree 来源分支（`branch.<副本>.worktreeSource`）。
+   * 这是树形分组的依据：副本分支按来源挂在来源分支行下。无记录（旧数据 / 来源不可考）
+   * 时调用方回退为挂在副本自身分支下。config 随仓库存取，`git branch -m` 会自动迁移该键。
+   */
+  async function readWorktreeSources(repoRoot: string): Promise<Map<string, string>> {
+    const sources = new Map<string, string>();
+    const result = await commandProvider.run({
+      cwd: repoRoot,
+      args: ["config", "--get-regexp", "^branch\\..+\\.worktreesource$"],
+      timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+      maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+    });
+    if (result.timedOut || result.outputTruncated) {
+      ensureGitCommandSucceeded("git config --get-regexp", result);
+    }
+    // 没有任何记录时 git 返回 exitCode 1，属正常空态而非错误。
+    if (result.exitCode !== 0) {
+      return sources;
+    }
+
+    for (const line of result.stdout.replace(/\r\n/g, "\n").split("\n")) {
+      const separatorIndex = line.indexOf(" ");
+      if (separatorIndex <= 0) {
+        continue;
+      }
+      const configKey = line.slice(0, separatorIndex);
+      const value = line.slice(separatorIndex + 1).trim();
+      // 键形如 branch.<分支名>.worktreeSource（分支名即 subsection，可含点与斜杠），
+      // 取首尾定界之间的部分；key 大小写不敏感，按小写后缀匹配。
+      const suffixIndex = configKey.toLowerCase().lastIndexOf(".worktreesource");
+      if (suffixIndex <= "branch.".length) {
+        continue;
+      }
+      const branchName = configKey.slice("branch.".length, suffixIndex);
+      if (branchName && value) {
+        sources.set(branchName, value);
+      }
+    }
+    return sources;
+  }
+
+  /** 创建成功后记录来源分支（树形分组依据）；写失败只记 warn，不影响 worktree 本身。 */
+  async function recordWorktreeSource(
+    repoRoot: string,
+    branchName: string,
+    sourceBranchName: string,
+  ): Promise<void> {
+    const result = await commandProvider.run({
+      cwd: repoRoot,
+      args: ["config", "--replace-all", `branch.${branchName}.worktreeSource`, sourceBranchName],
+      timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+      maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+    });
+    if (result.exitCode !== 0) {
+      log.warn("[git-repo] 记录 worktree 来源分支失败", {
+        repoRoot,
+        branchName,
+        sourceBranchName,
+        stderr: result.stderr.trim(),
+      });
+    }
+  }
+
   async function hasOperationInProgress(resolution: GitResolvedRepository): Promise<boolean> {
     // 进行中的 merge / rebase / cherry-pick 在不同 Git 版本上的报错并不完全稳定，
     // 这里先通过 git-dir 标记位做一次轻量探测，让上层能拿到更稳定的阻塞原因。
@@ -1430,6 +1494,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       } catch {
         // workspace 目录读不到 realpath 时保留原始形式参与比较。
       }
+      const worktreeSources = await readWorktreeSources(resolution.repoRoot);
       return {
         worktrees: entries
           .slice(1)
@@ -1438,6 +1503,8 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
             (entry): GitWorktreeRecord => ({
               path: entry.path,
               branchName: entry.branchName,
+              sourceBranchName:
+                (entry.branchName ? worktreeSources.get(entry.branchName) : null) ?? null,
               head: entry.head,
               isMain: false,
               isCurrentWorkspace: currentWorkspacePaths.has(normalizeWatchPath(entry.path)),
@@ -1574,6 +1641,20 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
 
       invalidate(workspacePath);
 
+      // 记录副本的来源分支（树形分组依据）。起点是本地分支才记录——tag / commit 不可作为
+      // 分支行挂靠；写失败只降级，不影响 worktree 本身。
+      if (
+        params.newBranchName &&
+        normalizedStartPoint &&
+        (await resolveLocalBranchExists(resolution.repoRoot, normalizedStartPoint))
+      ) {
+        await recordWorktreeSource(
+          resolution.repoRoot,
+          normalizedBranchName,
+          normalizedStartPoint,
+        );
+      }
+
       // 重新拉一次列表，让返回记录的 HEAD / 分支名与 git 事实一致，而不是本地拼装。
       const refreshedList = await this.listWorktrees(workspacePath);
       const created =
@@ -1584,6 +1665,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         worktree: created ?? {
           path: worktreePath,
           branchName: normalizedBranchName,
+          sourceBranchName: null,
           head: null,
           isMain: false,
           isCurrentWorkspace: isSameWorktreePath(worktreePath, workspacePath),

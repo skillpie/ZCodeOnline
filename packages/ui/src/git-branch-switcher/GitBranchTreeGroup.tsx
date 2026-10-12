@@ -61,22 +61,44 @@ export function GitBranchTreeGroup({
     });
   }, []);
 
-  const worktreesByBranchName = useMemo(() => {
+  const worktreesByParentBranchName = useMemo(() => {
+    const branchNames = new Set(branches.map((branch) => branch.name));
     const map = new Map<string, GitWorktreeRecord[]>();
     for (const worktree of worktrees) {
       if (!worktree.branchName) {
         continue;
       }
-      const group = map.get(worktree.branchName);
+      // 优先挂来源分支（创建时记录在 repo config）；无记录或来源分支已不存在时，
+      // 回退挂在副本自身分支下（旧数据形态）。
+      const source = worktree.sourceBranchName;
+      const parent =
+        source && source !== worktree.branchName && branchNames.has(source)
+          ? source
+          : worktree.branchName;
+      const group = map.get(parent);
       if (group) {
         group.push(worktree);
       } else {
-        map.set(worktree.branchName, [worktree]);
+        map.set(parent, [worktree]);
       }
     }
     return map;
-  }, [worktrees]);
+  }, [branches, worktrees]);
 
+  // 已被收进来源分支子列表的副本分支，不再出现在顶层分支列表（避免同一分支两行展示）。
+  const consumedBranchNames = useMemo(() => {
+    const consumed = new Set<string>();
+    for (const [parent, group] of worktreesByParentBranchName) {
+      for (const worktree of group) {
+        if (worktree.branchName && worktree.branchName !== parent) {
+          consumed.add(worktree.branchName);
+        }
+      }
+    }
+    return consumed;
+  }, [worktreesByParentBranchName]);
+
+  // detached / 分支已删除等无主 worktree：无法归组到任何分支行，落到兜底「Worktrees」分组。
   const orphanWorktrees = useMemo(() => {
     const branchNames = new Set(branches.map((branch) => branch.name));
     return worktrees.filter(
@@ -85,7 +107,10 @@ export function GitBranchTreeGroup({
   }, [branches, worktrees]);
 
   const renderBranchRows = (branch: GitLocalBranch): ReactNode[] => {
-    const branchWorktrees = worktreesByBranchName.get(branch.name) ?? [];
+    if (consumedBranchNames.has(branch.name)) {
+      return [];
+    }
+    const branchWorktrees = worktreesByParentBranchName.get(branch.name) ?? [];
     const worktreesExpanded = expandedWorktreeBranches.has(branch.name);
     const rows: ReactNode[] = [
       <GitBranchListRow
