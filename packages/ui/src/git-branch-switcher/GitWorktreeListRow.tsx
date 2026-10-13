@@ -31,6 +31,8 @@ function labelFromWorktreePath(path: string): string {
  * 行尾重命名 / 移除动作与分支行对话动作同模式（hover / focus-within 挂载，触屏常驻）。
  * 当前行不提供重命名与移除（动到正打开的 workspace 危险），行内以「当前」标识替代。
  * detached worktree 没有分支可改，重命名入口隐藏。
+ * 行名优先展示当前检出的分支名（随 worktree 内切分支实时变化），detached 才回退目录名；
+ * 否则用户切分支后「当前」会标在一个过时的目录名上，读起来像挂错了位置。
  */
 export function GitWorktreeListRow({
   worktree,
@@ -56,7 +58,7 @@ export function GitWorktreeListRow({
 
   return (
     <CommandItem
-      value={labelFromWorktreePath(worktree.path)}
+      value={worktree.branchName ?? labelFromWorktreePath(worktree.path)}
       disabled={mutationPending}
       title={worktree.path}
       className={cn(
@@ -83,7 +85,7 @@ export function GitWorktreeListRow({
     >
       <FolderGit2 className="size-4 shrink-0 text-foreground-subtle" />
       <span className="min-w-0 flex-1 truncate text-left text-ui-base font-medium text-foreground">
-        {labelFromWorktreePath(worktree.path)}
+        {worktree.branchName ?? labelFromWorktreePath(worktree.path)}
       </span>
       {worktree.isCurrentWorkspace ? (
         <span className="shrink-0 text-ui-caption text-foreground-subtle">
@@ -98,7 +100,7 @@ export function GitWorktreeListRow({
           disabled={mutationPending}
           aria-label={intl.formatMessage(
             { id: "git.worktree.renameAction.ariaLabel" },
-            { name: labelFromWorktreePath(worktree.path) },
+            { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
           )}
           className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
@@ -118,7 +120,7 @@ export function GitWorktreeListRow({
           disabled={mutationPending}
           aria-label={intl.formatMessage(
             { id: "git.worktree.removeAction.ariaLabel" },
-            { name: labelFromWorktreePath(worktree.path) },
+            { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
           )}
           className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {

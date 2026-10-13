@@ -7,7 +7,8 @@
 
 - 分支切换器（`GitBranchSwitcher`）下拉以**树形二级菜单**展示 worktree：worktree 按其检出的
   分支归组，嵌在该分支行下方；有 worktree 的分支行首提供展开箭头，**默认折叠**；worktree
-  子项单行展示（目录名 + 行尾 hover 的「重命名 / 移除」），点击行在本窗口打开新 workspace
+  子项单行展示，行名优先为当前检出的分支名（随 worktree 内切分支实时变化，detached 回退
+  目录名），行尾 hover 的「重命名 / 移除」，点击行在本窗口打开新 workspace
   标签页并回到新任务草稿。detached / 分支已删除等无主 worktree 落到兜底「Worktrees」分组。
 - **所有分支行**（含当前分支）的行尾提供「检出为 Worktree」动作（hover / focus-within 挂载，
   触屏常驻，与行尾对话动作同模式），统一为**并行副本语义**：每次点击都基于该分支新建
