@@ -393,9 +393,33 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     () => partitionWorkspaceTabsByPurpose(workspaceTabs),
     [workspaceTabs],
   );
+  // git worktree（路径位于某工作区 `.worktrees/` 下）不再作为独立项目展示：
+  // 它的会话已合并进主树工作区的列表（见 useWorkspaceTaskLists 的 worktree scope）。
+  // 主树工作区未打开时保留自身行，保证仍可触达/关闭。
+  const worktreeOwnedTabIds = useMemo(() => {
+    const openPaths = new Set(
+      projectWorkspaceTabs.map((tab) => tab.workspacePath.replace(/\\/g, "/")),
+    );
+    const ids = new Set<string>();
+    for (const tab of projectWorkspaceTabs) {
+      const normalized = tab.workspacePath.replace(/\\/g, "/");
+      const markerIndex = normalized.indexOf("/.worktrees/");
+      if (markerIndex <= 0) {
+        continue;
+      }
+      if (openPaths.has(normalized.slice(0, markerIndex))) {
+        ids.add(tab.id);
+      }
+    }
+    return ids;
+  }, [projectWorkspaceTabs]);
+  const visibleProjectWorkspaceTabs = useMemo(
+    () => projectWorkspaceTabs.filter((tab) => !worktreeOwnedTabIds.has(tab.id)),
+    [projectWorkspaceTabs, worktreeOwnedTabIds],
+  );
   const workspacePaths = useMemo(
-    () => projectWorkspaceTabs.map((tab) => tab.workspacePath),
-    [projectWorkspaceTabs],
+    () => visibleProjectWorkspaceTabs.map((tab) => tab.workspacePath),
+    [visibleProjectWorkspaceTabs],
   );
   const areAllWorkspaceGroupsExpanded = useMemo(
     () =>
@@ -697,7 +721,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   );
   const localeMenuValue = localePreference === "system" ? "system" : localePreference;
   const workspaceTaskLists = useWorkspaceTaskLists({
-    workspaceTabs: projectWorkspaceTabs,
+    workspaceTabs: visibleProjectWorkspaceTabs,
     activeWorkspacePath: workspacePath,
     activeWorkspaceIdentity: workspaceIdentity,
     sortBy: taskSortBy,
@@ -823,21 +847,21 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
       const indices = resolveWorkspaceDragGlobalIndices({
         activeId: String(active.id),
         overId: String(over.id),
-        projectTabs: projectWorkspaceTabs,
+        projectTabs: visibleProjectWorkspaceTabs,
         workspaceTabs,
       });
       if (indices) {
         reorderWorkspaceTabs(indices.fromIndex, indices.toIndex);
       }
     },
-    [projectWorkspaceTabs, reorderWorkspaceTabs, resetWorkspaceDrag, workspaceTabs],
+    [reorderWorkspaceTabs, resetWorkspaceDrag, visibleProjectWorkspaceTabs, workspaceTabs],
   );
   const activeWorkspaceDragTab = useMemo(
     () =>
       activeWorkspaceDragId
-        ? (projectWorkspaceTabs.find((tab) => tab.id === activeWorkspaceDragId) ?? null)
+        ? (visibleProjectWorkspaceTabs.find((tab) => tab.id === activeWorkspaceDragId) ?? null)
         : null,
-    [activeWorkspaceDragId, projectWorkspaceTabs],
+    [activeWorkspaceDragId, visibleProjectWorkspaceTabs],
   );
 
   const handleThemeChange = useCallback(
@@ -1787,11 +1811,11 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                                   onDragCancel={handleWorkspaceDragCancel}
                                 >
                                   <SortableContext
-                                    items={projectWorkspaceTabs.map((tab) => tab.id)}
+                                    items={visibleProjectWorkspaceTabs.map((tab) => tab.id)}
                                     strategy={workspaceVerticalListSortingStrategy}
                                   >
                                     <ul data-testid={TID_WORKSPACE_LIST} className="space-y-2 pb-4">
-                                      {projectWorkspaceTabs.map((tab) => {
+                                      {visibleProjectWorkspaceTabs.map((tab) => {
                                         const workspaceKey = buildTaskWorkspaceKey(
                                           tab.workspacePath,
                                           tab.workspaceIdentity,
