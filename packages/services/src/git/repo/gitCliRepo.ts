@@ -484,7 +484,7 @@ function parseBranchRefRecords(stdout: string, currentBranchName: string | null)
     .split("\n")
     .filter((line) => line.length > 0)
     .map((line): GitLocalBranch | null => {
-      const [name, upstreamName, commitHash, commitTimestamp] = line.split("\0");
+      const [name, upstreamName, commitHash, commitTimestamp, worktreePath] = line.split("\0");
       if (!name) {
         return null;
       }
@@ -496,6 +496,8 @@ function parseBranchRefRecords(stdout: string, currentBranchName: string | null)
         upstreamName: upstreamName || null,
         commitHash: commitHash || null,
         commitTimestampMs: Number.isNaN(timestampSeconds) ? null : timestampSeconds * 1000,
+        // %(worktreepath) 对未检出分支输出空串；老 git 降级重试时该列整列缺失（undefined）。
+        worktreePath: worktreePath?.trim() || null,
       };
     })
     .filter((branch): branch is GitLocalBranch => Boolean(branch))
@@ -770,6 +772,18 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     }
 
     return result.exitCode === 0;
+  }
+
+  /** 解析主树根：`git worktree list --porcelain` 的第一条。解析不到时返回 null。 */
+  async function resolveMainTreeRoot(repoRoot: string): Promise<string | null> {
+    const result = await commandProvider.run({
+      cwd: repoRoot,
+      args: ["worktree", "list", "--porcelain"],
+      timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+      maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+    });
+    ensureGitCommandSucceeded("git worktree list --porcelain", result);
+    return parseWorktreePorcelain(result.stdout)[0]?.path ?? null;
   }
 
   async function hasOperationInProgress(resolution: GitResolvedRepository): Promise<boolean> {
@@ -1140,28 +1154,50 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
           headRefType: status.summary.headRefType,
           currentBranchName: status.summary.branchName,
           branches: [],
+          mainTreeRoot: null,
         };
       }
 
-      const result = await commandProvider.run({
+      const baseFormat =
+        "%(refname:short)%00%(upstream:short)%00%(objectname)%00%(committerdate:unix)";
+      // %(worktreepath) 给出检出该分支的工作树路径（主树或 linked worktree），供分支列表标注占用。
+      // 该 atom 自 git 2.23 起可用；老版本以 "unknown field name" 拒绝，此时去掉该列重试，
+      // worktreePath 整列为 null，UI 退回无标注行为，不因为一个增强字段让整个分支列表不可用。
+      let result = await commandProvider.run({
         cwd: status.resolution.repoRoot,
-        args: [
-          "for-each-ref",
-          "refs/heads",
-          "--format=%(refname:short)%00%(upstream:short)%00%(objectname)%00%(committerdate:unix)",
-        ],
+        args: ["for-each-ref", "refs/heads", `--format=${baseFormat}%00%(worktreepath)`],
         timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
         maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
       });
+      if (
+        result.exitCode !== 0 &&
+        !result.timedOut &&
+        result.stderr.toLowerCase().includes("unknown field name")
+      ) {
+        result = await commandProvider.run({
+          cwd: status.resolution.repoRoot,
+          args: ["for-each-ref", "refs/heads", `--format=${baseFormat}`],
+          timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+          maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+        });
+      }
       ensureGitCommandSucceeded("git for-each-ref refs/heads", result);
+
+      const branches = parseBranchRefRecords(
+        result.stdout,
+        status.summary.headRefType === "branch" ? status.summary.branchName : null,
+      );
+      // 主树根只在确有分支被工作树检出时才需要（用于区分“主树”与“linked worktree”文案），
+      // 避免每次展开分支列表都多跑一条 worktree list。
+      const mainTreeRoot = branches.some((branch) => branch.worktreePath !== null)
+        ? await resolveMainTreeRoot(status.resolution.repoRoot)
+        : null;
 
       return {
         headRefType: status.summary.headRefType,
         currentBranchName: status.summary.branchName,
-        branches: parseBranchRefRecords(
-          result.stdout,
-          status.summary.headRefType === "branch" ? status.summary.branchName : null,
-        ),
+        branches,
+        mainTreeRoot,
       };
     },
 
@@ -1659,13 +1695,16 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       const entries = parseWorktreePorcelain(listResult.stdout);
       const mainTreeRoot = entries[0]?.path ?? resolution.repoRoot;
 
-      const dirName = sanitizeWorktreeDirName(normalizedBranchName);
+      // 目录名与分支名解耦：显式 directoryName 是本地标识（可项目化命名），
+      // 缺省时保持旧行为由分支名净化派生；两者都要过同一套净化与冲突校验。
+      const requestedDirName = params.directoryName?.trim() || normalizedBranchName;
+      const dirName = sanitizeWorktreeDirName(requestedDirName);
       if (dirName.length === 0) {
         return toWorktreeMutationFailure([
           {
             code: "invalid-worktree-name",
-            message: "Branch name cannot be converted into a worktree directory name.",
-            detail: normalizedBranchName,
+            message: "Worktree directory name is invalid.",
+            detail: params.directoryName?.trim() || normalizedBranchName,
           },
         ]);
       }

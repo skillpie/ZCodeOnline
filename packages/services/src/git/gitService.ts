@@ -226,6 +226,7 @@ export function createGitService(options?: {
         branchName: params.branchName,
         newBranchName: params.newBranchName,
         newBranchStartPoint: params.newBranchStartPoint,
+        directoryName: params.directoryName,
       });
     },
 

@@ -179,6 +179,11 @@ export interface GitAddWorktreeRequest extends GitRepositoryRequest {
   newBranchName?: string;
   /** 新分支的起点引用（分支名 / tag / commit）；缺省为当前 HEAD，仅 newBranchName 模式生效。 */
   newBranchStartPoint?: string;
+  /**
+   * 独立指定 worktree 目录名，与分支名解耦：目录名是本地标识，分支名进 MR。
+   * 缺省时仍由分支名净化派生，保持旧行为。
+   */
+  directoryName?: string;
 }
 
 export type GitWorktreeMutationIssueCode =
@@ -262,12 +267,19 @@ export interface GitLocalBranch {
   upstreamName: string | null;
   commitHash: string | null;
   commitTimestampMs: number | null;
+  /**
+   * 检出该分支的工作树绝对路径（主树或 linked worktree）。
+   * 未被任何工作树检出、或 git 版本不支持 `%(worktreepath)` 时为 null。
+   */
+  worktreePath: string | null;
 }
 
 export interface GitLocalBranchListResult {
   headRefType: GitHeadRefType;
   currentBranchName: string | null;
   branches: GitLocalBranch[];
+  /** 主树根；用于区分“被主树检出”与“被 linked worktree 检出”。无法解析时为 null。 */
+  mainTreeRoot: string | null;
 }
 
 export interface GitBranchMutationIssue {

@@ -124,6 +124,44 @@ test("addWorktree 用 newBranchStartPoint 基于指定分支建并行副本", as
   assert.deepEqual(issueCodes(missingStart), ["branch-not-found"]);
 });
 
+test("addWorktree 的 directoryName 与分支名解耦，目录名独立净化与查重", async () => {
+  // 目录名走独立输入：目录 fengqun-scm-123456，分支 feat/123456——两者不同名。
+  const created = await repo.addWorktree(root, {
+    newBranchName: "feat/123456",
+    directoryName: "fengqun-scm-123456",
+  });
+
+  assert.equal(created.ok, true);
+  assert.equal(created.worktree?.path, join(worktreesDir, "fengqun-scm-123456"));
+  assert.equal(created.worktree?.branchName, "feat/123456");
+
+  // 目录名独立查重：换分支名但目录同名 → worktree-name-conflict。
+  const dirConflict = await repo.addWorktree(root, {
+    newBranchName: "feat/654321",
+    directoryName: "fengqun-scm-123456",
+  });
+  assert.equal(dirConflict.ok, false);
+  assert.deepEqual(issueCodes(dirConflict), ["worktree-name-conflict"]);
+
+  // 检出已有分支时同样可用独立目录名。
+  await createBranch("feature/existing-for-dir");
+  const existingBranch = await repo.addWorktree(root, {
+    branchName: "feature/existing-for-dir",
+    directoryName: "dir-for-existing",
+  });
+  assert.equal(existingBranch.ok, true);
+  assert.equal(existingBranch.worktree?.path, join(worktreesDir, "dir-for-existing"));
+  assert.equal(existingBranch.worktree?.branchName, "feature/existing-for-dir");
+
+  // 净化规则同样作用于独立目录名（`\ /` 折叠、非法字符剔除）。
+  const sanitized = await repo.addWorktree(root, {
+    newBranchName: "feat/222333",
+    directoryName: "weird\\dir/name",
+  });
+  assert.equal(sanitized.ok, true);
+  assert.equal(sanitized.worktree?.path, join(worktreesDir, "weird-dir-name"));
+});
+
 test("addWorktree 对分支名做目录名净化", async () => {
   // Git ref 允许 `/` 与结尾 `.lock` 之外的多数标点；这里用合法嵌套分支验证 `/` → `-`。
   await createBranch("feature/nested/name");

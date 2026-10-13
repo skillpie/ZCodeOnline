@@ -99,7 +99,10 @@ export interface GitCliRepo {
   listWorktrees(workspacePath: string): Promise<GitWorktreeListResult>;
   addWorktree(
     workspacePath: string,
-    params: Pick<GitAddWorktreeRequest, "branchName" | "newBranchName" | "newBranchStartPoint">,
+    params: Pick<
+      GitAddWorktreeRequest,
+      "branchName" | "newBranchName" | "newBranchStartPoint" | "directoryName"
+    >,
   ): Promise<GitWorktreeMutationResult>;
   removeWorktree(workspacePath: string, worktreePath: string): Promise<GitWorktreeMutationResult>;
   renameWorktree(
