@@ -32,6 +32,11 @@ import { GitWorktreeSection } from "@/git-branch-switcher/GitWorktreeSection.js"
 import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
 import { ChevronDownIcon, GitBranchIcon, LoaderIcon } from "lucide-react";
 
+/** cmdk 的分支搜索过滤：仅按分支名包含匹配。 */
+function branchSearchFilter(value: string, search: string): number {
+  return matchesGitBranchSearch(value, search) ? 1 : 0;
+}
+
 interface GitBranchSwitcherProps {
   workspacePath: string;
   workspaceIdentity?: string;
@@ -122,6 +127,12 @@ export function GitBranchSwitcher({
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
   const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
+  // 正被某个 worktree 检出的分支属于“工作中”，不提供删除入口。
+  const branchNamesInWorktrees = new Set(
+    (worktreesResult?.worktrees ?? []).flatMap((worktree) =>
+      worktree.branchName ? [worktree.branchName] : [],
+    ),
+  );
   const handleCheckoutAsWorktree = useCallback(
     (branchName: string) => {
       setOpen(false);
@@ -146,16 +157,13 @@ export function GitBranchSwitcher({
       }),
     [displayedCurrentBranchName, gitSummary.headRefType, intl],
   );
-  const currentBranchDirtyLabel = useMemo(
-    () =>
-      dirtyFileCount > 0
-        ? intl.formatMessage(
-            { id: "git.branchSwitcher.currentDirty" },
-            { count: numberFormatter.format(dirtyFileCount) },
-          )
-        : null,
-    [dirtyFileCount, intl, numberFormatter],
-  );
+  const currentBranchDirtyLabel =
+    dirtyFileCount > 0
+      ? intl.formatMessage(
+          { id: "git.branchSwitcher.currentDirty" },
+          { count: numberFormatter.format(dirtyFileCount) },
+        )
+      : null;
   const switchAssistCurrentBranchLabel = useMemo(() => {
     if (!switchAssistState) {
       return triggerLabel;
@@ -168,14 +176,8 @@ export function GitBranchSwitcher({
       fallbackLabel: intl.formatMessage({ id: "git.branchSwitcher.label" }),
     });
   }, [gitSummary.headRefType, intl, switchAssistState, triggerLabel]);
-  const branchSearchFilter = useCallback(
-    (value: string, search: string) => (matchesGitBranchSearch(value, search) ? 1 : 0),
-    [],
-  );
-  const conversationPromptScope = useMemo(
-    () => ({ workspacePath, workspaceIdentity }),
-    [workspaceIdentity, workspacePath],
-  );
+
+  const conversationPromptScope = { workspacePath, workspaceIdentity };
 
   useEffect(() => {
     if (!open || !branchesResult?.branches.length) {
@@ -331,6 +333,7 @@ export function GitBranchSwitcher({
                       }}
                       onCheckoutAsWorktree={handleCheckoutAsWorktree}
                       onDeleteBranch={handleDeleteBranch}
+                      checkedOutInWorktree={branchNamesInWorktrees.has(branch.name)}
                     />
                   ))}
                 </CommandGroup>
