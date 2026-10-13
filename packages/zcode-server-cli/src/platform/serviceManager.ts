@@ -1,7 +1,14 @@
-import { join } from "node:path";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import { stablePathId, type ServerLayout } from "../runtime/paths.js";
 
 export type ServicePlatform = "darwin" | "linux" | "win32";
+
+export interface ServiceRegistrationOptions {
+  /** 测试注入用；缺省为当前用户主目录。 */
+  homeDir?: string;
+}
 
 export interface ServiceDescriptor {
   kind: "launchd" | "systemd" | "task-scheduler";
@@ -38,6 +45,18 @@ export function serviceDescriptorPath(layout: ServerLayout, descriptor: ServiceD
   const extension =
     descriptor.kind === "launchd" ? "plist" : descriptor.kind === "systemd" ? "service" : "json";
   return join(layout.serviceDir, `${descriptor.name}.${extension}`);
+}
+
+/**
+ * macOS launchd 仅在 GUI 登录时自动加载 ~/Library/LaunchAgents 下的 plist；这是
+ * 用户级服务跨重启存活的唯一落点。serviceDir 里的 descriptor 副本只对当前登录会话
+ * 有效（launchctl load 的会话级注册），机器重启后不会自启。
+ */
+export function launchdUserAgentDescriptorPath(
+  descriptor: Pick<ServiceDescriptor, "name">,
+  home = homedir(),
+): string {
+  return join(home, "Library", "LaunchAgents", `${descriptor.name}.plist`);
 }
 
 export function createServiceDescriptor(options: {
@@ -113,16 +132,28 @@ export async function registerService(
   descriptor: ServiceDescriptor,
   descriptorPath: string,
   executor: ServiceCommandExecutor = defaultServiceCommandExecutor,
+  options: ServiceRegistrationOptions = {},
 ): Promise<void> {
   try {
     if (descriptor.kind === "launchd") {
-      // Label 稳定但 plist 内容可能变化；先卸载旧 job，避免 load 失败后 start 唤醒旧参数。
+      const userAgentPath = launchdUserAgentDescriptorPath(descriptor, options.homeDir);
+      // launchd 只在登录时自动加载 LaunchAgents 下的 plist，因此注册即把 plist 落盘
+      // 到该目录；serviceDir 副本继续由调用方写入，仅作记录与别名扫描源。
+      await mkdir(dirname(userAgentPath), { recursive: true });
+      await writeFile(userAgentPath, descriptor.content, "utf8");
+      // Label 稳定但 plist 内容与加载位置可能变化：先卸载旧 job（serviceDir 历史会话级
+      // 注册与 LaunchAgents 注册都按 Label 命中），避免 load 失败后 start 唤醒旧参数。
       try {
         await executor.run("launchctl", ["unload", "-w", descriptorPath]);
       } catch (error: unknown) {
         if (!isServiceMissingError(error)) throw error;
       }
-      await executor.run("launchctl", ["load", "-w", descriptorPath]);
+      try {
+        await executor.run("launchctl", ["unload", "-w", userAgentPath]);
+      } catch (error: unknown) {
+        if (!isServiceMissingError(error)) throw error;
+      }
+      await executor.run("launchctl", ["load", "-w", userAgentPath]);
       await executor.run("launchctl", ["start", descriptor.name]);
     } else if (descriptor.kind === "systemd") {
       await executor.run("systemctl", ["--user", "daemon-reload"]);
@@ -149,10 +180,13 @@ export async function registerService(
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `Failed to register service ${descriptor.name} (${descriptorPath}): ${message}`,
-      { cause: error },
-    );
+    const targets =
+      descriptor.kind === "launchd"
+        ? `${descriptorPath}, ${launchdUserAgentDescriptorPath(descriptor, options.homeDir)}`
+        : descriptorPath;
+    throw new Error(`Failed to register service ${descriptor.name} (${targets}): ${message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -160,11 +194,24 @@ export async function unregisterService(
   descriptor: ServiceDescriptor,
   descriptorPath: string,
   executor: ServiceCommandExecutor = defaultServiceCommandExecutor,
+  options: ServiceRegistrationOptions = {},
 ): Promise<void> {
   try {
-    if (descriptor.kind === "launchd")
-      await executor.run("launchctl", ["unload", "-w", descriptorPath]);
-    else if (descriptor.kind === "systemd")
+    if (descriptor.kind === "launchd") {
+      const userAgentPath = launchdUserAgentDescriptorPath(descriptor, options.homeDir);
+      try {
+        await executor.run("launchctl", ["unload", "-w", userAgentPath]);
+      } catch (error: unknown) {
+        if (!isServiceMissingError(error)) throw error;
+      }
+      try {
+        await executor.run("launchctl", ["unload", "-w", descriptorPath]);
+      } catch (error: unknown) {
+        if (!isServiceMissingError(error)) throw error;
+      }
+      // LaunchAgents 副本由注册写入，卸载时一并移除；force 容忍文件已不存在。
+      await rm(userAgentPath, { force: true });
+    } else if (descriptor.kind === "systemd")
       await executor.run("systemctl", ["--user", "disable", "--now", descriptorPath]);
     else {
       if (await isMissingWindowsTask(descriptor, executor)) return;
