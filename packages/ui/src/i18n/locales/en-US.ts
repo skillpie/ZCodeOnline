@@ -1352,6 +1352,19 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
   "git.branchSwitcher.section.worktrees": "Worktrees",
+  "git.branchSwitcher.deleteAction.ariaLabel": "Delete branch {branchName}",
+  "git.branchSwitcher.deleteConfirm.title": "Delete branch",
+  "git.branchSwitcher.deleteConfirm.description":
+    "This deletes branch {branchName}. Merged commits are safe and remain visible in the git graph.",
+  "git.branchSwitcher.deleteConfirm.confirm": "Delete",
+  "git.branchSwitcher.deleteConfirm.forceTitle": "Force delete branch",
+  "git.branchSwitcher.deleteConfirm.forceDescription":
+    "Branch {branchName} contains unmerged commits. After a force delete they become unreachable from this branch.",
+  "git.branchSwitcher.deleteConfirm.forceConfirm": "Force delete",
+  "git.branchSwitcher.toast.deleteSuccess": "Branch deleted: {branchName}",
+  "git.branchSwitcher.error.branchIsCurrent": "The currently checked out branch cannot be deleted.",
+  "git.branchSwitcher.error.branchNotFullyMerged":
+    "This branch has unmerged commits and cannot be deleted safely.",
   "git.branchSwitcher.worktreeToggle.ariaLabel":
     "Expand or collapse {count} worktrees of branch {branchName}",
   "git.worktree.checkoutAction": "Check out as worktree",

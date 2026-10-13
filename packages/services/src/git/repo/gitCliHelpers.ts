@@ -134,6 +134,26 @@ export function parseGitBranchMutationIssues(
     ];
   }
 
+  if (normalizedDetail.includes("not fully merged")) {
+    return [
+      {
+        code: "branch-not-fully-merged",
+        message: "Branch is not fully merged.",
+        detail,
+      },
+    ];
+  }
+
+  if (normalizedDetail.includes("is checked out at")) {
+    return [
+      {
+        code: "branch-is-current",
+        message: "Cannot delete a branch that is checked out.",
+        detail,
+      },
+    ];
+  }
+
   if (normalizedDetail.includes("resolve your current index first")) {
     return [
       {

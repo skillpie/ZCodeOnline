@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button.js";
 import { CommandItem } from "@/components/ui/command.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
+import {
+  useSustainedHover,
+  DELETE_REVEAL_DELAY_MS,
+} from "@/git-branch-switcher/useSustainedHover.js";
 import { cn } from "@/components/lib/utils.js";
 import { FolderGit2, SquarePenIcon, Trash2Icon } from "lucide-react";
 
@@ -40,8 +44,15 @@ export function GitWorktreeListRow({
   const [hovered, setHovered] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
   const canMutate = !worktree.isCurrentWorkspace;
-  const shouldMountMutateActions = canMutate && (isCoarseTouchDevice() || hovered || focusWithin);
+  const interactive = hovered || focusWithin;
+  const shouldMountMutateActions = canMutate && interactive;
   const canRename = canMutate && Boolean(worktree.branchName);
+  // 移除是破坏性动作：hover / focus 持续 2 秒才浮现（触屏无 hover 立即显示）；重命名保持即时。
+  const removeRevealed = useSustainedHover(
+    interactive,
+    isCoarseTouchDevice() ? 0 : DELETE_REVEAL_DELAY_MS,
+  );
+  const shouldMountRemoveAction = shouldMountMutateActions && removeRevealed;
 
   return (
     <CommandItem
@@ -99,7 +110,7 @@ export function GitWorktreeListRow({
           <SquarePenIcon className="size-3.5" />
         </Button>
       ) : null}
-      {shouldMountMutateActions ? (
+      {shouldMountRemoveAction ? (
         <Button
           type="button"
           variant="outline"

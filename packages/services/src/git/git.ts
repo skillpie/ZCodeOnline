@@ -14,6 +14,7 @@ import type {
   GitDiffResult,
   GitDiscardPathsRequest,
   GitAddWorktreeRequest,
+  GitDeleteBranchRequest,
   GitGenerateCommitMessageRequest,
   GitGenerateCommitMessageResult,
   GitIdentity,
@@ -45,6 +46,7 @@ export interface IGitService {
   getCommitGraph(params: GitCommitGraphRequest): Promise<GitCommitGraphResult>;
   switchBranch(params: GitSwitchBranchRequest): Promise<GitBranchMutationResult>;
   createBranchAndSwitch(params: GitCreateBranchRequest): Promise<GitBranchMutationResult>;
+  deleteBranch(params: GitDeleteBranchRequest): Promise<GitBranchMutationResult>;
   listWorktrees(params: GitRepositoryRequest): Promise<GitWorktreeListResult>;
   addWorktree(params: GitAddWorktreeRequest): Promise<GitWorktreeMutationResult>;
   removeWorktree(params: GitRemoveWorktreeRequest): Promise<GitWorktreeMutationResult>;

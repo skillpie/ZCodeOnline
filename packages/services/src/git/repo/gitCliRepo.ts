@@ -445,6 +445,9 @@ function isSameWorktreePath(left: string, right: string): boolean {
 
 const WORKTREES_EXCLUDE_LINE = ".worktrees/";
 
+/** repo 本地 config 键：多行 `<worktree 目录名>=<来源分支>`，树形分组依据。 */
+const WORKTREE_SOURCES_CONFIG_KEY = "zcode.worktreeSources";
+
 /**
  * 幂等地把 `.worktrees/` 追加进 repo 本地的 `.git/info/exclude`：
  * 不改用户的 .gitignore，也让主工作区 git status 与 Review 面板不被嵌套 worktree 目录污染。
@@ -772,68 +775,96 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     return result.exitCode === 0;
   }
 
-  /**
-   * 读取 repo 本地 config 里记录的 worktree 来源分支（`branch.<副本>.worktreeSource`）。
-   * 这是树形分组的依据：副本分支按来源挂在来源分支行下。无记录（旧数据 / 来源不可考）
-   * 时调用方回退为挂在副本自身分支下。config 随仓库存取，`git branch -m` 会自动迁移该键。
-   */
-  async function readWorktreeSources(repoRoot: string): Promise<Map<string, string>> {
-    const sources = new Map<string, string>();
+  /** worktree 目录名（.worktrees/ 下的净化名）→ 来源分支。树形分组据此把副本挂到来源分支行下。 */
+  async function readWorktreeSourceMap(repoRoot: string): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
     const result = await commandProvider.run({
       cwd: repoRoot,
-      args: ["config", "--get-regexp", "^branch\\..+\\.worktreesource$"],
+      args: ["config", "--get", WORKTREE_SOURCES_CONFIG_KEY],
       timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
       maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
     });
     if (result.timedOut || result.outputTruncated) {
-      ensureGitCommandSucceeded("git config --get-regexp", result);
+      ensureGitCommandSucceeded("git config --get", result);
     }
     // 没有任何记录时 git 返回 exitCode 1，属正常空态而非错误。
     if (result.exitCode !== 0) {
-      return sources;
+      return map;
     }
 
     for (const line of result.stdout.replace(/\r\n/g, "\n").split("\n")) {
-      const separatorIndex = line.indexOf(" ");
+      const separatorIndex = line.indexOf("=");
       if (separatorIndex <= 0) {
         continue;
       }
-      const configKey = line.slice(0, separatorIndex);
-      const value = line.slice(separatorIndex + 1).trim();
-      // 键形如 branch.<分支名>.worktreeSource（分支名即 subsection，可含点与斜杠），
-      // 取首尾定界之间的部分；key 大小写不敏感，按小写后缀匹配。
-      const suffixIndex = configKey.toLowerCase().lastIndexOf(".worktreesource");
-      if (suffixIndex <= "branch.".length) {
-        continue;
-      }
-      const branchName = configKey.slice("branch.".length, suffixIndex);
-      if (branchName && value) {
-        sources.set(branchName, value);
+      const dirName = line.slice(0, separatorIndex).trim();
+      const source = line.slice(separatorIndex + 1).trim();
+      if (dirName && source) {
+        map.set(dirName, source);
       }
     }
-    return sources;
+    return map;
   }
 
-  /** 创建成功后记录来源分支（树形分组依据）；写失败只记 warn，不影响 worktree 本身。 */
-  async function recordWorktreeSource(
-    repoRoot: string,
-    branchName: string,
-    sourceBranchName: string,
-  ): Promise<void> {
+  async function writeWorktreeSourceMap(repoRoot: string, map: Map<string, string>): Promise<void> {
+    // 值为多行 `<目录名>=<来源分支>`；目录名经净化不含 = 与换行，来源分支按首个 = 分割。
+    const value = Array.from(map.entries())
+      .map(([dirName, source]) => `${dirName}=${source}`)
+      .join("\n");
+    const args = value
+      ? ["config", "--replace-all", WORKTREE_SOURCES_CONFIG_KEY, value]
+      : ["config", "--unset-all", WORKTREE_SOURCES_CONFIG_KEY];
     const result = await commandProvider.run({
       cwd: repoRoot,
-      args: ["config", "--replace-all", `branch.${branchName}.worktreeSource`, sourceBranchName],
+      args,
       timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
       maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
     });
-    if (result.exitCode !== 0) {
-      log.warn("[git-repo] 记录 worktree 来源分支失败", {
+    // unset 一个本就不存在的键返回 5：目标态（无记录）已达成，不视为失败。
+    const unsetMissingKey = args.includes("--unset-all") && result.exitCode === 5;
+    if (result.exitCode !== 0 && !unsetMissingKey) {
+      log.warn("[git-repo] 写入 worktree 来源映射失败", {
         repoRoot,
-        branchName,
-        sourceBranchName,
+        exitCode: result.exitCode,
         stderr: result.stderr.trim(),
       });
     }
+  }
+
+  /** .worktrees/ 下 worktree 的目录名；作为来源映射的稳定键（不随 worktree 内切分支变化）。 */
+  function worktreeDirNameOf(worktreePath: string): string {
+    return (
+      normalizeWatchPath(worktreePath).replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? ""
+    );
+  }
+
+  async function forgetWorktreeSource(repoRoot: string, dirName: string): Promise<void> {
+    if (!dirName) {
+      return;
+    }
+    const map = await readWorktreeSourceMap(repoRoot);
+    if (!map.delete(dirName)) {
+      return;
+    }
+    await writeWorktreeSourceMap(repoRoot, map);
+  }
+
+  async function migrateWorktreeSource(
+    repoRoot: string,
+    oldDirName: string,
+    newDirName: string,
+  ): Promise<void> {
+    if (!oldDirName || oldDirName === newDirName) {
+      return;
+    }
+    const map = await readWorktreeSourceMap(repoRoot);
+    const source = map.get(oldDirName);
+    if (source === undefined) {
+      return;
+    }
+    map.delete(oldDirName);
+    map.set(newDirName, source);
+    await writeWorktreeSourceMap(repoRoot, map);
   }
 
   async function hasOperationInProgress(resolution: GitResolvedRepository): Promise<boolean> {
@@ -1472,6 +1503,108 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       });
     },
 
+    async deleteBranch(
+      workspacePath: string,
+      branchName: string,
+      options?: { force?: boolean },
+    ): Promise<GitBranchMutationResult> {
+      const status = await this.getStatus(workspacePath);
+      const resolution = ensureRepositoryAvailable(status.resolution, "delete branch");
+      const normalizedBranchName = branchName.trim();
+      if (normalizedBranchName.length === 0) {
+        return toBranchMutationFailure({
+          action: "delete",
+          branchName: null,
+          summary: status.summary,
+          issues: [toInvalidBranchNameIssue()],
+        });
+      }
+
+      // 当前检出的分支不可删（UI 已隐藏入口，这里兜底给出明确 issue 而非 git 原生报错）。
+      if (status.summary.branchName === normalizedBranchName) {
+        return toBranchMutationFailure({
+          action: "delete",
+          branchName: normalizedBranchName,
+          summary: status.summary,
+          issues: [
+            {
+              code: "branch-is-current",
+              message: "Cannot delete a branch that is checked out.",
+              detail: normalizedBranchName,
+            },
+          ],
+        });
+      }
+
+      // 挂在任意 worktree（含主树）上的分支不可直接删：先移除 worktree 再删分支。
+      const listResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["worktree", "list", "--porcelain"],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      ensureGitCommandSucceeded("git worktree list --porcelain", listResult);
+      const occupied = parseWorktreePorcelain(listResult.stdout).some(
+        (entry) => entry.branchName === normalizedBranchName,
+      );
+      if (occupied) {
+        return toBranchMutationFailure({
+          action: "delete",
+          branchName: normalizedBranchName,
+          summary: status.summary,
+          issues: [
+            {
+              code: "branch-in-other-worktree",
+              message: "Branch is already checked out in another worktree.",
+              detail: normalizedBranchName,
+            },
+          ],
+        });
+      }
+
+      if (!(await resolveLocalBranchExists(resolution.repoRoot, normalizedBranchName))) {
+        return toBranchMutationFailure({
+          action: "delete",
+          branchName: normalizedBranchName,
+          summary: status.summary,
+          issues: [
+            {
+              code: "target-branch-not-found",
+              message: "Target branch was not found.",
+              detail: normalizedBranchName,
+            },
+          ],
+        });
+      }
+
+      // 默认安全删（-d，仅删已合并分支）；未合并时 git 拒绝并翻译为 branch-not-fully-merged，
+      // 由 UI 二次确认后携带 force 重试（-D）。
+      const deleteResult = await commandProvider.run({
+        cwd: resolution.repoRoot,
+        args: ["branch", options?.force ? "-D" : "-d", normalizedBranchName],
+        timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+        maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+      });
+      if (deleteResult.exitCode !== 0) {
+        return toBranchMutationFailure({
+          action: "delete",
+          branchName: normalizedBranchName,
+          summary: status.summary,
+          issues: parseGitBranchMutationIssues(deleteResult),
+        });
+      }
+
+      invalidate(workspacePath);
+      const nextStatus = await this.getStatus(workspacePath);
+      return toBranchMutationSuccess({
+        action: "delete",
+        branchName: normalizedBranchName,
+        didChange: true,
+        created: false,
+        summary: nextStatus.summary,
+      });
+    },
+
     async listWorktrees(workspacePath: string): Promise<GitWorktreeListResult> {
       const resolution = await this.resolveRepository(workspacePath);
       const result = await commandProvider.run({
@@ -1494,7 +1627,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       } catch {
         // workspace 目录读不到 realpath 时保留原始形式参与比较。
       }
-      const worktreeSources = await readWorktreeSources(resolution.repoRoot);
+      const worktreeSources = await readWorktreeSourceMap(resolution.repoRoot);
       return {
         worktrees: entries
           .slice(1)
@@ -1503,8 +1636,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
             (entry): GitWorktreeRecord => ({
               path: entry.path,
               branchName: entry.branchName,
-              sourceBranchName:
-                (entry.branchName ? worktreeSources.get(entry.branchName) : null) ?? null,
+              sourceBranchName: worktreeSources.get(worktreeDirNameOf(entry.path)) ?? null,
               head: entry.head,
               isMain: false,
               isCurrentWorkspace: currentWorkspacePaths.has(normalizeWatchPath(entry.path)),
@@ -1648,11 +1780,9 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         normalizedStartPoint &&
         (await resolveLocalBranchExists(resolution.repoRoot, normalizedStartPoint))
       ) {
-        await recordWorktreeSource(
-          resolution.repoRoot,
-          normalizedBranchName,
-          normalizedStartPoint,
-        );
+        const sourceMap = await readWorktreeSourceMap(resolution.repoRoot);
+        sourceMap.set(worktreeDirNameOf(worktreePath), normalizedStartPoint);
+        await writeWorktreeSourceMap(resolution.repoRoot, sourceMap);
       }
 
       // 重新拉一次列表，让返回记录的 HEAD / 分支名与 git 事实一致，而不是本地拼装。
@@ -1714,6 +1844,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         if (pruneResult.exitCode !== 0) {
           return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(pruneResult));
         }
+        await forgetWorktreeSource(resolution.repoRoot, worktreeDirNameOf(target.path));
         invalidate(workspacePath);
         return { ok: true, worktree: null, issues: [] };
       }
@@ -1728,6 +1859,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(removeResult));
       }
 
+      await forgetWorktreeSource(resolution.repoRoot, worktreeDirNameOf(target.path));
       invalidate(workspacePath);
       return { ok: true, worktree: null, issues: [] };
     },
@@ -1854,6 +1986,13 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
           return toWorktreeMutationFailure(parseGitWorktreeMutationIssues(moveResult));
         }
       }
+
+      // 目录改名后，来源记录从旧目录名迁到新目录名；没有记录（旧数据）则跳过。
+      await migrateWorktreeSource(
+        resolution.repoRoot,
+        worktreeDirNameOf(target.path),
+        worktreeDirNameOf(newWorktreePath),
+      );
 
       invalidate(workspacePath);
       const refreshedList = await this.listWorktrees(workspacePath);

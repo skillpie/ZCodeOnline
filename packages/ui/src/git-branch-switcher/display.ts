@@ -101,6 +101,10 @@ export function resolveGitBranchIssueMessageId(
       return "git.branchSwitcher.error.operationInProgress";
     case "branch-in-other-worktree":
       return "git.branchSwitcher.error.branchInOtherWorktree";
+    case "branch-is-current":
+      return "git.branchSwitcher.error.branchIsCurrent";
+    case "branch-not-fully-merged":
+      return "git.branchSwitcher.error.branchNotFullyMerged";
     default:
       return null;
   }
@@ -111,6 +115,10 @@ export function resolveGitBranchSuccessMessageId(
 ): string | null {
   if (!result.didChange) {
     return null;
+  }
+
+  if (result.action === "delete") {
+    return "git.branchSwitcher.toast.deleteSuccess";
   }
 
   if (result.action === "create-and-switch" || result.created) {

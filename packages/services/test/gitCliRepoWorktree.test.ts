@@ -115,8 +115,8 @@ test("addWorktree 用 newBranchStartPoint 基于指定分支建并行副本", as
   });
   assert.equal(worktreeHead.stdout.trim(), baseHeadSha);
   await access(join(result.worktree?.path ?? "", "base.txt"));
-  const recordedSource = await git("config", "--get", "branch.feature/base-copy.worktreeSource");
-  assert.equal(recordedSource.trim(), "feature/base");
+  const recordedSources = await git("config", "--get", "zcode.worktreeSources");
+  assert.ok(recordedSources.includes("feature-base-copy=feature/base"));
 
   // 起点引用不存在 → branch-not-found。
   const missingStart = await repo.addWorktree(root, {
@@ -190,6 +190,8 @@ test("removeWorktree 对 clean worktree 删除目录与注册，对 dirty worktr
   assert.equal(removed.ok, true);
   assert.equal(removed.worktree, null);
   await assert.rejects(access(worktreePath), /ENOENT/);
+  const sourcesAfterRemove = await git("config", "--get", "zcode.worktreeSources");
+  assert.ok(!sourcesAfterRemove.includes("feature-clean-e2e="));
 
   const list = await repo.listWorktrees(root);
   assert.ok(!list.worktrees.some((entry) => entry.path === worktreePath));
@@ -229,15 +231,24 @@ test("removeWorktree 拒绝注册表之外的路径与主树", async () => {
   assert.deepEqual(issueCodes(mainTree), ["worktree-not-found"]);
 });
 
-test("renameWorktree 同步改分支名并把目录移到净化名下", async () => {
-  const added = await repo.addWorktree(root, { newBranchName: "feature/rename-src" });
+test("renameWorktree 同步改分支名并把目录移到净化名下，来源记录随目录迁移", async () => {
+  const added = await repo.addWorktree(root, {
+    newBranchName: "feature/rename-src",
+    newBranchStartPoint: "main",
+  });
   assert.equal(added.ok, true);
+  assert.equal(added.worktree?.sourceBranchName, "main");
   const oldPath = added.worktree?.path ?? "";
 
   const renamed = await repo.renameWorktree(root, oldPath, "feature/renamed-nice");
   assert.equal(renamed.ok, true);
   assert.equal(renamed.worktree?.branchName, "feature/renamed-nice");
   assert.equal(renamed.worktree?.path, join(worktreesDir, "feature-renamed-nice"));
+  // 目录改名后来源记录迁到新目录名，树形分组依据不丢。
+  assert.equal(renamed.worktree?.sourceBranchName, "main");
+  const renamedSources = await git("config", "--get", "zcode.worktreeSources");
+  assert.ok(renamedSources.includes("feature-renamed-nice=main"));
+  assert.ok(!renamedSources.includes("feature-rename-src="));
 
   // 旧目录不在、新目录在、旧分支消失、新分支存在且 HEAD 不变。
   await assert.rejects(access(oldPath), /ENOENT/);

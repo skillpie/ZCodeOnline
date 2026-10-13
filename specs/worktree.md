@@ -16,10 +16,11 @@
   点击都能持续产出并行副本；默认名与现有分支撞车时降级为秒级 `{...}-{MMddHHmmss}`，仍撞车
   追加 `-2`、`-3` 序号。无弹窗、无底部独立入口（行尾的「合入 / 拉取」是既有对话动作，与
   worktree 无关）。
-- 创建副本成功后，把来源分支写入 repo 本地 config `branch.<副本>.worktreeSource`（与 git 自身
-  存 upstream 元数据同一模式；`git branch -m` 会自动迁移该键）。树形分组据此把副本挂到来源
-  分支行下，顶层不再重复展示副本分支行；无记录（旧数据）或来源分支已删除时回退挂在副本自身
-  分支行下，detached 落到兜底「Worktrees」分组。
+- 创建副本成功后，把来源分支写入 repo 本地 config `zcode.worktreeSources`——多行
+  `<worktree 目录名>=<来源分支>`。**记录键是 worktree 目录名而不是分支名**：目录名不随
+  worktree 内切分支变化（切分支丢分组是按分支记录的缺陷），随重命名迁移、随移除清理。
+  树形分组据此把副本挂到来源分支行下，顶层不再重复展示副本分支行；无记录（旧数据）或来源
+  分支已删除时回退挂在副本自身分支行下，detached 落到兜底「Worktrees」分组。
 - worktree 目录统一落在**主树根**的 `.worktrees/<净化后的分支名>`；当前 workspace 本身已是
   linked worktree 时同样锚定主树根（从 `git worktree list` 第一条解析），保证同一仓库的所有
   worktree 聚在一处。
@@ -35,6 +36,11 @@
 - 移除：clean worktree 经确认后 `git worktree remove`；dirty（有未提交更改）**阻止**并提示，
   不提供 force；目标 workspace 有运行中会话/任务时由 renderer 侧阻止；目录已被外部删除的
   悬空记录在移除时自动 `git worktree prune`。主树不提供移除。
+- 删除分支：分支行 hover / focus 持续 **2 秒**后行尾最右侧浮现「删除分支」图标（触屏无 hover
+  立即显示；当前检出的分支不提供），worktree 子项的「移除」按钮同样 2 秒延迟浮现——防误触。
+  点击后确认弹窗；默认安全删（`git branch -d`，仅删已合并分支），git 以 not-fully-merged 拒绝时
+  二次确认“强制删除将丢提交”后携带 force（`-D`）重试。挂在任意 worktree 的分支被前置拒绝
+  （先移除 worktree 再删分支），当前检出的分支命中 `branch-is-current`。
 - 不做：独立的 worktree 管理面板、创建时自定义命名的弹窗、基于任意 ref（非分支）的检出。
 
 ## 2. 状态所有者
@@ -124,6 +130,11 @@ interface IGitService {
     worktreePath: string;
     newBranchName: string;
   }): Promise<GitWorktreeMutationResult>;
+  deleteBranch(params: {
+    workspacePath: string;
+    branchName: string;
+    force?: boolean;
+  }): Promise<GitBranchMutationResult>; // action="delete"；安全删 -d，force 时 -D
 }
 ```
 
@@ -147,7 +158,7 @@ Host
   → 幂等写 .git/info/exclude（追加缺失的 .worktrees/ 行）
   → git worktree add -b <新分支> <path> -- <起点>（git 原生拒绝翻译为 issue）
   → invalidate(workspacePath)（主树 status/exclude 缓存失效）
-  → 起点为本地分支时写 branch.<副本>.worktreeSource = 起点（失败只 warn，不阻塞）
+  → 起点为本地分支时在 zcode.worktreeSources 记录 `<目录名>=<起点>`（失败只 warn，不阻塞）
   → 返回 { ok, worktree }
 renderer 收到成功
   → toast 成功 → tabStore.addTab(worktree.path) → sessionStore.startDraft(worktree.path)
@@ -214,9 +225,12 @@ renderer 收到成功
    与 detached 子项不提供重命名入口。
 6. 移除 clean worktree：确认后目录与 git 记录消失；移除 dirty worktree：被阻止并提示未提交更改；
    目标 workspace 会话运行中：renderer 阻止；手动删目录后的悬空记录：移除动作自动 prune。
-7. 终端手工 `git worktree add/remove` 后重新展开下拉 → 列表反映最新事实（无第二事实漂移）。
-8. Web 与桌面行为一致（同一 gitService 通道）；服务层单测覆盖 porcelain 解析、目录名净化、
-   startPoint 并行副本、重命名、创建/移除的 issue 翻译。
+7. 删除分支：hover 分支行 2 秒后行尾最右侧出现删除图标（当前分支无此入口）；已合并分支确认后
+   删除并从列表消失；未合并分支首次被拒 → 二次确认强制删除后才删除；挂在工作树/worktree 的
+   分支删除被拒；worktree 子项的「移除」按钮同样 2 秒延迟浮现。
+8. 终端手工 `git worktree add/remove` 后重新展开下拉 → 列表反映最新事实（无第二事实漂移）。
+9. Web 与桌面行为一致（同一 gitService 通道）；服务层单测覆盖 porcelain 解析、目录名净化、
+   startPoint 并行副本、重命名、删除分支（安全删 / 未合并拒绝 / force）、创建/移除的 issue 翻译。
 
 ## 6. 边界与不变量
 

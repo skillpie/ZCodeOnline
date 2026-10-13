@@ -21,7 +21,7 @@ export type GitChangeSectionId =
 
 export type GitDiffAvailability = "patch" | "binary" | "truncated" | "unavailable";
 
-export type GitBranchMutationAction = "switch" | "create-and-switch";
+export type GitBranchMutationAction = "switch" | "create-and-switch" | "delete";
 
 export type GitBranchMutationIssueCode =
   | "invalid-branch-name"
@@ -32,6 +32,8 @@ export type GitBranchMutationIssueCode =
   | "conflicts-present"
   | "operation-in-progress"
   | "branch-in-other-worktree"
+  | "branch-is-current"
+  | "branch-not-fully-merged"
   | "unknown";
 
 export interface GitRepositorySummary {
@@ -145,12 +147,18 @@ export interface GitCreateBranchRequest extends GitRepositoryRequest {
   startPoint?: string;
 }
 
+export interface GitDeleteBranchRequest extends GitRepositoryRequest {
+  branchName: string;
+  /** true 时跳过“已合并”安全检查（git branch -D）；仅应在用户对未合并提交明确确认后使用。 */
+  force?: boolean;
+}
+
 export interface GitWorktreeRecord {
   path: string;
   /** detached HEAD 的 worktree 没有分支名。 */
   branchName: string | null;
-  /** 创建该 worktree 时记录的来源分支（repo 本地 config `branch.<名>.worktreeSource`）；
-   * 旧数据或来源不可考时为 null。 */
+  /** 创建该 worktree 时记录的来源分支（repo 本地 config `zcode.worktreeSources`，按 worktree
+   *  目录名记录，不随 worktree 内切分支变化）；旧数据或来源不可考时为 null。 */
   sourceBranchName: string | null;
   head: string | null;
   isMain: boolean;

@@ -1243,6 +1243,18 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.error.unknown": "切换分支失败，请稍后重试。",
   "git.branchSwitcher.error.requestFailed": "分支操作失败：{error}",
   "git.branchSwitcher.section.worktrees": "Worktrees",
+  "git.branchSwitcher.deleteAction.ariaLabel": "删除分支 {branchName}",
+  "git.branchSwitcher.deleteConfirm.title": "删除分支",
+  "git.branchSwitcher.deleteConfirm.description":
+    "将删除分支 {branchName}。已合并的提交不会丢失，仍可在 Git 图谱中查看。",
+  "git.branchSwitcher.deleteConfirm.confirm": "删除",
+  "git.branchSwitcher.deleteConfirm.forceTitle": "强制删除分支",
+  "git.branchSwitcher.deleteConfirm.forceDescription":
+    "分支 {branchName} 含有未合并的提交，强制删除后这些提交将无法从该分支访问。",
+  "git.branchSwitcher.deleteConfirm.forceConfirm": "强制删除",
+  "git.branchSwitcher.toast.deleteSuccess": "已删除分支 {branchName}",
+  "git.branchSwitcher.error.branchIsCurrent": "不能删除当前检出的分支。",
+  "git.branchSwitcher.error.branchNotFullyMerged": "分支含有未合并的提交，已阻止删除。",
   "git.branchSwitcher.worktreeToggle.ariaLabel":
     "展开或收起分支 {branchName} 的 {count} 个 worktree",
   "git.worktree.checkoutAction": "检出为 Worktree",

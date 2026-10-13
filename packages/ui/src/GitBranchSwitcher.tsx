@@ -80,6 +80,7 @@ export function GitBranchSwitcher({
     mutationPending,
     switchBranch,
     createBranchAndSwitch,
+    deleteBranch,
     openSwitchCommitDialog,
     closeSwitchAssistDialog,
     commitAndSwitchBranch,
@@ -120,6 +121,13 @@ export function GitBranchSwitcher({
       void checkoutBranchAsWorktree(branchName);
     },
     [checkoutBranchAsWorktree, setOpen],
+  );
+  const handleDeleteBranch = useCallback(
+    (branchName: string) => {
+      setOpen(false);
+      void deleteBranch(branchName);
+    },
+    [deleteBranch, setOpen],
   );
   const triggerLabel = useMemo(
     () =>
@@ -308,6 +316,7 @@ export function GitBranchSwitcher({
                     setOpen(false);
                   }}
                   onCheckoutAsWorktree={handleCheckoutAsWorktree}
+                  onDeleteBranch={handleDeleteBranch}
                   onOpenWorktree={handleOpenWorktree}
                   onRenameWorktree={openRenameDialog}
                   onRemoveWorktree={removeWorktree}

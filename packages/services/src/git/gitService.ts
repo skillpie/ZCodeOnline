@@ -211,6 +211,12 @@ export function createGitService(options?: {
       );
     },
 
+    async deleteBranch(params) {
+      return await repo.deleteBranch(params.workspacePath, params.branchName, {
+        force: params.force,
+      });
+    },
+
     async listWorktrees(params) {
       return await repo.listWorktrees(params.workspacePath);
     },

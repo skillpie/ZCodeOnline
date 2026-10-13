@@ -20,6 +20,7 @@ interface GitBranchTreeGroupProps {
   /** 对话动作发送前关闭弹层用。 */
   onClosePopover: () => void;
   onCheckoutAsWorktree: (branchName: string) => void;
+  onDeleteBranch: (branchName: string) => void;
   onOpenWorktree: (worktreePath: string) => void;
   onRenameWorktree: (worktree: GitWorktreeRecord) => void;
   onRemoveWorktree: (worktree: GitWorktreeRecord) => void;
@@ -40,6 +41,7 @@ export function GitBranchTreeGroup({
   conversationPromptScope,
   onClosePopover,
   onCheckoutAsWorktree,
+  onDeleteBranch,
   onOpenWorktree,
   onRenameWorktree,
   onRemoveWorktree,
@@ -124,6 +126,7 @@ export function GitBranchTreeGroup({
         conversationPromptScope={conversationPromptScope}
         onConversationActionTriggered={onClosePopover}
         onCheckoutAsWorktree={onCheckoutAsWorktree}
+        onDeleteBranch={onDeleteBranch}
         worktreeCount={branchWorktrees.length}
         expanded={worktreesExpanded}
         onToggleWorktrees={() => {

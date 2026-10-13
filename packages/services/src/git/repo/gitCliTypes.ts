@@ -91,6 +91,11 @@ export interface GitCliRepo {
     branchName: string,
     startPoint?: string,
   ): Promise<GitBranchMutationResult>;
+  deleteBranch(
+    workspacePath: string,
+    branchName: string,
+    options?: { force?: boolean },
+  ): Promise<GitBranchMutationResult>;
   listWorktrees(workspacePath: string): Promise<GitWorktreeListResult>;
   addWorktree(
     workspacePath: string,

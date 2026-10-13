@@ -19,6 +19,7 @@ import {
   type GitBranchSwitchAssistDialogStep,
   type GitBranchSwitchAssistState,
 } from "@/git-branch-switcher/switchAssist.js";
+import { useGitBranchDelete } from "@/git-branch-switcher/useGitBranchDelete.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
@@ -83,6 +84,20 @@ export function useGitBranchSwitcher({
       setLoadingBranches(false);
     }
   }, [gitService, intl, workspacePath]);
+
+  const { deleteBranch } = useGitBranchDelete({
+    workspacePath,
+    onDeleted: useCallback((deletedBranchName: string) => {
+      setBranchesResult((current) =>
+        current
+          ? {
+              ...current,
+              branches: current.branches.filter((branch) => branch.name !== deletedBranchName),
+            }
+          : current,
+      );
+    }, []),
+  });
 
   useEffect(() => {
     setOpen(false);
@@ -397,6 +412,7 @@ export function useGitBranchSwitcher({
     mutationPending,
     switchBranch,
     createBranchAndSwitch,
+    deleteBranch,
     openSwitchCommitDialog,
     closeSwitchAssistDialog,
     commitAndSwitchBranch,
