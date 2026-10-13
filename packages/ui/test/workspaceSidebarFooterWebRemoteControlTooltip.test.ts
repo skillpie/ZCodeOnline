@@ -24,8 +24,11 @@ vi.mock("@/ControlHintTooltip.js", () => ({
     createElement("span", { "data-tooltip-title": title }, children),
 }));
 
-vi.mock("@/WorkspaceWebRemoteControlTrigger.js", () => ({
-  WorkspaceWebRemoteControlTrigger: () =>
+// 12c3effc 合入 v3.15.1 后，侧栏底部远程控制入口由 WorkspaceWebRemoteControlTrigger
+// 合并为 WorkspaceAssistCodeRefreshTrigger（远程码 + Bot Channel 统一弹窗），footer 不再
+// 引用旧组件；mock 与断言跟随现入口，验证语义不变：入口按钮渲染且不被 footer 二次包 tooltip。
+vi.mock("@/WorkspaceAssistCodeRefreshTrigger.js", () => ({
+  WorkspaceAssistCodeRefreshTrigger: () =>
     createElement("button", {
       "data-testid": "web-remote-control-trigger",
     }),
@@ -422,7 +425,9 @@ describe("WorkspaceSidebarFooter web remote control tooltip", () => {
     );
 
     expect(html).toContain('data-testid="web-remote-control-trigger"');
-    expect(html).not.toContain('data-tooltip-title="webRemoteControl.trigger"');
+    // 触发器自带的 tooltip 标题是 assistCode.dialog.trigger（mock 已将其隔离），
+    // footer 不得再包一层同标题的 ControlHintTooltip 造成双重 tooltip。
+    expect(html).not.toContain('data-tooltip-title="assistCode.dialog.trigger"');
   });
 
   it("shows desktop zoom commands under an interface zoom submenu", () => {
@@ -475,7 +480,7 @@ describe("WorkspaceSidebarFooter web remote control tooltip", () => {
     expect(logoutIndex).toBeGreaterThan(separatorBeforeAuthIndex);
   });
 
-  it("keeps the always-visible upgrade entry inside the footer summary", () => {
+  it("keeps the usage entry inside the footer summary while the upgrade entry stays hidden", () => {
     const footerSource = readFileSync(
       resolve(process.cwd(), "packages/ui/src/WorkspaceSidebarFooter.tsx"),
       "utf8",
@@ -492,13 +497,16 @@ describe("WorkspaceSidebarFooter web remote control tooltip", () => {
       "<DropdownMenuSeparator />",
     );
     expect(summarySource).toContain("<DropdownMenuSeparator />");
-    expect(summarySource.indexOf("sidebar.usage.plan.openStats")).toBeLessThan(
-      summarySource.indexOf("onUpgradeClick?.("),
-    );
+    // 产品决定隐藏底部菜单升级入口（specs/sidebar-footer-menu.md）：summary 只渲染
+    // 「用量统计」菜单项，渲染体内不再出现 onUpgradeClick?.( 调用。
+    expect(summarySource.indexOf("sidebar.usage.plan.openStats")).toBeGreaterThan(-1);
+    expect(summarySource).not.toContain("onUpgradeClick?.(");
     expect(summarySource).toContain("setPendingSettingsUsageIntent();");
     expect(summarySource).toContain("onUsageClick?.();");
+    // 升级的数据与回调通路保留：prop 类型（onUpgradeClick?:）与 hook 的
+    // upgradeTargetProviderId 解析不删除，恢复入口时无需重建链路。
+    expect(summarySource).toContain("onUpgradeClick?:");
     expect(summarySource).toContain("upgradeTargetProviderId");
-    expect(summarySource).toContain("onUpgradeClick?.(");
     expect(summarySource).not.toContain("if (!upgradeProviderId");
     expect(summarySource).not.toContain("if (!upgradeTargetProviderId");
     expect(summarySource).toContain("<DropdownMenuSeparator />");

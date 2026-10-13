@@ -362,11 +362,13 @@ describe("ConversationStatusPanel", () => {
       plan: longPlan,
       summaryPanelVariantOverride: "panel",
     });
-    expect(statusPanelCapture.gitBranchSwitchers.at(-1)?.popoverSide).toBe("bottom");
-    expect(statusPanelCapture.gitBranchSwitchers.at(-1)?.popoverClassName).toContain(
-      "max-w-[calc(100vw-2rem)]",
-    );
+    // GitBranchSwitcher 已随 v3.15.1 迁回工作区头部（WorkspaceHeaderGitTools），面板内的
+    // 纵向视口绑定浮层改由 Todo 折叠预览 HoverCard 承载（popoverSide 只注入 PlanStatusSection）：
+    // 仅移动端 Web 远控（isWebRemoteControl && isMobileViewport）用 side=bottom，
+    // 宽度以 max-w-[min(20rem,calc(100vw-2rem))] 绑定视口；桌面仍用 side=left。
     expect(mobileHtml).toContain('data-side="bottom"');
+    expect(mobileHtml).toContain("max-w-[min(20rem,calc(100vw-2rem))]");
+    expect(mobileHtml).not.toContain('data-side="left"');
 
     statusPanelCapture.gitBranchSwitchers = [];
     const desktopHtml = await renderStatusPanel({
@@ -375,8 +377,8 @@ describe("ConversationStatusPanel", () => {
       plan: longPlan,
       summaryPanelVariantOverride: "panel",
     });
-    expect(statusPanelCapture.gitBranchSwitchers.at(-1)?.popoverSide).toBe("left");
     expect(desktopHtml).toContain('data-side="left"');
+    expect(desktopHtml).not.toContain('data-side="bottom"');
   });
 
   it("goal 计时器只在活动态起一次：投影换一个等值的 goal 对象不重建 interval，暂停即拆掉", async () => {
@@ -1454,8 +1456,15 @@ describe("ConversationStatusPanel", () => {
     expect(html).toContain("chat.summaryPanel.displayModeAuto");
     expect(html).not.toContain("chat.summaryPanel.displayModeExpanded");
     expect(html).not.toContain("chat.summaryPanel.displayModeCollapsed");
-    expect(html).toContain("mock-git-branch-switcher");
-    expect(html).toContain("mock-git-action-menu");
+    // v3.15.1 起 Git 工具迁回工作区头部（WorkspaceHeaderGitTools），展开面板只保留
+    // 「更改」行入口（GitChangesStatusSection 源码注释：分支切换/提交菜单不回归）：
+    // 环境 section 渲染 chat.statusPanel.changes 与 +/- 统计，不再渲染分支切换器/提交菜单。
+    expect(html).not.toContain("mock-git-branch-switcher");
+    expect(html).not.toContain("mock-git-action-menu");
+    expect(html).toContain('data-status-section="environment"');
+    expect(html).toContain("chat.statusPanel.changes");
+    expect(html).toContain("+12");
+    expect(html).toContain("-3");
     expect(html).toContain("修好状态面板");
     expect(html).toContain("复刻浮层");
     expect(html).toContain("chat.statusPanel.agents");

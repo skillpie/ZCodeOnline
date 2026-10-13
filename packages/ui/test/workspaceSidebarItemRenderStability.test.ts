@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ZCodeTaskMeta } from "@zcode/shared";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 
 const { taskListCalls, stableServices, zcodeSessionStoreState } = vi.hoisted(() => ({
   taskListCalls: [] as Array<Record<string, unknown>>,
@@ -252,27 +253,34 @@ describe("WorkspaceSidebarItem render stability", () => {
     function renderWithContainerStyle() {
       act(() => {
         root.render(
-          createElement(WorkspaceSidebarItem, {
-            activateTab: () => {},
-            closeTab: () => {},
-            isActiveWorkspace: true,
-            isExpanded: true,
-            itemStyle: { opacity: 1 },
-            mobileActiveTaskKey: null,
-            onOpenFileTree: () => {},
-            onReconnectRemoteWorkspace: async () => {},
-            onSelectTask: () => {},
-            onStartDraftInWorkspace: () => {},
-            onShowMoreTasks: () => {},
-            reconnectingRemoteWorkspaceKeys: [],
-            reconnectingRemoteWorkspaceLogsByWorkspaceKey: {},
-            remoteWorkspaceErrorByWorkspaceKey: {},
-            tab,
-            taskItems,
-            taskListHasMore: true,
-            taskListLoading: false,
-            toggleWorkspaceExpanded: () => {},
-          }),
+          // WorkspaceSidebarItem 经 useTabStoreApi 依赖 TabStoreProvider（生产在 Root.tsx
+          // 常驻挂载）；同一 root 上重复 render 同类型 Provider 会复用 storeRef，不干扰
+          // 本用例对 TaskList action props 稳定性的断言。
+          createElement(
+            TabStoreProvider,
+            null,
+            createElement(WorkspaceSidebarItem, {
+              activateTab: () => {},
+              closeTab: () => {},
+              isActiveWorkspace: true,
+              isExpanded: true,
+              itemStyle: { opacity: 1 },
+              mobileActiveTaskKey: null,
+              onOpenFileTree: () => {},
+              onReconnectRemoteWorkspace: async () => {},
+              onSelectTask: () => {},
+              onStartDraftInWorkspace: () => {},
+              onShowMoreTasks: () => {},
+              reconnectingRemoteWorkspaceKeys: [],
+              reconnectingRemoteWorkspaceLogsByWorkspaceKey: {},
+              remoteWorkspaceErrorByWorkspaceKey: {},
+              tab,
+              taskItems,
+              taskListHasMore: true,
+              taskListLoading: false,
+              toggleWorkspaceExpanded: () => {},
+            }),
+          ),
         );
       });
     }
@@ -302,27 +310,32 @@ describe("WorkspaceSidebarItem render stability", () => {
     function renderWithTaskItems(taskItems: ZCodeTaskMeta[]) {
       act(() => {
         root.render(
-          createElement(WorkspaceSidebarItem, {
-            activateTab: () => {},
-            closeTab: () => {},
-            isActiveWorkspace: true,
-            isExpanded: true,
-            itemStyle: { opacity: 1 },
-            mobileActiveTaskKey: null,
-            onOpenFileTree: () => {},
-            onReconnectRemoteWorkspace: async () => {},
-            onSelectTask: () => {},
-            onStartDraftInWorkspace: () => {},
-            onShowMoreTasks: () => {},
-            reconnectingRemoteWorkspaceKeys: [],
-            reconnectingRemoteWorkspaceLogsByWorkspaceKey: {},
-            remoteWorkspaceErrorByWorkspaceKey: {},
-            tab,
-            taskItems,
-            taskListHasMore: true,
-            taskListLoading: false,
-            toggleWorkspaceExpanded: () => {},
-          }),
+          // 与生产一致补上 TabStoreProvider；同 root 重复 render 复用同一 store。
+          createElement(
+            TabStoreProvider,
+            null,
+            createElement(WorkspaceSidebarItem, {
+              activateTab: () => {},
+              closeTab: () => {},
+              isActiveWorkspace: true,
+              isExpanded: true,
+              itemStyle: { opacity: 1 },
+              mobileActiveTaskKey: null,
+              onOpenFileTree: () => {},
+              onReconnectRemoteWorkspace: async () => {},
+              onSelectTask: () => {},
+              onStartDraftInWorkspace: () => {},
+              onShowMoreTasks: () => {},
+              reconnectingRemoteWorkspaceKeys: [],
+              reconnectingRemoteWorkspaceLogsByWorkspaceKey: {},
+              remoteWorkspaceErrorByWorkspaceKey: {},
+              tab,
+              taskItems,
+              taskListHasMore: true,
+              taskListLoading: false,
+              toggleWorkspaceExpanded: () => {},
+            }),
+          ),
         );
       });
     }

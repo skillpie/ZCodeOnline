@@ -5,20 +5,16 @@ function readGitActionMenuSource(): string {
   return readFileSync("packages/ui/src/GitActionMenu.tsx", "utf8");
 }
 
-function readV4ChatPaneSource(): string {
-  return readFileSync("packages/ui/src/v4/V4ChatPane.tsx", "utf8");
-}
-
 function readSessionPaneSource(): string {
   return readFileSync("packages/ui/src/v4/SessionPane.tsx", "utf8");
 }
 
-function readConversationStatusPanelSource(): string {
-  return readFileSync("packages/ui/src/v4/ConversationStatusPanel.tsx", "utf8");
+function readAppSource(): string {
+  return readFileSync("packages/ui/src/App.tsx", "utf8");
 }
 
-function readWorkspaceShellLayoutSource(): string {
-  return readFileSync("packages/ui/src/app-shell/WorkspaceShellLayout.tsx", "utf8");
+function readWorkspaceHeaderGitToolsSource(): string {
+  return readFileSync("packages/ui/src/WorkspaceHeaderGitTools.tsx", "utf8");
 }
 
 function sliceSourceBlock(source: string, startMarker: string, endMarker: string): string {
@@ -132,19 +128,19 @@ describe("GitActionMenu commit message flow", () => {
 
   it("passes the active task context into the commit dialog stats and generation", () => {
     const actionMenuSource = readGitActionMenuSource();
-    const v4ChatPaneSource = readV4ChatPaneSource();
     const sessionPaneSource = readSessionPaneSource();
-    const statusPanelSource = readConversationStatusPanelSource();
-    const shellLayoutSource = readWorkspaceShellLayoutSource();
+    const appSource = readAppSource();
+    const headerGitToolsSource = readWorkspaceHeaderGitToolsSource();
 
     expect(actionMenuSource).toContain("activeTaskChangeSummary?: ZCodeTaskChangeSummary");
     expect(actionMenuSource).toContain("activeTaskChangeSummary,");
-    expect(v4ChatPaneSource).toContain("activeTaskChangeSummary={activeTaskChangeSummary}");
+    // 链路重构（bdb7047f 起）：Git 工具迁回工作区头部，activeTaskChangeSummary 改由
+    // App → WorkspaceHeader → WorkspaceHeaderGitTools 直接喂 GitActionMenu，不再经
+    // V4ChatPane / WorkbenchShellBinding 下发（那条链上的字段已整体移除）。
+    expect(appSource).toContain("activeTaskChangeSummary={activeTaskChangeSummary}");
+    expect(headerGitToolsSource).toContain("activeTaskChangeSummary={activeTaskChangeSummary}");
+    // SessionPane 仍把该字段透传给 ConversationStatusPanel（面板侧为兼容保留的透传）。
     expect(sessionPaneSource).toContain("activeTaskChangeSummary={activeTaskChangeSummary}");
-    expect(statusPanelSource).toContain(
-      "activeTaskChangeSummary={activeTaskChangeSummary ?? null}",
-    );
-    expect(shellLayoutSource).toContain("activeTaskChangeSummary={activeTaskChangeSummary}");
     expect(actionMenuSource).toContain("conversationMessageCount:");
     expect(actionMenuSource).toContain("currentSessionFileCount:");
   });
@@ -152,7 +148,10 @@ describe("GitActionMenu commit message flow", () => {
   it("removes the auxiliary dropdown menu from the trigger", () => {
     const source = readGitActionMenuSource();
 
-    expect(source).toContain('id: "git.actionMenu.trigger"');
+    // 辅助下拉菜单移除后触发器收敛为单一主按钮：data-testid 走 TID_GIT_ACTION_TRIGGER，
+    // 点击直接经 handlePrimaryAction 裁决进提交/推送弹窗，不再有任何 DropdownMenu 间接层。
+    expect(source).toContain("data-testid={TID_GIT_ACTION_TRIGGER}");
+    expect(source).toContain("() => handlePrimaryAction()");
     expect(source).not.toContain("DropdownMenu");
     expect(source).not.toContain("git.actionMenu.menuTitle");
     expect(source).not.toContain("git.actionMenu.createBranch");

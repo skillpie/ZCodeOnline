@@ -270,32 +270,40 @@ function renderWorkspaceItem(params?: {
 }) {
   const tab = params?.tab ?? createRemoteWorkspaceTab();
 
+  // WorkspaceSidebarItem 经 useTabStoreApi 读取窗口 tab store（worktree 重命名迁移
+  // tab 路径用），与生产一致在 Root.tsx 里它永远位于 TabStoreProvider 内；裸渲染需补上
+  // Provider，TabStoreProvider 渲染期只创建纯内存 store，无额外环境依赖。
   return renderToStaticMarkup(
-    createElement(WorkspaceSidebarItem, {
-      tab,
-      isActiveWorkspace: false,
-      isExpanded: params?.isExpanded ?? false,
-      activateTab: () => {},
-      closeTab: params?.closeTab ?? (() => {}),
-      toggleWorkspaceExpanded: () => {},
-      onSelectTask: () => {},
-      onStartDraftInWorkspace: () => {},
-      taskItems: params?.taskItems ?? [],
-      taskListLoading: false,
-      taskListHasMore: false,
-      taskListHasUnread: params?.taskListHasUnread ?? false,
-      taskListLiveWorkflowCount: params?.taskListLiveWorkflowCount ?? 0,
-      onShowMoreTasks: () => {},
-      reconnectingRemoteWorkspaceKeys: params?.reconnectingRemoteWorkspaceKeys ?? [],
-      remoteWorkspaceErrorByWorkspaceKey: params?.remoteWorkspaceErrorByWorkspaceKey ?? {},
-      reconnectingRemoteWorkspaceLogsByWorkspaceKey:
-        params?.reconnectingRemoteWorkspaceLogsByWorkspaceKey ?? {},
-      onReconnectRemoteWorkspace,
-      onOpenFileTree: params?.onOpenFileTree,
-    }),
+    createElement(
+      TabStoreProvider,
+      null,
+      createElement(WorkspaceSidebarItem, {
+        tab,
+        isActiveWorkspace: false,
+        isExpanded: params?.isExpanded ?? false,
+        activateTab: () => {},
+        closeTab: params?.closeTab ?? (() => {}),
+        toggleWorkspaceExpanded: () => {},
+        onSelectTask: () => {},
+        onStartDraftInWorkspace: () => {},
+        taskItems: params?.taskItems ?? [],
+        taskListLoading: false,
+        taskListHasMore: false,
+        taskListHasUnread: params?.taskListHasUnread ?? false,
+        taskListLiveWorkflowCount: params?.taskListLiveWorkflowCount ?? 0,
+        onShowMoreTasks: () => {},
+        reconnectingRemoteWorkspaceKeys: params?.reconnectingRemoteWorkspaceKeys ?? [],
+        remoteWorkspaceErrorByWorkspaceKey: params?.remoteWorkspaceErrorByWorkspaceKey ?? {},
+        reconnectingRemoteWorkspaceLogsByWorkspaceKey:
+          params?.reconnectingRemoteWorkspaceLogsByWorkspaceKey ?? {},
+        onReconnectRemoteWorkspace,
+        onOpenFileTree: params?.onOpenFileTree,
+      }),
+    ),
   );
 }
 
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { WorkspaceSidebarItem } from "@/WorkspaceSidebarItem.js";
 
 describe("WorkspaceSidebarItem remote notice", () => {

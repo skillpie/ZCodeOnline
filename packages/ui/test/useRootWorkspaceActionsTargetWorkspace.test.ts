@@ -105,12 +105,14 @@ describe("startNewTaskFromActiveWorkspace 接线契约", () => {
     // WorkspaceShellLayout 组件体量大且依赖繁多，直接挂载不实际；此处用源码契约（正则）
     // 证明守卫按 targetWorkspace 短路。契约：先算 hasTargetWorkspace，再 `!hasTargetWorkspace &&
     // workspaceReadOnlyReason` 才 return，随后 showChatMainView() + onCreateTask(request)。
+    // 2026-10 起 handler 返回 boolean 供移动端侧栏收起策略使用：守卫拦截 return false，
+    // 真正进入会话 return true，语义与旧裸 return 等价。
     const shell = source("../src/app-shell/WorkspaceShellLayout.tsx");
     expect(shell).toMatch(
       /const hasTargetWorkspace\s*=\s*typeof request === "object" && request !== null && Boolean\(request\.targetWorkspace\);/,
     );
     expect(shell).toMatch(
-      /if \(!hasTargetWorkspace && workspaceReadOnlyReason\) \{\s*return;\s*\}\s*showChatMainView\(\);\s*onCreateTask\(request\);/,
+      /if \(!hasTargetWorkspace && workspaceReadOnlyReason\) \{\s*(?:\/\/[^\n]*\n\s*)?return false;\s*\}\s*showChatMainView\(\);\s*onCreateTask\(request\);\s*return true;/,
     );
     // 旧的“无条件只读 return”守卫必须被移除，否则带 target 的跨项目发起会在活动只读时被挡下。
     expect(shell).not.toMatch(

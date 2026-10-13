@@ -17,7 +17,10 @@ describe("TerminalSession focus handoff", () => {
 
       expect(source).toContain("const requestFocus = useCallback(() => {");
       expect(source).toContain("focusRAFRef.current = requestAnimationFrame(() => {");
-      expect(source).toContain("if (!isVisibleRef.current || !term)");
+      // 守卫已从 isVisibleRef 精化为 isFocusedRef（拆分视图下多 pane 同时可见，只有焦点 pane
+      // 允许抢占键盘焦点）；isFocusedRef 初始化为 isFocused ?? isVisible，不传 isFocused 的
+      // 普通终端上与旧的 isVisible 守卫等价，“面板打开且终端就绪才聚焦”的契约不变。
+      expect(source).toContain("if (!isFocusedRef.current || !term)");
       expect(source).toContain("term.focus();");
       expect(source).toContain("requestFocus();\n    }\n  }, [isVisible");
       // 保活：TerminalSession 现有两条并行路径——persistentKey 分支（effect 开头，term.open(hostEl)）

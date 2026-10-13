@@ -314,7 +314,7 @@ describe("stageRelease", () => {
     if (process.platform !== "win32") expect(helperStat.mode & 0o111).not.toBe(0);
   });
 
-  it("stages a Windows target with a cmd launcher and zip archive", async () => {
+  it("stages a Windows target with a cmd launcher and tar.gz archive", async () => {
     const fixture = await makeStageFixture();
     const toolsDir = join(await makeTempDir(), "tools");
     await writeFakeNativeTools(toolsDir, { ripgrep: "rg.exe", ugrep: "ugrep.exe" });
@@ -324,7 +324,10 @@ describe("stageRelease", () => {
       nativeToolsDir: toolsDir,
       ...fixture,
     });
-    expect(staged.archivePath).toMatch(/\.zip$/u);
+    // 发行主归档已统一为 tar.gz（stage.ts）：install-zcode-server.ps1 对 win32 目标
+    // 同样按 zcode-server-<target>.tar.gz 下载并用 tar -xzf 解压（Windows 10+ 内置
+    // bsdtar），不再特例 zip；可独立下载的组件归档仍按目标平台出 zip。
+    expect(staged.archivePath).toMatch(/\.tar\.gz$/u);
     expect(await readFile(join(staged.releaseDir, "bin", "zcode.cmd"), "utf8")).toContain(
       "node.exe",
     );

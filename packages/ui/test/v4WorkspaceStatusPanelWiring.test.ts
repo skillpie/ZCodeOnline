@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { GitRepositorySummary, ZCodeTaskChangeSummary } from "@zcode/shared";
+import type { GitRepositorySummary } from "@zcode/shared";
 import { V4ChatPane } from "@/v4/V4ChatPane.js";
 import { V4_PRIMARY_PANE_ID } from "@/v4/paneLayoutStore.js";
 import type { WorkbenchShellBinding } from "@/v4/WorkbenchPane.js";
@@ -55,10 +55,6 @@ describe("v4 workspace status panel wiring", () => {
   it("passes shell git status props from the primary workbench pane to SessionPane", () => {
     sessionPaneCapture.props = [];
     const git = gitSummary();
-    const activeTaskChangeSummary = {
-      changedFiles: [],
-    } as unknown as ZCodeTaskChangeSummary;
-    const onRefreshGit = vi.fn();
     const onOpenGitReview = vi.fn();
     const onSummaryPanelVariantOverrideChange = vi.fn();
     const shell = {
@@ -69,10 +65,8 @@ describe("v4 workspace status panel wiring", () => {
       gitDirtyFileCount: 2,
       gitWorktreeReviewSourceId: "unstaged",
       gitWorktreeChangeSummary: { added: 12, removed: 3 },
-      activeTaskChangeSummary,
       summaryPanelVariantOverride: null,
       onSummaryPanelVariantOverrideChange,
-      onRefreshGit,
       onOpenGitReview,
     } as unknown as WorkbenchShellBinding;
 
@@ -94,15 +88,18 @@ describe("v4 workspace status panel wiring", () => {
     );
 
     expect(sessionPaneCapture.props).toHaveLength(1);
+    // activeTaskChangeSummary / onRefreshGit 已随 bdb7047f 从 WorkbenchShellBinding 链路移除：
+    // Git 工具（分支切换 + 提交菜单）迁回工作区头部，activeTaskChangeSummary 改由
+    // App → WorkspaceHeader → WorkspaceHeaderGitTools 直接喂 GitActionMenu（提交弹窗统计），
+    // onRefreshGit 只归头部「拉取」/刷新入口。此测试守护 shell → SessionPane 剩余的
+    // git 状态与评审入口契约；新头部链路由 gitActionMenuCommitMessageFlow.test.ts 守护。
     expect(sessionPaneCapture.props[0]).toMatchObject({
       gitSummary: git,
       gitDirtyFileCount: 2,
       gitWorktreeReviewSourceId: "unstaged",
       gitWorktreeChangeSummary: { added: 12, removed: 3 },
-      activeTaskChangeSummary,
       summaryPanelVariantOverride: null,
       onSummaryPanelVariantOverrideChange,
-      onRefreshGit,
       onOpenGitReview,
     });
   });
