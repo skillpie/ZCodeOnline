@@ -305,6 +305,7 @@ export function GitBranchSwitcher({
                   setOpen(false);
                   setCreateDialogOpen(true);
                 }}
+                onCreateWorktreeClick={handleCreateWorktreeClick}
                 onOpenGitGraphClick={() => {
                   setOpen(false);
                   setGitGraphDialogOpen(true);

@@ -1,18 +1,20 @@
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { GitGraph, PlusIcon } from "lucide-react";
+import { FolderGit2, GitGraph, PlusIcon } from "lucide-react";
 
 interface GitBranchPopoverFooterProps {
   /** 任一 git 变更（分支 / worktree）进行中时禁用入口，避免并发变更。 */
   disabled: boolean;
   onCreateBranchClick: () => void;
+  onCreateWorktreeClick: () => void;
   onOpenGitGraphClick: () => void;
 }
 
-/** 分支切换器下拉底部的动作区：新建分支、Git 图谱。 */
+/** 分支切换器下拉底部的动作区：新建分支、新建 Worktree、Git 图谱。 */
 export function GitBranchPopoverFooter({
   disabled,
   onCreateBranchClick,
+  onCreateWorktreeClick,
   onOpenGitGraphClick,
 }: GitBranchPopoverFooterProps) {
   const { intl } = useZCodeIntl();
@@ -32,6 +34,19 @@ export function GitBranchPopoverFooter({
         <PlusIcon className="size-4 text-foreground-subtle" />
         {intl.formatMessage({
           id: "git.branchSwitcher.createAction",
+        })}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="lg"
+        className={buttonClassName}
+        disabled={disabled}
+        onClick={onCreateWorktreeClick}
+      >
+        <FolderGit2 className="size-4 text-foreground-subtle" />
+        {intl.formatMessage({
+          id: "git.worktree.createAction",
         })}
       </Button>
       <Button
