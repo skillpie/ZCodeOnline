@@ -4,6 +4,7 @@ import {
   materializeZCodeBuiltinProviderConfig,
   getAppConfigDir,
   ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV,
+  createTopicResourcePeers,
 } from "@zcode/services/node";
 import { IZCodeAgentService } from "@zcode/services";
 import { ZCODE_VERSION } from "@zcode/shared";
@@ -27,6 +28,7 @@ export async function runServerCore(generation: number): Promise<void> {
     if (shutdown) void shutdown("parent-disconnected");
     else parentDisconnected = true;
   });
+  const topicResourcePeers = createTopicResourcePeers();
   const explicitZCodeBuiltinProviderConfigFilePath =
     process.env[ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV]?.trim();
   const zcodeBuiltinProviderConfigFilePath = explicitZCodeBuiltinProviderConfigFilePath
@@ -50,6 +52,7 @@ export async function runServerCore(generation: number): Promise<void> {
     serviceAuthorityMode: "standalone-server",
     onAutomationManualRunRequested: (params) =>
       automationSchedulerRef?.dispatchManualRun(params) ?? Promise.resolve(),
+    topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
   });
   // 调度循环挂在 Core 进程内（grill 决策）：与桌面 scheduler 进程共享同一 tasks-index 库，
   // 靠 AutomationRepo.claimDue 的 BEGIN IMMEDIATE 原子认领互斥，桌面 app 与 daemon
@@ -64,7 +67,10 @@ export async function runServerCore(generation: number): Promise<void> {
   });
   automationSchedulerRef = automationScheduler;
   const taskActivityTracker = createTaskActivityTracker(services.getOptional(IZCodeAgentService));
-  const http = await createCoreHttpServer(services, { serverId: await resolveCoreServerId() });
+  const http = await createCoreHttpServer(services, {
+    serverId: await resolveCoreServerId(),
+    topicResourcePeers,
+  });
   // 隧道运行时归 Core 所有（specs/web-tunnel.md §3.2）：与 loopback server 同进程，
   // 拼接流直连本机 /ws；serverRoot 与 Supervisor 同 env，按同一公式解析。
   const tunnel = createTunnelRuntime({

@@ -141,6 +141,8 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   taskListHasMore,
   taskListHasUnread = false,
   taskListLiveWorkflowCount = 0,
+  mobileActiveTaskKey,
+  isWebRemoteControl = false,
   onShowMoreTasks,
   reconnectingRemoteWorkspaceKeys,
   remoteWorkspaceErrorByWorkspaceKey,
@@ -170,6 +172,8 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   taskListHasUnread?: boolean;
   /** 组内在跑的工作流 run 数；项目收起时在未读点旁画脉冲灯（>1 带数量）。 */
   taskListLiveWorkflowCount?: number;
+  mobileActiveTaskKey?: string | null;
+  isWebRemoteControl?: boolean;
   onShowMoreTasks: () => void;
   reconnectingRemoteWorkspaceKeys: string[];
   remoteWorkspaceErrorByWorkspaceKey: Record<string, string>;
@@ -247,7 +251,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   const showRemoteSkillSyncAction = shouldShowRemoteSyncActions({
     remoteSessionId: tab.remoteSessionId,
     remoteTarget: tab.remoteTarget,
-    clientMode: "desktop-continuous" as const,
+    clientMode: isWebRemoteControl ? "web-remote-replayable" : "desktop-continuous",
     hasLocalSourceService: Boolean(baseServices.skillSyncService),
   });
   // 远端工作区在“重连中”时，之前只有轻微背景呼吸效果，
@@ -271,7 +275,10 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   const shouldMountWorkspaceRowActions =
     // workspace action 以前常驻 DOM，仅靠 opacity 隐藏；相邻 tooltip 会在
     // 浮层定位完成前误认隐藏 trigger，短暂显示到错误位置。改为交互时挂载，菜单打开时保活。
-    workspaceRowHovered || workspaceRowFocusWithin || workspaceActionMenuOpen || isHoverNone;
+    workspaceRowHovered ||
+    workspaceRowFocusWithin ||
+    workspaceActionMenuOpen ||
+    isHoverNone;
   const remoteErrorCopyResetRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -743,9 +750,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       <span className="relative flex size-4 shrink-0 items-center justify-center">
         {renderWorkspaceIcon()}
       </span>
-      <div className="min-w-0 truncate text-ui-base text-foreground-subtle">
-        {workspaceSidebarLabel}
-      </div>
+      <div className="min-w-0 truncate text-ui-base text-foreground-subtle">{workspaceSidebarLabel}</div>
       {!isExpanded && taskListHasUnread ? (
         <span
           aria-hidden="true"
@@ -906,7 +911,9 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                         open={workspaceActionMenuOpen}
                         onOpenChange={setWorkspaceActionMenuOpen}
                       >
-                        <ControlHintTooltip title={intl.formatMessage({ id: "common.more" })}>
+                        <ControlHintTooltip
+                          title={intl.formatMessage({ id: "common.more" })}
+                        >
                           <DropdownMenuTrigger asChild>
                             <Button
                               type="button"
@@ -948,6 +955,25 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                    ) : null}
+                    {shouldMountWorkspaceRowActions && showFileTreeAction ? (
+                      <span className="shrink-0">
+                        {/* Bugfix：Project 文件树入口以前单独覆盖 hover:bg-surface-hover，
+                            与 Pinned / Grouped 的 bg-hover 不一致；三种入口统一复用同一 action。 */}
+                        <TaskRowActionButton
+                          // 该按钮默认继承 ghost 的主前景色，导致同组的三个图标明暗不一致。
+                          className="text-foreground-subtle hover:text-foreground"
+                          label={intl.formatMessage({
+                            id: "workspaceSidebar.showFileTree",
+                          })}
+                          onClick={handleOpenWorkspaceFileTree}
+                          showTooltip
+                          disabledReason={readOnlyReason}
+                          testId={testId(TID_WORKSPACE_FILE_TREE_BUTTON, tab.workspacePath)}
+                        >
+                          <ListTree className="h-3.5 w-3.5" />
+                        </TaskRowActionButton>
+                      </span>
                     ) : null}
                     {showRemoteConnectionErrorNotice ? (
                       remoteWorkspaceError ? (
@@ -1028,7 +1054,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                     {showReconnectAction ? (
                       isReconnectPending ? (
                         <ReconnectingRemoteWorkspaceLogTooltip logs={reconnectRuntimeLogs}>
-                          {/* SSH workspace 重连中时，右侧原本只有 spinning 图标，
+                          {/* Bugfix: SSH workspace 重连中时，右侧原本只有 spinning 图标，
                               用户无法在聊天页任务列表里确认连接卡在哪一步。这里复用 SSH dialog 的连接日志 tooltip，
                               保持行内布局稳定，同时把诊断信息放到 hover 浮层里。 */}
                           <div
@@ -1068,33 +1094,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                           </Button>
                         </ControlHintTooltip>
                       )
-                    ) : null}
-                    {showFileTreeAction ? (
-                      <span className="shrink-0">
-                        {/* Project 文件树入口以前单独覆盖 hover:bg-surface-hover，
-                            与 Pinned / Grouped 的 bg-hover 不一致；三种入口统一复用同一 action。 */}
-                        {/* 用户要求：文件树入口常驻展示（不随行 hover 挂载），并与新建任务按钮互换位置，
-                            位于行操作区末位。 */}
-                        {/* 用户要求：文件树入口常驻展示（不随行 hover 挂载）。2026-09-26 与新建任务
-                            互换位置后位于新建任务之前。 */}
-                        <TaskRowActionButton
-                          // 该按钮默认继承 ghost 的主前景色，导致同组的三个图标明暗不一致。
-                          className="text-foreground-subtle hover:text-foreground"
-                          label={intl.formatMessage({
-                            id: "workspaceSidebar.showFileTree",
-                          })}
-                          onClick={handleOpenWorkspaceFileTree}
-                          showTooltip
-                          disabledReason={readOnlyReason}
-                          testId={testId(TID_WORKSPACE_FILE_TREE_BUTTON, tab.workspacePath)}
-                        >
-                          <ListTree className="h-3.5 w-3.5" />
-                        </TaskRowActionButton>
-                      </span>
-                    ) : null}
-                    {/* 用户要求（2026-09-26）：新建任务入口常驻展示（不随行 hover 挂载），
-                        与查看文件互换位置后位于行操作区末位。 */}
-                    {!showReconnectAction ? (
+                    ) : shouldMountWorkspaceRowActions ? (
                       <ControlHintTooltip
                         title={readOnlyReason ?? intl.formatMessage({ id: "taskList.newThread" })}
                       >
@@ -1134,6 +1134,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
             showFooter={false}
             loading={taskListLoading}
             hasMore={taskListHasMore}
+            mobileActiveTaskKey={mobileActiveTaskKey}
             onShowMore={onShowMoreTasks}
             onRenameTask={handleRenameTask}
             onSetTaskPinned={handleSetTaskPinned}

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, expect, it, test } from "vitest";
 import {
   canConfirmGitPush,
   canPushGitBranch,
+  canRenderGitActionMenu,
+  canUseGitActionMenu,
   resolveDefaultCommitDialogActionId,
   resolveGitActionMenuPrimaryAction,
   type GitCommitDialogActionId,
@@ -130,4 +132,67 @@ test("推送确认守卫：仅「无错误详情、非 pending、有可推送提
     canConfirmGitPush({ hasError: false, mutationPending: false, pushEnabled: false }),
     false,
   );
+});
+
+describe("canUseGitActionMenu", () => {
+  it("keeps the entry rendered but disables actions when git is unavailable", () => {
+    expect(
+      canUseGitActionMenu({
+        isGitAvailable: false,
+        isRepository: false,
+      }),
+    ).toBe(false);
+
+    expect(
+      canUseGitActionMenu({
+        isGitAvailable: true,
+        isRepository: false,
+      }),
+    ).toBe(false);
+
+    expect(
+      canUseGitActionMenu({
+        isGitAvailable: true,
+        isRepository: true,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("canRenderGitActionMenu", () => {
+  it("renders only when commit or push is available", () => {
+    expect(
+      canRenderGitActionMenu({
+        actionAvailable: true,
+        commitEnabled: true,
+        pushEnabled: false,
+      }),
+    ).toBe(true);
+
+    expect(
+      canRenderGitActionMenu({
+        actionAvailable: true,
+        commitEnabled: false,
+        pushEnabled: true,
+      }),
+    ).toBe(true);
+
+    expect(
+      canRenderGitActionMenu({
+        actionAvailable: true,
+        commitEnabled: false,
+        pushEnabled: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("hides when git actions are unavailable", () => {
+    expect(
+      canRenderGitActionMenu({
+        actionAvailable: false,
+        commitEnabled: true,
+        pushEnabled: true,
+      }),
+    ).toBe(false);
+  });
 });

@@ -13,6 +13,11 @@
 
 ZCodeOnline 是基于 ZCode 的 AI 编程工作台升级版：一套源码，覆盖桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
 
+## 更新
+
+- 2026-10-13：合入官方 v3.15.1 更新。
+- 2026-9-23：合入官方 v3.14.3 更新。
+
 ## 初始化
 
 准备 Git、Node.js **24.14.0** 和 pnpm **10.33.2**，版本以 [mise.toml](mise.toml) 为准。以下命令均在仓库根目录执行。
@@ -63,6 +68,12 @@ zcode --help             # 查看 CLI 或 Web 参数
 Web 模式默认监听 `127.0.0.1` 并自动打开浏览器；局域网访问用 `--host 0.0.0.0`，监听非本机地址时默认启用令牌认证，可用 `--token` / `--no-token` 覆盖。
 
 直接开发 TUI 或 Agent 源码时使用 `pnpm --filter @zcode/cli dev`；验证统一的 `zcode` 命令需先按下方打包章节构建并解压发行包。
+
+### UI Plugin 开发
+
+参见 [UI Plugin：能力、API 与调试](UI_PLUGIN.md)，从 Excalidraw 的画布协作示例开始，了解插件安装更新、页面 API 和宿主联调入口。
+
+**向 `zcode-plugins` 提交插件 PR 时，必须在 PR 模板中声明是否为 UI Plugin，并填写插件名称。** 判断标准见[提交 PR 时声明插件类型](UI_PLUGIN.md#提交-pr-时声明插件类型)。
 
 ## 配置
 

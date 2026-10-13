@@ -25,3 +25,15 @@ export type { AssistRedeemResult } from "./tunnel/assistRedeem.js";
 export { backoffDelayMs, createAutoReconnect } from "./tunnel/autoReconnect.js";
 export type { AutoReconnectController, AutoReconnectOptions } from "./tunnel/autoReconnect.js";
 export { isRetryableTunnelConnectError } from "./tunnel/retryable.js";
+export {
+  ACKNOWLEDGED_WEB_REMOTE_CONTROL_RELAY_LIMITS,
+  createAcknowledgedWebRemoteControlRelayProtocol,
+  createWebRemoteControlRelayProtocol,
+} from "./webRemoteControlRelayProtocol.js";
+export type {
+  AcknowledgedWebRemoteControlRelayProtocolAdapter,
+  AcknowledgedWebRemoteControlRelayProtocolOptions,
+  WebRemoteControlRelayProtocolAdapter,
+  WebRemoteControlRelayProtocolOptions,
+} from "./webRemoteControlRelayProtocol.js";
+export * from "./webRemoteControlRelayPayloadSerializer.js";

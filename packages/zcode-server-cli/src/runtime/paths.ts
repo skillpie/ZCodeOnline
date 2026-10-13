@@ -21,7 +21,7 @@ export interface ServerLayout {
   readonly updateTransactionFile: string;
 }
 
-function getDefaultServerDataRoot(): string {
+export function getDefaultServerDataRoot(): string {
   const configured = process.env.ZCODE_DATA_BASE_DIR?.trim();
   return join(configured || homedir(), ".zcode", "server");
 }
@@ -52,9 +52,7 @@ export function resolveServerLayout(serverRoot = getDefaultServerDataRoot()): Se
   };
 }
 
-export async function resolveCanonicalServerRoot(
-  serverRoot = getDefaultServerDataRoot(),
-): Promise<string> {
+export async function resolveCanonicalServerRoot(serverRoot = getDefaultServerDataRoot()): Promise<string> {
   // 安装前 server root 可能尚不存在；向上找到最近的存在祖先做 realpath，再拼回缺失段，
   // 这样既能收敛已有符号链接，也不会因为 ENOENT 让首次安装失效。
   let candidate = assertServerDataRoot(serverRoot);
@@ -73,9 +71,7 @@ export async function resolveCanonicalServerRoot(
   }
 }
 
-export async function resolveCanonicalServerLayout(
-  serverRoot = getDefaultServerDataRoot(),
-): Promise<ServerLayout> {
+export async function resolveCanonicalServerLayout(serverRoot = getDefaultServerDataRoot()): Promise<ServerLayout> {
   return resolveServerLayout(await resolveCanonicalServerRoot(serverRoot));
 }
 
@@ -106,16 +102,13 @@ export function isPathWithin(rootPath: string, candidatePath: string): boolean {
   return diff === "" || (!diff.startsWith("..") && !diff.split(sep).includes(".."));
 }
 
-interface UninstallTargetValidation {
+export interface UninstallTargetValidation {
   ok: boolean;
   reason?: "outside-server-root" | "home-directory" | "non-absolute";
   canonicalPath?: string;
 }
 
-export function validateUninstallTarget(
-  serverRoot: string,
-  target: string,
-): UninstallTargetValidation {
+export function validateUninstallTarget(serverRoot: string, target: string): UninstallTargetValidation {
   if (!isAbsolute(target)) {
     return { ok: false, reason: "non-absolute" };
   }
@@ -130,10 +123,18 @@ export function validateUninstallTarget(
   return { ok: true, canonicalPath };
 }
 
-function assertServerDataRoot(serverRoot: string): string {
+export async function canonicalExistingPath(pathValue: string): Promise<string> {
+  return await realpath(pathValue);
+}
+
+export function assertServerDataRoot(serverRoot: string): string {
   const resolved = resolve(serverRoot);
   if (!isAbsolute(resolved) || resolved === dirname(resolved)) {
     throw new Error("Invalid server data root");
   }
   return resolved;
+}
+
+export function serverDataRootFromBase(baseDir: string): string {
+  return join(resolve(baseDir), ".zcode", "server");
 }

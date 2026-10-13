@@ -1,8 +1,10 @@
 import { DEFAULT_ZCODE_ENDPOINT_ORIGIN } from "@zcode/shared";
 
-const PRODUCTION_WEB_ORIGIN = DEFAULT_ZCODE_ENDPOINT_ORIGIN;
-const WEB_CALLBACK_PATHS = new Set(["/cn/share/callback", "/share/callback"]);
+const PRODUCTION_WEB_REMOTE_ORIGIN = DEFAULT_ZCODE_ENDPOINT_ORIGIN;
+const WEB_REMOTE_PATHS = new Set(["/web-remote", "/web-remote/"]);
+const WEB_CALLBACK_PATHS = new Set(["/web-remote/callback", "/cn/share/callback", "/share/callback"]);
 const SHARE_PATH_PATTERN = /^\/(?:cn\/share|share)\/[A-Za-z0-9._~-]{1,512}$/u;
+const APP_RETURN_QUERY_ALLOWLIST = new Set(["remoteControlToken", "relayOrigin"]);
 const PRIVATE_DEV_RETURN_TO_PATTERN =
   /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?(\/|$)/;
 
@@ -14,7 +16,7 @@ interface OAuthStatePayload {
 
 function getCurrentOrigin(): string {
   const location = globalThis.window?.location ?? globalThis.location;
-  return location?.origin ?? PRODUCTION_WEB_ORIGIN;
+  return location?.origin ?? PRODUCTION_WEB_REMOTE_ORIGIN;
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -117,7 +119,9 @@ const MODULE_TRUSTED_RETURN_ORIGINS = readTrustedReturnOrigins(
 );
 
 function resolveAllowedAppReturnOrigin(currentOrigin: string): string {
-  return currentOrigin === PRODUCTION_WEB_ORIGIN ? PRODUCTION_WEB_ORIGIN : currentOrigin;
+  return currentOrigin === PRODUCTION_WEB_REMOTE_ORIGIN
+    ? PRODUCTION_WEB_REMOTE_ORIGIN
+    : currentOrigin;
 }
 
 export interface ResolveSafeAppReturnToOptions {
@@ -140,12 +144,25 @@ export function resolveSafeAppReturnTo(
   }
 
   const currentOrigin = options.currentOrigin ?? getCurrentOrigin();
-  // 同源：维持分享流既有语义——仅 share 路径，返回站内路径（沿用 location.replace(path)）。
+  // 同源：share 路径维持既有语义返回站内路径；web-remote 路径放行并清洗查询串
+  // （只保留 remoteControlToken / relayOrigin 白名单键），供远控回跳携带最小凭证。
   if (url.origin === resolveAllowedAppReturnOrigin(currentOrigin) || url.origin === currentOrigin) {
-    if (!SHARE_PATH_PATTERN.test(url.pathname)) {
+    if (SHARE_PATH_PATTERN.test(url.pathname)) {
+      return url.pathname;
+    }
+    if (!WEB_REMOTE_PATHS.has(url.pathname)) {
       return null;
     }
-    return url.pathname;
+    const safeSearch = new URLSearchParams();
+    for (const key of APP_RETURN_QUERY_ALLOWLIST) {
+      const existing = url.searchParams.get(key);
+      if (existing !== null) {
+        safeSearch.set(key, existing);
+      }
+    }
+
+    const query = safeSearch.toString();
+    return `${url.pathname}${query ? `?${query}` : ""}`;
   }
 
   // 跨域受信 origin（自建隧道域）：整域放行（含路径与查询串），返回完整 URL 跳回。

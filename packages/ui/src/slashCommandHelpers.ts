@@ -11,6 +11,10 @@ import {
   getSkillMarketMentionNormalizedName,
   isSkillMarketMentionItem,
 } from "@/mentions/providers/skillMarketMentionProvider.js";
+import {
+  extractActivePromptInputTrigger,
+  getActivePromptInputTokenTailLength,
+} from "./lib/promptInputTriggers.js";
 import type { PromptInputSuggestionItem } from "./lib/promptInputTriggers.js";
 
 export interface SlashCommandPluginProps {
@@ -202,6 +206,30 @@ function mapSubagentMentionItemToSuggestion(item: MentionItem): PromptInputSugge
     description: item.description,
     keywords: [...new Set([...(item.keywords ?? []), "subagent", "agent"])],
     data: item.data,
+  };
+}
+
+export function replaceActiveSlashToken(
+  textBeforeCursor: string,
+  textAfterCursor: string,
+  replacementToken: string,
+) {
+  const activeTrigger = extractActivePromptInputTrigger(textBeforeCursor);
+  if (!activeTrigger || activeTrigger.trigger !== "/") {
+    return null;
+  }
+
+  const tokenStart = textBeforeCursor.length - activeTrigger.query.length - 1;
+  const tailLength = getActivePromptInputTokenTailLength(
+    activeTrigger,
+    textAfterCursor,
+    replacementToken,
+  );
+  const prefix = textBeforeCursor.slice(0, tokenStart);
+  const suffix = textAfterCursor.slice(tailLength);
+  return {
+    cursorOffset: prefix.length + replacementToken.length + 1,
+    text: `${prefix}${replacementToken} ${suffix}`,
   };
 }
 
