@@ -93,8 +93,8 @@ export function GitBranchTreeGroup({
   }, [branches, worktrees]);
 
   // 已被收进来源分支子列表的副本分支，不再出现在顶层分支列表（避免同一分支两行展示）。
-  // 判定键是 worktree 目录名（= 创建时的副本分支净化名，子项展示的也是它）：
-  // worktree 内切分支后，被切走的分支名是普通分支，必须继续在顶层展示（如当前分支）。
+  // 判定键是创建时的副本分支名（子项行名与之钉定）：worktree 内切分支后，被切走的分支名
+  // 是普通分支，必须继续在顶层展示（如当前分支）。
   const consumedBranchNames = useMemo(() => {
     const consumed = new Set<string>();
     for (const worktree of worktrees) {
@@ -102,9 +102,9 @@ export function GitBranchTreeGroup({
         // detached worktree 与分支无对应关系，不收起任何分支行。
         continue;
       }
-      const dirName = worktreeDirName(worktree.path);
-      if (dirName) {
-        consumed.add(dirName);
+      const represented = worktree.copyBranchName ?? worktreeDirName(worktree.path);
+      if (represented) {
+        consumed.add(represented);
       }
     }
     return consumed;

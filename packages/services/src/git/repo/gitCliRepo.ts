@@ -775,9 +775,16 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     return result.exitCode === 0;
   }
 
-  /** worktree 目录名（.worktrees/ 下的净化名）→ 来源分支。树形分组据此把副本挂到来源分支行下。 */
-  async function readWorktreeSourceMap(repoRoot: string): Promise<Map<string, string>> {
-    const map = new Map<string, string>();
+  /**
+   * 读取 repo 本地 config 里记录的 worktree 身份（`zcode.worktreeSources`）。
+   * 每行 `<目录名>=<副本分支>:<来源分支>`；旧格式 `<目录名>=<来源分支>`（无冒号）兼容解析为
+   * 仅来源、副本分支未知。这是树形分组的依据：副本按来源挂在来源分支行下，子项行名钉在
+   * 创建时的副本分支上，不随 worktree 内切分支变化。
+   */
+  async function readWorktreeSourceMap(
+    repoRoot: string,
+  ): Promise<Map<string, { copyBranchName: string | null; sourceBranchName: string }>> {
+    const map = new Map<string, { copyBranchName: string | null; sourceBranchName: string }>();
     const result = await commandProvider.run({
       cwd: repoRoot,
       args: ["config", "--get", WORKTREE_SOURCES_CONFIG_KEY],
@@ -798,18 +805,47 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         continue;
       }
       const dirName = line.slice(0, separatorIndex).trim();
-      const source = line.slice(separatorIndex + 1).trim();
-      if (dirName && source) {
-        map.set(dirName, source);
+      const payload = line.slice(separatorIndex + 1).trim();
+      if (!dirName || !payload) {
+        continue;
       }
+
+      // `:` 在 git ref 名中非法，可安全用作副本分支与来源分支的分隔符。
+      const colonIndex = payload.indexOf(":");
+      if (colonIndex > 0) {
+        const copyBranchName = payload.slice(0, colonIndex).trim();
+        const sourceBranchName = payload.slice(colonIndex + 1).trim();
+        if (copyBranchName && sourceBranchName) {
+          map.set(dirName, { copyBranchName, sourceBranchName });
+        }
+        continue;
+      }
+      map.set(dirName, { copyBranchName: null, sourceBranchName: payload });
     }
     return map;
   }
 
-  async function writeWorktreeSourceMap(repoRoot: string, map: Map<string, string>): Promise<void> {
-    // 值为多行 `<目录名>=<来源分支>`；目录名经净化不含 = 与换行，来源分支按首个 = 分割。
+  async function writeWorktreeSourceEntry(
+    repoRoot: string,
+    dirName: string,
+    entry: { copyBranchName: string | null; sourceBranchName: string },
+  ): Promise<void> {
+    const map = await readWorktreeSourceMap(repoRoot);
+    map.set(dirName, entry);
+    await writeWorktreeSourceMap(repoRoot, map);
+  }
+
+  async function writeWorktreeSourceMap(
+    repoRoot: string,
+    map: Map<string, { copyBranchName: string | null; sourceBranchName: string }>,
+  ): Promise<void> {
+    // 值为多行 `<目录名>=<副本分支>:<来源分支>`（旧数据无副本段）；目录名经净化不含 = 与换行。
     const value = Array.from(map.entries())
-      .map(([dirName, source]) => `${dirName}=${source}`)
+      .map(([dirName, entry]) =>
+        entry.copyBranchName
+          ? `${dirName}=${entry.copyBranchName}:${entry.sourceBranchName}`
+          : `${dirName}=${entry.sourceBranchName}`,
+      )
       .join("\n");
     const args = value
       ? ["config", "--replace-all", WORKTREE_SOURCES_CONFIG_KEY, value]
@@ -846,24 +882,6 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     if (!map.delete(dirName)) {
       return;
     }
-    await writeWorktreeSourceMap(repoRoot, map);
-  }
-
-  async function migrateWorktreeSource(
-    repoRoot: string,
-    oldDirName: string,
-    newDirName: string,
-  ): Promise<void> {
-    if (!oldDirName || oldDirName === newDirName) {
-      return;
-    }
-    const map = await readWorktreeSourceMap(repoRoot);
-    const source = map.get(oldDirName);
-    if (source === undefined) {
-      return;
-    }
-    map.delete(oldDirName);
-    map.set(newDirName, source);
     await writeWorktreeSourceMap(repoRoot, map);
   }
 
@@ -1632,16 +1650,18 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         worktrees: entries
           .slice(1)
           .filter((entry) => !entry.isBare)
-          .map(
-            (entry): GitWorktreeRecord => ({
+          .map((entry): GitWorktreeRecord => {
+            const identity = worktreeSources.get(worktreeDirNameOf(entry.path));
+            return {
               path: entry.path,
               branchName: entry.branchName,
-              sourceBranchName: worktreeSources.get(worktreeDirNameOf(entry.path)) ?? null,
+              sourceBranchName: identity?.sourceBranchName ?? null,
+              copyBranchName: identity?.copyBranchName ?? null,
               head: entry.head,
               isMain: false,
               isCurrentWorkspace: currentWorkspacePaths.has(normalizeWatchPath(entry.path)),
-            }),
-          )
+            };
+          })
           .sort((left, right) => left.path.localeCompare(right.path)),
         mainTreeRoot,
         worktreeBaseDir: join(mainTreeRoot, ".worktrees"),
@@ -1780,9 +1800,10 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         normalizedStartPoint &&
         (await resolveLocalBranchExists(resolution.repoRoot, normalizedStartPoint))
       ) {
-        const sourceMap = await readWorktreeSourceMap(resolution.repoRoot);
-        sourceMap.set(worktreeDirNameOf(worktreePath), normalizedStartPoint);
-        await writeWorktreeSourceMap(resolution.repoRoot, sourceMap);
+        await writeWorktreeSourceEntry(resolution.repoRoot, worktreeDirNameOf(worktreePath), {
+          copyBranchName: normalizedBranchName,
+          sourceBranchName: normalizedStartPoint,
+        });
       }
 
       // 重新拉一次列表，让返回记录的 HEAD / 分支名与 git 事实一致，而不是本地拼装。
@@ -1796,6 +1817,7 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
           path: worktreePath,
           branchName: normalizedBranchName,
           sourceBranchName: null,
+          copyBranchName: null,
           head: null,
           isMain: false,
           isCurrentWorkspace: isSameWorktreePath(worktreePath, workspacePath),
@@ -1987,12 +2009,19 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         }
       }
 
-      // 目录改名后，来源记录从旧目录名迁到新目录名；没有记录（旧数据）则跳过。
-      await migrateWorktreeSource(
-        resolution.repoRoot,
-        worktreeDirNameOf(target.path),
-        worktreeDirNameOf(newWorktreePath),
-      );
+      // 目录改名后，身份记录迁到新目录名（副本分支同步为新名）；无记录（旧数据）则跳过。
+      const worktreeSources = await readWorktreeSourceMap(resolution.repoRoot);
+      const oldDirName = worktreeDirNameOf(target.path);
+      const newDirName = worktreeDirNameOf(newWorktreePath);
+      const identity = worktreeSources.get(oldDirName);
+      if (identity) {
+        worktreeSources.delete(oldDirName);
+        worktreeSources.set(newDirName, {
+          copyBranchName: normalizedBranchName,
+          sourceBranchName: identity.sourceBranchName,
+        });
+        await writeWorktreeSourceMap(resolution.repoRoot, worktreeSources);
+      }
 
       invalidate(workspacePath);
       const refreshedList = await this.listWorktrees(workspacePath);
