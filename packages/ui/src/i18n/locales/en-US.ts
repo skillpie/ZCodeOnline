@@ -1937,6 +1937,13 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.searchArchivedTasksPlaceholder": "Search archived tasks...",
   "workspaceSidebar.closeTaskSearch": "Close task search",
   "workspaceSidebar.remove": "Remove",
+  "workspaceSidebar.worktreeRename": "Rename worktree",
+  "workspaceSidebar.worktreeDelete": "Delete worktree...",
+  "workspaceSidebar.worktreeDeleteConfirm.title": "Delete worktree",
+  "workspaceSidebar.worktreeDeleteConfirm.description":
+    "This deletes the directory {path} and its worktree branch (unmerged commits will need a second confirmation), and removes the workspace from the project list.",
+  "workspaceSidebar.worktreeDeleteConfirm.confirm": "Delete",
+  "git.worktree.toast.deleted": "Worktree deleted: {path}",
   "workspaceSidebar.removeRunningWorkspace.title": "Remove a running project?",
   "workspaceSidebar.removeRunningWorkspace.description":
     "This project still has a running chat or Agent. Removing it will stop and release the related runtime state, but task history will not be deleted.",

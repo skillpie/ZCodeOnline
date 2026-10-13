@@ -1803,6 +1803,13 @@ const zhCN: Record<string, string> = {
   "workspaceSidebar.searchArchivedTasksPlaceholder": "搜索归档任务...",
   "workspaceSidebar.closeTaskSearch": "关闭任务搜索",
   "workspaceSidebar.remove": "移除",
+  "workspaceSidebar.worktreeRename": "重命名 Worktree",
+  "workspaceSidebar.worktreeDelete": "删除 Worktree...",
+  "workspaceSidebar.worktreeDeleteConfirm.title": "删除 Worktree",
+  "workspaceSidebar.worktreeDeleteConfirm.description":
+    "将删除目录 {path}、对应的 worktree 分支（如有未合并提交会再次确认），并从项目列表移除该工作区。",
+  "workspaceSidebar.worktreeDeleteConfirm.confirm": "删除",
+  "git.worktree.toast.deleted": "Worktree 已删除：{path}",
   "workspaceSidebar.removeRunningWorkspace.title": "移除运行中的项目？",
   "workspaceSidebar.removeRunningWorkspace.description":
     "该项目还有运行中的对话或 Agent。移除项目会停止并释放相关运行状态，历史任务不会被删除。",
