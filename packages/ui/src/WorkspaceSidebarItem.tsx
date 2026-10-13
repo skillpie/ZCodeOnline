@@ -417,11 +417,34 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
         worktreePath: tab.workspacePath,
       });
       if (!removed.ok) {
-        const issue = removed.issues[0];
+        const code = removed.issues[0]?.code;
         logger.warn("[WorkspaceSidebarItem] 删除 worktree 被阻塞", {
           workspacePath: tab.workspacePath,
           issues: removed.issues.map((item) => item.code),
         });
+        // 注册表里已无此 worktree（目录与注册均已被外部清理）→ 视为清理完成，
+        // 关闭项目条目即可；其余情况提示用户。
+        if (code === "worktree-not-found") {
+          toast(
+            intl.formatMessage({ id: "git.worktree.toast.removed" }, { path: tab.workspacePath }),
+          );
+          closeTab(tab.id);
+          releaseWorkspaceRuntimeAfterProjectRemoval({
+            tab: {
+              workspacePath: tab.workspacePath,
+              workspaceIdentity: tab.workspaceIdentity,
+            },
+            zcodeTaskService,
+          });
+          invalidateTaskQueryCacheByScopes([
+            {
+              workspacePath: tab.workspacePath,
+              ...(tab.workspaceIdentity ? { workspaceIdentity: tab.workspaceIdentity } : {}),
+            },
+          ]);
+          return;
+        }
+        const issue = removed.issues[0];
         toast(
           issue?.detail?.trim() ||
             issue?.message.trim() ||
