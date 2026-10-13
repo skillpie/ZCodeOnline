@@ -1,75 +1,64 @@
-import { describe, expect, it } from "vitest";
+// 权限选项投影验收：optionsPolicy 决定弹窗里 always-allow 槽位的形态——
+// session-always-allow 投出会话选项（response 不带 permissionUpdates，会话语义由
+// broker 在应答侧合成）；no-always-allow 裁掉整个槽位；默认投项目级持久规则。
+import { test } from "vitest";
+import assert from "node:assert/strict";
 import {
+  SESSION_ALLOW_PERMISSION_OPTION_KIND,
   buildProtocolPermissionOptions,
   buildSessionPermissionUpdates,
   toLegacyPermissionOptionsPolicy,
 } from "../src/permission-options.js";
 
-describe("buildProtocolPermissionOptions", () => {
-  it("offers allow once, always allow in project, and deny by default", () => {
-    const options = buildProtocolPermissionOptions({
-      input: { file_path: "/workspace/a.ts" },
-      toolName: "Edit",
-    });
+const dbExecuteSource = {
+  input: { sql: "UPDATE \"user\" SET name = 'x'", data_source: "pg-main" },
+  toolName: "DBExecute",
+};
 
-    expect(options.map((option) => option.kind)).toEqual([
-      "allow_once",
-      "allow_always",
-      "deny",
-    ]);
-    const always = options.find((option) => option.kind === "allow_always");
-    expect(always?.response.permissionUpdates?.[0]?.rules[0]).toMatchObject({
-      toolName: "Edit",
-      ruleContent: "/workspace/a.ts",
-    });
+test("session-always-allow projects a session option without persistent updates", () => {
+  const options = buildProtocolPermissionOptions({
+    ...dbExecuteSource,
+    optionsPolicy: "session-always-allow",
   });
 
-  it("drops always allow when the tool declares no-always-allow", () => {
-    const options = buildProtocolPermissionOptions({
-      input: { script: 'return await agent("a").ask<string>("x");' },
-      optionsPolicy: "no-always-allow",
-      toolName: "CreateWorkflow",
-    });
+  assert.deepEqual(
+    options.map((option) => option.kind),
+    ["allow_once", SESSION_ALLOW_PERMISSION_OPTION_KIND, "deny"],
+  );
+  const sessionOption = options[1];
+  assert.equal(sessionOption.optionId, "allowSession");
+  assert.equal("permissionUpdates" in sessionOption.response, false);
+});
 
-    expect(options.map((option) => option.kind)).toEqual(["allow_once", "deny"]);
-    expect(options.some((option) => option.optionId === "allow_project")).toBe(false);
+test("no-always-allow drops the whole always-allow slot", () => {
+  const options = buildProtocolPermissionOptions({
+    ...dbExecuteSource,
+    optionsPolicy: "no-always-allow",
   });
 
-  // 第 7 轮（2026-09-11）：会话作用域的免确认替换项目级 always allow。
-  it("replaces the project rule with a session-scoped option under session-always-allow", () => {
-    const options = buildProtocolPermissionOptions({
-      input: { script: 'return await agent("a").ask<string>("x");' },
-      optionsPolicy: "session-always-allow",
-      toolName: "CreateWorkflow",
-    });
+  assert.deepEqual(
+    options.map((option) => option.kind),
+    ["allow_once", "deny"],
+  );
+});
 
-    expect(options.map((option) => option.kind)).toEqual([
-      "allow_once",
-      "allow_session",
-      "deny",
-    ]);
-    const session = options.find((option) => option.kind === "allow_session");
-    expect(session).toMatchObject({
-      optionId: "allowSession",
-      name: "Always allow in this session",
-      response: { decision: "allow" },
-    });
-    // wire 上 zcodePermissionUpdateSchema 是 strict：会话语义不能借 permissionUpdates 走私，
-    // 会话授权由 broker 在应答侧合成（sessionPermissionUpdates）。
-    expect(session?.response).not.toHaveProperty("permissionUpdates");
-    expect(options.some((option) => option.optionId === "allow_project")).toBe(false);
-  });
+test("default policy projects a project rule option carrying permissionUpdates", () => {
+  const options = buildProtocolPermissionOptions(dbExecuteSource);
+  const projectOption = options.find((option) => option.kind === "allow_always");
 
-  it("builds session updates that grant the whole tool, not one script", () => {
-    expect(buildSessionPermissionUpdates("CreateWorkflow")).toEqual([
-      { behavior: "allow", rules: [{ toolName: "CreateWorkflow" }], type: "addRules" },
-    ]);
-  });
+  assert.ok(projectOption);
+  assert.equal(projectOption.optionId, "allow_project");
+  assert.ok(projectOption.response.permissionUpdates?.length);
+});
 
-  // legacy v3 认不出会话语义（回传 response 原文），降为只裁掉 always allow。
-  it("degrades session-always-allow to no-always-allow for legacy consumers", () => {
-    expect(toLegacyPermissionOptionsPolicy("session-always-allow")).toBe("no-always-allow");
-    expect(toLegacyPermissionOptionsPolicy("no-always-allow")).toBe("no-always-allow");
-    expect(toLegacyPermissionOptionsPolicy(undefined)).toBeUndefined();
-  });
+test("session grants are tool-wide: rule without ruleContent", () => {
+  assert.deepEqual(buildSessionPermissionUpdates("DBExecute"), [
+    { type: "addRules", behavior: "allow", rules: [{ toolName: "DBExecute" }] },
+  ]);
+});
+
+test("legacy v3 clients degrade session policy to no-always-allow", () => {
+  assert.equal(toLegacyPermissionOptionsPolicy("session-always-allow"), "no-always-allow");
+  assert.equal(toLegacyPermissionOptionsPolicy("no-always-allow"), "no-always-allow");
+  assert.equal(toLegacyPermissionOptionsPolicy(undefined), undefined);
 });

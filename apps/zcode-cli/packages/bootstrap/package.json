@@ -22,7 +22,6 @@
     "test:fault-matrix": "ZCODE_FAULT_MATRIX=full vitest run tests/workflow-fault-matrix tests/fault-matrix-harness.test.ts tests/fake-provider-server.test.ts",
     "coverage": "vitest run tests --coverage",
     "typecheck": "tsc --noEmit",
-    "test": "node ../../../../node_modules/tsx/dist/cli.mjs --test \"test/**/*.test.ts\"",
     "lint": "oxlint src",
     "lint:fix": "oxlint --write src"
   },
