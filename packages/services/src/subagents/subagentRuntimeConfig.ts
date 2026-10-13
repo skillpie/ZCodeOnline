@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import {
   parseAgentProfileFromMarkdown,
@@ -39,6 +39,35 @@ async function listDocuments(root: string): Promise<string[]> {
     .filter((entry) => entry.isFile() && /\.(md|markdown)$/iu.test(entry.name))
     .map((entry) => join(root, entry.name));
 }
+/**
+ * Bugfix: macOS 等大小写不敏感文件系统上，filename-only 改名（如 Researcher.MD →
+ * researcher.md）后紧跟写入会被 FSEvents 合并为单个 change 事件，实测不再产生旧路径的
+ * unlink（20/20 复现），而 Profiles 以路径字符串为 key，旧大小写条目的 remove 永远
+ * 不会到达，缓存会同时残留新旧两条同名 profile（与磁盘上只有一个文件的事实矛盾）。
+ * 这里在新路径写入后清理大小写不敏感等价的旧条目：旧条目与新路径指向同一 inode
+ * （不敏感 FS 上就是同一个文件换了名字），或已从磁盘消失（事件丢失后的磁盘事实自愈）。
+ * 大小写敏感文件系统上同名不同大小写是两个独立文件：inode 不同且仍在磁盘，不受影响。
+ */
+async function removeCaseEquivalentStaleEntries(profiles: Profiles, path: string): Promise<void> {
+  const lowerPath = path.toLowerCase();
+  const equivalents = [...profiles.keys()].filter(
+    (key) => key !== path && key.toLowerCase() === lowerPath,
+  );
+  if (equivalents.length === 0) return;
+  const current = await stat(path).catch(() => undefined);
+  await Promise.all(
+    equivalents.map(async (key) => {
+      const previous = await stat(key).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      });
+      if (!previous || (current && previous.dev === current.dev && previous.ino === current.ino)) {
+        profiles.delete(key);
+      }
+    }),
+  );
+}
+
 async function loadDocuments(
   root: string,
   source: "user" | "project",
@@ -76,6 +105,7 @@ async function loadDocuments(
       const parsed = parseAgentProfileFromMarkdown({ content, path, source });
       if (parsed.diagnostic) logger.warn(undefined, "Agent profile diagnostic", parsed.diagnostic);
       next.set(path, parsed);
+      await removeCaseEquivalentStaleEntries(next, path);
     }),
   );
   return next;
