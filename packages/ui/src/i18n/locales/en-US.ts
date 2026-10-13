@@ -1572,8 +1572,6 @@ const enUS: Record<string, string> = {
     "This branch has unmerged commits and cannot be deleted safely.",
   "git.branchSwitcher.worktreeToggle.ariaLabel":
     "Expand or collapse {count} worktrees of branch {branchName}",
-  "git.worktree.checkoutAction": "Check out as worktree",
-  "git.worktree.checkoutAction.ariaLabel": "Create a parallel worktree from branch {branchName}",
   "git.worktree.current": "Current",
   "git.worktree.renameAction.ariaLabel": "Rename worktree {name}",
   "git.worktree.renameDialog.title": "Rename worktree",
@@ -1589,6 +1587,7 @@ const enUS: Record<string, string> = {
   "git.worktree.removeConfirm.description":
     "This deletes the {path} directory and unregisters the git worktree. The branch itself is kept. Make sure there are no unpushed commits in this directory.",
   "git.worktree.removeConfirm.confirm": "Remove",
+  "git.worktree.createAction": "New worktree...",
   "git.worktree.toast.created": "Worktree created: {path}",
   "git.worktree.toast.removed": "Worktree removed: {path}",
   "git.worktree.toast.runningTaskBlocked":

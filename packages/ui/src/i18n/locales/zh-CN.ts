@@ -1450,8 +1450,6 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.error.branchNotFullyMerged": "分支含有未合并的提交，已阻止删除。",
   "git.branchSwitcher.worktreeToggle.ariaLabel":
     "展开或收起分支 {branchName} 的 {count} 个 worktree",
-  "git.worktree.checkoutAction": "检出为 Worktree",
-  "git.worktree.checkoutAction.ariaLabel": "基于分支 {branchName} 创建并行 worktree",
   "git.worktree.current": "当前",
   "git.worktree.renameAction.ariaLabel": "重命名 worktree {name}",
   "git.worktree.renameDialog.title": "重命名 Worktree",
@@ -1467,6 +1465,7 @@ const zhCN: Record<string, string> = {
   "git.worktree.removeConfirm.description":
     "将删除 {path} 目录并移除对应的 git worktree 注册，分支本身会保留。请确认该目录内没有未推送的提交。",
   "git.worktree.removeConfirm.confirm": "移除",
+  "git.worktree.createAction": "新建 Worktree...",
   "git.worktree.toast.created": "Worktree 已创建：{path}",
   "git.worktree.toast.removed": "Worktree 已移除：{path}",
   "git.worktree.toast.runningTaskBlocked": "该 worktree 还有运行中的任务，请先结束任务再移除。",
