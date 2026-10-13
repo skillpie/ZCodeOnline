@@ -20,7 +20,10 @@ describe("workspace main view drag region", () => {
     expect(frameSource).toContain("isDesktop ? (");
     expect(layoutSource).toContain("min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]");
 
-    expect(layoutSource.match(/<AutomationsMainBreadcrumbFrame/gu)?.length).toBe(4);
+    // 5 处 = 手机远控 shell（WebRemoteControlMobileShell.chatContent：automations / plugin-store /
+    // skill-market 三处）+ 主布局（automations / plugin-store 两处）。两个 return 分支互斥，
+    // 各自只在对应 shell 渲染一次，不存在重复渲染。
+    expect(layoutSource.match(/<AutomationsMainBreadcrumbFrame/gu)?.length).toBe(5);
     expect(frameSource.match(/data-testid="automations-main-drag-region"/gu)?.length).toBe(1);
   });
 

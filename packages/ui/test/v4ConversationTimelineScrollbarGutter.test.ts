@@ -9,7 +9,9 @@ describe("ConversationTimeline scrollbar gutter", () => {
   it("reserves stable scrollbar space on the shared conversation viewport", () => {
     const source = readTimelineSource();
 
-    expect(source).toContain("overflow-y-auto [scrollbar-gutter:stable]");
+    // 滚动视口仍是 overflow-y-auto + [scrollbar-gutter:stable]，中间新增 overscroll-contain
+    // （配合 overflow-x-hidden 防宽内容把横轴算成 auto 触发横向滚动）。
+    expect(source).toContain("overflow-y-auto overscroll-contain [scrollbar-gutter:stable]");
   });
 
   it("exposes and applies the share selection scroll lock", () => {

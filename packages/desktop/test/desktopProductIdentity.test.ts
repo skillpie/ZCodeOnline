@@ -25,10 +25,10 @@ describe("desktop product identity", () => {
   it("ZCODE_ENV=test 使用可与生产版并排安装的 Preview 身份", () => {
     expect(resolveDesktopProductIdentity({ ZCODE_ENV: "test" })).toEqual({
       flavor: "preview",
-      appId: "dev.zcode.app.preview",
-      productName: "ZCode Preview",
-      linuxExecutableName: "zcode-preview",
-      linuxPackageName: "zcode-preview",
+      appId: "dev.zcode.app.online",
+      productName: "ZCodeOnline",
+      linuxExecutableName: "zcode-online",
+      linuxPackageName: "zcode-online",
       cuaHelperInstallVariant: "preview",
     });
   });

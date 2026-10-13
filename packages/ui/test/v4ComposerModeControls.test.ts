@@ -34,7 +34,11 @@ vi.mock("@/components/ui/dropdown-menu.js", () => {
       return children(props);
     },
     DropdownMenuCheckboxItem: (props: Record<string, unknown>) => {
-      captured.planProps = props;
+      // 菜单现有 Plan 与 Review 两个勾选项；按 data-testid 只捕获 Plan 勾选项，
+      // 避免后渲染的 Review 项覆盖捕获导致断言读到 Review 的 checked。
+      if (typeof props["data-testid"] === "string" && props["data-testid"].endsWith("-plan")) {
+        captured.planProps = props;
+      }
       return children(props);
     },
   };

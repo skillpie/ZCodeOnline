@@ -241,9 +241,13 @@ describe("WebRemoteControlTaskIndex layout", () => {
     );
 
     expect(source).toContain("shouldRetryWebRemoteControlTaskIndexLoad");
+    // 加载逻辑已从内联 effect 重构为 useCallback 的 loadTasks：active workspace/task 相关
+    // 依赖挂在 loadTasks 依赖数组上，唯一 effect 依赖 [loadTasks] 触发，语义仍是
+    // 「绑定 active workspace 切换时重新加载任务索引」。
     expect(source).toContain(
-      "}, [activeTaskId, activeWorkspaceIdentity, activeWorkspacePath, switcher]);",
+      "[activeTaskId, activeWorkspaceIdentity, activeWorkspacePath, switcher],",
     );
+    expect(source).toContain("}, [loadTasks]);");
   });
 
   it("lets the wide remote sidebar render its workspace toolbar after pinned tasks", () => {

@@ -257,6 +257,12 @@ function createState(
       workspace: {
         sessionIds: sessions.map((session) => session.id),
         activeSessionId,
+        // splitGroups 是拆分窗口特性引入后的必填字段：应用侧所有 workspace 状态
+        // 均由 createWorkspaceTerminalState/ensureWorkspaceTerminalState 工厂产生
+        // （Terminal.tsx 的 useState 内存状态，无持久化反序列化路径），因此这里
+        // 按每个 session 独立单窗口组构造，与「+」新建终端的语义一致；旧 fixture
+        // 缺字段导致 closeTerminalSession 在 splitGroups.map 处抛 TypeError。
+        splitGroups: sessions.map((session) => [session.id]),
       },
     },
   };
@@ -310,6 +316,8 @@ describe("terminalPanelState", () => {
         workspace: {
           sessionIds: [first.id, third.id],
           activeSessionId: first.id,
+          // 关闭的是单成员组：组随成员一起移除，其余组原样保留。
+          splitGroups: [[first.id], [third.id]],
         },
       },
     });
@@ -329,6 +337,7 @@ describe("terminalPanelState", () => {
         workspace: {
           sessionIds: [first.id],
           activeSessionId: first.id,
+          splitGroups: [[first.id]],
         },
       },
     });
@@ -346,6 +355,7 @@ describe("terminalPanelState", () => {
     expect(result.state.workspaces.workspace).toEqual({
       sessionIds: [first.id, third.id],
       activeSessionId: first.id,
+      splitGroups: [[first.id], [third.id]],
     });
   });
 
@@ -379,10 +389,12 @@ describe("terminalPanelState", () => {
         "active-workspace": {
           sessionIds: [active.id],
           activeSessionId: active.id,
+          splitGroups: [[active.id]],
         },
         "hidden-workspace": {
           sessionIds: [hidden.id],
           activeSessionId: hidden.id,
+          splitGroups: [[hidden.id]],
         },
       },
     };
@@ -395,6 +407,7 @@ describe("terminalPanelState", () => {
       "active-workspace": {
         sessionIds: [active.id],
         activeSessionId: active.id,
+        splitGroups: [[active.id]],
       },
     });
   });

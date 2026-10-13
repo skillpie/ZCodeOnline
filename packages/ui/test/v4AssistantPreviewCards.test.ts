@@ -170,15 +170,24 @@ vi.mock("@/hooks/useServices.js", () => ({
 
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
   buildDraftCreateConfigPayload: () => ({}),
-  useDraftConfigControl: () => ({
-    modelSelectionRead: { state: { status: "loading" }, reload: vi.fn() },
-    captureAcceptedModelSelection: () => vi.fn(),
-    draftConfigRef: { current: {} },
-    handleDraftSelectModel: vi.fn(),
-    handleDraftSelectThought: vi.fn(),
-    handleDraftSwitchMode: vi.fn(),
-    resolveInitialDraftConfig: vi.fn(() => ({})),
-  }),
+  useDraftConfigControl: () => {
+    // Bug 根因：真实 hook 恒返回 V4ComposerDraft 对象（dataSourceId/reviewEnabled 为可选字段），
+    // SessionPane 渲染期直接读 composerDraft.dataSourceId；mock 缺该字段导致 SSR 抛
+    // "Cannot read properties of undefined (reading 'dataSourceId')"，按真实契约补全空草稿。
+    const composerDraft = { text: "", updatedAt: 0 };
+    return {
+      modelSelectionRead: { state: { status: "loading" }, reload: vi.fn() },
+      captureAcceptedModelSelection: () => vi.fn(),
+      draftConfigRef: { current: {} },
+      composerDraft,
+      composerDraftRef: { current: composerDraft },
+      handleDraftSelectModel: vi.fn(),
+      handleDraftSelectThought: vi.fn(),
+      handleDraftSwitchMode: vi.fn(),
+      handleDraftSelectDataSource: vi.fn(),
+      resolveInitialDraftConfig: vi.fn(() => ({})),
+    };
+  },
 }));
 
 vi.mock("@/v4/composer/useDraftSessionPrewarm.js", () => ({

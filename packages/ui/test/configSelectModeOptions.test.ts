@@ -332,7 +332,8 @@ describe("ConfigSelect mode options", () => {
       tooltipTitle: "Mode",
     });
 
-    expect(html).toContain("Ask before changes");
+    // en locale 的 build 模式 label 已改为 "Requires approval"（描述为 "Ask before file changes."）。
+    expect(html).toContain("Requires approval");
     expect(html).toContain("Edit automatically");
     expect(html).not.toContain("默认模式");
   });
