@@ -1937,8 +1937,8 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.searchArchivedTasksPlaceholder": "Search archived tasks...",
   "workspaceSidebar.closeTaskSearch": "Close task search",
   "workspaceSidebar.remove": "Remove",
-  "workspaceSidebar.worktreeRename": "Rename worktree",
-  "workspaceSidebar.worktreeDelete": "Delete worktree...",
+  "workspaceSidebar.worktreeRename": "Rename",
+  "workspaceSidebar.worktreeDelete": "Delete",
   "workspaceSidebar.worktreeDeleteConfirm.title": "Delete worktree",
   "workspaceSidebar.worktreeDeleteConfirm.description":
     "This deletes the directory {path} and its worktree branch (unmerged commits will need a second confirmation), and removes the workspace from the project list.",

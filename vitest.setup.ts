@@ -4,6 +4,18 @@ import { join } from "node:path";
 
 process.env.GIT_CONFIG_COUNT = "2";
 
+// Bugfix: 从 ZCode 桌面应用内启动的 shell（应用内 Agent / pre-push 钩子）会继承一批
+// ZCODE_* 运行时变量（ZCODE_ENV、ZCODE_DYNAMIC_WORKFLOW_MODE、ZCODE_CUA_BUNDLED_HELPER_APP_PATH、
+// ZCODE_SERVER_ROOT 等）。它们命中源码里的显式 override / 已安装应用探测分支，使单测结果
+// 随启动环境漂移（例如 ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn 让远端裁决用例拿到 override）。
+// 与下方 ZCODE_DATA_BASE_DIR 同理：单测基线必须只由用例自己显式注入的变量决定。
+// ZCODE_TEST_* 是测试自己的控制旋钮（如 ZCODE_TEST_RELEASE_TARGET），允许从命令行透传，不清理。
+for (const key of Object.keys(process.env)) {
+  if (key.startsWith("ZCODE_") && !key.startsWith("ZCODE_TEST_")) {
+    delete process.env[key];
+  }
+}
+
 // Bugfix: Git Bash 会把 /usr/bin（GNU tar 1.35）注入 PATH 最前，子进程 spawn "tar"
 // 解析到 GNU tar 后会把归档参数里的 `C:` 当远程主机（"Cannot connect to C"），
 // zcode-server-cli 打包/发布与 native-search 归档类测试因此在 Windows 开发机整批失败。

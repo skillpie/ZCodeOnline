@@ -1803,8 +1803,8 @@ const zhCN: Record<string, string> = {
   "workspaceSidebar.searchArchivedTasksPlaceholder": "搜索归档任务...",
   "workspaceSidebar.closeTaskSearch": "关闭任务搜索",
   "workspaceSidebar.remove": "移除",
-  "workspaceSidebar.worktreeRename": "重命名 Worktree",
-  "workspaceSidebar.worktreeDelete": "删除 Worktree...",
+  "workspaceSidebar.worktreeRename": "重命名",
+  "workspaceSidebar.worktreeDelete": "删除",
   "workspaceSidebar.worktreeDeleteConfirm.title": "删除 Worktree",
   "workspaceSidebar.worktreeDeleteConfirm.description":
     "将删除目录 {path}、对应的 worktree 分支（如有未合并提交会再次确认），并从项目列表移除该工作区。",

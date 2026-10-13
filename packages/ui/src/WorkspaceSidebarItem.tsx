@@ -349,16 +349,28 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     event.stopPropagation();
   }, []);
 
-  /** worktree 工作区的分支名：listWorktrees 里与自身路径匹配的检出分支。 */
+  /** worktree 所属主树的工作区路径（`.worktrees/` 前段），git 操作一律以它为解析上下文。 */
+  const worktreeMainTreePath =
+    tab.workspacePath.replace(/\\/g, "/").split("/.worktrees/")[0] ?? tab.workspacePath;
+  /** worktree 的检出分支名：从主树的 worktree 注册表查询（目录被删后仍可查）。 */
   const resolveWorktreeBranchName = useCallback(async (): Promise<string | null> => {
-    const worktrees = await services.gitService.listWorktrees({
-      workspacePath: tab.workspacePath,
-    });
-    const entry = worktrees.worktrees.find(
-      (worktree) => worktree.path.replace(/\\/g, "/") === tab.workspacePath.replace(/\\/g, "/"),
-    );
-    return entry?.branchName ?? null;
-  }, [services, tab.workspacePath]);
+    try {
+      const worktrees = await services.gitService.listWorktrees({
+        workspacePath: worktreeMainTreePath,
+      });
+      const normalized = tab.workspacePath.replace(/\\/g, "/");
+      const entry = worktrees.worktrees.find(
+        (worktree) => worktree.path.replace(/\\/g, "/") === normalized,
+      );
+      return entry?.branchName ?? null;
+    } catch (error) {
+      logger.warn("[WorkspaceSidebarItem] 查询 worktree 分支失败", {
+        worktreePath: tab.workspacePath,
+        error,
+      });
+      return null;
+    }
+  }, [services, tab.workspacePath, worktreeMainTreePath]);
 
   const handleDeleteWorktreeProject = useCallback(async () => {
     if (
@@ -401,7 +413,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       // 先取分支名（目录还在时 listWorktrees 才能定位），再删目录，最后删分支。
       const branchName = await resolveWorktreeBranchName();
       const removed = await services.gitService.removeWorktree({
-        workspacePath: tab.workspacePath,
+        workspacePath: worktreeMainTreePath,
         worktreePath: tab.workspacePath,
       });
       if (!removed.ok) {
@@ -478,6 +490,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
         workspacePath: tab.workspacePath,
         error,
       });
+      toast(intl.formatMessage({ id: "git.branchSwitcher.error.requestFailed" }));
     } finally {
       setWorktreeDeletePending(false);
     }
@@ -489,6 +502,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     resolveWorktreeBranchName,
     services,
     tab,
+    worktreeMainTreePath,
     zcodeTaskService,
   ]);
 
