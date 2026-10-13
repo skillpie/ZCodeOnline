@@ -157,12 +157,6 @@ export interface GitWorktreeRecord {
   path: string;
   /** detached HEAD 的 worktree 没有分支名。 */
   branchName: string | null;
-  /** 创建该 worktree 时记录的来源分支（repo 本地 config `zcode.worktreeSources`，按 worktree
-   *  目录名记录，不随 worktree 内切分支变化）；旧数据或来源不可考时为 null。 */
-  sourceBranchName: string | null;
-  /** 创建时的副本分支名（`<源分支>-{MMddHHmm}`）；重命名跟随更新，worktree 内切分支不变化。
-   *  树形子项以它为稳定行名；旧数据（无记录）为 null。 */
-  copyBranchName: string | null;
   head: string | null;
   isMain: boolean;
   /** path 与发起请求的 workspacePath 一致。 */

@@ -11,7 +11,7 @@ import {
   useSustainedHover,
   DELETE_REVEAL_DELAY_MS,
 } from "@/git-branch-switcher/useSustainedHover.js";
-import { ChevronRightIcon, FolderGit2, GitBranchIcon, Trash2Icon } from "lucide-react";
+import { FolderGit2, GitBranchIcon, Trash2Icon } from "lucide-react";
 
 interface GitBranchListRowProps {
   branch: GitLocalBranch;
@@ -28,10 +28,6 @@ interface GitBranchListRowProps {
   onCheckoutAsWorktree?: (branchName: string) => void;
   /** hover / focus 持续 2 秒后行尾浮现「删除分支」；当前分支不提供。 */
   onDeleteBranch?: (branchName: string) => void;
-  /** 该分支名下的 worktree 数量；大于 0 时行首展示树形展开箭头（默认折叠）。 */
-  worktreeCount?: number;
-  expanded?: boolean;
-  onToggleWorktrees?: () => void;
 }
 
 /**
@@ -51,9 +47,6 @@ export function GitBranchListRow({
   onConversationActionTriggered,
   onCheckoutAsWorktree,
   onDeleteBranch,
-  worktreeCount = 0,
-  expanded = false,
-  onToggleWorktrees,
 }: GitBranchListRowProps) {
   const { intl } = useZCodeIntl();
   const [hovered, setHovered] = useState(false);
@@ -101,26 +94,6 @@ export function GitBranchListRow({
         onSwitch(branch.name);
       }}
     >
-      {worktreeCount > 0 && onToggleWorktrees ? (
-        <button
-          type="button"
-          aria-expanded={expanded}
-          aria-label={intl.formatMessage(
-            { id: "git.branchSwitcher.worktreeToggle.ariaLabel" },
-            { branchName: branch.name, count: worktreeCount },
-          )}
-          className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm text-foreground-subtle hover:text-foreground"
-          onClick={(event) => {
-            // 阻止冒泡到 cmdk Item：展开箭头只切换树形子列表，不触发分支切换。
-            event.stopPropagation();
-            onToggleWorktrees();
-          }}
-        >
-          <ChevronRightIcon
-            className={cn("size-3.5 transition-transform", expanded && "rotate-90")}
-          />
-        </button>
-      ) : null}
       <GitBranchIcon className="mt-0.5 size-4 text-foreground-subtle" />
       <div className="min-w-0 flex-1 flex flex-col gap-1 text-left">
         <div

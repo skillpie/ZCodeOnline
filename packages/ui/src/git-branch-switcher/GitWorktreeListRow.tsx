@@ -8,14 +8,11 @@ import {
   useSustainedHover,
   DELETE_REVEAL_DELAY_MS,
 } from "@/git-branch-switcher/useSustainedHover.js";
-import { cn } from "@/components/lib/utils.js";
 import { FolderGit2, SquarePenIcon, Trash2Icon } from "lucide-react";
 
 interface GitWorktreeListRowProps {
   worktree: GitWorktreeRecord;
   mutationPending: boolean;
-  /** 嵌在来源分支行下方的树形子项时为 true，行内缩进一层。 */
-  nested?: boolean;
   onOpen: (worktreePath: string) => void;
   onRename: (worktree: GitWorktreeRecord) => void;
   onRemove: (worktree: GitWorktreeRecord) => void;
@@ -31,13 +28,12 @@ function labelFromWorktreePath(path: string): string {
  * 行尾重命名 / 移除动作与分支行对话动作同模式（hover / focus-within 挂载，触屏常驻）。
  * 当前行不提供重命名与移除（动到正打开的 workspace 危险），行内以「当前」标识替代。
  * detached worktree 没有分支可改，重命名入口隐藏。
- * 行名优先展示创建时的副本分支名（copyBranch，稳定标识，不随 worktree 内切分支变化），
- * detached / 旧数据回退目录名——子项代表的是"创建时的那个副本分支"，切分支不改身份。
+ * 行名优先展示当前检出的分支名（随 worktree 内切分支实时变化），detached / 旧数据回退目录名，
+ * 平铺列表里一眼可见每个 worktree 现在在哪个分支上。
  */
 export function GitWorktreeListRow({
   worktree,
   mutationPending,
-  nested = false,
   onOpen,
   onRename,
   onRemove,
@@ -58,13 +54,10 @@ export function GitWorktreeListRow({
 
   return (
     <CommandItem
-      value={worktree.copyBranchName ?? labelFromWorktreePath(worktree.path)}
+      value={worktree.branchName ?? labelFromWorktreePath(worktree.path)}
       disabled={mutationPending}
       title={worktree.path}
-      className={cn(
-        "items-center gap-3 rounded-lg py-2 pr-3 text-ui-base",
-        nested ? "pl-9" : "px-3",
-      )}
+      className="items-center gap-3 rounded-lg px-3 py-2 text-ui-base"
       onMouseEnter={() => {
         setHovered(true);
       }}
@@ -85,7 +78,7 @@ export function GitWorktreeListRow({
     >
       <FolderGit2 className="size-4 shrink-0 text-foreground-subtle" />
       <span className="min-w-0 flex-1 truncate text-left text-ui-base font-medium text-foreground">
-        {worktree.copyBranchName ?? labelFromWorktreePath(worktree.path)}
+        {worktree.branchName ?? labelFromWorktreePath(worktree.path)}
       </span>
       {worktree.isCurrentWorkspace ? (
         <span className="shrink-0 text-ui-caption text-foreground-subtle">
@@ -100,7 +93,7 @@ export function GitWorktreeListRow({
           disabled={mutationPending}
           aria-label={intl.formatMessage(
             { id: "git.worktree.renameAction.ariaLabel" },
-            { name: worktree.copyBranchName ?? labelFromWorktreePath(worktree.path) },
+            { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
           )}
           className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
@@ -120,7 +113,7 @@ export function GitWorktreeListRow({
           disabled={mutationPending}
           aria-label={intl.formatMessage(
             { id: "git.worktree.removeAction.ariaLabel" },
-            { name: worktree.copyBranchName ?? labelFromWorktreePath(worktree.path) },
+            { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
           )}
           className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {

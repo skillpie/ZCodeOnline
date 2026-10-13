@@ -5,11 +5,10 @@
 
 ## 1. 产品规则
 
-- 分支切换器（`GitBranchSwitcher`）下拉以**树形二级菜单**展示 worktree：worktree 按其检出的
-  分支归组，嵌在该分支行下方；有 worktree 的分支行首提供展开箭头，**默认折叠**；worktree
-  子项单行展示，行名钉在创建时的副本分支上（不随 worktree 内切分支变化；旧数据 / detached
-  回退目录名），行尾 hover 的「重命名 / 移除」，点击行在本窗口打开新 workspace
-  标签页并回到新任务草稿。detached / 分支已删除等无主 worktree 落到兜底「Worktrees」分组。
+- 分支切换器（`GitBranchSwitcher`）下拉分两栏平铺展示：「分支」分组列出全部本地分支；
+  「Worktrees」分组列出当前仓库全部 linked worktree（不含主树），支持「打开」（在本窗口开
+  新 workspace 标签页并回到新任务草稿）、「重命名」与「移除」。worktree 行名优先为当前
+  检出的分支名（随 worktree 内切分支实时变化，detached 回退目录名）。
 - **所有分支行**（含当前分支）的行尾提供「检出为 Worktree」动作（hover / focus-within 挂载，
   触屏常驻，与行尾对话动作同模式），统一为**并行副本语义**：每次点击都基于该分支新建
   `{源分支名}-{MMddHHmm}` 分支并检出为独立 worktree，不动当前工作区、不携带未提交更改。
@@ -17,13 +16,6 @@
   点击都能持续产出并行副本；默认名与现有分支撞车时降级为秒级 `{...}-{MMddHHmmss}`，仍撞车
   追加 `-2`、`-3` 序号。无弹窗、无底部独立入口（行尾的「合入 / 拉取」是既有对话动作，与
   worktree 无关）。
-- 创建副本成功后，把身份写入 repo 本地 config `zcode.worktreeSources`——多行
-  `<worktree 目录名>=<副本分支>:<来源分支>`（旧格式无副本段，兼容解析）。**记录键是 worktree
-  目录名而不是分支名**：目录名不随 worktree 内切分支变化（按分支记录的缺陷是切一次分支
-  分组就丢），随重命名迁移（副本分支同步为新名）、随移除清理。树形分组据此把副本挂到来源
-  分支行下；**子项行名钉在创建时的副本分支上**，worktree 内切到别的分支不改变子项的身份与
-  归组——被切走的分支作为普通分支回到顶层展示（当前分支不消失）；无记录（旧数据）或来源
-  分支已删除时回退挂在副本自身分支行下，detached 落到兜底「Worktrees」分组。
 - worktree 目录统一落在**主树根**的 `.worktrees/<净化后的分支名>`；当前 workspace 本身已是
   linked worktree 时同样锚定主树根（从 `git worktree list` 第一条解析），保证同一仓库的所有
   worktree 聚在一处。
@@ -161,7 +153,6 @@ Host
   → 幂等写 .git/info/exclude（追加缺失的 .worktrees/ 行）
   → git worktree add -b <新分支> <path> -- <起点>（git 原生拒绝翻译为 issue）
   → invalidate(workspacePath)（主树 status/exclude 缓存失效）
-  → 起点为本地分支时在 zcode.worktreeSources 记录 `<目录名>=<起点>`（失败只 warn，不阻塞）
   → 返回 { ok, worktree }
 renderer 收到成功
   → toast 成功 → tabStore.addTab(worktree.path) → sessionStore.startDraft(worktree.path)
@@ -219,10 +210,8 @@ renderer 收到成功
 2. 对同一分支再次点击、以及对当前分支（如 main）点击 → 各自创建 `{源分支名}-{MMddHHmm}` 并行
    副本；同一分钟内重复创建时自动降级秒级后缀，多副本可共存。
 3. 基于当前 workspace 为 linked worktree 的仓库执行创建 → 新 worktree 仍落在主树 `.worktrees/` 下。
-4. 树形二级菜单：副本挂在**来源分支**行下（如在 linchuncheng 上创建的两个副本都折叠在
-   linchuncheng 行内），副本分支行不再在顶层重复出现；行首折叠箭头默认折叠，子项单行缩进；
-   点击子项打开对应标签页；当前 workspace 子项显示「当前」标识；无主 worktree 落到兜底
-   「Worktrees」分组。
+4. 「Worktrees」分组平铺列出全部 linked worktree；点击行打开对应标签页；当前 workspace
+   对应行显示「当前」标识；行名随 worktree 内切分支实时更新。
 5. 重命名：子项行尾「重命名」→ 输入新分支名 → 分支与目录同步更新（HEAD 与未提交更改不变）、
    已打开标签页迁移到新路径；重名分支 / 目录被占 / 非法名分别命中对应 issue；当前 workspace
    与 detached 子项不提供重命名入口。

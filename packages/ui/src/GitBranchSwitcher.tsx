@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { GitRepositorySummary } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
-import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command.js";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandList,
+} from "@/components/ui/command.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { cn } from "@/components/lib/utils.js";
 import {
   GitBranchCreateDialog,
   GitBranchSwitchAssistDialog,
 } from "@/git-branch-switcher/GitBranchDialogs.js";
-import { GitBranchTreeGroup } from "@/git-branch-switcher/GitBranchTreeGroup.js";
 import { GitGraphDialog } from "@/git-graph/GitGraphDialog.js";
 import { useGitBranchSwitcher } from "@/hooks/useGitBranchSwitcher.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -20,8 +25,10 @@ import {
   isCoarseTouchDevice,
   shouldRestoreChatInputFocusAfterPickerClose,
 } from "@/lib/pickerFocus.js";
+import { GitBranchListRow } from "@/git-branch-switcher/GitBranchListRow.js";
 import { GitBranchPopoverFooter } from "@/git-branch-switcher/GitBranchPopoverFooter.js";
 import { GitWorktreeRenameDialog } from "@/git-branch-switcher/GitWorktreeRenameDialog.js";
+import { GitWorktreeSection } from "@/git-branch-switcher/GitWorktreeSection.js";
 import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
 import { ChevronDownIcon, GitBranchIcon, LoaderIcon } from "lucide-react";
 
@@ -303,23 +310,36 @@ export function GitBranchSwitcher({
                     ? intl.formatMessage({ id: "common.loading" })
                     : intl.formatMessage({ id: "git.branchSwitcher.empty" })}
                 </CommandEmpty>
-                <GitBranchTreeGroup
-                  branches={branchesResult?.branches ?? []}
-                  displayedCurrentBranchName={displayedCurrentBranchName}
-                  currentDirtyLabel={currentBranchDirtyLabel}
-                  mutationPending={listMutationPending}
+                <CommandGroup
+                  heading={intl.formatMessage({
+                    id: "git.branchSwitcher.section.branches",
+                  })}
+                  className="space-y-0.5 p-1 **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-ui-base **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-foreground-subtle"
+                >
+                  {(branchesResult?.branches ?? []).map((branch) => (
+                    <GitBranchListRow
+                      key={branch.name}
+                      branch={branch}
+                      isCurrent={branch.name === displayedCurrentBranchName}
+                      currentDirtyLabel={currentBranchDirtyLabel}
+                      mutationPending={listMutationPending}
+                      onSwitch={switchBranch}
+                      enableConversationAction={enableConversationActions}
+                      conversationPromptScope={conversationPromptScope}
+                      onConversationActionTriggered={() => {
+                        setOpen(false);
+                      }}
+                      onCheckoutAsWorktree={handleCheckoutAsWorktree}
+                      onDeleteBranch={handleDeleteBranch}
+                    />
+                  ))}
+                </CommandGroup>
+                <GitWorktreeSection
                   worktrees={worktreesResult?.worktrees ?? []}
-                  onSwitch={switchBranch}
-                  enableConversationAction={enableConversationActions}
-                  conversationPromptScope={conversationPromptScope}
-                  onClosePopover={() => {
-                    setOpen(false);
-                  }}
-                  onCheckoutAsWorktree={handleCheckoutAsWorktree}
-                  onDeleteBranch={handleDeleteBranch}
-                  onOpenWorktree={handleOpenWorktree}
-                  onRenameWorktree={openRenameDialog}
-                  onRemoveWorktree={removeWorktree}
+                  mutationPending={listMutationPending}
+                  onOpen={handleOpenWorktree}
+                  onRename={openRenameDialog}
+                  onRemove={removeWorktree}
                 />
               </CommandList>
             </Command>
