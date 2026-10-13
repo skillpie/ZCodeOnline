@@ -1,10 +1,10 @@
 #!/bin/bash
 # 重建本机宿主 daemon（zcode-server-cli）并重启，让 zcode.skillpie.cn 的网页会话用上新 Agent 产物。
 #
-# 背景：post-commit 钩子只自动部署静态 Web；改动 apps/zcode-cli 或
-# packages/zcode-server-cli 后 daemon 不会自己重建，网页会话会一直跑旧产物。
-# daemon dev 态经 findUpward 定位 apps/zcode-cli/packages/cli/dist/zcode.cjs，
-# 因此两个产物都要重建。
+# 背景：deploy_web.sh 只上传静态 Web / relay / 发行包，不重建本机 daemon；
+# 改动 apps/zcode-cli 或 packages/zcode-server-cli 后 daemon 不会自己重建，
+# 网页会话会一直跑旧产物。daemon dev 态经 findUpward 定位
+# apps/zcode-cli/packages/cli/dist/zcode.cjs，因此两个产物都要重建。
 #
 # 用法：
 #   ./install_cli.sh                 # 构建 @zcode/cli + @zcode/server-cli，然后重启 daemon

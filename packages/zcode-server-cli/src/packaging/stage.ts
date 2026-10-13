@@ -566,8 +566,8 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
   let archivePath: string | null = null;
   let archive: { sha256: string; sizeBytes: number } | null = null;
   if (options.archive !== false) {
-    // 发行归档统一 tar.gz，win32 不再特例 zip：install.ps1 与 deploy-zcode.sh
-    // --release 均按 <releaseName>.tar.gz 消费，Windows 10+ 内置 bsdtar 可直接解压。
+    // 发行归档统一 tar.gz，win32 不再特例 zip：install.ps1 与 deploy_cli.sh
+    // 均按 <releaseName>.tar.gz 消费，Windows 10+ 内置 bsdtar 可直接解压。
     archivePath = join(outputRoot, `${releaseName}.tar.gz`);
     await rm(archivePath, { force: true });
     // Windows 宿主显式 System32 bsdtar，不依赖调用方 PATH（原因同 tarCommand.ts）。

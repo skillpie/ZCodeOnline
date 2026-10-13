@@ -9,7 +9,6 @@
 #   ./deploy_web.sh --web      # 仅更新静态 Web
 #   ./deploy_web.sh --relay    # 仅更新 relay（上传 + 重启服务）
 #   ./deploy_web.sh --ng       # 仅上传 nginx conf 并 reload
-#   ./deploy_web.sh --release  # 仅构建并发布终端用户发行包（server-cli 归档 + 安装脚本）
 #   ./deploy_web.sh --desktop [dmg|exe ...]
 #                             # 仅上传桌面版安装包到 $DL_DIR/desktop/（文件名固定为
 #                             # ZCode-latest-*.dmg/.exe，必须与 packages/shared/src/desktopDownload.ts
@@ -17,6 +16,9 @@
 #                             # 缺省自动取 packages/desktop/dist 里最新的 mac-arm64 dmg 与 win-x64 exe；
 #                             # 某平台产物缺失时跳过该平台，一个都找不到才报错）
 #   ./deploy_web.sh --check    # 只做部署后验证
+#
+# 终端用户 CLI 发行包发布（server-cli 归档 + catalog + 安装脚本）已拆分到
+# ./deploy_cli.sh，与本脚本互不依赖。
 #
 # 服务器与站点信息不写入本文件（本文件曾因此出库）：从
 # apps/zcode-relay/deploy/deploy.env 读取（SERVER_HOST / SERVER_USER / SITE_URL，
@@ -52,7 +54,6 @@ BUILD_WEB=true
 BUILD_RELAY=true
 UPLOAD_NGINX=false
 CHECK_ONLY=false
-RELEASES=false
 DESKTOP_RELEASE=false
 # --desktop 之后的参数全部视为待上传安装包文件（按扩展名归类）；该模式不构建、不重启服务。
 if [ "${1:-}" = "--desktop" ]; then
@@ -62,12 +63,10 @@ if [ "${1:-}" = "--desktop" ]; then
   shift
 fi
 RELEASE_FILES=("$@")
-RELEASE_TARGETS="${RELEASE_TARGETS:-darwin-arm64 linux-x64}"
 case "${1:-}" in
   --web)   BUILD_RELAY=false ;;
   --relay) BUILD_WEB=false ;;
   --ng)    BUILD_WEB=false; BUILD_RELAY=false; UPLOAD_NGINX=true ;;
-  --release) BUILD_WEB=false; BUILD_RELAY=false; RELEASES=true ;;
   --check) BUILD_WEB=false; BUILD_RELAY=false; CHECK_ONLY=true ;;
 esac
 
@@ -87,32 +86,6 @@ if [ "$BUILD_RELAY" = true ]; then
   (cd "$PROJECT_ROOT" && pnpm --filter @zcode/relay build)
   # 每日运营日报单文件（specs/web-daily-report.md）：与 relay 同源构建，独立部署（oneshot，无需重启）。
   (cd "$PROJECT_ROOT" && pnpm --filter @zcode/relay build:report)
-fi
-
-# 终端用户发行发布：多平台 stage 归档 + install.sh → 服务器 $DL_DIR，
-# 供终端用户 curl 安装脚本使用（域名由 SITE_URL 决定，安装脚本本身随仓库分发）。
-# catalog.json 供已装宿主的自动更新（specs/web-tunnel.md 更新器 M4）拉取；
-# stage 每跑一个 target 就把条目按 target 合并进本地 catalog，最后整体上传。
-if [ "$RELEASES" = true ]; then
-  step "构建并发布终端用户发行包（targets: $RELEASE_TARGETS）"
-  DL_DIR="${DL_DIR:-/var/www/zcode-dl}"
-  CATALOG_FILE="$PROJECT_ROOT/packages/zcode-server-cli/dist-release/catalog.json"
-  ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p $DL_DIR"
-  for target in $RELEASE_TARGETS; do
-    (cd "$PROJECT_ROOT" && pnpm --filter @zcode/server-cli exec tsx src/packaging/stageCli.ts \
-      --target "$target" --catalog "$CATALOG_FILE" --catalog-archive-base-url "$SITE_URL/dl")
-    archive="$PROJECT_ROOT/packages/zcode-server-cli/dist-release/zcode-server-$target.tar.gz"
-    [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
-    rsync -av --delete "$archive" "$SERVER_USER@$SERVER_HOST:$DL_DIR/zcode-server-$target.tar.gz"
-    echo "[release] zcode-server-$target.tar.gz published"
-  done
-  [ -f "$CATALOG_FILE" ] || { echo "catalog missing: $CATALOG_FILE" >&2; exit 1; }
-  rsync -av "$CATALOG_FILE" "$SERVER_USER@$SERVER_HOST:$DL_DIR/catalog.json"
-  echo "[release] catalog.json published（宿主自动更新源：$SITE_URL/dl/catalog.json）"
-  rsync -av "$DEPLOY_ASSETS_DIR/install-zcode-server.sh" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.sh"
-  rsync -av "$DEPLOY_ASSETS_DIR/install-zcode-server.ps1" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.ps1"
-  rsync -av "$DEPLOY_ASSETS_DIR/install.cmd" "$SERVER_USER@$SERVER_HOST:$DL_DIR/install.cmd"
-  echo "[release] install.sh / install.ps1 / install.cmd published"
 fi
 
 # 桌面版安装包发布：Web 端「下载桌面版」弹窗打开的就是这两个固定名直链。

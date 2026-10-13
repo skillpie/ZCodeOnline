@@ -3,7 +3,7 @@
  *
  * 与手动 `zcode update` 的语义差异：
  * - 手动命令未设置 ZCODE_SERVER_RELEASE_MANIFEST_URL 时不联网（保持离线 pending 语义）；
- * - 自动调度器在未设置时走 DEFAULT_RELEASE_CATALOG_URL（官方站点随 --release 发布），
+ * - 自动调度器在未设置时走 DEFAULT_RELEASE_CATALOG_URL（官方站点随 deploy_cli.sh 发布），
  *   显式设置环境变量仍然生效，供自托管指向自己的镜像。
  */
 

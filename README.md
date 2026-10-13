@@ -116,7 +116,8 @@ sudo xattr -rd com.apple.quarantine /Applications/ZCodeOnline.app
 ### Web 隧道部署
 
 ```bash
-./deploy_web.sh    # 构建 Web 与 relay，rsync 上传并重启服务；--web / --relay / --ng / --check / --release 为细粒度入口
+./deploy_web.sh    # 构建 Web 与 relay，rsync 上传并重启服务；--web / --relay / --ng / --check 为细粒度入口
+./deploy_cli.sh    # 发布终端用户 CLI 发行包（server-cli 归档 + catalog + 安装脚本），独立于 Web 隧道部署
 ./deploy_desktop.sh  # 构建并发布桌面安装包两端（mac-arm64 + win-x64，--mac / --win 单端）
 ```
 
