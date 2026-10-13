@@ -6,9 +6,11 @@
 ## 1. 产品规则
 
 - 分支切换器（`GitBranchSwitcher`）下拉为**单一平铺列表**（无分组标题）：本地分支在前、
-  linked worktree 在后，行首图标区分（分支 = GitBranch，worktree = FolderGit2）。worktree
-  行支持「打开」（在本窗口开新 workspace 标签页并回到新任务草稿）、「重命名」与「移除」；
-  行名优先为当前检出的分支名（随 worktree 内切分支实时变化，detached 回退目录名）。
+  linked worktree 在后，行首图标区分（分支 = GitBranch，worktree = FolderGit2）。**正被
+  worktree 检出的分支不单列分支行**，由对应 worktree 行代表（避免同一分支两行展示）；
+  worktree 移除或切走分支后分支行自动恢复。worktree 行支持「打开」（在本窗口开新
+  workspace 标签页并回到新任务草稿）、「重命名」与「移除」；行名优先为当前检出的分支名
+  （随 worktree 内切分支实时变化，detached 回退目录名）。
 - **所有分支行**（含当前分支）的行尾提供「检出为 Worktree」动作（hover / focus-within 挂载，
   触屏常驻，与行尾对话动作同模式），统一为**并行副本语义**：每次点击都基于该分支新建
   `{源分支名}-{MMddHHmm}` 分支并检出为独立 worktree，不动当前工作区、不携带未提交更改。
@@ -210,8 +212,9 @@ renderer 收到成功
 2. 对同一分支再次点击、以及对当前分支（如 main）点击 → 各自创建 `{源分支名}-{MMddHHmm}` 并行
    副本；同一分钟内重复创建时自动降级秒级后缀，多副本可共存。
 3. 基于当前 workspace 为 linked worktree 的仓库执行创建 → 新 worktree 仍落在主树 `.worktrees/` 下。
-4. 分支与 worktree 在同一平铺列表中，靠行首图标区分；点击 worktree 行打开对应标签页；
-   当前 workspace 对应行显示「当前」标识；行名随 worktree 内切分支实时更新。
+4. 分支与 worktree 在同一平铺列表中，靠行首图标区分；正被 worktree 检出的分支只保留
+   worktree 行（切回后分支行恢复）；点击 worktree 行打开对应标签页；当前 workspace 对应行
+   显示「当前」标识；行名随 worktree 内切分支实时更新。
 5. 重命名：子项行尾「重命名」→ 输入新分支名 → 分支与目录同步更新（HEAD 与未提交更改不变）、
    已打开标签页迁移到新路径；重名分支 / 目录被占 / 非法名分别命中对应 issue；当前 workspace
    与 detached 子项不提供重命名入口。

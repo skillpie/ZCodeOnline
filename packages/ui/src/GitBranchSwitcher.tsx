@@ -121,11 +121,17 @@ export function GitBranchSwitcher({
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
   const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
-  // 正被某个 worktree 检出的分支属于“工作中”，不提供删除入口。
+  // 正被某个 worktree 检出的分支由对应 worktree 行代表：不再单列分支行（避免同一分支
+  // 「分支行 + worktree 行」两行展示）；worktree 移除后分支行自动恢复。
   const branchNamesInWorktrees = new Set(
     (worktreesResult?.worktrees ?? []).flatMap((worktree) =>
       worktree.branchName ? [worktree.branchName] : [],
     ),
+  );
+  const visibleBranches = useMemo(
+    () =>
+      (branchesResult?.branches ?? []).filter((branch) => !branchNamesInWorktrees.has(branch.name)),
+    [branchNamesInWorktrees, branchesResult],
   );
   const handleCheckoutAsWorktree = useCallback(
     (branchName: string) => {
@@ -306,7 +312,7 @@ export function GitBranchSwitcher({
                     ? intl.formatMessage({ id: "common.loading" })
                     : intl.formatMessage({ id: "git.branchSwitcher.empty" })}
                 </CommandEmpty>
-                {(branchesResult?.branches ?? []).map((branch) => (
+                {visibleBranches.map((branch) => (
                   <GitBranchListRow
                     key={branch.name}
                     branch={branch}
@@ -321,7 +327,6 @@ export function GitBranchSwitcher({
                     }}
                     onCheckoutAsWorktree={handleCheckoutAsWorktree}
                     onDeleteBranch={handleDeleteBranch}
-                    checkedOutInWorktree={branchNamesInWorktrees.has(branch.name)}
                   />
                 ))}
                 {(worktreesResult?.worktrees ?? []).map((worktree) => (

@@ -24,8 +24,6 @@ interface GitBranchListRowProps {
   onCheckoutAsWorktree?: (branchName: string) => void;
   /** hover / focus 持续 2 秒后行尾浮现「删除分支」；当前检出（主树或任意 worktree）中的分支不提供。 */
   onDeleteBranch?: (branchName: string) => void;
-  /** 该分支正被某个 worktree 检出：属于“工作中”，隐藏删除入口（先移除 worktree 才能删分支）。 */
-  checkedOutInWorktree?: boolean;
 }
 
 /**
@@ -45,7 +43,6 @@ export function GitBranchListRow({
   onConversationActionTriggered,
   onCheckoutAsWorktree,
   onDeleteBranch,
-  checkedOutInWorktree = false,
 }: GitBranchListRowProps) {
   const { intl } = useZCodeIntl();
   const [hovered, setHovered] = useState(false);
@@ -57,8 +54,7 @@ export function GitBranchListRow({
     Boolean(onCheckoutAsWorktree) && (isCoarseTouchDevice() || hovered || focusWithin);
   // 删除为破坏性动作，仅在交互（hover / focus）时浮现；当前检出中的分支不可删。
   const interactive = hovered || focusWithin;
-  const shouldMountDeleteAction =
-    !isCurrent && !checkedOutInWorktree && Boolean(onDeleteBranch) && interactive;
+  const shouldMountDeleteAction = !isCurrent && Boolean(onDeleteBranch) && interactive;
 
   return (
     <CommandItem
