@@ -1346,6 +1346,8 @@ const enUS: Record<string, string> = {
     "The repository still has unresolved conflicts. Resolve them before switching branches.",
   "git.branchSwitcher.error.operationInProgress":
     "Another Git operation is still in progress. Finish it before switching branches.",
+  "git.branchSwitcher.error.branchInMainWorktree":
+    "The target branch is checked out in the main working tree. Switch the main working tree to another branch first.",
   "git.branchSwitcher.error.branchInOtherWorktree":
     "That branch is already checked out in another worktree.",
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",

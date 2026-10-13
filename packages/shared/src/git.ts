@@ -32,6 +32,7 @@ export type GitBranchMutationIssueCode =
   | "conflicts-present"
   | "operation-in-progress"
   | "branch-in-other-worktree"
+  | "branch-in-main-worktree"
   | "branch-is-current"
   | "branch-not-fully-merged"
   | "unknown";

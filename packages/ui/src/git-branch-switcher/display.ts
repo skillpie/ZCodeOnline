@@ -101,6 +101,8 @@ export function resolveGitBranchIssueMessageId(
       return "git.branchSwitcher.error.operationInProgress";
     case "branch-in-other-worktree":
       return "git.branchSwitcher.error.branchInOtherWorktree";
+    case "branch-in-main-worktree":
+      return "git.branchSwitcher.error.branchInMainWorktree";
     case "branch-is-current":
       return "git.branchSwitcher.error.branchIsCurrent";
     case "branch-not-fully-merged":

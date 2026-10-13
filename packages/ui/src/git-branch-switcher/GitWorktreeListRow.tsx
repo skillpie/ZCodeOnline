@@ -23,8 +23,8 @@ function labelFromWorktreePath(path: string): string {
  * 行尾重命名 / 移除动作与分支行对话动作同模式（hover / focus-within 挂载，触屏常驻）。
  * 当前行不提供重命名与移除（动到正打开的 workspace 危险），行内以「当前」标识替代。
  * detached worktree 没有分支可改，重命名入口隐藏。
- * 行名优先展示当前检出的分支名（随 worktree 内切分支实时变化），detached / 旧数据回退目录名，
- * 平铺列表里一眼可见每个 worktree 现在在哪个分支上。
+ * 行名固定为目录名（.worktrees/ 下的净化名）——它是 worktree 的稳定标识，
+ * 不随 worktree 内切分支变化；当前检出的分支以触发器与分支行为准。
  */
 export function GitWorktreeListRow({
   worktree,
@@ -45,7 +45,7 @@ export function GitWorktreeListRow({
 
   return (
     <CommandItem
-      value={worktree.branchName ?? labelFromWorktreePath(worktree.path)}
+      value={labelFromWorktreePath(worktree.path)}
       disabled={mutationPending}
       title={worktree.path}
       className="items-center gap-3 rounded-lg px-3 py-2 text-ui-base"
@@ -69,7 +69,7 @@ export function GitWorktreeListRow({
     >
       <FolderGit2 className="size-4 shrink-0 text-foreground-subtle" />
       <span className="min-w-0 flex-1 truncate text-left text-ui-base font-medium text-foreground">
-        {worktree.branchName ?? labelFromWorktreePath(worktree.path)}
+        {labelFromWorktreePath(worktree.path)}
       </span>
       {worktree.isCurrentWorkspace ? (
         <span className="shrink-0 text-ui-caption text-foreground-subtle">
@@ -84,7 +84,7 @@ export function GitWorktreeListRow({
           disabled={mutationPending}
           aria-label={intl.formatMessage(
             { id: "git.worktree.renameAction.ariaLabel" },
-            { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
+            { name: labelFromWorktreePath(worktree.path) },
           )}
           className="-ml-2 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
@@ -104,7 +104,7 @@ export function GitWorktreeListRow({
           disabled={mutationPending}
           aria-label={intl.formatMessage(
             { id: "git.worktree.removeAction.ariaLabel" },
-            { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
+            { name: labelFromWorktreePath(worktree.path) },
           )}
           className="-ml-2 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {

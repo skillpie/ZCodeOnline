@@ -1237,6 +1237,8 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.error.conflictsPresent": "当前仓库还有未解决的冲突，先处理完再切换分支。",
   "git.branchSwitcher.error.operationInProgress":
     "当前仓库还有进行中的 Git 操作，完成后再切换分支。",
+  "git.branchSwitcher.error.branchInMainWorktree":
+    "目标分支已被主工作区检出，请先把主工作区切到其他分支，再回来切换。",
   "git.branchSwitcher.error.branchInOtherWorktree":
     "目标分支已在其他 worktree 中被检出，当前工作区无法直接切换。",
   "git.branchSwitcher.error.unknown": "切换分支失败，请稍后重试。",

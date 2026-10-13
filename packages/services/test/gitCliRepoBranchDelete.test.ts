@@ -89,3 +89,19 @@ test("deleteBranch 拒绝当前分支、worktree 占用分支与不存在的分�
   assert.equal(missing.ok, false);
   assert.deepEqual(issueCodes(missing), ["target-branch-not-found"]);
 });
+
+test("switchBranch 对主工作区占用的目标分支返回 branch-in-main-worktree", async () => {
+  // 主树当前在 main；从 worktree 侧尝试切到 main，持有方是主工作区 → 专用 issue。
+  // 建一个持有临时分支的 worktree，再尝试切到被主工作区占用的 main。
+  const externalDir = await realpath(await mkdtemp(join(tmpdir(), "zcode-git-switch-main-")));
+  try {
+    await git("worktree", "add", "-q", "-b", "wt-switch-tmp", externalDir);
+    const blocked = await repo.switchBranch(externalDir, "main");
+    assert.equal(blocked.ok, false);
+    assert.deepEqual(issueCodes(blocked), ["branch-in-main-worktree"]);
+  } finally {
+    await git("worktree", "remove", "--force", externalDir);
+    await rm(externalDir, { recursive: true, force: true });
+    await git("branch", "-D", "wt-switch-tmp");
+  }
+});

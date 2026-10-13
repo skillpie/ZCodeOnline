@@ -1302,11 +1302,43 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
         maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
       });
       if (result.exitCode !== 0) {
+        const issues = parseGitBranchMutationIssues(result);
+        // git 把主工作区也算作一种 worktree：目标分支被主工作区检出时，
+        // 用更明确的 issue 引导用户先把主工作区切走，而不是笼统的“其他 worktree”。
+        if (issues[0]?.code === "branch-in-other-worktree") {
+          const holderPath =
+            /used by worktree at '(.+?)'/.exec(result.stderr.trim() || result.stdout.trim())?.[1] ??
+            null;
+          if (holderPath) {
+            const worktreeList = await commandProvider.run({
+              cwd: resolution.repoRoot,
+              args: ["worktree", "list", "--porcelain"],
+              timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+              maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+            });
+            ensureGitCommandSucceeded("git worktree list --porcelain", worktreeList);
+            const mainTreeRoot = parseWorktreePorcelain(worktreeList.stdout)[0]?.path;
+            if (mainTreeRoot && isSameWorktreePath(holderPath, mainTreeRoot)) {
+              return toBranchMutationFailure({
+                action: "switch",
+                branchName: normalizedBranchName,
+                summary: status.summary,
+                issues: [
+                  {
+                    code: "branch-in-main-worktree",
+                    message: "Target branch is checked out in the main working tree.",
+                    detail: mainTreeRoot,
+                  },
+                ],
+              });
+            }
+          }
+        }
         return toBranchMutationFailure({
           action: "switch",
           branchName: normalizedBranchName,
           summary: status.summary,
-          issues: parseGitBranchMutationIssues(result),
+          issues,
         });
       }
 

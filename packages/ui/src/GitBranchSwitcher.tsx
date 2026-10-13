@@ -31,6 +31,11 @@ function branchSearchFilter(value: string, search: string): number {
   return matchesGitBranchSearch(value, search) ? 1 : 0;
 }
 
+/** worktree 目录名（路径末段），与创建时的副本分支净化名一致，作为 worktree 的稳定行名。 */
+function worktreeDirName(worktreePath: string): string {
+  return worktreePath.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? "";
+}
+
 interface GitBranchSwitcherProps {
   workspacePath: string;
   workspaceIdentity?: string;
@@ -123,15 +128,14 @@ export function GitBranchSwitcher({
   const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
   // 正被某个 worktree 检出的分支由对应 worktree 行代表：不再单列分支行（避免同一分支
   // 「分支行 + worktree 行」两行展示）；worktree 移除后分支行自动恢复。
-  const branchNamesInWorktrees = new Set(
-    (worktreesResult?.worktrees ?? []).flatMap((worktree) =>
-      worktree.branchName ? [worktree.branchName] : [],
-    ),
+  // .worktrees/ 下的 worktree 目录名即创建时副本分支的净化名：同名分支行由 worktree 行
+  // 代表，不再单列（避免同一分支两行展示）。目录名不随 worktree 内切分支变化，列表稳定；
+  // worktree 移除或改名后分支行同步恢复/更新。
+  const worktreeDirNames = new Set(
+    (worktreesResult?.worktrees ?? []).map((worktree) => worktreeDirName(worktree.path)),
   );
-  const visibleBranches = useMemo(
-    () =>
-      (branchesResult?.branches ?? []).filter((branch) => !branchNamesInWorktrees.has(branch.name)),
-    [branchNamesInWorktrees, branchesResult],
+  const visibleBranches = (branchesResult?.branches ?? []).filter(
+    (branch) => !worktreeDirNames.has(branch.name),
   );
   const handleCheckoutAsWorktree = useCallback(
     (branchName: string) => {
