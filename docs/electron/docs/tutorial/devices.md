@@ -1,11 +1,11 @@
 # Device Access
 
 Like Chromium based browsers, Electron provides access to device hardware
-through web APIs.  For the most part these APIs work like they do in a browser,
-but there are some differences that need to be taken into account.  The primary
+through web APIs. For the most part these APIs work like they do in a browser,
+but there are some differences that need to be taken into account. The primary
 difference between Electron and browsers is what happens when device access is
-requested.  In a browser, users are presented with a popup where they can grant
-access to an individual device.  In Electron APIs are provided which can be
+requested. In a browser, users are presented with a popup where they can grant
+access to an individual device. In Electron APIs are provided which can be
 used by a developer to either automatically pick a device or prompt users to
 pick a device via a developer created interface.
 
@@ -36,33 +36,33 @@ The [WebHID API](https://web.dev/hid/) can be used to access HID devices such
 as keyboards and gamepads. Electron provides several APIs for working with
 the WebHID API:
 
-* The [`select-hid-device` event on the Session](../api/session.md#event-select-hid-device)
+- The [`select-hid-device` event on the Session](../api/session.md#event-select-hid-device)
   can be used to select a HID device when a call to
-  `navigator.hid.requestDevice` is made.  Additionally the [`hid-device-added`](../api/session.md#event-hid-device-added)
+  `navigator.hid.requestDevice` is made. Additionally the [`hid-device-added`](../api/session.md#event-hid-device-added)
   and [`hid-device-removed`](../api/session.md#event-hid-device-removed) events
   on the Session can be used to handle devices being plugged in or unplugged
   when handling the `select-hid-device` event.
   **Note:** These events only fire until the callback from `select-hid-device`
-  is called.  They are not intended to be used as a generic hid device listener.
-* [`ses.setDevicePermissionHandler(handler)`](../api/session.md#sessetdevicepermissionhandlerhandler)
+  is called. They are not intended to be used as a generic hid device listener.
+- [`ses.setDevicePermissionHandler(handler)`](../api/session.md#sessetdevicepermissionhandlerhandler)
   can be used to provide default permissioning to devices without first calling
-  for permission to devices via `navigator.hid.requestDevice`.  Additionally,
+  for permission to devices via `navigator.hid.requestDevice`. Additionally,
   the default behavior of Electron is to store granted device permission through
-  the lifetime of the corresponding WebContents.  If longer term storage is
+  the lifetime of the corresponding WebContents. If longer term storage is
   needed, a developer can store granted device permissions (eg when handling
   the `select-hid-device` event) and then read from that storage with
   `setDevicePermissionHandler`.
-* [`ses.setPermissionCheckHandler(handler)`](../api/session.md#sessetpermissioncheckhandlerhandler)
+- [`ses.setPermissionCheckHandler(handler)`](../api/session.md#sessetpermissioncheckhandlerhandler)
   can be used to disable HID access for specific origins.
 
 ### Blocklist
 
 By default Electron employs the same [blocklist](https://wicg.github.io/webhid/#blocklist)
-used by Chromium.  If you wish to override this behavior, you can do so by
+used by Chromium. If you wish to override this behavior, you can do so by
 setting the `disable-hid-blocklist` flag:
 
 ```js
-app.commandLine.appendSwitch('disable-hid-blocklist')
+app.commandLine.appendSwitch("disable-hid-blocklist");
 ```
 
 ### Example
@@ -79,39 +79,39 @@ when the `Test WebHID` button is clicked.
 ## Web Serial API
 
 The [Web Serial API](https://web.dev/serial/) can be used to access serial
-devices that are connected via serial port, USB, or Bluetooth.  In order to use
+devices that are connected via serial port, USB, or Bluetooth. In order to use
 this API in Electron, developers will need to handle the
 [`select-serial-port` event on the Session](../api/session.md#event-select-serial-port)
 associated with the serial port request.
 
 There are several additional APIs for working with the Web Serial API:
 
-* The [`serial-port-added`](../api/session.md#event-serial-port-added)
+- The [`serial-port-added`](../api/session.md#event-serial-port-added)
   and [`serial-port-removed`](../api/session.md#event-serial-port-removed) events
   on the Session can be used to handle devices being plugged in or unplugged
   when handling the `select-serial-port` event.
   **Note:** These events only fire until the callback from `select-serial-port`
-  is called.  They are not intended to be used as a generic serial port
+  is called. They are not intended to be used as a generic serial port
   listener.
-* [`ses.setDevicePermissionHandler(handler)`](../api/session.md#sessetdevicepermissionhandlerhandler)
+- [`ses.setDevicePermissionHandler(handler)`](../api/session.md#sessetdevicepermissionhandlerhandler)
   can be used to provide default permissioning to devices without first calling
-  for permission to devices via `navigator.serial.requestPort`.  Additionally,
+  for permission to devices via `navigator.serial.requestPort`. Additionally,
   the default behavior of Electron is to store granted device permission through
-  the lifetime of the corresponding WebContents.  If longer term storage is
+  the lifetime of the corresponding WebContents. If longer term storage is
   needed, a developer can store granted device permissions (eg when handling
   the `select-serial-port` event) and then read from that storage with
   `setDevicePermissionHandler`.
-* [`ses.setPermissionCheckHandler(handler)`](../api/session.md#sessetpermissioncheckhandlerhandler)
+- [`ses.setPermissionCheckHandler(handler)`](../api/session.md#sessetpermissioncheckhandlerhandler)
   can be used to disable serial access for specific origins.
 
 ### Blocklist
 
 By default Electron employs the same [blocklist](https://wicg.github.io/serial/#blocklist)
-used by Chromium.  If you wish to override this behavior, you can do so by
+used by Chromium. If you wish to override this behavior, you can do so by
 setting the `disable-serial-blocklist` flag:
 
 ```js
-app.commandLine.appendSwitch('disable-serial-blocklist')
+app.commandLine.appendSwitch("disable-serial-blocklist");
 ```
 
 ### Example
@@ -131,38 +131,38 @@ when the `Test Web Serial` button is clicked.
 The [WebUSB API](https://web.dev/usb/) can be used to access USB devices.
 Electron provides several APIs for working with the WebUSB API:
 
-* The [`select-usb-device` event on the Session](../api/session.md#event-select-usb-device)
+- The [`select-usb-device` event on the Session](../api/session.md#event-select-usb-device)
   can be used to select a USB device when a call to
-  `navigator.usb.requestDevice` is made.  Additionally the [`usb-device-added`](../api/session.md#event-usb-device-added)
+  `navigator.usb.requestDevice` is made. Additionally the [`usb-device-added`](../api/session.md#event-usb-device-added)
   and [`usb-device-removed`](../api/session.md#event-usb-device-removed) events
   on the Session can be used to handle devices being plugged in or unplugged
   when handling the `select-usb-device` event.
   **Note:** These two events only fire until the callback from `select-usb-device`
-  is called.  They are not intended to be used as a generic usb device listener.
-* The [`usb-device-revoked` event on the Session](../api/session.md#event-usb-device-revoked) can
+  is called. They are not intended to be used as a generic usb device listener.
+- The [`usb-device-revoked` event on the Session](../api/session.md#event-usb-device-revoked) can
   be used to respond when [device.forget()](https://developer.chrome.com/articles/usb/#revoke-access)
   is called on a USB device.
-* [`ses.setDevicePermissionHandler(handler)`](../api/session.md#sessetdevicepermissionhandlerhandler)
+- [`ses.setDevicePermissionHandler(handler)`](../api/session.md#sessetdevicepermissionhandlerhandler)
   can be used to provide default permissioning to devices without first calling
-  for permission to devices via `navigator.usb.requestDevice`.  Additionally,
+  for permission to devices via `navigator.usb.requestDevice`. Additionally,
   the default behavior of Electron is to store granted device permission through
-  the lifetime of the corresponding WebContents.  If longer term storage is
+  the lifetime of the corresponding WebContents. If longer term storage is
   needed, a developer can store granted device permissions (eg when handling
   the `select-usb-device` event) and then read from that storage with
   `setDevicePermissionHandler`.
-* [`ses.setPermissionCheckHandler(handler)`](../api/session.md#sessetpermissioncheckhandlerhandler)
+- [`ses.setPermissionCheckHandler(handler)`](../api/session.md#sessetpermissioncheckhandlerhandler)
   can be used to disable USB access for specific origins.
-* [`ses.setUSBProtectedClassesHandler](../api/session.md#sessetusbprotectedclasseshandlerhandler)
+- [`ses.setUSBProtectedClassesHandler](../api/session.md#sessetusbprotectedclasseshandlerhandler)
   can be used to allow usage of [protected USB classes](https://wicg.github.io/webusb/#usbinterface-interface) that are not available by default.
 
 ### Blocklist
 
 By default Electron employs the same [blocklist](https://wicg.github.io/webusb/#blocklist)
-used by Chromium.  If you wish to override this behavior, you can do so by
+used by Chromium. If you wish to override this behavior, you can do so by
 setting the `disable-usb-blocklist` flag:
 
 ```js
-app.commandLine.appendSwitch('disable-usb-blocklist')
+app.commandLine.appendSwitch("disable-usb-blocklist");
 ```
 
 ### Example

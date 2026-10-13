@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { afterAll as after, beforeAll as before, test } from "vitest";
 import { createGitCliRepo } from "../src/git/repo/gitCliRepo.js";
 
 // 提交弹窗勾选"包含未暂存更改"时，已暂存删除（porcelain x=D）的路径会随其它

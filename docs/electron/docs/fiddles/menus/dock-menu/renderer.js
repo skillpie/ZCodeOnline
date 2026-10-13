@@ -1,1 +1,1 @@
-document.title = `${document.title} - ${new Date()}`
+document.title = `${document.title} - ${new Date()}`;

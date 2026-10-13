@@ -7,6 +7,12 @@ const STORAGE_KEY = "zcode-theme";
 const BROWSER_THEME_SURFACE_ATTRIBUTE = "data-zcode-browser-theme-surface";
 
 function getSystemTheme(): ResolvedTheme {
+  // 默认主题为跟随系统（specs/theme-default.md）后，store 初始化会以 system 档解析主题。
+  // share/预览页与 node 环境的单测没有 window 或 matchMedia（官方测试桩只给部分全局），
+  // 此时回退浅色而不是崩溃；真实浏览器/Electron 路径不受影响。
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "light";
+  }
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 

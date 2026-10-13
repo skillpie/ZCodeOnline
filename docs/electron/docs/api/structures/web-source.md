@@ -1,4 +1,4 @@
 # WebSource Object
 
-* `code` string
-* `url` string (optional)
+- `code` string
+- `url` string (optional)

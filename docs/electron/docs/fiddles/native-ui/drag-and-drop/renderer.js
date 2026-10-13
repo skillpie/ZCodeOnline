@@ -1,6 +1,6 @@
-const dragFileLink = document.getElementById('drag-file-link')
+const dragFileLink = document.getElementById("drag-file-link");
 
-dragFileLink.addEventListener('dragstart', event => {
-  event.preventDefault()
-  window.electronAPI.dragStart()
-})
+dragFileLink.addEventListener("dragstart", (event) => {
+  event.preventDefault();
+  window.electronAPI.dragStart();
+});

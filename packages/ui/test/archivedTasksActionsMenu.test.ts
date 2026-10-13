@@ -9,6 +9,8 @@ import { ServiceProvider } from "@/hooks/useServices.js";
 const { confirm } = vi.hoisted(() => ({ confirm: vi.fn() }));
 vi.mock("@/hooks/useConfirmDialog.js", () => ({ useConfirmDialog: () => confirm }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }, values?: { count?: number }) =>

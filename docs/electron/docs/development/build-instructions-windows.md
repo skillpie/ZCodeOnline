@@ -6,30 +6,30 @@ Follow the guidelines below for building **Electron itself** on Windows, for the
 
 ## Prerequisites
 
-* Windows 10 / Server 2012 R2 or higher
-* Visual Studio 2019 (>=16.0.0) to build, but Visual Studio 2022 (>=17.0.0) is preferred - [download VS 2022 Community Edition for free](https://www.visualstudio.com/vs/)
-  * See [the Chromium build documentation](https://chromium.googlesource.com/chromium/src/+/main/docs/windows_build_instructions.md#visual-studio) for more details on which Visual Studio
-  components are required.
-  * If your Visual Studio is installed in a directory other than the default, you'll need to
-  set a few environment variables to point the toolchains to your installation path.
-    * `vs2022_install = DRIVE:\path\to\Microsoft Visual Studio\2022\Community`, replacing `2022` and `Community` with your installed versions and replacing `DRIVE:` with the drive that Visual Studio is on. Often, this will be `C:`.
-    * `WINDOWSSDKDIR = DRIVE:\path\to\Windows Kits\10`, replacing `DRIVE:` with the drive that Windows Kits is on. Often, this will be `C:`.
-* [Node.js](https://nodejs.org/download/) >= 22.12.0
-* [Git](https://git-scm.com)
-* Debugging Tools for Windows of Windows SDK 10.0.15063.468 if you plan on
-creating a full distribution since `symstore.exe` is used for creating a symbol
-store from `.pdb` files.
-  * Different versions of the SDK can be installed side by side. To install the
-  SDK, open Visual Studio Installer, select
-  `Modify` → `Individual Components`, scroll down and select the appropriate
-  Windows SDK to install. Another option would be to look at the
-  [Windows SDK and emulator archive](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/)
-  and download the standalone version of the SDK respectively.
-  * The SDK Debugging Tools must also be installed. If the Windows 10 SDK was installed
-  via the Visual Studio installer, then they can be installed by going to:
-  `Control Panel` → `Programs` → `Programs and Features` → Select the "Windows Software Development Kit" →
-  `Change` → `Change` → Check "Debugging Tools For Windows" → `Change`.
-  Or, you can download the standalone SDK installer and use it to install the Debugging Tools.
+- Windows 10 / Server 2012 R2 or higher
+- Visual Studio 2019 (>=16.0.0) to build, but Visual Studio 2022 (>=17.0.0) is preferred - [download VS 2022 Community Edition for free](https://www.visualstudio.com/vs/)
+  - See [the Chromium build documentation](https://chromium.googlesource.com/chromium/src/+/main/docs/windows_build_instructions.md#visual-studio) for more details on which Visual Studio
+    components are required.
+  - If your Visual Studio is installed in a directory other than the default, you'll need to
+    set a few environment variables to point the toolchains to your installation path.
+    - `vs2022_install = DRIVE:\path\to\Microsoft Visual Studio\2022\Community`, replacing `2022` and `Community` with your installed versions and replacing `DRIVE:` with the drive that Visual Studio is on. Often, this will be `C:`.
+    - `WINDOWSSDKDIR = DRIVE:\path\to\Windows Kits\10`, replacing `DRIVE:` with the drive that Windows Kits is on. Often, this will be `C:`.
+- [Node.js](https://nodejs.org/download/) >= 22.12.0
+- [Git](https://git-scm.com)
+- Debugging Tools for Windows of Windows SDK 10.0.15063.468 if you plan on
+  creating a full distribution since `symstore.exe` is used for creating a symbol
+  store from `.pdb` files.
+  - Different versions of the SDK can be installed side by side. To install the
+    SDK, open Visual Studio Installer, select
+    `Modify` → `Individual Components`, scroll down and select the appropriate
+    Windows SDK to install. Another option would be to look at the
+    [Windows SDK and emulator archive](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/)
+    and download the standalone version of the SDK respectively.
+  - The SDK Debugging Tools must also be installed. If the Windows 10 SDK was installed
+    via the Visual Studio installer, then they can be installed by going to:
+    `Control Panel` → `Programs` → `Programs and Features` → Select the "Windows Software Development Kit" →
+    `Change` → `Change` → Check "Debugging Tools For Windows" → `Change`.
+    Or, you can download the standalone SDK installer and use it to install the Debugging Tools.
 
 If you don't currently have a Windows installation,
 [developer.microsoft.com](https://developer.microsoft.com/en-us/windows/downloads/virtual-machines/)

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { shouldRenderBotChannelTrigger } from "../src/workspaceSidebarFooterLayout.js";
 
 test("web（无平台标志）有 workspacePath 时渲染 Bot Channel 入口", () => {

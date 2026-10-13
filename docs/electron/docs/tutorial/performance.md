@@ -54,8 +54,8 @@ at once, consider the [Chrome Tracing](https://www.chromium.org/developers/how-t
 
 ### Recommended Reading
 
-* [Analyze runtime performance][chrome-devtools-tutorial]
-* [Talk: "Visual Studio Code - The First Second"][vscode-first-second]
+- [Analyze runtime performance][chrome-devtools-tutorial]
+- [Talk: "Visual Studio Code - The First Second"][vscode-first-second]
 
 ## Checklist: Performance recommendations
 
@@ -174,23 +174,23 @@ equally fictitious `foo-parser` module. In traditional Node.js development,
 you might write code that eagerly loads dependencies:
 
 ```js title='parser.js' @ts-expect-error=[2]
-const fs = require('node:fs')
+const fs = require("node:fs");
 
-const fooParser = require('foo-parser')
+const fooParser = require("foo-parser");
 
 class Parser {
-  constructor () {
-    this.files = fs.readdirSync('.')
+  constructor() {
+    this.files = fs.readdirSync(".");
   }
 
-  getParsedFiles () {
-    return fooParser.parse(this.files)
+  getParsedFiles() {
+    return fooParser.parse(this.files);
   }
 }
 
-const parser = new Parser()
+const parser = new Parser();
 
-module.exports = { parser }
+module.exports = { parser };
 ```
 
 In the above example, we're doing a lot of work that's being executed as soon
@@ -199,35 +199,35 @@ do this work a little later, when `getParsedFiles()` is actually called?
 
 ```js title='parser.js' @ts-expect-error=[20]
 // "fs" is likely already being loaded, so the `require()` call is cheap
-const fs = require('node:fs')
+const fs = require("node:fs");
 
 class Parser {
-  async getFiles () {
+  async getFiles() {
     // Touch the disk as soon as `getFiles` is called, not sooner.
     // Also, ensure that we're not blocking other operations by using
     // the asynchronous version.
-    this.files = this.files || await fs.promises.readdir('.')
+    this.files = this.files || (await fs.promises.readdir("."));
 
-    return this.files
+    return this.files;
   }
 
-  async getParsedFiles () {
+  async getParsedFiles() {
     // Our fictitious foo-parser is a big and expensive module to load, so
     // defer that work until we actually need to parse files.
     // Since `require()` comes with a module cache, the `require()` call
     // will only be expensive once - subsequent calls of `getParsedFiles()`
     // will be faster.
-    const fooParser = require('foo-parser')
-    const files = await this.getFiles()
+    const fooParser = require("foo-parser");
+    const files = await this.getFiles();
 
-    return fooParser.parse(files)
+    return fooParser.parse(files);
   }
 }
 
 // This operation is now a lot cheaper than in our previous example
-const parser = new Parser()
+const parser = new Parser();
 
-module.exports = { parser }
+module.exports = { parser };
 ```
 
 In short, allocate resources "just in time" rather than allocating them all
@@ -262,17 +262,17 @@ Electron's powerful multi-process architecture stands ready to assist you with
 your long-running tasks, but also includes a small number of performance traps.
 
 1. For long running CPU-heavy tasks, make use of
-[worker threads][worker-threads], consider moving them to the BrowserWindow, or
-(as a last resort) spawn a dedicated process.
+   [worker threads][worker-threads], consider moving them to the BrowserWindow, or
+   (as a last resort) spawn a dedicated process.
 
 2. Avoid using the synchronous IPC and the `@electron/remote` module as much
-as possible. While there are legitimate use cases, it is far too easy to
-unknowingly block the UI thread.
+   as possible. While there are legitimate use cases, it is far too easy to
+   unknowingly block the UI thread.
 
 3. Avoid using blocking I/O operations in the main process. In short, whenever
-core Node.js modules (like `fs` or `child_process`) offer a synchronous or an
-asynchronous version, you should prefer the asynchronous and non-blocking
-variant.
+   core Node.js modules (like `fs` or `child_process`) offer a synchronous or an
+   asynchronous version, you should prefer the asynchronous and non-blocking
+   variant.
 
 ### 4. Blocking the renderer process
 

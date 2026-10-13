@@ -10,12 +10,12 @@ hide_title: true
 This guide will take you through the process of creating an icon with its own context menu to the
 system tray.
 
-* On macOS, the icon will be located on the top right corner of your screen in the
+- On macOS, the icon will be located on the top right corner of your screen in the
   [menu bar extras](https://developer.apple.com/design/human-interface-guidelines/the-menu-bar#Menu-bar-extras)
   area.
-* On Windows, the icon will be located in the [notification area](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area)
+- On Windows, the icon will be located in the [notification area](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area)
   at the end of the taskbar.
-* On Linux, the location of the Tray will differ based on your desktop environment.
+- On Linux, the location of the Tray will differ based on your desktop environment.
 
 ## Creating a Tray icon
 
@@ -36,9 +36,9 @@ have a listener for the [`window-all-closed`](../api/app.md#event-window-all-clo
 Windows and Linux to emulate standard OS behavior.
 
 ```js title='Setting up minimize to tray'
-app.on('window-all-closed', () => {
+app.on("window-all-closed", () => {
   // having this listener active will prevent the app from quitting.
-})
+});
 ```
 
 ## Attaching a context menu
@@ -52,23 +52,23 @@ into the [`tray.setContextMenu`](../api/tray.md#traysetcontextmenumenu) function
 > for you (although various click-related events exist on the API for advanced use cases).
 
 ```js title='Creating a Tray menu that can quit the app'
-const { nativeImage } = require('electron/common')
-const { app, Tray, Menu } = require('electron/main')
+const { nativeImage } = require("electron/common");
+const { app, Tray, Menu } = require("electron/main");
 
 // save a reference to the Tray object globally to avoid garbage collection
-let tray
+let tray;
 
 // 16x16 red circle data URL
-const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAACTSURBVHgBpZKBCYAgEEV/TeAIjuIIbdQIuUGt0CS1gW1iZ2jIVaTnhw+Cvs8/OYDJA4Y8kR3ZR2/kmazxJbpUEfQ/Dm/UG7wVwHkjlQdMFfDdJMFaACebnjJGyDWgcnZu1/lrCrl6NCoEHJBrDwEr5NrT6ko/UV8xdLAC2N49mlc5CylpYh8wCwqrvbBGLoKGvz8Bfq0QPWEUo/EAAAAASUVORK5CYII=')
+const icon = nativeImage.createFromDataURL(
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAACTSURBVHgBpZKBCYAgEEV/TeAIjuIIbdQIuUGt0CS1gW1iZ2jIVaTnhw+Cvs8/OYDJA4Y8kR3ZR2/kmazxJbpUEfQ/Dm/UG7wVwHkjlQdMFfDdJMFaACebnjJGyDWgcnZu1/lrCrl6NCoEHJBrDwEr5NrT6ko/UV8xdLAC2N49mlc5CylpYh8wCwqrvbBGLoKGvz8Bfq0QPWEUo/EAAAAASUVORK5CYII=",
+);
 
 // The Tray can only be instantiated after the 'ready' event is fired
 app.whenReady().then(() => {
-  tray = new Tray(icon)
-  const contextMenu = Menu.buildFromTemplate([
-    { role: 'quit' }
-  ])
-  tray.setContextMenu(contextMenu)
-})
+  tray = new Tray(icon);
+  const contextMenu = Menu.buildFromTemplate([{ role: "quit" }]);
+  tray.setContextMenu(contextMenu);
+});
 ```
 
 > [!TIP]
@@ -83,4 +83,5 @@ Below is a runnable example of attaching various menu items to the Tray's contex
 control app state and interact with the Tray API itself.
 
 ```fiddle docs/fiddles/menus/tray-menu
+
 ```

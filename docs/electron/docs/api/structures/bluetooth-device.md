@@ -1,4 +1,4 @@
 # BluetoothDevice Object
 
-* `deviceName` string
-* `deviceId` string
+- `deviceName` string
+- `deviceId` string

@@ -1,9 +1,9 @@
 // fork 数据源继承的单元覆盖（specs/data-source.md §7.1 fork 继承）。
 // 核心不变量：child scope 在切换前被播种父会话草稿的 dataSourceId；只播种数据源，
 // 正文/mode/模型选择不继承；父未选择不预填；child 已有草稿不覆盖；workspace 隔离。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { after, beforeEach } from "node:test";
+import { afterAll as after, beforeEach } from "vitest";
 import {
   persistV4ComposerDraft,
   readV4ComposerDraft,

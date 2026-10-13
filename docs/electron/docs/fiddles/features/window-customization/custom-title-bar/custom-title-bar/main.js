@@ -1,16 +1,16 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow } = require("electron");
 
-function createWindow () {
+function createWindow() {
   const win = new BrowserWindow({
     // remove the default titlebar
-    titleBarStyle: 'hidden',
+    titleBarStyle: "hidden",
     // expose window controls in Windows/Linux
-    ...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {})
-  })
+    ...(process.platform !== "darwin" ? { titleBarOverlay: true } : {}),
+  });
 
-  win.loadFile('index.html')
+  win.loadFile("index.html");
 }
 
 app.whenReady().then(() => {
-  createWindow()
-})
+  createWindow();
+});

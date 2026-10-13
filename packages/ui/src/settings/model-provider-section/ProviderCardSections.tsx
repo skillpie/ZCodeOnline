@@ -495,37 +495,37 @@ export function ProviderModelsSection({
         <span className="text-ui-base text-foreground-subtle">
           {intl.formatMessage({ id: "settings.modelProvider.models" })}
         </span>
-        <div className="flex flex-wrap items-center gap-2">
-          {onFetchModels ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="default"
-              className="rounded-lg"
-              disabled={fetchingModels}
-              data-testid="model-provider-fetch-models"
-              onClick={() => void onFetchModels()}
-            >
-              {fetchingModels ? (
-                <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
-              ) : (
-                <CloudDownloadIcon data-icon="inline-start" aria-hidden="true" />
-              )}
-              {intl.formatMessage({ id: "settings.modelProvider.fetchModels" })}
-            </Button>
-          ) : null}
+        {/* 一键拉取（本地特性）与添加按钮并排放在标题行：ml-auto 让两个按钮在
+          justify-between 行内保持右侧成组；官方回归要求添加按钮与「模型列表」标签同层。 */}
+        {onFetchModels ? (
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             size="default"
-            className="rounded-lg"
-            data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
-            onClick={openAddDialog}
+            className="ml-auto rounded-lg"
+            disabled={fetchingModels}
+            data-testid="model-provider-fetch-models"
+            onClick={() => void onFetchModels()}
           >
-            <Plus data-icon="inline-start" aria-hidden="true" />
-            {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
+            {fetchingModels ? (
+              <Loader2Icon data-icon="inline-start" aria-hidden="true" className="animate-spin" />
+            ) : (
+              <CloudDownloadIcon data-icon="inline-start" aria-hidden="true" />
+            )}
+            {intl.formatMessage({ id: "settings.modelProvider.fetchModels" })}
           </Button>
-        </div>
+        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          size="default"
+          className="rounded-lg"
+          data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
+          onClick={openAddDialog}
+        >
+          <Plus data-icon="inline-start" aria-hidden="true" />
+          {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
+        </Button>
       </div>
       {fetchModelsError ? (
         <p className="mb-1 text-ui-caption text-destructive" role="alert">

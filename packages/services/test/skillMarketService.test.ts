@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { afterAll as after, beforeAll as before, test } from "vitest";
 import { ZipFile } from "yazl";
 import {
   createSkillMarketService,

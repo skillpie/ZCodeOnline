@@ -5,7 +5,7 @@ process.env.ZCODE_RELAY_URL = "ws://127.0.0.1:9";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { afterAll as after, beforeAll as before, test } from "vitest";
 import {
   createTunnelRuntime,
   resolveTunnelConfigFile,

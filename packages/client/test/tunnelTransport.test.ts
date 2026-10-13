@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
-import { after, test } from "node:test";
+import { afterAll as after, test } from "vitest";
 import { WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 import { VSBuffer } from "@zcode/rpc";
 import {

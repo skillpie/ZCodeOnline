@@ -30,14 +30,15 @@ describe("Automations terminology", () => {
   it("keeps idle-time permissions on the main conversation vocabulary", () => {
     const modeValues = ["build", "edit", "plan", "yolo"] as const;
 
+    // 本地模式菜单把 glm.build 定为「需要授权」（2026-09-29 模式菜单重构）。
     expect(modeValues.map((value) => zhCN[`mode.label.glm.${value}`])).toEqual([
-      "变更前确认",
+      "需要授权",
       "自动编辑",
       "计划模式",
       "完全访问",
     ]);
     expect(modeValues.map((value) => enUS[`mode.label.glm.${value}`])).toEqual([
-      "Ask before changes",
+      "Requires approval",
       "Edit automatically",
       "Plan mode",
       "Full access",

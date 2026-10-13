@@ -1,5 +1,5 @@
-const { contextBridge, ipcRenderer } = require('electron/renderer')
+const { contextBridge, ipcRenderer } = require("electron/renderer");
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  getAppPath: () => ipcRenderer.invoke('get-app-path')
-})
+contextBridge.exposeInMainWorld("electronAPI", {
+  getAppPath: () => ipcRenderer.invoke("get-app-path"),
+});

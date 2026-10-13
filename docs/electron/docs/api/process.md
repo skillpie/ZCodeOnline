@@ -12,30 +12,30 @@ It adds the following events, properties, and methods:
 
 In sandboxed renderers the `process` object contains only a subset of the APIs:
 
-* `crash()`
-* `hang()`
-* `getCreationTime()`
-* `getHeapStatistics()`
-* `getBlinkMemoryInfo()`
-* `getProcessMemoryInfo()`
-* `getSystemMemoryInfo()`
-* `getSystemVersion()`
-* `getCPUUsage()`
-* `uptime()`
-* `argv`
-* `execPath`
-* `env`
-* `pid`
-* `arch`
-* `platform`
-* `sandboxed`
-* `contextIsolated`
-* `type`
-* `version`
-* `versions`
-* `mas`
-* `windowsStore`
-* `contextId`
+- `crash()`
+- `hang()`
+- `getCreationTime()`
+- `getHeapStatistics()`
+- `getBlinkMemoryInfo()`
+- `getProcessMemoryInfo()`
+- `getSystemMemoryInfo()`
+- `getSystemVersion()`
+- `getCPUUsage()`
+- `uptime()`
+- `argv`
+- `execPath`
+- `env`
+- `pid`
+- `arch`
+- `platform`
+- `sandboxed`
+- `contextIsolated`
+- `type`
+- `version`
+- `versions`
+- `mas`
+- `windowsStore`
+- `contextId`
 
 ## Events
 
@@ -98,25 +98,25 @@ property is used instead of the `--throw-deprecation` command line flag.
 ### `process.traceDeprecation`
 
 A `boolean` that controls whether or not deprecations printed to `stderr` include
- their stack trace. Setting this to `true` will print stack traces for deprecations.
- This property is used instead of the `--trace-deprecation` command line flag.
+their stack trace. Setting this to `true` will print stack traces for deprecations.
+This property is used instead of the `--trace-deprecation` command line flag.
 
 ### `process.traceProcessWarnings`
 
 A `boolean` that controls whether or not process warnings printed to `stderr` include
- their stack trace. Setting this to `true` will print stack traces for process warnings
- (including deprecations). This property is used instead of the `--trace-warnings` command
- line flag.
+their stack trace. Setting this to `true` will print stack traces for process warnings
+(including deprecations). This property is used instead of the `--trace-warnings` command
+line flag.
 
 ### `process.type` _Readonly_
 
 A `string` representing the current process's type, can be:
 
-* `browser` - The main process
-* `renderer` - A renderer process
-* `service-worker` - In a service worker
-* `worker` - In a web worker
-* `utility` - In a node process launched as a service
+- `browser` - The main process
+- `renderer` - A renderer process
+- `service-worker` - In a service worker
+- `worker` - In a web worker
+- `utility` - In a node process launched as a service
 
 ### `process.versions.chrome` _Readonly_
 
@@ -166,15 +166,15 @@ Returns [`CPUUsage`](structures/cpu-usage.md)
 
 Returns `Object`:
 
-* `totalHeapSize` Integer
-* `totalHeapSizeExecutable` Integer
-* `totalPhysicalSize` Integer
-* `totalAvailableSize` Integer
-* `usedHeapSize` Integer
-* `heapSizeLimit` Integer
-* `mallocedMemory` Integer
-* `peakMallocedMemory` Integer
-* `doesZapGarbage` boolean
+- `totalHeapSize` Integer
+- `totalHeapSizeExecutable` Integer
+- `totalPhysicalSize` Integer
+- `totalAvailableSize` Integer
+- `usedHeapSize` Integer
+- `heapSizeLimit` Integer
+- `mallocedMemory` Integer
+- `peakMallocedMemory` Integer
+- `doesZapGarbage` boolean
 
 Returns an object with V8 heap statistics. Note that all statistics are reported in Kilobytes.
 
@@ -182,8 +182,8 @@ Returns an object with V8 heap statistics. Note that all statistics are reported
 
 Returns `Object`:
 
-* `allocated` Integer - Size of all allocated objects in Kilobytes.
-* `total` Integer - Total allocated space in Kilobytes.
+- `allocated` Integer - Size of all allocated objects in Kilobytes.
+- `total` Integer - Total allocated space in Kilobytes.
 
 Returns an object with Blink memory information.
 It can be useful for debugging rendering / DOM related memory issues.
@@ -207,17 +207,17 @@ on macOS.
 
 Returns `Object`:
 
-* `total` Integer - The total amount of physical memory in Kilobytes available to the
+- `total` Integer - The total amount of physical memory in Kilobytes available to the
   system.
-* `free` Integer - The total amount of memory not being used by applications or disk
+- `free` Integer - The total amount of memory not being used by applications or disk
   cache.
-* `fileBacked` Integer _macOS_ - The amount of memory that currently has been paged out to storage.
+- `fileBacked` Integer _macOS_ - The amount of memory that currently has been paged out to storage.
   Includes memory for file caches, network buffers, and other system services.
-* `purgeable` Integer _macOS_ - The amount of memory that is marked as "purgeable". The system can reclaim it
+- `purgeable` Integer _macOS_ - The amount of memory that is marked as "purgeable". The system can reclaim it
   if memory pressure increases.
-* `swapTotal` Integer _Windows_ _Linux_ - The total amount of swap memory in Kilobytes available to the
+- `swapTotal` Integer _Windows_ _Linux_ - The total amount of swap memory in Kilobytes available to the
   system.
-* `swapFree` Integer _Windows_ _Linux_ - The free amount of swap memory in Kilobytes available to the
+- `swapFree` Integer _Windows_ _Linux_ - The free amount of swap memory in Kilobytes available to the
   system.
 
 Returns an object giving memory usage statistics about the entire system. Note
@@ -230,8 +230,8 @@ Returns `string` - The version of the host operating system.
 Example:
 
 ```js
-const version = process.getSystemVersion()
-console.log(version)
+const version = process.getSystemVersion();
+console.log(version);
 // On macOS -> '10.13.6'
 // On Windows -> '10.0.17763'
 // On Linux -> '4.15.0-45-generic'
@@ -242,7 +242,7 @@ console.log(version)
 
 ### `process.takeHeapSnapshot(filePath)`
 
-* `filePath` string - Path to the output file.
+- `filePath` string - Path to the output file.
 
 Returns `boolean` - Indicates whether the snapshot has been created successfully.
 
@@ -254,7 +254,7 @@ Causes the main thread of the current process hang.
 
 ### `process.setFdLimit(maxDescriptors)` _macOS_ _Linux_
 
-* `maxDescriptors` Integer
+- `maxDescriptors` Integer
 
 Sets the file descriptor soft limit to `maxDescriptors` or the OS hard
 limit, whichever is lower for the current process.

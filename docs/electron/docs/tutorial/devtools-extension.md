@@ -23,43 +23,43 @@ Using the [React Developer Tools][react-devtools] as an example:
 1. Navigate to `chrome://extensions`, and find its extension ID, which is a hash
    string like `fmkadmapgofadopljbjfkapdkoienihi`.
 1. Find out the filesystem location used by Chrome for storing extensions:
-   * on Windows it is `%LOCALAPPDATA%\Google\Chrome\User Data\Default\Extensions`;
-   * on Linux it could be:
-     * `~/.config/google-chrome/Default/Extensions/`
-     * `~/.config/google-chrome-beta/Default/Extensions/`
-     * `~/.config/google-chrome-canary/Default/Extensions/`
-     * `~/.config/chromium/Default/Extensions/`
-   * on macOS it is `~/Library/Application Support/Google/Chrome/Default/Extensions`.
+   - on Windows it is `%LOCALAPPDATA%\Google\Chrome\User Data\Default\Extensions`;
+   - on Linux it could be:
+     - `~/.config/google-chrome/Default/Extensions/`
+     - `~/.config/google-chrome-beta/Default/Extensions/`
+     - `~/.config/google-chrome-canary/Default/Extensions/`
+     - `~/.config/chromium/Default/Extensions/`
+   - on macOS it is `~/Library/Application Support/Google/Chrome/Default/Extensions`.
 1. Pass the location of the extension to the [`ses.loadExtension`][load-extension]
    API. For React Developer Tools `v4.9.0`, it looks something like:
 
    ```js
-   const { app, session } = require('electron')
-   
-   const os = require('node:os')
-   const path = require('node:path')
-   
+   const { app, session } = require("electron");
+
+   const os = require("node:os");
+   const path = require("node:path");
+
    // on macOS
    const reactDevToolsPath = path.join(
      os.homedir(),
-     '/Library/Application Support/Google/Chrome/Default/Extensions/fmkadmapgofadopljbjfkapdkoienihi/4.9.0_0'
-   )
-   
+     "/Library/Application Support/Google/Chrome/Default/Extensions/fmkadmapgofadopljbjfkapdkoienihi/4.9.0_0",
+   );
+
    app.whenReady().then(async () => {
-     await session.defaultSession.loadExtension(reactDevToolsPath)
-   })
+     await session.defaultSession.loadExtension(reactDevToolsPath);
+   });
    ```
 
 **Notes:**
 
-* `loadExtension` returns a Promise with an [Extension object][extension-structure],
-which contains metadata about the extension that was loaded. This promise needs to
-resolve (e.g. with an `await` expression) before loading a page. Otherwise, the
-extension won't be guaranteed to load.
-* `loadExtension` cannot be called before the `ready` event of the `app` module
-is emitted, nor can it be called on in-memory (non-persistent) sessions.
-* `loadExtension` must be called on every boot of your app if you want the
-extension to be loaded.
+- `loadExtension` returns a Promise with an [Extension object][extension-structure],
+  which contains metadata about the extension that was loaded. This promise needs to
+  resolve (e.g. with an `await` expression) before loading a page. Otherwise, the
+  extension won't be guaranteed to load.
+- `loadExtension` cannot be called before the `ready` event of the `app` module
+  is emitted, nor can it be called on in-memory (non-persistent) sessions.
+- `loadExtension` must be called on every boot of your app if you want the
+  extension to be loaded.
 
 ### Removing a DevTools extension
 
@@ -75,14 +75,14 @@ so extensions using unsupported `chrome.*` APIs under the hood may not work.
 
 The following Devtools extensions have been tested to work in Electron:
 
-* [Ember Inspector](https://chrome.google.com/webstore/detail/ember-inspector/bmdblncegkenkacieihfhpjfppoconhi)
-* [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi)
-* [Backbone Debugger](https://chrome.google.com/webstore/detail/backbone-debugger/bhljhndlimiafopmmhjlgfpnnchjjbhd)
-* [jQuery Debugger](https://chrome.google.com/webstore/detail/jquery-debugger/dbhhnnnpaeobfddmlalhnehgclcmjimi)
-* [Vue.js devtools](https://chrome.google.com/webstore/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-* [Cerebral Debugger](https://cerebraljs.com/docs/introduction/devtools.html)
-* [Redux DevTools Extension](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd)
-* [MobX Developer Tools](https://chrome.google.com/webstore/detail/mobx-developer-tools/pfgnfdagidkfgccljigdamigbcnndkod)
+- [Ember Inspector](https://chrome.google.com/webstore/detail/ember-inspector/bmdblncegkenkacieihfhpjfppoconhi)
+- [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi)
+- [Backbone Debugger](https://chrome.google.com/webstore/detail/backbone-debugger/bhljhndlimiafopmmhjlgfpnnchjjbhd)
+- [jQuery Debugger](https://chrome.google.com/webstore/detail/jquery-debugger/dbhhnnnpaeobfddmlalhnehgclcmjimi)
+- [Vue.js devtools](https://chrome.google.com/webstore/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
+- [Cerebral Debugger](https://cerebraljs.com/docs/introduction/devtools.html)
+- [Redux DevTools Extension](https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd)
+- [MobX Developer Tools](https://chrome.google.com/webstore/detail/mobx-developer-tools/pfgnfdagidkfgccljigdamigbcnndkod)
 
 ### What should I do if a DevTools extension is not working?
 

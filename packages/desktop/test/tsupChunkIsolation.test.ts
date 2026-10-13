@@ -182,7 +182,7 @@ describe("desktop tsup chunk isolation", () => {
       const defines = getDefines(entry);
       expect(defines).toHaveProperty("__ZCODE_ENV__");
       expect(defines).toHaveProperty("__ZCODE_PRODUCT_FLAVOR__");
-      expect(["\"production\"", "\"preview\""]).toContain(defines.__ZCODE_PRODUCT_FLAVOR__);
+      expect(['"production"', '"preview"']).toContain(defines.__ZCODE_PRODUCT_FLAVOR__);
     }
   });
 

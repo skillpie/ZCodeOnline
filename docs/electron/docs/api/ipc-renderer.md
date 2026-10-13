@@ -26,7 +26,7 @@ Process: [Renderer](../glossary.md#renderer-process)
 > [expose](../tutorial/context-isolation.md#after-context-isolation-enabled) it using the
 > [`contextBridge`](context-bridge.md) API.
 
-The `ipcRenderer` module is an  [EventEmitter][event-emitter]. It provides a few
+The `ipcRenderer` module is an [EventEmitter][event-emitter]. It provides a few
 methods so you can send synchronous and asynchronous messages from the render
 process (web page) to the main process. You can also receive replies from the
 main process.
@@ -39,10 +39,10 @@ The `ipcRenderer` module has the following method to listen for events and send 
 
 ### `ipcRenderer.on(channel, listener)`
 
-* `channel` string
-* `listener` Function
-  * `event` [IpcRendererEvent][ipc-renderer-event]
-  * `...args` any[]
+- `channel` string
+- `listener` Function
+  - `event` [IpcRendererEvent][ipc-renderer-event]
+  - `...args` any[]
 
 Listens to `channel`, when a new message arrives `listener` would be called with
 `listener(event, args...)`.
@@ -66,20 +66,20 @@ added:
 ```
 -->
 
-* `channel` string
-* `listener` Function
-  * `event` [IpcRendererEvent][ipc-renderer-event]
-  * `...args` any[]
+- `channel` string
+- `listener` Function
+  - `event` [IpcRendererEvent][ipc-renderer-event]
+  - `...args` any[]
 
 Removes the specified `listener` from the listener array for the specified
 `channel`.
 
 ### `ipcRenderer.once(channel, listener)`
 
-* `channel` string
-* `listener` Function
-  * `event` [IpcRendererEvent][ipc-renderer-event]
-  * `...args` any[]
+- `channel` string
+- `listener` Function
+  - `event` [IpcRendererEvent][ipc-renderer-event]
+  - `...args` any[]
 
 Adds a one time `listener` function for the event. This `listener` is invoked
 only the next time a message is sent to `channel`, after which it is removed.
@@ -93,32 +93,32 @@ added:
 ```
 -->
 
-* `channel` string
-* `listener` Function
-  * `event` [IpcRendererEvent][ipc-renderer-event]
-  * `...args` any[]
+- `channel` string
+- `listener` Function
+  - `event` [IpcRendererEvent][ipc-renderer-event]
+  - `...args` any[]
 
 Alias for [`ipcRenderer.on`](#ipcrendereronchannel-listener).
 
 ### `ipcRenderer.removeListener(channel, listener)`
 
-* `channel` string
-* `listener` Function
-  * `event` [IpcRendererEvent][ipc-renderer-event]
-  * `...args` any[]
+- `channel` string
+- `listener` Function
+  - `event` [IpcRendererEvent][ipc-renderer-event]
+  - `...args` any[]
 
 Alias for [`ipcRenderer.off`](#ipcrendereroffchannel-listener).
 
 ### `ipcRenderer.removeAllListeners([channel])`
 
-* `channel` string (optional)
+- `channel` string (optional)
 
 Removes all listeners from the specified `channel`. Removes all listeners from all channels if no channel is specified.
 
 ### `ipcRenderer.send(channel, ...args)`
 
-* `channel` string
-* `...args` any[]
+- `channel` string
+- `...args` any[]
 
 Send an asynchronous message to the main process via `channel`, along with
 arguments. Arguments will be serialized with the [Structured Clone Algorithm][SCA],
@@ -150,8 +150,8 @@ added:
 ```
 -->
 
-* `channel` string
-* `...args` any[]
+- `channel` string
+- `...args` any[]
 
 Returns `Promise<any>` - Resolves with the response from the main process.
 
@@ -168,15 +168,15 @@ For example:
 
 ```js @ts-type={someArgument:unknown} @ts-type={doSomeWork:(arg:unknown)=>Promise<unknown>}
 // Renderer process
-ipcRenderer.invoke('some-name', someArgument).then((result) => {
+ipcRenderer.invoke("some-name", someArgument).then((result) => {
   // ...
-})
+});
 
 // Main process
-ipcMain.handle('some-name', async (event, someArgument) => {
-  const result = await doSomeWork(someArgument)
-  return result
-})
+ipcMain.handle("some-name", async (event, someArgument) => {
+  const result = await doSomeWork(someArgument);
+  return result;
+});
 ```
 
 If you need to transfer a [`MessagePort`][] to the main process, use [`ipcRenderer.postMessage`](#ipcrendererpostmessagechannel-message-transfer).
@@ -200,8 +200,8 @@ If you do not need a response to the message, consider using [`ipcRenderer.send`
 
 ### `ipcRenderer.sendSync(channel, ...args)`
 
-* `channel` string
-* `...args` any[]
+- `channel` string
+- `...args` any[]
 
 Returns `any` - The value sent back by the [`ipcMain`](./ipc-main.md) handler.
 
@@ -237,9 +237,9 @@ added:
 ```
 -->
 
-* `channel` string
-* `message` any
-* `transfer` MessagePort[] (optional)
+- `channel` string
+- `message` any
+- `transfer` MessagePort[] (optional)
 
 Send a message to the main process, optionally transferring ownership of zero
 or more [`MessagePort`][] objects.
@@ -252,14 +252,14 @@ For example:
 
 ```js
 // Renderer process
-const { port1, port2 } = new MessageChannel()
-ipcRenderer.postMessage('port', { message: 'hello' }, [port1])
+const { port1, port2 } = new MessageChannel();
+ipcRenderer.postMessage("port", { message: "hello" }, [port1]);
 
 // Main process
-ipcMain.on('port', (e, msg) => {
-  const [port] = e.ports
+ipcMain.on("port", (e, msg) => {
+  const [port] = e.ports;
   // ...
-})
+});
 ```
 
 For more information on using `MessagePort` and `MessageChannel`, see the
@@ -267,8 +267,8 @@ For more information on using `MessagePort` and `MessageChannel`, see the
 
 ### `ipcRenderer.sendToHost(channel, ...args)`
 
-* `channel` string
-* `...args` any[]
+- `channel` string
+- `...args` any[]
 
 Like `ipcRenderer.send` but the event will be sent to the `<webview>` element in
 the host page instead of the main process.

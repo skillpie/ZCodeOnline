@@ -2,9 +2,9 @@
 
 ## What is it?
 
-Context Isolation is a feature that ensures that both your `preload` scripts and Electron's internal logic run in a separate context to the website you load in a [`webContents`](../api/web-contents.md).  This is important for security purposes as it helps prevent the website from accessing Electron internals or the powerful APIs your preload script has access to.
+Context Isolation is a feature that ensures that both your `preload` scripts and Electron's internal logic run in a separate context to the website you load in a [`webContents`](../api/web-contents.md). This is important for security purposes as it helps prevent the website from accessing Electron internals or the powerful APIs your preload script has access to.
 
-This means that the `window` object that your preload script has access to is actually a **different** object than the website would have access to.  For example, if you set `window.hello = 'wave'` in your preload script and context isolation is enabled, `window.hello` will be undefined if the website tries to access it.
+This means that the `window` object that your preload script has access to is actually a **different** object than the website would have access to. For example, if you set `window.hello = 'wave'` in your preload script and context isolation is enabled, `window.hello` will be undefined if the website tries to access it.
 
 Context isolation has been enabled by default since Electron 12, and it is a recommended security setting for _all applications_.
 
@@ -19,15 +19,15 @@ Exposing APIs from your preload script to a loaded website in the renderer proce
 ```js title='preload.js' @ts-nocheck
 // preload with contextIsolation disabled
 window.myAPI = {
-  doAThing: () => {}
-}
+  doAThing: () => {},
+};
 ```
 
 The `doAThing()` function could then be used directly in the renderer process:
 
 ```js title='renderer.js' @ts-nocheck
 // use the exposed API in the renderer
-window.myAPI.doAThing()
+window.myAPI.doAThing();
 ```
 
 ### After: context isolation enabled
@@ -36,16 +36,16 @@ There is a dedicated module in Electron to help you do this in a painless way. T
 
 ```js title='preload.js'
 // preload with contextIsolation enabled
-const { contextBridge } = require('electron')
+const { contextBridge } = require("electron");
 
-contextBridge.exposeInMainWorld('myAPI', {
-  doAThing: () => {}
-})
+contextBridge.exposeInMainWorld("myAPI", {
+  doAThing: () => {},
+});
 ```
 
 ```js title='renderer.js' @ts-nocheck
 // use the exposed API in the renderer
-window.myAPI.doAThing()
+window.myAPI.doAThing();
 ```
 
 Please read the `contextBridge` documentation linked above to fully understand its limitations. For instance, you can't send custom prototypes or symbols over the bridge.
@@ -56,18 +56,18 @@ Just enabling `contextIsolation` and using `contextBridge` does not automaticall
 
 ```js title='preload.js'
 // ❌ Bad code
-contextBridge.exposeInMainWorld('myAPI', {
-  send: ipcRenderer.send
-})
+contextBridge.exposeInMainWorld("myAPI", {
+  send: ipcRenderer.send,
+});
 ```
 
 It directly exposes a powerful API without any kind of argument filtering. This would allow any website to send arbitrary IPC messages, which you do not want to be possible. The correct way to expose IPC-based APIs would instead be to provide one method per IPC message.
 
 ```js title='preload.js'
 // ✅ Good code
-contextBridge.exposeInMainWorld('myAPI', {
-  loadPreferences: () => ipcRenderer.invoke('load-prefs')
-})
+contextBridge.exposeInMainWorld("myAPI", {
+  loadPreferences: () => ipcRenderer.invoke("load-prefs"),
+});
 ```
 
 ## Usage with TypeScript
@@ -77,21 +77,21 @@ If you're building your Electron app with TypeScript, you'll want to add types t
 For example, given this `preload.ts` script:
 
 ```ts title='preload.ts'
-contextBridge.exposeInMainWorld('electronAPI', {
-  loadPreferences: () => ipcRenderer.invoke('load-prefs')
-})
+contextBridge.exposeInMainWorld("electronAPI", {
+  loadPreferences: () => ipcRenderer.invoke("load-prefs"),
+});
 ```
 
 You can create a `interface.d.ts` declaration file and globally augment the `Window` interface:
 
 ```ts title='interface.d.ts' @ts-noisolate
 export interface IElectronAPI {
-  loadPreferences: () => Promise<void>,
+  loadPreferences: () => Promise<void>;
 }
 
 declare global {
   interface Window {
-    electronAPI: IElectronAPI
+    electronAPI: IElectronAPI;
   }
 }
 ```
@@ -99,7 +99,7 @@ declare global {
 Doing so will ensure that the TypeScript compiler will know about the `electronAPI` property on your global `window` object when writing scripts in your renderer process:
 
 ```ts title='renderer.ts'
-window.electronAPI.loadPreferences()
+window.electronAPI.loadPreferences();
 ```
 
 [declaration file]: https://www.typescriptlang.org/docs/handbook/declaration-files/introduction.html

@@ -41,33 +41,33 @@ $ asar list /path/to/example.asar
 Read a file in the ASAR archive:
 
 ```js
-const fs = require('node:fs')
+const fs = require("node:fs");
 
-fs.readFileSync('/path/to/example.asar/file.txt')
+fs.readFileSync("/path/to/example.asar/file.txt");
 ```
 
 List all files under the root of the archive:
 
 ```js
-const fs = require('node:fs')
+const fs = require("node:fs");
 
-fs.readdirSync('/path/to/example.asar')
+fs.readdirSync("/path/to/example.asar");
 ```
 
 Use a module from the archive:
 
 ```js @ts-nocheck
-require('./path/to/example.asar/dir/module.js')
+require("./path/to/example.asar/dir/module.js");
 ```
 
 You can also display a web page in an ASAR archive with `BrowserWindow`:
 
 ```js
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow()
+const win = new BrowserWindow();
 
-win.loadURL('file:///path/to/example.asar/static/index.html')
+win.loadURL("file:///path/to/example.asar/static/index.html");
 ```
 
 ### Web API
@@ -79,10 +79,10 @@ For example, to get a file with `$.get`:
 
 ```html
 <script>
-let $ = require('./jquery.min.js')
-$.get('file:///path/to/example.asar/file.txt', (data) => {
-  console.log(data)
-})
+  let $ = require("./jquery.min.js");
+  $.get("file:///path/to/example.asar/file.txt", (data) => {
+    console.log(data);
+  });
 </script>
 ```
 
@@ -93,19 +93,19 @@ content of an ASAR archive as a file. For this purpose you can use the built-in
 `original-fs` module which provides original `fs` APIs without `asar` support:
 
 ```js
-const originalFs = require('original-fs')
+const originalFs = require("original-fs");
 
-originalFs.readFileSync('/path/to/example.asar')
+originalFs.readFileSync("/path/to/example.asar");
 ```
 
 You can also set `process.noAsar` to `true` to disable the support for `asar` in
 the `fs` module:
 
 ```js
-const fs = require('node:fs')
+const fs = require("node:fs");
 
-process.noAsar = true
-fs.readFileSync('/path/to/example.asar')
+process.noAsar = true;
+fs.readFileSync("/path/to/example.asar");
 ```
 
 ## Limitations of the Node API
@@ -136,11 +136,11 @@ work. This adds a little overhead for those APIs.
 
 APIs that require extra unpacking are:
 
-* `child_process.execFile`
-* `child_process.execFileSync`
-* `fs.open`
-* `fs.openSync`
-* `process.dlopen` - Used by `require` on native modules
+- `child_process.execFile`
+- `child_process.execFileSync`
+- `fs.open`
+- `fs.openSync`
+- `process.dlopen` - Used by `require` on native modules
 
 ### Fake Stat Information of `fs.stat`
 

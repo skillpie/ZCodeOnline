@@ -103,6 +103,10 @@ vi.mock("@/hooks/useServices.js", () => ({
 vi.mock("@/v4/composer/useDraftConfigControl.js", () => ({
   buildDraftCreateConfigPayload: () => ({}),
   useDraftConfigControl: () => ({
+    // composerDraft / composerDraftRef 为本地数据源与评审透传特性对 hook 的新增返回，
+    // 官方测试 mock 需同步提供（SessionPane 渲染期直接读 dataSourceId 等字段）。
+    composerDraft: { text: "", updatedAt: 0 },
+    composerDraftRef: { current: {} },
     modelSelectionRead: { state: { status: "loading" }, reload: vi.fn() },
     captureAcceptedModelSelection: () => vi.fn(),
     draftConfig: {},

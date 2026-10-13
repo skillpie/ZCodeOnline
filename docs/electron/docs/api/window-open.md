@@ -3,8 +3,8 @@
 There are several ways to control how windows are created from trusted or
 untrusted content within a renderer. Windows can be created from the renderer in two ways:
 
-* clicking on links or submitting forms adorned with `target=_blank`
-* JavaScript calling `window.open()`
+- clicking on links or submitting forms adorned with `target=_blank`
+- JavaScript calling `window.open()`
 
 For same-origin content, the new window is created within the same process,
 enabling the parent to access the child window directly. This can be very
@@ -26,9 +26,9 @@ because it is invoked in the main process.
 
 ### `window.open(url[, frameName][, features])`
 
-* `url` string
-* `frameName` string (optional)
-* `features` string (optional)
+- `url` string
+- `frameName` string (optional)
+- `features` string (optional)
 
 Returns [`Window`](https://developer.mozilla.org/en-US/docs/Web/API/Window) | null
 
@@ -45,22 +45,22 @@ unnested, from the features string: `zoomFactor`, `nodeIntegration`, `javascript
 For example:
 
 ```js
-window.open('https://github.com', '_blank', 'top=500,left=200,frame=false,nodeIntegration=no')
+window.open("https://github.com", "_blank", "top=500,left=200,frame=false,nodeIntegration=no");
 ```
 
 **Notes:**
 
-* Node integration will always be disabled in the opened `window` if it is
+- Node integration will always be disabled in the opened `window` if it is
   disabled on the parent window.
-* Context isolation will always be enabled in the opened `window` if it is
+- Context isolation will always be enabled in the opened `window` if it is
   enabled on the parent window.
-* JavaScript will always be disabled in the opened `window` if it is disabled on
+- JavaScript will always be disabled in the opened `window` if it is disabled on
   the parent window.
-* Non-standard features (that are not handled by Chromium or Electron) given in
+- Non-standard features (that are not handled by Chromium or Electron) given in
   `features` will be passed to any registered `webContents`'s
   `did-create-window` event handler in the `options` argument.
-* `frameName` follows the specification of `target` located in the [native documentation](https://developer.mozilla.org/en-US/docs/Web/API/Window/open#parameters).
-* When opening `about:blank`, the child window's [`WebPreferences`](structures/web-preferences.md) will be copied
+- `frameName` follows the specification of `target` located in the [native documentation](https://developer.mozilla.org/en-US/docs/Web/API/Window/open#parameters).
+- When opening `about:blank`, the child window's [`WebPreferences`](structures/web-preferences.md) will be copied
   from the parent window, and there is no way to override it because Chromium
   skips browser side navigation in this case.
 
@@ -82,30 +82,30 @@ window will not close when the opener window closes. The default value is `false
 
 ```js
 // main.js
-const mainWindow = new BrowserWindow()
+const mainWindow = new BrowserWindow();
 
 // In this example, only windows with the `about:blank` url will be created.
 // All other urls will be blocked.
 mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-  if (url === 'about:blank') {
+  if (url === "about:blank") {
     return {
-      action: 'allow',
+      action: "allow",
       overrideBrowserWindowOptions: {
         frame: false,
         fullscreenable: false,
-        backgroundColor: 'black',
+        backgroundColor: "black",
         webPreferences: {
-          preload: 'my-child-window-preload-script.js'
-        }
-      }
-    }
+          preload: "my-child-window-preload-script.js",
+        },
+      },
+    };
   }
-  return { action: 'deny' }
-})
+  return { action: "deny" };
+});
 ```
 
 ```js
 // renderer process (mainWindow)
-const childWindow = window.open('', 'modal')
-childWindow.document.write('<h1>Hello</h1>')
+const childWindow = window.open("", "modal");
+childWindow.document.write("<h1>Hello</h1>");
 ```

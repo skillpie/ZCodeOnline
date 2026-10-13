@@ -1,6 +1,6 @@
 ---
-title: 'Packaging Your Application'
-description: 'To distribute your app with Electron, you need to package it and create installers.'
+title: "Packaging Your Application"
+description: "To distribute your app with Electron, you need to package it and create installers."
 slug: tutorial-packaging
 hide_title: false
 ---
@@ -169,14 +169,14 @@ module.exports = {
     osxSign: {},
     // ...
     osxNotarize: {
-      tool: 'notarytool',
+      tool: "notarytool",
       appleId: process.env.APPLE_ID,
       appleIdPassword: process.env.APPLE_PASSWORD,
-      teamId: process.env.APPLE_TEAM_ID
-    }
+      teamId: process.env.APPLE_TEAM_ID,
+    },
     // ...
-  }
-}
+  },
+};
 ```
 
   </TabItem>
@@ -187,15 +187,15 @@ module.exports = {
   // ...
   makers: [
     {
-      name: '@electron-forge/maker-squirrel',
+      name: "@electron-forge/maker-squirrel",
       config: {
-        certificateFile: './cert.pfx',
-        certificatePassword: process.env.CERTIFICATE_PASSWORD
-      }
-    }
-  ]
+        certificateFile: "./cert.pfx",
+        certificatePassword: process.env.CERTIFICATE_PASSWORD,
+      },
+    },
+  ],
   // ...
-}
+};
 ```
 
   </TabItem>

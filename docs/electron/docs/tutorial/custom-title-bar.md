@@ -3,7 +3,7 @@
 ## Basic tutorial
 
 Application windows have a default [chrome][] applied by the OS. Not to be confused
-with the Google Chrome browser, window _chrome_ refers to the parts of the window (e.g.
+with the Google Chrome browser, window *chrome* refers to the parts of the window (e.g.
 title bar, toolbars, controls) that are not a part of the main web content. While the
 default title bar provided by the OS chrome is sufficient for simple use cases, many
 applications opt to remove it. Implementing a custom title bar can help your application
@@ -75,9 +75,9 @@ over them. This is useful if you want to create custom traffic lights in your HT
 use the native UI to control the window.
 
 ```js
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow({ titleBarStyle: 'customButtonsOnHover' })
+const win = new BrowserWindow({ titleBarStyle: "customButtonsOnHover" });
 ```
 
 #### Customize the traffic light position _macOS_
@@ -89,9 +89,9 @@ Applying `hiddenInset` title bar style will shift the vertical inset of the traf
 by a fixed amount.
 
 ```js title='main.js'
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow({ titleBarStyle: 'hiddenInset' })
+const win = new BrowserWindow({ titleBarStyle: "hiddenInset" });
 ```
 
 If you need more granular control over the positioning of the traffic lights, you can pass
@@ -99,12 +99,12 @@ a set of coordinates to the `trafficLightPosition` option in the `BrowserWindow`
 constructor.
 
 ```js title='main.js'
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
 const win = new BrowserWindow({
-  titleBarStyle: 'hidden',
-  trafficLightPosition: { x: 10, y: 10 }
-})
+  titleBarStyle: "hidden",
+  trafficLightPosition: { x: 10, y: 10 },
+});
 ```
 
 #### Show and hide the traffic lights programmatically _macOS_
@@ -114,11 +114,11 @@ The `win.setWindowButtonVisibility` forces traffic lights to be shown or hidden 
 on the value of its boolean parameter.
 
 ```js title='main.js'
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow()
+const win = new BrowserWindow();
 // hides the traffic lights
-win.setWindowButtonVisibility(false)
+win.setWindowButtonVisibility(false);
 ```
 
 :::note
@@ -152,16 +152,16 @@ control buttons. Similarly, if the height option is not specified, the window co
 default to the standard system height:
 
 ```js title='main.js'
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
 const win = new BrowserWindow({
-  titleBarStyle: 'hidden',
+  titleBarStyle: "hidden",
   titleBarOverlay: {
-    color: '#2f3241',
-    symbolColor: '#74b1be',
-    height: 60
-  }
-})
+    color: "#2f3241",
+    symbolColor: "#74b1be",
+    height: 60,
+  },
+});
 ```
 
 :::note

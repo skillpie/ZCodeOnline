@@ -17,33 +17,33 @@ shortcuts.
 > shortcuts when running within a Wayland session.
 
 ```js
-const { app, globalShortcut } = require('electron')
+const { app, globalShortcut } = require("electron");
 
 // Enable usage of Portal's globalShortcuts. This is essential for cases when
 // the app runs in a Wayland session.
-app.commandLine.appendSwitch('enable-features', 'GlobalShortcutsPortal')
+app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
 
 app.whenReady().then(() => {
   // Register a 'CommandOrControl+X' shortcut listener.
-  const ret = globalShortcut.register('CommandOrControl+X', () => {
-    console.log('CommandOrControl+X is pressed')
-  })
+  const ret = globalShortcut.register("CommandOrControl+X", () => {
+    console.log("CommandOrControl+X is pressed");
+  });
 
   if (!ret) {
-    console.log('registration failed')
+    console.log("registration failed");
   }
 
   // Check whether a shortcut is registered.
-  console.log(globalShortcut.isRegistered('CommandOrControl+X'))
-})
+  console.log(globalShortcut.isRegistered("CommandOrControl+X"));
+});
 
-app.on('will-quit', () => {
+app.on("will-quit", () => {
   // Unregister a shortcut.
-  globalShortcut.unregister('CommandOrControl+X')
+  globalShortcut.unregister("CommandOrControl+X");
 
   // Unregister all shortcuts.
-  globalShortcut.unregisterAll()
-})
+  globalShortcut.unregisterAll();
+});
 ```
 
 > [!TIP]
@@ -62,8 +62,8 @@ added:
 ```
 -->
 
-* `accelerator` string - An [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcut.
-* `callback` Function
+- `accelerator` string - An [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcut.
+- `callback` Function
 
 Returns `boolean` - Whether or not the shortcut was registered successfully.
 
@@ -77,10 +77,10 @@ want applications to fight for global shortcuts.
 The following accelerators will not be registered successfully on macOS 10.14 Mojave unless
 the app has been authorized as a [trusted accessibility client](https://developer.apple.com/library/archive/documentation/Accessibility/Conceptual/AccessibilityMacOSX/OSXAXTestingApps.html):
 
-* "Media Play/Pause"
-* "Media Next Track"
-* "Media Previous Track"
-* "Media Stop"
+- "Media Play/Pause"
+- "Media Next Track"
+- "Media Previous Track"
+- "Media Stop"
 
 ### `globalShortcut.registerAll(accelerators, callback)`
 
@@ -91,8 +91,8 @@ added:
 ```
 -->
 
-* `accelerators` string[] - An array of [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcuts.
-* `callback` Function
+- `accelerators` string[] - An array of [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcuts.
+- `callback` Function
 
 Registers a global shortcut of all `accelerator` items in `accelerators`. The `callback` is called when any of the registered shortcuts are pressed by the user.
 
@@ -103,10 +103,10 @@ want applications to fight for global shortcuts.
 The following accelerators will not be registered successfully on macOS 10.14 Mojave unless
 the app has been authorized as a [trusted accessibility client](https://developer.apple.com/library/archive/documentation/Accessibility/Conceptual/AccessibilityMacOSX/OSXAXTestingApps.html):
 
-* "Media Play/Pause"
-* "Media Next Track"
-* "Media Previous Track"
-* "Media Stop"
+- "Media Play/Pause"
+- "Media Next Track"
+- "Media Previous Track"
+- "Media Stop"
 
 ### `globalShortcut.isRegistered(accelerator)`
 
@@ -117,7 +117,7 @@ added:
 ```
 -->
 
-* `accelerator` string - An [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcut.
+- `accelerator` string - An [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcut.
 
 Returns `boolean` - Whether this application has registered `accelerator`.
 
@@ -134,7 +134,7 @@ added:
 ```
 -->
 
-* `accelerator` string - An [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcut.
+- `accelerator` string - An [accelerator](../tutorial/keyboard-shortcuts.md#accelerators) shortcut.
 
 Unregisters the global shortcut of `accelerator`.
 

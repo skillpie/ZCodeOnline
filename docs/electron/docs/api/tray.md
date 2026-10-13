@@ -9,20 +9,20 @@ Process: [Main](../glossary.md#main-process)
 `Tray` is an [EventEmitter][event-emitter].
 
 ```js title='Creating a basic tray menu'
-const { app, Menu, Tray } = require('electron')
+const { app, Menu, Tray } = require("electron");
 
-let tray = null
+let tray = null;
 app.whenReady().then(() => {
-  tray = new Tray('/path/to/my/icon')
+  tray = new Tray("/path/to/my/icon");
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Item1', type: 'radio' },
-    { label: 'Item2', type: 'radio' },
-    { label: 'Item3', type: 'radio', checked: true },
-    { label: 'Item4', type: 'radio' }
-  ])
-  tray.setToolTip('This is my application.')
-  tray.setContextMenu(contextMenu)
-})
+    { label: "Item1", type: "radio" },
+    { label: "Item2", type: "radio" },
+    { label: "Item3", type: "radio", checked: true },
+    { label: "Item4", type: "radio" },
+  ]);
+  tray.setToolTip("This is my application.");
+  tray.setContextMenu(contextMenu);
+});
 ```
 
 > [!TIP]
@@ -36,50 +36,50 @@ app.whenReady().then(() => {
 
 **Linux**
 
-* Tray icon uses [StatusNotifierItem](https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem/)
+- Tray icon uses [StatusNotifierItem](https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem/)
   by default, when it is not available in user's desktop environment the
   `GtkStatusIcon` will be used instead.
-* The `click` event is emitted when the tray icon receives activation from
+- The `click` event is emitted when the tray icon receives activation from
   user, however the StatusNotifierItem spec does not specify which action would
   cause an activation, for some environments it is left mouse click, but for
   some it might be double left mouse click.
-* In order for changes made to individual `MenuItem`s to take effect,
+- In order for changes made to individual `MenuItem`s to take effect,
   you have to call `setContextMenu` again. For example:
 
 ```js
-const { app, Menu, Tray } = require('electron')
+const { app, Menu, Tray } = require("electron");
 
-let appIcon = null
+let appIcon = null;
 app.whenReady().then(() => {
-  appIcon = new Tray('/path/to/my/icon')
+  appIcon = new Tray("/path/to/my/icon");
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Item1', type: 'radio' },
-    { label: 'Item2', type: 'radio' }
-  ])
+    { label: "Item1", type: "radio" },
+    { label: "Item2", type: "radio" },
+  ]);
 
   // Make a change to the context menu
-  contextMenu.items[1].checked = false
+  contextMenu.items[1].checked = false;
 
   // Call this again for Linux because we modified the context menu
-  appIcon.setContextMenu(contextMenu)
-})
+  appIcon.setContextMenu(contextMenu);
+});
 ```
 
 **MacOS**
 
-* Icons passed to the Tray constructor should be [Template Images](native-image.md#template-image-macos).
-* To make sure your icon isn't grainy on retina monitors, be sure your `@2x` image is 144dpi.
-* If you are bundling your application (e.g., with webpack for development), be sure that the file names are not being mangled or hashed. The filename needs to end in Template, and the `@2x` image needs to have the same filename as the standard image, or MacOS will not magically invert your image's colors or use the high density image.
-* 16x16 (72dpi) and 32x32@2x (144dpi) work well for most icons.
+- Icons passed to the Tray constructor should be [Template Images](native-image.md#template-image-macos).
+- To make sure your icon isn't grainy on retina monitors, be sure your `@2x` image is 144dpi.
+- If you are bundling your application (e.g., with webpack for development), be sure that the file names are not being mangled or hashed. The filename needs to end in Template, and the `@2x` image needs to have the same filename as the standard image, or MacOS will not magically invert your image's colors or use the high density image.
+- 16x16 (72dpi) and 32x32@2x (144dpi) work well for most icons.
 
 **Windows**
 
-* It is recommended to use `ICO` icons to get best visual effects.
+- It is recommended to use `ICO` icons to get best visual effects.
 
 ### `new Tray(image, [guid])`
 
-* `image` ([NativeImage](native-image.md) | string)
-* `guid` string (optional) _Windows_ _macOS_ - A unique string used to identify the tray icon. Must adhere to [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) format.
+- `image` ([NativeImage](native-image.md) | string)
+- `guid` string (optional) _Windows_ _macOS_ - A unique string used to identify the tray icon. Must adhere to [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) format.
 
 **Windows**
 
@@ -99,9 +99,9 @@ The `Tray` module emits the following events:
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
-* `position` [Point](structures/point.md) - The position of the event.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
+- `position` [Point](structures/point.md) - The position of the event.
 
 Emitted when the tray icon is clicked.
 
@@ -112,8 +112,8 @@ activation, which might not necessarily be left mouse click.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
 
 Emitted when the tray icon is right clicked.
 
@@ -121,8 +121,8 @@ Emitted when the tray icon is right clicked.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
 
 Emitted when the tray icon is double clicked.
 
@@ -130,8 +130,8 @@ Emitted when the tray icon is double clicked.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `bounds` [Rectangle](structures/rectangle.md) - The bounds of tray icon.
 
 Emitted when the tray icon is middle clicked.
 
@@ -156,8 +156,8 @@ Emitted when any dragged items are dropped on the tray icon.
 
 Returns:
 
-* `event` Event
-* `files` string[] - The paths of the dropped files.
+- `event` Event
+- `files` string[] - The paths of the dropped files.
 
 Emitted when dragged files are dropped in the tray icon.
 
@@ -165,8 +165,8 @@ Emitted when dragged files are dropped in the tray icon.
 
 Returns:
 
-* `event` Event
-* `text` string - the dropped text string.
+- `event` Event
+- `text` string - the dropped text string.
 
 Emitted when dragged text is dropped in the tray icon.
 
@@ -186,8 +186,8 @@ Emitted when a drag operation ends on the tray or ends at another location.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `position` [Point](structures/point.md) - The position of the event.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `position` [Point](structures/point.md) - The position of the event.
 
 Emitted when the mouse is released from clicking the tray icon.
 
@@ -198,8 +198,8 @@ Emitted when the mouse is released from clicking the tray icon.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `position` [Point](structures/point.md) - The position of the event.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `position` [Point](structures/point.md) - The position of the event.
 
 Emitted when the mouse clicks the tray icon.
 
@@ -207,8 +207,8 @@ Emitted when the mouse clicks the tray icon.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `position` [Point](structures/point.md) - The position of the event.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `position` [Point](structures/point.md) - The position of the event.
 
 Emitted when the mouse enters the tray icon.
 
@@ -216,8 +216,8 @@ Emitted when the mouse enters the tray icon.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `position` [Point](structures/point.md) - The position of the event.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `position` [Point](structures/point.md) - The position of the event.
 
 Emitted when the mouse exits the tray icon.
 
@@ -225,8 +225,8 @@ Emitted when the mouse exits the tray icon.
 
 Returns:
 
-* `event` [KeyboardEvent](structures/keyboard-event.md)
-* `position` [Point](structures/point.md) - The position of the event.
+- `event` [KeyboardEvent](structures/keyboard-event.md)
+- `position` [Point](structures/point.md) - The position of the event.
 
 Emitted when the mouse moves in the tray icon.
 
@@ -240,27 +240,27 @@ Destroys the tray icon immediately.
 
 #### `tray.setImage(image)`
 
-* `image` ([NativeImage](native-image.md) | string)
+- `image` ([NativeImage](native-image.md) | string)
 
 Sets the `image` associated with this tray icon.
 
 #### `tray.setPressedImage(image)` _macOS_
 
-* `image` ([NativeImage](native-image.md) | string)
+- `image` ([NativeImage](native-image.md) | string)
 
 Sets the `image` associated with this tray icon when pressed on macOS.
 
 #### `tray.setToolTip(toolTip)`
 
-* `toolTip` string
+- `toolTip` string
 
 Sets the hover text for this tray icon. Setting the text to an empty string will remove the tooltip.
 
 #### `tray.setTitle(title[, options])` _macOS_
 
-* `title` string
-* `options` Object (optional)
-  * `fontType` string (optional) - The font family variant to display, can be `monospaced` or `monospacedDigit`. `monospaced` is available in macOS 10.15+ When left blank, the title uses the default system font.
+- `title` string
+- `options` Object (optional)
+  - `fontType` string (optional) - The font family variant to display, can be `monospaced` or `monospacedDigit`. `monospaced` is available in macOS 10.15+ When left blank, the title uses the default system font.
 
 Sets the title displayed next to the tray icon in the status bar (Support ANSI colors).
 
@@ -270,7 +270,7 @@ Returns `string` - the title displayed next to the tray icon in the status bar
 
 #### `tray.setIgnoreDoubleClickEvents(ignore)` _macOS_
 
-* `ignore` boolean
+- `ignore` boolean
 
 Sets the option to ignore double click events. Ignoring these events allows you
 to detect every individual click of the tray icon.
@@ -283,14 +283,14 @@ Returns `boolean` - Whether double click events will be ignored.
 
 #### `tray.displayBalloon(options)` _Windows_
 
-* `options` Object
-  * `icon` ([NativeImage](native-image.md) | string) (optional) - Icon to use when `iconType` is `custom`.
-  * `iconType` string (optional) - Can be `none`, `info`, `warning`, `error` or `custom`. Default is `custom`.
-  * `title` string
-  * `content` string
-  * `largeIcon` boolean (optional) - The large version of the icon should be used. Default is `true`. Maps to [`NIIF_LARGE_ICON`][NIIF_LARGE_ICON].
-  * `noSound` boolean (optional) - Do not play the associated sound. Default is `false`. Maps to [`NIIF_NOSOUND`][NIIF_NOSOUND].
-  * `respectQuietTime` boolean (optional) - Do not display the balloon notification if the current user is in "quiet time". Default is `false`. Maps to [`NIIF_RESPECT_QUIET_TIME`][NIIF_RESPECT_QUIET_TIME].
+- `options` Object
+  - `icon` ([NativeImage](native-image.md) | string) (optional) - Icon to use when `iconType` is `custom`.
+  - `iconType` string (optional) - Can be `none`, `info`, `warning`, `error` or `custom`. Default is `custom`.
+  - `title` string
+  - `content` string
+  - `largeIcon` boolean (optional) - The large version of the icon should be used. Default is `true`. Maps to [`NIIF_LARGE_ICON`][NIIF_LARGE_ICON].
+  - `noSound` boolean (optional) - Do not play the associated sound. Default is `false`. Maps to [`NIIF_NOSOUND`][NIIF_NOSOUND].
+  - `respectQuietTime` boolean (optional) - Do not display the balloon notification if the current user is in "quiet time". Default is `false`. Maps to [`NIIF_RESPECT_QUIET_TIME`][NIIF_RESPECT_QUIET_TIME].
 
 Displays a tray balloon.
 
@@ -311,8 +311,8 @@ use `tray.focus()` to return focus to the notification area.
 
 #### `tray.popUpContextMenu([menu, position])` _macOS_ _Windows_
 
-* `menu` Menu (optional)
-* `position` [Point](structures/point.md) (optional) - The pop up position.
+- `menu` Menu (optional)
+- `position` [Point](structures/point.md) (optional) - The pop up position.
 
 Pops up the context menu of the tray icon. When `menu` is passed, the `menu` will
 be shown instead of the tray icon's context menu.
@@ -325,7 +325,7 @@ Closes an open context menu, as set by `tray.setContextMenu()`.
 
 #### `tray.setContextMenu(menu)`
 
-* `menu` Menu | null
+- `menu` Menu | null
 
 Sets the context menu for this icon.
 
@@ -349,42 +349,42 @@ Returns `boolean` - Whether the tray icon is destroyed.
 
 ### Linux
 
-* Tray icon uses [StatusNotifierItem](https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem/)
+- Tray icon uses [StatusNotifierItem](https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem/)
   by default, when it is not available in user's desktop environment the
   `GtkStatusIcon` will be used instead.
-* The `click` event is emitted when the tray icon receives activation from
+- The `click` event is emitted when the tray icon receives activation from
   user, however the StatusNotifierItem spec does not specify which action would
   cause an activation, for some environments it is left mouse click, but for
   some it might be double left mouse click.
-* In order for changes made to individual `MenuItem`s to take effect,
+- In order for changes made to individual `MenuItem`s to take effect,
   you have to call `setContextMenu` again. For example:
 
 ```js
-const { app, Menu, Tray } = require('electron')
+const { app, Menu, Tray } = require("electron");
 
-let appIcon = null
+let appIcon = null;
 app.whenReady().then(() => {
-  appIcon = new Tray('/path/to/my/icon')
+  appIcon = new Tray("/path/to/my/icon");
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Item1', type: 'radio' },
-    { label: 'Item2', type: 'radio' }
-  ])
+    { label: "Item1", type: "radio" },
+    { label: "Item2", type: "radio" },
+  ]);
 
   // Make a change to the context menu
-  contextMenu.items[1].checked = false
+  contextMenu.items[1].checked = false;
 
   // Call this again for Linux because we modified the context menu
-  appIcon.setContextMenu(contextMenu)
-})
+  appIcon.setContextMenu(contextMenu);
+});
 ```
 
 ### macOS
 
-* Icons passed to the Tray constructor should be [Template Images](native-image.md#template-image-macos).
-* To make sure your icon isn't grainy on retina monitors, be sure your `@2x` image is 144dpi.
-* If you are bundling your application (e.g., with webpack for development), be sure that the file names are not being mangled or hashed. The filename needs to end in Template, and the `@2x` image needs to have the same filename as the standard image, or MacOS will not magically invert your image's colors or use the high density image.
-* 16x16 (72dpi) and 32x32@2x (144dpi) work well for most icons.
+- Icons passed to the Tray constructor should be [Template Images](native-image.md#template-image-macos).
+- To make sure your icon isn't grainy on retina monitors, be sure your `@2x` image is 144dpi.
+- If you are bundling your application (e.g., with webpack for development), be sure that the file names are not being mangled or hashed. The filename needs to end in Template, and the `@2x` image needs to have the same filename as the standard image, or MacOS will not magically invert your image's colors or use the high density image.
+- 16x16 (72dpi) and 32x32@2x (144dpi) work well for most icons.
 
 ### Windows
 
-* It is recommended to use `ICO` icons to get best visual effects.
+- It is recommended to use `ICO` icons to get best visual effects.

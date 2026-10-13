@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from "vitest";
 import { ServiceProvider } from "@/hooks/useServices.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -313,7 +315,9 @@ describe("Web 归档批量删除入口", () => {
     expect(populated).toContain('aria-label="taskList.archivedActions"');
     expect(populated).not.toContain('data-testid="delete-all-archived-tasks"');
     const empty = await renderTaskIndexWithInitialArchivedTasks(false);
-    expect(empty).toMatch(/<button(?=[^>]*disabled="")(?=[^>]*data-testid="archived-tasks-actions")/);
+    expect(empty).toMatch(
+      /<button(?=[^>]*disabled="")(?=[^>]*data-testid="archived-tasks-actions")/,
+    );
     expect(await renderTaskIndex()).not.toContain('data-testid="archived-tasks-actions"');
   });
 });

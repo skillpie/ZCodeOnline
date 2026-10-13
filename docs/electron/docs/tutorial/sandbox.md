@@ -52,23 +52,23 @@ scripts attached to sandboxed renderers will still have a polyfilled subset of N
 APIs available. A `require` function similar to Node's `require` module is exposed,
 but can only import a subset of Electron and Node's built-in modules:
 
-* `electron` (following renderer process modules: `contextBridge`, `crashReporter`, `ipcRenderer`, `nativeImage`, `webFrame`, `webUtils`)
-* [`events`](https://nodejs.org/api/events.html)
-* [`timers`](https://nodejs.org/api/timers.html)
-* [`url`](https://nodejs.org/api/url.html)
+- `electron` (following renderer process modules: `contextBridge`, `crashReporter`, `ipcRenderer`, `nativeImage`, `webFrame`, `webUtils`)
+- [`events`](https://nodejs.org/api/events.html)
+- [`timers`](https://nodejs.org/api/timers.html)
+- [`url`](https://nodejs.org/api/url.html)
 
 [node: imports](https://nodejs.org/api/esm.html#node-imports) are supported as well:
 
-* [`node:events`](https://nodejs.org/api/events.html)
-* [`node:timers`](https://nodejs.org/api/timers.html)
-* [`node:url`](https://nodejs.org/api/url.html)
+- [`node:events`](https://nodejs.org/api/events.html)
+- [`node:timers`](https://nodejs.org/api/timers.html)
+- [`node:url`](https://nodejs.org/api/url.html)
 
 In addition, the preload script also polyfills certain Node.js primitives as globals:
 
-* [`Buffer`](https://nodejs.org/api/buffer.html)
-* [`process`](../api/process.md)
-* [`clearImmediate`](https://nodejs.org/api/timers.html#timers_clearimmediate_immediate)
-* [`setImmediate`](https://nodejs.org/api/timers.html#timers_setimmediate_callback_args)
+- [`Buffer`](https://nodejs.org/api/buffer.html)
+- [`process`](../api/process.md)
+- [`clearImmediate`](https://nodejs.org/api/timers.html#timers_clearimmediate_immediate)
+- [`setImmediate`](https://nodejs.org/api/timers.html#timers_setimmediate_callback_args)
 
 Because the `require` function is a polyfill with limited functionality, you will not be
 able to use [CommonJS modules][commonjs] to separate your preload script into multiple
@@ -96,11 +96,11 @@ the `sandbox: false` preference in the [`BrowserWindow`][browser-window] constru
 app.whenReady().then(() => {
   const win = new BrowserWindow({
     webPreferences: {
-      sandbox: false
-    }
-  })
-  win.loadURL('https://google.com')
-})
+      sandbox: false,
+    },
+  });
+  win.loadURL("https://google.com");
+});
 ```
 
 Sandboxing is also disabled whenever Node.js integration is enabled in the renderer.
@@ -111,11 +111,11 @@ or by providing the respective HTML boolean attribute for a `webview`.
 app.whenReady().then(() => {
   const win = new BrowserWindow({
     webPreferences: {
-      nodeIntegration: true
-    }
-  })
-  win.loadURL('https://google.com')
-})
+      nodeIntegration: true,
+    },
+  });
+  win.loadURL("https://google.com");
+});
 ```
 
 ```html title='index.html (Renderer Process)'
@@ -129,12 +129,12 @@ If you want to force sandboxing for all renderers, you can also use the
 app's `ready` event.
 
 ```js title='main.js'
-app.enableSandbox()
+app.enableSandbox();
 app.whenReady().then(() => {
   // any sandbox:false calls are overridden since `app.enableSandbox()` was called.
-  const win = new BrowserWindow()
-  win.loadURL('https://google.com')
-})
+  const win = new BrowserWindow();
+  win.loadURL("https://google.com");
+});
 ```
 
 ### Disabling Chromium's sandbox (testing only)

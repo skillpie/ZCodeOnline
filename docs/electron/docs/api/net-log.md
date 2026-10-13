@@ -5,14 +5,14 @@
 Process: [Main](../glossary.md#main-process)
 
 ```js
-const { app, netLog } = require('electron')
+const { app, netLog } = require("electron");
 
 app.whenReady().then(async () => {
-  await netLog.startLogging('/path/to/net-log')
+  await netLog.startLogging("/path/to/net-log");
   // After some network events
-  const path = await netLog.stopLogging()
-  console.log('Net-logs written to', path)
-})
+  const path = await netLog.stopLogging();
+  console.log("Net-logs written to", path);
+});
 ```
 
 See [`--log-net-log`](command-line-switches.md#--log-net-logpath) to log network events throughout the app's lifecycle.
@@ -25,14 +25,14 @@ See [`--log-net-log`](command-line-switches.md#--log-net-logpath) to log network
 
 ### `netLog.startLogging(path[, options])`
 
-* `path` string - File path to record network logs.
-* `options` Object (optional)
-  * `captureMode` string (optional) - What kinds of data should be captured. By
+- `path` string - File path to record network logs.
+- `options` Object (optional)
+  - `captureMode` string (optional) - What kinds of data should be captured. By
     default, only metadata about requests will be captured. Setting this to
     `includeSensitive` will include cookies and authentication data. Setting
     it to `everything` will include all bytes transferred on sockets. Can be
     `default`, `includeSensitive` or `everything`.
-  * `maxFileSize` number (optional) - When the log grows beyond this size,
+  - `maxFileSize` number (optional) - When the log grows beyond this size,
     logging will automatically stop. Defaults to unlimited.
 
 Returns `Promise<void>` - resolves when the net log has begun recording.

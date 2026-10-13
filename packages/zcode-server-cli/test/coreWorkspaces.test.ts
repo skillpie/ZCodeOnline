@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { resolveCoreServerWorkspaces } from "../src/server-core/http.js";
 
 // Core 初始工作区解析验收（specs/web-tunnel.md §5.7）：

@@ -1394,7 +1394,6 @@ export function App({
           skillMarketInitialPath={skillMarketInitialPath}
         />
       </PluginUiWorkspaceProvider>
-
     </>
   );
 }

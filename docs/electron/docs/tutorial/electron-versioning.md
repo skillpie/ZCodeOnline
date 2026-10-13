@@ -30,11 +30,11 @@ We will cover in detail how git branching works, how npm tagging works, what dev
 
 Below is a table explicitly mapping types of changes to their corresponding category of SemVer (e.g. Major, Minor, Patch).
 
-| Major Version Increments        | Minor Version Increments           | Patch Version Increments      |
-| ------------------------------- | ---------------------------------- | ----------------------------- |
-| Electron breaking API changes   | Electron non-breaking API changes  | Electron bug fixes            |
-| Node.js major version updates   | Node.js minor version updates      | Node.js patch version updates |
-| Chromium version updates        |                                    | fix-related chromium patches  |
+| Major Version Increments      | Minor Version Increments          | Patch Version Increments      |
+| ----------------------------- | --------------------------------- | ----------------------------- |
+| Electron breaking API changes | Electron non-breaking API changes | Electron bug fixes            |
+| Node.js major version updates | Node.js minor version updates     | Node.js patch version updates |
+| Chromium version updates      |                                   | fix-related chromium patches  |
 
 For more information, see the [Semantic Versioning 2.0.0](https://semver.org/) spec.
 
@@ -46,7 +46,7 @@ Stabilization branches are branches that run parallel to `main`, taking in only 
 
 ![Stabilization Branches](../images/versioning-sketch-1.png)
 
-Since Electron 8, stabilization branches are always **major** version lines, and named against the following template `$MAJOR-x-y` e.g. `8-x-y`.  Prior to that we used **minor** version lines and named them as `$MAJOR-$MINOR-x` e.g. `2-0-x`.
+Since Electron 8, stabilization branches are always **major** version lines, and named against the following template `$MAJOR-x-y` e.g. `8-x-y`. Prior to that we used **minor** version lines and named them as `$MAJOR-$MINOR-x` e.g. `2-0-x`.
 
 We allow for multiple stabilization branches to exist simultaneously, one for each supported version. For more details on which versions are supported, see our [Electron Releases](./electron-timelines.md) doc.
 
@@ -58,8 +58,8 @@ Older lines will not be supported by the Electron project, but other groups can 
 
 Developers want to know which releases are _safe_ to use. Even seemingly innocent features can introduce regressions in complex applications. At the same time, locking to a fixed version is dangerous because you’re ignoring security patches and bug fixes that may have come out since your version. Our goal is to allow the following standard semver ranges in `package.json` :
 
-* Use `~2.0.0` to admit only stability or security related fixes to your `2.0.0` release.
-* Use `^2.0.0` to admit non-breaking _reasonably stable_ feature work as well as security and bug fixes.
+- Use `~2.0.0` to admit only stability or security related fixes to your `2.0.0` release.
+- Use `^2.0.0` to admit non-breaking _reasonably stable_ feature work as well as security and bug fixes.
 
 What’s important about the second point is that apps using `^` should still be able to expect a reasonable level of stability. To accomplish this, SemVer allows for a _pre-release identifier_ to indicate a particular version is not yet _safe_ or _stable_.
 
@@ -68,12 +68,12 @@ Whatever you choose, you will periodically have to bump the version in your `pac
 The process is as follows:
 
 1. All new major and minor releases lines begin with a beta series indicated by SemVer prerelease tags of `beta.N`, e.g. `2.0.0-beta.1`. After the first beta, subsequent beta releases must meet all of the following conditions:
-    1. The change is backwards API-compatible (deprecations are allowed)
-    2. The risk to meeting our stability timeline must be low.
+   1. The change is backwards API-compatible (deprecations are allowed)
+   2. The risk to meeting our stability timeline must be low.
 2. If allowed changes need to be made once a release is beta, they are applied and the prerelease tag is incremented, e.g. `2.0.0-beta.2`.
 3. If a particular beta release is _generally regarded_ as stable, it will be re-released as a stable build, changing only the version information. e.g. `2.0.0`. After the first stable, all changes must be backwards-compatible bug or security fixes.
 4. If future bug fixes or security patches need to be made once a release is stable, they are applied and the _patch_ version is incremented
-e.g. `2.0.1`.
+   e.g. `2.0.1`.
 
 Specifically, the above means:
 
@@ -94,14 +94,14 @@ For each major and minor bump, you should expect to see something like the follo
 
 An example lifecycle in pictures:
 
-* A new release branch is created that includes the latest set of features. It is published as `2.0.0-beta.1`.
-![New Release Branch](../images/versioning-sketch-3.png)
-* A bug fix comes into master that can be backported to the release branch. The patch is applied, and a new beta is published as `2.0.0-beta.2`.
-![Bugfix Backport to Beta](../images/versioning-sketch-4.png)
-* The beta is considered _generally stable_ and it is published again as a non-beta under `2.0.0`.
-![Beta to Stable](../images/versioning-sketch-5.png)
-* Later, a zero-day exploit is revealed and a fix is applied to master. We backport the fix to the `2-0-x` line and release `2.0.1`.
-![Security Backports](../images/versioning-sketch-6.png)
+- A new release branch is created that includes the latest set of features. It is published as `2.0.0-beta.1`.
+  ![New Release Branch](../images/versioning-sketch-3.png)
+- A bug fix comes into master that can be backported to the release branch. The patch is applied, and a new beta is published as `2.0.0-beta.2`.
+  ![Bugfix Backport to Beta](../images/versioning-sketch-4.png)
+- The beta is considered _generally stable_ and it is published again as a non-beta under `2.0.0`.
+  ![Beta to Stable](../images/versioning-sketch-5.png)
+- Later, a zero-day exploit is revealed and a fix is applied to master. We backport the fix to the `2-0-x` line and release `2.0.1`.
+  ![Security Backports](../images/versioning-sketch-6.png)
 
 A few examples of how various SemVer ranges will pick up new releases:
 
@@ -120,26 +120,26 @@ as an agenda item at their weekly meeting the week the backport PR is raised.
 
 Feature flags are a common practice in Chromium, and are well-established in the web-development ecosystem. In the context of Electron, a feature flag or **soft branch** must have the following properties:
 
-* it is enabled/disabled either at runtime, or build-time; we do not support the concept of a request-scoped feature flag
-* it completely segments new and old code paths; refactoring old code to support a new feature _violates_ the feature-flag contract
-* feature flags are eventually removed after the feature is released
+- it is enabled/disabled either at runtime, or build-time; we do not support the concept of a request-scoped feature flag
+- it completely segments new and old code paths; refactoring old code to support a new feature _violates_ the feature-flag contract
+- feature flags are eventually removed after the feature is released
 
 ## Semantic commits
 
 All pull requests must adhere to the [Conventional Commits](https://conventionalcommits.org/) spec, which can be summarized as follows:
 
-* Commits that would result in a SemVer **major** bump must start their body with `BREAKING CHANGE:`.
-* Commits that would result in a SemVer **minor** bump must start with `feat:`.
-* Commits that would result in a SemVer **patch** bump must start with `fix:`.
+- Commits that would result in a SemVer **major** bump must start their body with `BREAKING CHANGE:`.
+- Commits that would result in a SemVer **minor** bump must start with `feat:`.
+- Commits that would result in a SemVer **patch** bump must start with `fix:`.
 
 The `electron/electron` repository also enforces squash merging, so you only need to make sure that your pull request has the correct title prefix.
 
 ## Versioned `main` branch
 
-* The `main` branch will always contain the next major version `X.0.0-nightly.DATE` in its `package.json`.
-* Release branches are never merged back to `main`.
-* Release branches _do_ contain the correct version in their `package.json`.
-* As soon as a release branch is cut for a major, `main` must be bumped to the next major (i.e. `main` is always versioned as the next theoretical release branch).
+- The `main` branch will always contain the next major version `X.0.0-nightly.DATE` in its `package.json`.
+- Release branches are never merged back to `main`.
+- Release branches _do_ contain the correct version in their `package.json`.
+- As soon as a release branch is cut for a major, `main` must be bumped to the next major (i.e. `main` is always versioned as the next theoretical release branch).
 
 ## Historical versioning (Electron 1.X)
 

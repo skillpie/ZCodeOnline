@@ -1,9 +1,9 @@
 // 数据源跨会话记忆的单元覆盖（specs/data-source.md §7.1 跨会话记忆）。
 // 核心不变量：显式选择与取消（null）都按 workspace 记忆；新任务草稿初始化恢复
 // 上一次结果；不同 workspace（workspaceIdentity / workspacePath）互相隔离。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { after, beforeEach } from "node:test";
+import { afterAll as after, beforeEach } from "vitest";
 import type { ModelSelectionView } from "@zcode/services";
 import {
   readDataSourceSelectionRecent,

@@ -7,14 +7,14 @@ your app's main script before the [ready][ready] event of the [app][app] module
 is emitted:
 
 ```js
-const { app } = require('electron')
+const { app } = require("electron");
 
-app.commandLine.appendSwitch('remote-debugging-port', '8315')
-app.commandLine.appendSwitch('host-rules', 'MAP * 127.0.0.1')
+app.commandLine.appendSwitch("remote-debugging-port", "8315");
+app.commandLine.appendSwitch("host-rules", "MAP * 127.0.0.1");
 
 app.whenReady().then(() => {
   // Your code here
-})
+});
 ```
 
 ## Electron CLI Flags
@@ -96,12 +96,12 @@ A comma-separated list of `rules` that control how hostnames are mapped.
 
 For example:
 
-* `MAP * 127.0.0.1` Forces all hostnames to be mapped to 127.0.0.1
-* `MAP *.google.com proxy` Forces all google.com subdomains to be resolved to
+- `MAP * 127.0.0.1` Forces all hostnames to be mapped to 127.0.0.1
+- `MAP *.google.com proxy` Forces all google.com subdomains to be resolved to
   "proxy".
-* `MAP test.com [::1]:77` Forces "test.com" to resolve to IPv6 loopback. Will
+- `MAP test.com [::1]:77` Forces "test.com" to resolve to IPv6 loopback. Will
   also force the port of the resulting socket address to be 77.
-* `MAP * baz, EXCLUDE www.google.com` Remaps everything to "baz", except for
+- `MAP * baz, EXCLUDE www.google.com` Remaps everything to "baz", except for
   "www.google.com".
 
 These mappings apply to the endpoint host in a net request (the TCP connect
@@ -116,12 +116,12 @@ A comma-separated list of `rules` that control how hostnames are mapped.
 
 For example:
 
-* `MAP * 127.0.0.1` Forces all hostnames to be mapped to 127.0.0.1
-* `MAP *.google.com proxy` Forces all google.com subdomains to be resolved to
+- `MAP * 127.0.0.1` Forces all hostnames to be mapped to 127.0.0.1
+- `MAP *.google.com proxy` Forces all google.com subdomains to be resolved to
   "proxy".
-* `MAP test.com [::1]:77` Forces "test.com" to resolve to IPv6 loopback. Will
+- `MAP test.com [::1]:77` Forces "test.com" to resolve to IPv6 loopback. Will
   also force the port of the resulting socket address to be 77.
-* `MAP * baz, EXCLUDE www.google.com` Remaps everything to "baz", except for
+- `MAP * baz, EXCLUDE www.google.com` Remaps everything to "baz", except for
   "www.google.com".
 
 These `rules` only apply to the host resolver.
@@ -143,7 +143,7 @@ this switch must be passed on startup.
 $ electron --js-flags="--harmony_proxies --harmony_collections" your-app
 ```
 
-Run `node --v8-options` or `electron --js-flags="--help"` in your terminal for the list of available flags.  These can be used to enable early-stage JavaScript features, or log and manipulate garbage collection, among other things.
+Run `node --v8-options` or `electron --js-flags="--help"` in your terminal for the list of available flags. These can be used to enable early-stage JavaScript features, or log and manipulate garbage collection, among other things.
 
 For example, to trace V8 optimization and deoptimization:
 
@@ -211,9 +211,9 @@ list of hosts. This flag has an effect only if used in tandem with
 For example:
 
 ```js
-const { app } = require('electron')
+const { app } = require("electron");
 
-app.commandLine.appendSwitch('proxy-bypass-list', '<local>;*.google.com;*foo.com;1.2.3.4:5678')
+app.commandLine.appendSwitch("proxy-bypass-list", "<local>;*.google.com;*foo.com;1.2.3.4:5678");
 ```
 
 Will use the proxy server for all hosts except for local addresses (`localhost`,
@@ -339,8 +339,8 @@ Print stack traces for process warnings (including deprecations).
 
 Set the default value of the `verbatim` parameter in the Node.js [`dns.lookup()`](https://nodejs.org/api/dns.html#dnslookuphostname-options-callback) and [`dnsPromises.lookup()`](https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options) functions. The value could be:
 
-* `ipv4first`: sets default `verbatim` `false`.
-* `verbatim`: sets default `verbatim` `true`.
+- `ipv4first`: sets default `verbatim` `false`.
+- `verbatim`: sets default `verbatim` `true`.
 
 The default is `verbatim` and `dns.setDefaultResultOrder()` have higher priority than `--dns-result-order`.
 
@@ -377,7 +377,7 @@ Finally, you'll need to ensure that the version of Chromium in Electron matches 
 
 ### Chromium features relevant to Electron apps
 
-* `AlwaysLogLOAFURL`: enables script attribution for
+- `AlwaysLogLOAFURL`: enables script attribution for
   [`long-animation-frame`](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing)
   `PerformanceObserver` events for non-http(s), non-data, non-blob URLs (such as `file:` or custom
   protocol URLs).

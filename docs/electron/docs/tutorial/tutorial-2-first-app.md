@@ -1,6 +1,6 @@
 ---
-title: 'Building your First App'
-description: 'This guide will step you through the process of creating a barebones Hello World app in Electron.'
+title: "Building your First App"
+description: "This guide will step you through the process of creating a barebones Hello World app in Electron."
 slug: tutorial-first-app
 hide_title: false
 ---
@@ -138,7 +138,7 @@ main process entry point is configured correctly. Create a `main.js` file in the
 of your project with a single line of code:
 
 ```js title='main.js'
-console.log('Hello from Electron 👋')
+console.log("Hello from Electron 👋");
 ```
 
 Because Electron's main process is a Node.js runtime, you can execute arbitrary Node.js code
@@ -185,14 +185,8 @@ by creating a barebones web page in an `index.html` file in the root folder of y
   <head>
     <meta charset="UTF-8" />
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'"
-    />
-    <meta
-      http-equiv="X-Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'"
-    />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
+    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
     <title>Hello from Electron renderer!</title>
   </head>
   <body>
@@ -207,26 +201,26 @@ Replace the contents of your `main.js` file with the following code. We will exp
 highlighted block separately.
 
 ```js {1,3-10,12-14} title='main.js' showLineNumbers
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow } = require("electron");
 
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
-    height: 600
-  })
+    height: 600,
+  });
 
-  win.loadFile('index.html')
-}
+  win.loadFile("index.html");
+};
 
 app.whenReady().then(() => {
-  createWindow()
-})
+  createWindow();
+});
 ```
 
 ### Importing modules
 
 ```js title='main.js (Line 1)'
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow } = require("electron");
 ```
 
 In the first line, we are importing two Electron modules
@@ -252,10 +246,11 @@ For better type checking when writing TypeScript code, you can choose to import
 main process modules from `electron/main`.
 
 ```js
-const { app, BrowserWindow } = require('electron/main')
+const { app, BrowserWindow } = require("electron/main");
 ```
 
 For more information, see the [Process Model docs](../tutorial/process-model.md#process-specific-module-aliases-typescript).
+
 </details>
 
 :::info ES Modules in Electron
@@ -274,19 +269,19 @@ The `createWindow()` function loads your web page into a new BrowserWindow insta
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
-    height: 600
-  })
+    height: 600,
+  });
 
-  win.loadFile('index.html')
-}
+  win.loadFile("index.html");
+};
 ```
 
 ### Calling your function when the app is ready
 
 ```js title='main.js (Lines 12-14)' @ts-type={createWindow:()=>void}
 app.whenReady().then(() => {
-  createWindow()
-})
+  createWindow();
+});
 ```
 
 Many of Electron's core modules are Node.js [event emitters][] that adhere to Node's asynchronous
@@ -346,9 +341,9 @@ To implement this pattern in your Electron app, listen for the app module's
 to exit your app if the user is not on macOS.
 
 ```js
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
 ```
 
 ### Open a window if none are open (macOS)
@@ -365,12 +360,12 @@ events inside your existing `whenReady()` callback.
 
 ```js @ts-type={createWindow:()=>void}
 app.whenReady().then(() => {
-  createWindow()
+  createWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
 ```
 
 ## Final starter code

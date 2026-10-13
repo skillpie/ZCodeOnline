@@ -12,19 +12,19 @@ This module does not include a web interface. To view recorded traces, use
 > module is emitted.
 
 ```js
-const { app, contentTracing } = require('electron')
+const { app, contentTracing } = require("electron");
 
 app.whenReady().then(() => {
   (async () => {
     await contentTracing.startRecording({
-      included_categories: ['*']
-    })
-    console.log('Tracing started')
-    await new Promise(resolve => setTimeout(resolve, 5000))
-    const path = await contentTracing.stopRecording()
-    console.log('Tracing data recorded to ' + path)
-  })()
-})
+      included_categories: ["*"],
+    });
+    console.log("Tracing started");
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    const path = await contentTracing.stopRecording();
+    console.log("Tracing data recorded to " + path);
+  })();
+});
 ```
 
 ## Methods
@@ -64,7 +64,7 @@ changes:
 ```
 -->
 
-* `options` ([TraceConfig](structures/trace-config.md) | [TraceCategoriesAndOptions](structures/trace-categories-and-options.md))
+- `options` ([TraceConfig](structures/trace-config.md) | [TraceCategoriesAndOptions](structures/trace-categories-and-options.md))
 
 Returns `Promise<void>` - resolved once all child processes have acknowledged the `startRecording` request.
 
@@ -89,7 +89,7 @@ changes:
 ```
 -->
 
-* `resultFilePath` string (optional)
+- `resultFilePath` string (optional)
 
 Returns `Promise<string>` - resolves with a path to a file that contains the traced data once all child processes have acknowledged the `stopRecording` request
 
@@ -118,8 +118,8 @@ changes:
 
 Returns `Promise<Object>` - Resolves with an object containing the `value` and `percentage` of trace buffer maximum usage
 
-* `value` number
-* `percentage` number
+- `value` number
+- `percentage` number
 
 Get the maximum usage across processes of trace buffer as a percentage of the
 full state.

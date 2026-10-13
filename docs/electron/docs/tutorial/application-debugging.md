@@ -13,10 +13,10 @@ can open them programmatically by calling the `openDevTools()` API on the
 `webContents` of the instance:
 
 ```js
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow()
-win.webContents.openDevTools()
+const win = new BrowserWindow();
+win.webContents.openDevTools();
 ```
 
 Google offers [excellent documentation for their developer tools][devtools].

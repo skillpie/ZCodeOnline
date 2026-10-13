@@ -24,7 +24,7 @@ added:
 ```
 -->
 
-* `arg` type - Description.
+- `arg` type - Description.
 ````
 
 ### Finding when an API was added

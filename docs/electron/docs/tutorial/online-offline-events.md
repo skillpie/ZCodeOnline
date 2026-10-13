@@ -24,14 +24,14 @@ status of Electron, you should develop additional means for this check.
 In the main process, you can use the `net` module to detect online/offline status:
 
 ```js
-const { net } = require('electron')
+const { net } = require("electron");
 
 // Method 1: Using net.isOnline()
-const isOnline = net.isOnline()
-console.log('Online status:', isOnline)
+const isOnline = net.isOnline();
+console.log("Online status:", isOnline);
 
 // Method 2: Using net.online property
-console.log('Online status:', net.online)
+console.log("Online status:", net.online);
 ```
 
 Both `net.isOnline()` and `net.online` return the same boolean value with the same reliability characteristics as `navigator.onLine` - they provide a strong indicator when offline (`false`), but a `true` value doesn't guarantee successful internet connectivity.
@@ -46,15 +46,15 @@ Starting with an HTML file `index.html`, this example will demonstrate how the `
 ```html title="index.html"
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Hello World!</title>
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
-</head>
-<body>
-    <h1>Connection status: <strong id='status'></strong></h1>
+  </head>
+  <body>
+    <h1>Connection status: <strong id="status"></strong></h1>
     <script src="renderer.js"></script>
-</body>
+  </body>
 </html>
 ```
 
@@ -62,41 +62,41 @@ In order to mutate the DOM, create a `renderer.js` file that adds event listener
 
 ```js title='renderer.js'
 const updateOnlineStatus = () => {
-  document.getElementById('status').innerHTML = navigator.onLine ? 'online' : 'offline'
-}
+  document.getElementById("status").innerHTML = navigator.onLine ? "online" : "offline";
+};
 
-window.addEventListener('online', updateOnlineStatus)
-window.addEventListener('offline', updateOnlineStatus)
+window.addEventListener("online", updateOnlineStatus);
+window.addEventListener("offline", updateOnlineStatus);
 
-updateOnlineStatus()
+updateOnlineStatus();
 ```
 
 Finally, create a `main.js` file for main process that creates the window.
 
 ```js title='main.js'
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow } = require("electron");
 
 const createWindow = () => {
-  const onlineStatusWindow = new BrowserWindow()
+  const onlineStatusWindow = new BrowserWindow();
 
-  onlineStatusWindow.loadFile('index.html')
-}
+  onlineStatusWindow.loadFile("index.html");
+};
 
 app.whenReady().then(() => {
-  createWindow()
+  createWindow();
 
-  app.on('activate', () => {
+  app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      createWindow();
     }
-  })
-})
+  });
+});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
   }
-})
+});
 ```
 
 After launching the Electron application, you should see the notification:

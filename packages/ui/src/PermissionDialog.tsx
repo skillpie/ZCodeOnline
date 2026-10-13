@@ -195,10 +195,11 @@ const GLOBAL_PERMISSION_OPTION_NAME_LABELS: Record<string, PermissionOptionNameM
   "always allow computer use in this project": { label: "chat.permission.cua.allowForProject" },
   // 会话免确认（workflow 运行、DBExecute 等工具共用同一 CLI name）：
   // CLI 侧 name 是匹配键，wire kind 是 allowAlways（排序 / 样式同 always allow）。
-  // 描述用工具无关的通用文案，避免把某个工具的场景词带进其他工具的弹窗。
+  // workflow 运行确认窗的会话免确认：
+  // CLI 侧 name 是匹配键，wire kind 是 allowAlways（排序 / 样式同 always allow）。
   "always allow in this session": {
-    label: "chat.permission.allowForSession",
-    description: "chat.permission.allowForSession.description",
+    label: "chat.permission.workflow.allowForSession",
+    description: "chat.permission.workflow.allowForSession.description",
   },
 };
 

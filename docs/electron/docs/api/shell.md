@@ -9,9 +9,9 @@ The `shell` module provides functions related to desktop integration.
 An example of opening a URL in the user's default browser:
 
 ```js
-const { shell } = require('electron')
+const { shell } = require("electron");
 
-shell.openExternal('https://github.com')
+shell.openExternal("https://github.com");
 ```
 
 > [!WARNING]
@@ -23,7 +23,7 @@ The `shell` module has the following methods:
 
 ### `shell.showItemInFolder(fullPath)`
 
-* `fullPath` string
+- `fullPath` string
 
 Show the given file in a file manager. If possible, select the file.
 
@@ -37,7 +37,7 @@ added:
 ```
 -->
 
-* `path` string
+- `path` string
 
 Returns `Promise<string>` - Resolves with a string containing the error message corresponding to the failure if a failure occurred, otherwise "".
 
@@ -57,12 +57,12 @@ changes:
 ```
 -->
 
-* `url` string - Max 2081 characters on Windows.
-* `options` Object (optional)
-  * `activate` boolean (optional) _macOS_ - `true` to bring the opened application to the foreground. The default is `true`.
-  * `workingDirectory` string (optional) _Windows_ - The working directory.
-  * `logUsage` boolean (optional) _Windows_ - Indicates a user initiated launch that enables tracking of frequently used programs and other behaviors.
-                                              The default is `false`.
+- `url` string - Max 2081 characters on Windows.
+- `options` Object (optional)
+  - `activate` boolean (optional) _macOS_ - `true` to bring the opened application to the foreground. The default is `true`.
+  - `workingDirectory` string (optional) _Windows_ - The working directory.
+  - `logUsage` boolean (optional) _Windows_ - Indicates a user initiated launch that enables tracking of frequently used programs and other behaviors.
+    The default is `false`.
 
 Returns `Promise<void>`
 
@@ -78,7 +78,7 @@ added:
 ```
 -->
 
-* `path` string - path to the item to be moved to the trash.
+- `path` string - path to the item to be moved to the trash.
 
 Returns `Promise<void>` - Resolves when the operation has been completed.
 Rejects if there was an error while deleting the requested item.
@@ -96,13 +96,13 @@ Play the beep sound.
 
 ### `shell.writeShortcutLink(shortcutPath[, operation], options)` _Windows_
 
-* `shortcutPath` string
-* `operation` string (optional) - Default is `create`, can be one of following:
-  * `create` - Creates a new shortcut, overwriting if necessary.
-  * `update` - Updates specified properties only on an existing shortcut.
-  * `replace` - Overwrites an existing shortcut, fails if the shortcut doesn't
+- `shortcutPath` string
+- `operation` string (optional) - Default is `create`, can be one of following:
+  - `create` - Creates a new shortcut, overwriting if necessary.
+  - `update` - Updates specified properties only on an existing shortcut.
+  - `replace` - Overwrites an existing shortcut, fails if the shortcut doesn't
     exist.
-* `options` [ShortcutDetails](structures/shortcut-details.md)
+- `options` [ShortcutDetails](structures/shortcut-details.md)
 
 Returns `boolean` - Whether the shortcut was created successfully.
 
@@ -110,7 +110,7 @@ Creates or updates a shortcut link at `shortcutPath`.
 
 ### `shell.readShortcutLink(shortcutPath)` _Windows_
 
-* `shortcutPath` string
+- `shortcutPath` string
 
 Returns [`ShortcutDetails`](structures/shortcut-details.md)
 

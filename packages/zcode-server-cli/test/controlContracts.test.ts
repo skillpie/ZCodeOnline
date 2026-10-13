@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { controlRequestSchema, coreCommandSchema } from "../src/contracts.js";
 
 // 控制链契约验收：桌面远程控制新增的 tunnel-assist-code / tunnel-assist-refresh

@@ -6,19 +6,26 @@
  */
 import { useCallback } from "react";
 import type { LightweightDiffBlameInfo } from "@/components/ui/lightweight-diff-preview.js";
-import { useServices } from "@/hooks/useServices.js";
+import { useOptionalServices } from "@/hooks/useServices.js";
 
 const CACHE_MAX_ENTRIES = 50;
 const cache = new Map<string, Promise<Map<number, LightweightDiffBlameInfo>>>();
 
 export function useGitBlameLineResolver() {
-  const { gitService } = useServices();
+  // CodeViewer/预览层会出现在 share、预览弹窗等不挂 ServiceProvider 的上下文
+  // （官方单测也直接裸渲染）：无服务时 blame 解析直接停用（行级信息恒为 null），
+  // 不影响其余渲染。
+  const services = useOptionalServices();
 
   return useCallback(
     (
       workspacePath: string,
       filePath: string,
     ): ((line: number) => Promise<LightweightDiffBlameInfo | null>) => {
+      if (!services) {
+        return () => Promise.resolve(null);
+      }
+      const { gitService } = services;
       const key = `${workspacePath}\u0000${filePath}`;
       let cached = cache.get(key);
       if (!cached) {
@@ -55,6 +62,6 @@ export function useGitBlameLineResolver() {
         });
       };
     },
-    [gitService],
+    [services],
   );
 }

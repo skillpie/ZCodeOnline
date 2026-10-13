@@ -1,5 +1,5 @@
 ---
-title: 'Publishing and Updating'
+title: "Publishing and Updating"
 description: "There are several ways to update an Electron application. The easiest and officially supported one is taking advantage of the built-in Squirrel framework and Electron's autoUpdater module."
 slug: tutorial-publishing-updating
 hide_title: false
@@ -82,18 +82,18 @@ configuration. A full list of options is documented in the Forge's
 module.exports = {
   publishers: [
     {
-      name: '@electron-forge/publisher-github',
+      name: "@electron-forge/publisher-github",
       config: {
         repository: {
-          owner: 'github-user-name',
-          name: 'github-repo-name'
+          owner: "github-user-name",
+          name: "github-repo-name",
         },
         prerelease: false,
-        draft: true
-      }
-    }
-  ]
-}
+        draft: true,
+      },
+    },
+  ],
+};
 ```
 
 :::tip Drafting releases before publishing
@@ -189,7 +189,7 @@ npm install update-electron-app
 Then, import the module and call it immediately in the main process.
 
 ```js title='main.js' @ts-nocheck
-require('update-electron-app')()
+require("update-electron-app")();
 ```
 
 And that is all it takes! Once your application is packaged, it will update itself for each new

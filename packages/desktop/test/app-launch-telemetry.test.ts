@@ -2,9 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 describe("app telemetry bridge", () => {
   it("syncs renderer telemetry context to main at bootstrap", async () => {
-    const { syncAppTelemetryContext } = await import(
-      "../src/renderer/appTelemetryBridge.js"
-    );
+    const { syncAppTelemetryContext } = await import("../src/renderer/appTelemetryBridge.js");
     const createRendererContext = vi.fn(() => ({
       clientTimezone: "Asia/Shanghai",
       clientLanguage: "zh-CN",

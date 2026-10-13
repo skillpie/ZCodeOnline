@@ -3,13 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/ui/button.js", () => ({
-  Button: ({
-    children,
-    ...props
-  }: {
-    children: ReactNode;
-    [key: string]: unknown;
-  }) => createElement("button", props, children),
+  Button: ({ children, ...props }: { children: ReactNode; [key: string]: unknown }) =>
+    createElement("button", props, children),
 }));
 
 vi.mock("@/components/ui/input.js", () => ({
@@ -17,6 +12,8 @@ vi.mock("@/components/ui/input.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -41,9 +38,10 @@ async function importDirectoryBrowserModule() {
       begin: () => number;
       isCurrent: (requestId: number) => boolean;
     };
-    getDirectoryBrowserEntryIconKind: (
-      entry: { type: "directory" | "file"; isSymbolicLink?: boolean },
-    ) => "folder" | "folder-symlink";
+    getDirectoryBrowserEntryIconKind: (entry: {
+      type: "directory" | "file";
+      isSymbolicLink?: boolean;
+    }) => "folder" | "folder-symlink";
     filterDirectoryBrowserEntries: (
       entries: Array<{
         name: string;

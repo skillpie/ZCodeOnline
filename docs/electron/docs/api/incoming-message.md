@@ -14,7 +14,7 @@ interface and is therefore an [EventEmitter][event-emitter].
 
 Returns:
 
-* `chunk` Buffer - A chunk of response body's data.
+- `chunk` Buffer - A chunk of response body's data.
 
 The `data` event is the usual method of transferring response data into
 applicative code.
@@ -31,7 +31,7 @@ Emitted when a request has been canceled during an ongoing HTTP transaction.
 
 Returns:
 
-* `error` Error - Typically holds an error string identifying failure root cause.
+- `error` Error - Typically holds an error string identifying failure root cause.
 
 Emitted when an error was encountered while streaming response data events. For
 instance, if the server closes the underlying connection while the response is still
@@ -55,14 +55,14 @@ A `string` representing the HTTP status message.
 A `Record<string, string | string[]>` representing the HTTP response headers. The `headers` object is
 formatted as follows:
 
-* All header names are lowercased.
-* Duplicates of `age`, `authorization`, `content-length`, `content-type`,
-`etag`, `expires`, `from`, `host`, `if-modified-since`, `if-unmodified-since`,
-`last-modified`, `location`, `max-forwards`, `proxy-authorization`, `referer`,
-`retry-after`, `server`, or `user-agent` are discarded.
-* `set-cookie` is always an array. Duplicates are added to the array.
-* For duplicate `cookie` headers, the values are joined together with '; '.
-* For all other headers, the values are joined together with ', '.
+- All header names are lowercased.
+- Duplicates of `age`, `authorization`, `content-length`, `content-type`,
+  `etag`, `expires`, `from`, `host`, `if-modified-since`, `if-unmodified-since`,
+  `last-modified`, `location`, `max-forwards`, `proxy-authorization`, `referer`,
+  `retry-after`, `server`, or `user-agent` are discarded.
+- `set-cookie` is always an array. Duplicates are added to the array.
+- For duplicate `cookie` headers, the values are joined together with '; '.
+- For all other headers, the values are joined together with ', '.
 
 #### `response.httpVersion`
 
@@ -100,5 +100,5 @@ duplicates are not merged.
 //   '127.0.0.1:8000',
 //   'ACCEPT',
 //   '*/*' ]
-console.log(response.rawHeaders)
+console.log(response.rawHeaders);
 ```

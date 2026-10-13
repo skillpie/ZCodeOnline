@@ -7,13 +7,13 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 ### `new TouchBarSlider(options)`
 
-* `options` Object
-  * `label` string (optional) - Label text.
-  * `value` Integer (optional) - Selected value.
-  * `minValue` Integer (optional) - Minimum value.
-  * `maxValue` Integer (optional) - Maximum value.
-  * `change` Function (optional) - Function to call when the slider is changed.
-    * `newValue` number - The value that the user selected on the Slider.
+- `options` Object
+  - `label` string (optional) - Label text.
+  - `value` Integer (optional) - Selected value.
+  - `minValue` Integer (optional) - Minimum value.
+  - `maxValue` Integer (optional) - Maximum value.
+  - `change` Function (optional) - Function to call when the slider is changed.
+    - `newValue` number - The value that the user selected on the Slider.
 
 ### Instance Properties
 

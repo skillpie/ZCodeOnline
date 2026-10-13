@@ -1,6 +1,6 @@
 ---
-title: 'Introduction'
-description: 'Welcome to the Electron documentation! If this is your first time developing an Electron app, read through this Getting Started section to get familiar with the basics. Otherwise, feel free to explore our guides and API documentation!'
+title: "Introduction"
+description: "Welcome to the Electron documentation! If this is your first time developing an Electron app, read through this Getting Started section to get familiar with the basics. Otherwise, feel free to explore our guides and API documentation!"
 slug: /latest/
 hide_title: false
 ---
@@ -33,6 +33,7 @@ a code block. If you have Fiddle installed, this button will open a
 no copy-pasting required.
 
 ```fiddle docs/fiddles/quick-start
+
 ```
 
 ## What is in the docs?

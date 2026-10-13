@@ -1,9 +1,6 @@
 {
   "extends": "standard",
-  "plugins": [
-    "import",
-    "markdown"
-  ],
+  "plugins": ["import", "markdown"],
   "overrides": [
     {
       "files": ["*.md", "**/*.md"],
@@ -12,20 +9,23 @@
   ],
   "rules": {
     "@typescript-eslint/no-unused-vars": "off",
-    "import/order": ["error", {
-      "alphabetize": {
-        "order": "asc"
-      },
-      "newlines-between": "always",
-      "pathGroups": [
-        {
-          "pattern": "{electron,electron/**}",
-          "group": "builtin",
-          "position": "before"
-        }
-      ],
-      "pathGroupsExcludedImportTypes": []
-    }],
+    "import/order": [
+      "error",
+      {
+        "alphabetize": {
+          "order": "asc"
+        },
+        "newlines-between": "always",
+        "pathGroups": [
+          {
+            "pattern": "{electron,electron/**}",
+            "group": "builtin",
+            "position": "before"
+          }
+        ],
+        "pathGroupsExcludedImportTypes": []
+      }
+    ],
     "n/no-callback-literal": "off",
     "no-undef": "off",
     "no-unused-expressions": "off",

@@ -5,6 +5,7 @@ slug: security
 hide_title: true
 toc_max_heading_level: 3
 ---
+
 # Security
 
 :::info Reporting security issues
@@ -48,23 +49,23 @@ the result of the overall security of the framework foundation
 your code. As such, it is your responsibility to follow a few important best
 practices:
 
-* **Keep your application up-to-date with the latest Electron framework release.**
-When releasing your product, you’re also shipping a bundle composed of Electron,
-Chromium shared library and Node.js. Vulnerabilities affecting these components
-may impact the security of your application. By updating Electron to the latest
-version, you ensure that critical vulnerabilities (such as _nodeIntegration bypasses_)
-are already patched and cannot be exploited in your application. For more information,
-see "[Use a current version of Electron](#16-use-a-current-version-of-electron)".
+- **Keep your application up-to-date with the latest Electron framework release.**
+  When releasing your product, you’re also shipping a bundle composed of Electron,
+  Chromium shared library and Node.js. Vulnerabilities affecting these components
+  may impact the security of your application. By updating Electron to the latest
+  version, you ensure that critical vulnerabilities (such as _nodeIntegration bypasses_)
+  are already patched and cannot be exploited in your application. For more information,
+  see "[Use a current version of Electron](#16-use-a-current-version-of-electron)".
 
-* **Evaluate your dependencies.** While NPM provides half a million reusable packages,
-it is your responsibility to choose trusted 3rd-party libraries. If you use outdated
-libraries affected by known vulnerabilities or rely on poorly maintained code,
-your application security could be in jeopardy.
+- **Evaluate your dependencies.** While NPM provides half a million reusable packages,
+  it is your responsibility to choose trusted 3rd-party libraries. If you use outdated
+  libraries affected by known vulnerabilities or rely on poorly maintained code,
+  your application security could be in jeopardy.
 
-* **Adopt secure coding practices.** The first line of defense for your application
-is your own code. Common web vulnerabilities, such as Cross-Site Scripting (XSS),
-have a higher security impact on Electron applications hence it is highly recommended
-to adopt secure software development best practices and perform security testing.
+- **Adopt secure coding practices.** The first line of defense for your application
+  is your own code. Common web vulnerabilities, such as Cross-Site Scripting (XSS),
+  have a higher security impact on Electron applications hence it is highly recommended
+  to adopt secure software development best practices and perform security testing.
 
 ### Isolation for untrusted content
 
@@ -139,20 +140,20 @@ like `HTTP`. Similarly, we recommend the use of `WSS` over `WS`, `FTPS` over
 
 ```js title='main.js (Main Process)' @ts-type={browserWindow:Electron.BrowserWindow}
 // Bad
-browserWindow.loadURL('http://example.com')
+browserWindow.loadURL("http://example.com");
 
 // Good
-browserWindow.loadURL('https://example.com')
+browserWindow.loadURL("https://example.com");
 ```
 
 ```html title='index.html (Renderer Process)'
 <!-- Bad -->
 <script crossorigin src="http://example.com/react.js"></script>
-<link rel="stylesheet" href="http://example.com/style.css">
+<link rel="stylesheet" href="http://example.com/style.css" />
 
 <!-- Good -->
 <script crossorigin src="https://example.com/react.js"></script>
-<link rel="stylesheet" href="https://example.com/style.css">
+<link rel="stylesheet" href="https://example.com/style.css" />
 ```
 
 ### 2. Do not enable Node.js integration for remote content
@@ -189,22 +190,22 @@ const mainWindow = new BrowserWindow({
   webPreferences: {
     contextIsolation: false,
     nodeIntegration: true,
-    nodeIntegrationInWorker: true
-  }
-})
+    nodeIntegrationInWorker: true,
+  },
+});
 
-mainWindow.loadURL('https://example.com')
+mainWindow.loadURL("https://example.com");
 ```
 
 ```js title='main.js (Main Process)'
 // Good
 const mainWindow = new BrowserWindow({
   webPreferences: {
-    preload: path.join(app.getAppPath(), 'preload.js')
-  }
-})
+    preload: path.join(app.getAppPath(), "preload.js"),
+  },
+});
 
-mainWindow.loadURL('https://example.com')
+mainWindow.loadURL("https://example.com");
 ```
 
 ```html title='index.html (Renderer Process)'
@@ -287,26 +288,24 @@ security-conscious developers might want to assume the very opposite.
 #### How?
 
 ```js title='main.js (Main Process)'
-const { session } = require('electron')
+const { session } = require("electron");
 
-const { URL } = require('node:url')
+const { URL } = require("node:url");
 
-session
-  .defaultSession
-  .setPermissionRequestHandler((webContents, permission, callback) => {
-    const parsedUrl = new URL(webContents.getURL())
+session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+  const parsedUrl = new URL(webContents.getURL());
 
-    if (permission === 'notifications') {
-      // Approves the permissions request
-      callback(true)
-    }
+  if (permission === "notifications") {
+    // Approves the permissions request
+    callback(true);
+  }
 
-    // Verify URL
-    if (parsedUrl.protocol !== 'https:' || parsedUrl.host !== 'example.com') {
-      // Denies the permissions request
-      return callback(false)
-    }
-  })
+  // Verify URL
+  if (parsedUrl.protocol !== "https:" || parsedUrl.host !== "example.com") {
+    // Denies the permissions request
+    return callback(false);
+  }
+});
 ```
 
 Note: `session.defaultSession` is only available after `app.whenReady` is called.
@@ -336,14 +335,14 @@ the execution of insecure code from different domains.
 // Bad
 const mainWindow = new BrowserWindow({
   webPreferences: {
-    webSecurity: false
-  }
-})
+    webSecurity: false,
+  },
+});
 ```
 
 ```js title='main.js (Main Process)'
 // Good
-const mainWindow = new BrowserWindow()
+const mainWindow = new BrowserWindow();
 ```
 
 ```html title='index.html (Renderer Process)'
@@ -389,16 +388,16 @@ which can be set using Electron's
 handler:
 
 ```js title='main.js (Main Process)'
-const { session } = require('electron')
+const { session } = require("electron");
 
 session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
   callback({
     responseHeaders: {
       ...details.responseHeaders,
-      'Content-Security-Policy': ['default-src \'none\'']
-    }
-  })
-})
+      "Content-Security-Policy": ["default-src 'none'"],
+    },
+  });
+});
 ```
 
 Note: `session.defaultSession` is only available after `app.whenReady` is called.
@@ -411,7 +410,7 @@ be useful in some cases to set a policy on a page directly in the markup using a
 `<meta>` tag:
 
 ```html title='index.html (Renderer Process)'
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'" />
 ```
 
 ### 8. Do not enable `allowRunningInsecureContent`
@@ -439,14 +438,14 @@ of the loaded resources while encrypting the traffic itself. See the section on
 // Bad
 const mainWindow = new BrowserWindow({
   webPreferences: {
-    allowRunningInsecureContent: true
-  }
-})
+    allowRunningInsecureContent: true,
+  },
+});
 ```
 
 ```js title='main.js (Main Process)'
 // Good
-const mainWindow = new BrowserWindow({})
+const mainWindow = new BrowserWindow({});
 ```
 
 ### 9. Do not enable experimental features
@@ -473,14 +472,14 @@ not enable this property.
 // Bad
 const mainWindow = new BrowserWindow({
   webPreferences: {
-    experimentalFeatures: true
-  }
-})
+    experimentalFeatures: true,
+  },
+});
 ```
 
 ```js title='main.js (Main Process)'
 // Good
-const mainWindow = new BrowserWindow({})
+const mainWindow = new BrowserWindow({});
 ```
 
 ### 10. Do not use `enableBlinkFeatures`
@@ -507,14 +506,14 @@ no circumstances should you enable features speculatively.
 // Bad
 const mainWindow = new BrowserWindow({
   webPreferences: {
-    enableBlinkFeatures: 'ExecCommandInJavaScript'
-  }
-})
+    enableBlinkFeatures: "ExecCommandInJavaScript",
+  },
+});
 ```
 
 ```js title='main.js (Main Process)'
 // Good
-const mainWindow = new BrowserWindow()
+const mainWindow = new BrowserWindow();
 ```
 
 ### 11. Do not use `allowpopups` for WebViews
@@ -573,20 +572,20 @@ Before a [`<webview>`][webview-tag] tag is attached, Electron will fire the
 prevent the creation of `webViews` with possibly insecure options.
 
 ```js title='main.js (Main Process)'
-app.on('web-contents-created', (event, contents) => {
-  contents.on('will-attach-webview', (event, webPreferences, params) => {
+app.on("web-contents-created", (event, contents) => {
+  contents.on("will-attach-webview", (event, webPreferences, params) => {
     // Strip away preload scripts if unused or verify their location is legitimate
-    delete webPreferences.preload
+    delete webPreferences.preload;
 
     // Disable Node.js integration
-    webPreferences.nodeIntegration = false
+    webPreferences.nodeIntegration = false;
 
     // Verify URL being loaded
-    if (!params.src.startsWith('https://example.com/')) {
-      event.preventDefault()
+    if (!params.src.startsWith("https://example.com/")) {
+      event.preventDefault();
     }
-  })
-})
+  });
+});
 ```
 
 Again, this list merely minimizes the risk, but does not remove it. If your goal
@@ -623,19 +622,19 @@ sometimes be fooled - a `startsWith('https://example.com')` test would let
 `https://example.com.attacker.com` through.
 
 ```js title='main.js (Main Process)'
-const { app } = require('electron')
+const { app } = require("electron");
 
-const { URL } = require('node:url')
+const { URL } = require("node:url");
 
-app.on('web-contents-created', (event, contents) => {
-  contents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl)
+app.on("web-contents-created", (event, contents) => {
+  contents.on("will-navigate", (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
 
-    if (parsedUrl.origin !== 'https://example.com') {
-      event.preventDefault()
+    if (parsedUrl.origin !== "https://example.com") {
+      event.preventDefault();
     }
-  })
-})
+  });
+});
 ```
 
 ### 14. Disable or limit creation of new windows
@@ -665,9 +664,9 @@ and the options used to create it. We recommend that you register a handler to
 monitor the creation of windows, and deny any unexpected window creation.
 
 ```js title='main.js (Main Process)' @ts-type={isSafeForExternalOpen:(url:string)=>boolean}
-const { app, shell } = require('electron')
+const { app, shell } = require("electron");
 
-app.on('web-contents-created', (event, contents) => {
+app.on("web-contents-created", (event, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
     // In this example, we'll ask the operating system
     // to open this event's url in the default browser.
@@ -676,13 +675,13 @@ app.on('web-contents-created', (event, contents) => {
     // URLs should be allowed through to shell.openExternal.
     if (isSafeForExternalOpen(url)) {
       setImmediate(() => {
-        shell.openExternal(url)
-      })
+        shell.openExternal(url);
+      });
     }
 
-    return { action: 'deny' }
-  })
-})
+    return { action: "deny" };
+  });
+});
 ```
 
 ### 15. Do not use `shell.openExternal` with untrusted content
@@ -702,16 +701,16 @@ leveraged to execute arbitrary commands.
 
 ```js title='main.js (Main Process)' @ts-type={USER_CONTROLLED_DATA_HERE:string}
 //  Bad
-const { shell } = require('electron')
+const { shell } = require("electron");
 
-shell.openExternal(USER_CONTROLLED_DATA_HERE)
+shell.openExternal(USER_CONTROLLED_DATA_HERE);
 ```
 
 ```js title='main.js (Main Process)'
 //  Good
-const { shell } = require('electron')
+const { shell } = require("electron");
 
-shell.openExternal('https://example.com/index.html')
+shell.openExternal("https://example.com/index.html");
 ```
 
 ### 16. Use a current version of Electron
@@ -750,7 +749,7 @@ aren't performing actions or sending information to untrusted renderers.
 #### Why?
 
 All Web Frames can in theory send IPC messages to the main process, including
-iframes and child windows in some scenarios.  If you have an IPC message that returns
+iframes and child windows in some scenarios. If you have an IPC message that returns
 user data to the sender via `event.reply` or performs privileged actions that the renderer
 can't natively, you should ensure you aren't listening to third party web frames.
 
@@ -760,20 +759,20 @@ You should be validating the `sender` of **all** IPC messages by default.
 
 ```js title='main.js (Main Process)' @ts-type={getSecrets:()=>unknown}
 // Bad
-ipcMain.handle('get-secrets', () => {
-  return getSecrets()
-})
+ipcMain.handle("get-secrets", () => {
+  return getSecrets();
+});
 
 // Good
-ipcMain.handle('get-secrets', (e) => {
-  if (!validateSender(e.senderFrame)) return null
-  return getSecrets()
-})
+ipcMain.handle("get-secrets", (e) => {
+  if (!validateSender(e.senderFrame)) return null;
+  return getSecrets();
+});
 
-function validateSender (frame) {
+function validateSender(frame) {
   // Validate the host of the URL using an actual URL parser and an allowlist
-  if ((new URL(frame.url)).host === 'electronjs.org') return true
-  return false
+  if (new URL(frame.url).host === "electronjs.org") return true;
+  return false;
 }
 ```
 
@@ -842,19 +841,20 @@ In short, we want the untrusted web content to only have access to necessary inf
 
 ```js title='preload'.js'
 // Bad
-contextBridge.exposeInMainWorld('electronAPI', {
-  on: ipcRenderer.on
-})
+contextBridge.exposeInMainWorld("electronAPI", {
+  on: ipcRenderer.on,
+});
 
 // Also bad
-contextBridge.exposeInMainWorld('electronAPI', {
-  onUpdateCounter: (callback) => ipcRenderer.on('update-counter', callback)
-})
+contextBridge.exposeInMainWorld("electronAPI", {
+  onUpdateCounter: (callback) => ipcRenderer.on("update-counter", callback),
+});
 
 // Good
-contextBridge.exposeInMainWorld('electronAPI', {
-  onUpdateCounter: (callback) => ipcRenderer.on('update-counter', (_event, value) => callback(value))
-})
+contextBridge.exposeInMainWorld("electronAPI", {
+  onUpdateCounter: (callback) =>
+    ipcRenderer.on("update-counter", (_event, value) => callback(value)),
+});
 ```
 
 :::info

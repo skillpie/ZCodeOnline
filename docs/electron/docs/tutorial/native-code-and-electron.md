@@ -4,10 +4,10 @@ One of Electron's most powerful features is the ability to combine web technolog
 
 Electron does so by building on top of "Native Node.js Addons". You've probably already come across a few of them - packages like the famous [sqlite](https://www.npmjs.com/package/sqlite3) use native code to combine JavaScript and native technologies. You can use this feature to extend your Electron application with anything a fully native application can do:
 
-* Access native platform APIs not available in JavaScript. Any macOS, Windows, or Linux operating system API is available to you.
-* Create UI components that interact with native desktop frameworks.
-* Integrate with existing native libraries.
-* Implement performance-critical code that runs faster than JavaScript.
+- Access native platform APIs not available in JavaScript. Any macOS, Windows, or Linux operating system API is available to you.
+- Create UI components that interact with native desktop frameworks.
+- Integrate with existing native libraries.
+- Implement performance-critical code that runs faster than JavaScript.
 
 Native Node.js addons are dynamically-linked shared objects (on Unix-like systems) or DLL files (on Windows) that can be loaded into Node.js or Electron using the `require()` or `import` functions. They behave just like regular JavaScript modules but provide an interface to code written in C++, Rust, or other languages that can compile to native code.
 
@@ -33,9 +33,9 @@ The official Node.js installer offers the optional installation of "Tools for Na
 
 ### Requirements: Linux
 
-* [A supported version of Python](https://devguide.python.org/versions/)
-* `make`
-* A proper C/C++ compiler toolchain, like [GCC](https://gcc.gnu.org)
+- [A supported version of Python](https://devguide.python.org/versions/)
+- `make`
+- A proper C/C++ compiler toolchain, like [GCC](https://gcc.gnu.org)
 
 ## 1) Creating a package
 
@@ -53,8 +53,8 @@ This creates a basic `package.json` file. Next, we'll install the necessary depe
 npm install node-addon-api bindings
 ```
 
-* `node-addon-api`: This is a C++ wrapper for the low-level Node.js API that makes it easier to build addons. It provides a C++ object-oriented API that's more convenient and safer to use than the raw C-style API.
-* `bindings`: A helper module that simplifies the process of loading your compiled native addon. It handles finding your compiled `.node` file automatically.
+- `node-addon-api`: This is a C++ wrapper for the low-level Node.js API that makes it easier to build addons. It provides a C++ object-oriented API that's more convenient and safer to use than the raw C-style API.
+- `bindings`: A helper module that simplifies the process of loading your compiled native addon. It handles finding your compiled `.node` file automatically.
 
 Now, let's update our `package.json` to include the appropriate build scripts. We will explain what these specifically do further below.
 
@@ -80,16 +80,16 @@ Now, let's update our `package.json` to include the appropriate build scripts. W
 
 These scripts will:
 
-* `clean`: Remove the build directory, allowing for a fresh build
-* `build`: Run the standard node-gyp build process to compile your addon
+- `clean`: Remove the build directory, allowing for a fresh build
+- `build`: Run the standard node-gyp build process to compile your addon
 
 ## 2) Setting up the build system
 
 Node.js addons use a build system called `node-gyp`, which is a cross-platform command-line tool written in Node.js. It compiles native addon modules for Node.js using platform-specific build tools behind the scenes:
 
-* On Windows: Visual Studio
-* On macOS: Xcode or command-line tools
-* On Linux: GCC or similar compilers
+- On Windows: Visual Studio
+- On macOS: Xcode or command-line tools
+- On Linux: GCC or similar compilers
 
 ### Configuring `node-gyp`
 
@@ -100,20 +100,10 @@ The `binding.gyp` file is a JSON-like configuration file that tells node-gyp how
   "targets": [
     {
       "target_name": "my_addon",
-      "sources": [
-        "src/my_addon.cc",
-        "src/cpp_code.cc"
-      ],
-      "include_dirs": [
-        "<!@(node -p \"require('node-addon-api').include\")",
-        "include"
-      ],
-      "dependencies": [
-        "<!(node -p \"require('node-addon-api').gyp\")"
-      ],
-      "defines": [
-        "NODE_ADDON_API_CPP_EXCEPTIONS"
-      ],
+      "sources": ["src/my_addon.cc", "src/cpp_code.cc"],
+      "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")", "include"],
+      "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
+      "defines": ["NODE_ADDON_API_CPP_EXCEPTIONS"],
       "cflags!": ["-fno-exceptions"],
       "cflags_cc!": ["-fno-exceptions"],
       "xcode_settings": {
@@ -133,15 +123,15 @@ The `binding.gyp` file is a JSON-like configuration file that tells node-gyp how
 
 Let's break down this configuration:
 
-* `target_name`: The name of your addon. This determines the filename of the compiled module (my_addon.node).
-* `sources`: List of source files to compile. We'll have two files: the main addon file and our actual C++ implementation.
-* `include_dirs`: Directories to search for header files. The cryptic-looking line `<!@(node -p \"require('node-addon-api').include\")` runs a Node.js command to get the path to the node-addon-api include directory.
-* `dependencies`: The `node-addon-api` dependency. Similar to the include dirs, this executes a Node.js command to get the proper configuration.
-* `defines`: Preprocessor definitions. Here we're enabling C++ exceptions for node-addon-api.
-Platform-specific settings:
-* `cflags`! and cflags_cc!: Compiler flags for Unix-like systems
-* `xcode_settings`: Settings specific to macOS/Xcode compiler
-* `msvs_settings`: Settings specific to Microsoft Visual Studio on Windows
+- `target_name`: The name of your addon. This determines the filename of the compiled module (my_addon.node).
+- `sources`: List of source files to compile. We'll have two files: the main addon file and our actual C++ implementation.
+- `include_dirs`: Directories to search for header files. The cryptic-looking line `<!@(node -p \"require('node-addon-api').include\")` runs a Node.js command to get the path to the node-addon-api include directory.
+- `dependencies`: The `node-addon-api` dependency. Similar to the include dirs, this executes a Node.js command to get the proper configuration.
+- `defines`: Preprocessor definitions. Here we're enabling C++ exceptions for node-addon-api.
+  Platform-specific settings:
+- `cflags`! and cflags_cc!: Compiler flags for Unix-like systems
+- `xcode_settings`: Settings specific to macOS/Xcode compiler
+- `msvs_settings`: Settings specific to Microsoft Visual Studio on Windows
 
 Now, create the directory structure for our project:
 
@@ -153,9 +143,9 @@ mkdir js
 
 This creates:
 
-* `src/`: Where our source files will go
-* `include/`: For header files
-* `js/`: For our JavaScript wrapper
+- `src/`: Where our source files will go
+- `include/`: For header files
+- `js/`: For our JavaScript wrapper
 
 ## 3) "Hello World" from C++
 
@@ -255,16 +245,16 @@ Let's break down this code:
 
 1. We define a `MyAddon` class that inherits from `Napi::ObjectWrap<MyAddon>`, which handles wrapping our C++ class for JavaScript.
 2. The `Init` static method:
-  2.1 Defines a JavaScript class with a method called `helloWorld`
-  2.2 Creates a persistent reference to the constructor (to prevent garbage collection)
-  2.3 Exports the class constructor
+   2.1 Defines a JavaScript class with a method called `helloWorld`
+   2.2 Creates a persistent reference to the constructor (to prevent garbage collection)
+   2.3 Exports the class constructor
 3. The constructor simply passes its arguments to the parent class.
 4. The `HelloWorld` method:
-  4.1 Gets the Napi environment
-  4.2 Validates input arguments (expecting a string)
-  4.3 Converts the JavaScript string to a C++ string
-  4.4 Calls our C++ function
-  4.5 Converts the result back to a JavaScript string and returns it
+   4.1 Gets the Napi environment
+   4.2 Validates input arguments (expecting a string)
+   4.3 Converts the JavaScript string to a C++ string
+   4.4 Calls our C++ function
+   4.5 Converts the result back to a JavaScript string and returns it
 5. We define an initialization function and register it with NODE_API_MODULE macro, which makes our module loadable by Node.js.
 
 Now, let's create a JavaScript wrapper to make the addon easier to use. Create `js/index.js`:
@@ -272,41 +262,41 @@ Now, let's create a JavaScript wrapper to make the addon easier to use. Create `
 <!-- eslint-disable import/newline-after-import,import/order -->
 
 ```js title='js/index.js' @ts-expect-error=[5]
-const EventEmitter = require('node:events')
+const EventEmitter = require("node:events");
 
 // Load the native addon using the 'bindings' module
 // This will look for the compiled .node file in various places
-const bindings = require('bindings')
-const native = bindings('my_addon')
+const bindings = require("bindings");
+const native = bindings("my_addon");
 
 // Create a nice JavaScript wrapper
 class MyNativeAddon extends EventEmitter {
-  constructor () {
-    super()
+  constructor() {
+    super();
 
     // Create an instance of our C++ class
-    this.addon = new native.MyAddon()
+    this.addon = new native.MyAddon();
   }
 
   // Wrap the C++ method with a nicer JavaScript API
-  helloWorld (input = '') {
-    if (typeof input !== 'string') {
-      throw new TypeError('Input must be a string')
+  helloWorld(input = "") {
+    if (typeof input !== "string") {
+      throw new TypeError("Input must be a string");
     }
-    return this.addon.helloWorld(input)
+    return this.addon.helloWorld(input);
   }
 }
 
 // Export a singleton instance
-if (process.platform === 'win32' || process.platform === 'darwin' || process.platform === 'linux') {
-  module.exports = new MyNativeAddon()
+if (process.platform === "win32" || process.platform === "darwin" || process.platform === "linux") {
+  module.exports = new MyNativeAddon();
 } else {
   // Provide a fallback for unsupported platforms
-  console.warn('Native addon not supported on this platform')
+  console.warn("Native addon not supported on this platform");
 
   module.exports = {
-    helloWorld: (input) => `Hello from JS! You said: ${input}`
-  }
+    helloWorld: (input) => `Hello from JS! You said: ${input}`,
+  };
 }
 ```
 
@@ -332,13 +322,13 @@ Let's create a simple test script to verify everything works. Create `test.js` i
 
 ```js title='test.js' @ts-expect-error=[2]
 // Load our addon
-const myAddon = require('./js')
+const myAddon = require("./js");
 
 // Try the helloWorld function
-const result = myAddon.helloWorld('This is a test')
+const result = myAddon.helloWorld("This is a test");
 
 // Should print: "Hello from C++! You said: This is a test"
-console.log(result)
+console.log(result);
 ```
 
 Run the test:
@@ -363,9 +353,9 @@ To use this addon in an Electron application, you would:
 
 ```js @ts-expect-error=[2]
 // In your main process
-const myAddon = require('my-native-addon')
+const myAddon = require("my-native-addon");
 
-console.log(myAddon.helloWorld('Electron'))
+console.log(myAddon.helloWorld("Electron"));
 ```
 
 ## References and further learning
@@ -376,8 +366,8 @@ The specific implementation details differ significantly by platform, especially
 
 This means that you'll likely use two groups of references for your native code: First, on the Node.js side, use the [N-API documentation](https://nodejs.org/api/n-api.html) to learn about creating and exposing complex structures to JavaScript - like asynchronous thread-safe function calls or creating JavaScript-native objects (`error`, `promise`, etc). Secondly, on the side of the technology you're working with, you'll likely be looking at their lower-level documentation:
 
-* [Microsoft C++, C, and Assembler documentation](https://learn.microsoft.com/en-us/cpp/?view=msvc-170)
-* [C++/WinRT](https://learn.microsoft.com/en-us/windows/uwp/cpp-and-winrt-apis/)
-* [MSVC-170 C++ Documentation](https://learn.microsoft.com/en-us/cpp/cpp/?view=msvc-170)
-* [Apple Developer Documentation](https://developer.apple.com/documentation)
-* [Programming with Objective-C](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html#//apple_ref/doc/uid/TP40011210)
+- [Microsoft C++, C, and Assembler documentation](https://learn.microsoft.com/en-us/cpp/?view=msvc-170)
+- [C++/WinRT](https://learn.microsoft.com/en-us/windows/uwp/cpp-and-winrt-apis/)
+- [MSVC-170 C++ Documentation](https://learn.microsoft.com/en-us/cpp/cpp/?view=msvc-170)
+- [Apple Developer Documentation](https://developer.apple.com/documentation)
+- [Programming with Objective-C](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html#//apple_ref/doc/uid/TP40011210)

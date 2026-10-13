@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { initialGateState, nextGateState, type GateState } from "../src/tunnel/gateState.js";
 
 // 门禁可见性验收（specs/web-tunnel.md §3.3）：刷新/首开默认不弹「连接到你的电脑」模态，

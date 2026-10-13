@@ -30,13 +30,8 @@ vi.mock("@/ControlHintTooltip.js", () => ({
 }));
 
 vi.mock("@/components/ui/button.js", () => ({
-  Button: ({
-    children,
-    ...props
-  }: {
-    children: unknown;
-    [key: string]: unknown;
-  }) => createElement("button", props, children),
+  Button: ({ children, ...props }: { children: unknown; [key: string]: unknown }) =>
+    createElement("button", props, children),
 }));
 
 vi.mock("@/components/ui/lucide.js", () => ({
@@ -44,6 +39,8 @@ vi.mock("@/components/ui/lucide.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -108,11 +105,7 @@ async function renderTriggerWithEnv(
 
   return renderToStaticMarkup(
     typeof options?.featureEnabled === "boolean"
-      ? createElement(
-          WebRemoteControlFeatureProvider,
-          { enabled: options.featureEnabled },
-          trigger,
-        )
+      ? createElement(WebRemoteControlFeatureProvider, { enabled: options.featureEnabled }, trigger)
       : trigger,
   );
 }
@@ -172,12 +165,8 @@ describe("WorkspaceWebRemoteControlTrigger", () => {
     const html = await renderTriggerWithEnv("test");
 
     expect(html).toContain('data-tooltip-title="webRemoteControl.trigger"');
-    expect(html).toContain(
-      'data-tooltip-description="webRemoteControl.triggerStatus.idle"',
-    );
-    expect(html).not.toContain(
-      'data-tooltip-title="webRemoteControl.triggerStatus.idle"',
-    );
+    expect(html).toContain('data-tooltip-description="webRemoteControl.triggerStatus.idle"');
+    expect(html).not.toContain('data-tooltip-title="webRemoteControl.triggerStatus.idle"');
   });
 
   it("在按钮上方展示远程控制 tooltip", async () => {

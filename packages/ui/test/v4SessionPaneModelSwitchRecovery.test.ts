@@ -330,6 +330,8 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", async (importOriginal) => {
       modelSelectionRead: useModelSelectionServiceView(null),
       captureAcceptedModelSelection: () => vi.fn(),
       composerDraft: { text: "", updatedAt: 0 },
+      // composerDraftRef 是本地数据源/评审透传特性对 hook 的新增返回，官方测试 mock 未含。
+      composerDraftRef: draftConfigMock.draftConfigRef,
       draftConfig: draftConfigMock.draftConfigRef.current,
       draftConfigRef: draftConfigMock.draftConfigRef,
       draftConfigSeedSignal: 0,

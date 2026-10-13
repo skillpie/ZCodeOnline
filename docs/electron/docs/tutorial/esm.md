@@ -27,12 +27,12 @@ This feature was added in `electron@28.0.0`.
 
 This table gives a general overview of where ESM is supported and which ESM loader is used.
 
-| Process              | ESM Loader | ESM Loader in Preload | Applicable Requirements |
-|----------------------|------------|-----------------------|-------------------------|
-| Main                 | Node.js    | N/A                   | <ul><li> [You must use `await` generously before the app's `ready` event](#you-must-use-await-generously-before-the-apps-ready-event) </li></ul> |
-| Renderer (Sandboxed) | Chromium   | Unsupported           | <ul><li> [Sandboxed preload scripts can't use ESM imports](#sandboxed-preload-scripts-cant-use-esm-imports) </li></ul> |
-| Renderer (Unsandboxed & Context Isolated) | Chromium | Node.js | <ul><li> [Unsandboxed ESM preload scripts will run after page load on pages with no content](#unsandboxed-esm-preload-scripts-will-run-after-page-load-on-pages-with-no-content) </li> <li>[ESM Preload Scripts must have the `.mjs` extension](#esm-preload-scripts-must-have-the-mjs-extension)</li></ul> |
-| Renderer (Unsandboxed & Non Context Isolated) | Chromium | Node.js | <ul><li>[Unsandboxed ESM preload scripts will run after page load on pages with no content](#unsandboxed-esm-preload-scripts-will-run-after-page-load-on-pages-with-no-content)</li><li>[ESM Preload Scripts must have the `.mjs` extension](#esm-preload-scripts-must-have-the-mjs-extension)</li></ul> |
+| Process                                       | ESM Loader | ESM Loader in Preload | Applicable Requirements                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------- | ---------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Main                                          | Node.js    | N/A                   | <ul><li> [You must use `await` generously before the app's `ready` event](#you-must-use-await-generously-before-the-apps-ready-event) </li></ul>                                                                                                                                                            |
+| Renderer (Sandboxed)                          | Chromium   | Unsupported           | <ul><li> [Sandboxed preload scripts can't use ESM imports](#sandboxed-preload-scripts-cant-use-esm-imports) </li></ul>                                                                                                                                                                                      |
+| Renderer (Unsandboxed & Context Isolated)     | Chromium   | Node.js               | <ul><li> [Unsandboxed ESM preload scripts will run after page load on pages with no content](#unsandboxed-esm-preload-scripts-will-run-after-page-load-on-pages-with-no-content) </li> <li>[ESM Preload Scripts must have the `.mjs` extension](#esm-preload-scripts-must-have-the-mjs-extension)</li></ul> |
+| Renderer (Unsandboxed & Non Context Isolated) | Chromium   | Node.js               | <ul><li>[Unsandboxed ESM preload scripts will run after page load on pages with no content](#unsandboxed-esm-preload-scripts-will-run-after-page-load-on-pages-with-no-content)</li><li>[ESM Preload Scripts must have the `.mjs` extension](#esm-preload-scripts-must-have-the-mjs-extension)</li></ul>    |
 
 ## Main process
 
@@ -65,11 +65,11 @@ likely already be `ready` by the time that dynamic import resolves.
 
 ```js @ts-expect-error=[2] title='index.mjs (Main Process)'
 // add an await call here to guarantee that path setup will finish before `ready`
-import('./set-up-paths.mjs')
+import("./set-up-paths.mjs");
 
 app.whenReady().then(() => {
-  console.log('This code may execute before the above import')
-})
+  console.log("This code may execute before the above import");
+});
 ```
 
 :::caution Transpiler translations
@@ -95,7 +95,7 @@ bar;
 
 // with "importInterop: node", compiles to ...
 
-"use strict";
+("use strict");
 
 var _foo = require("foo");
 var _bar = require("bar");
@@ -121,7 +121,7 @@ In practice, this means that `import` statements:
 
 ```html
 <script type="module">
-    import { exists } from 'node:fs' // ❌ will not work!
+  import { exists } from "node:fs"; // ❌ will not work!
 </script>
 ```
 
@@ -165,8 +165,8 @@ you cannot dynamically `import()` files via Node's ESM loader.
 
 ```js @ts-nocheck title='preload.mjs'
 // ❌ these won't work without context isolation
-const fs = await import('node:fs')
-await import('./foo')
+const fs = await import("node:fs");
+await import("./foo");
 ```
 
 This is because Chromium's dynamic ESM `import()` function usually takes precedence in the

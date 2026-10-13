@@ -124,6 +124,8 @@ vi.mock("@/hooks/useWorkspaceTaskLists.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -259,7 +261,6 @@ describe("WorkspaceSidebar Web remote mobile layout", () => {
   });
 
   it("归档视图打开后将关闭按钮的 tooltip label 切换为 Close", async () => {
-
     render(await createSidebarElement());
     const archiveButton = screen.getByRole("button", {
       name: "workspaceSidebar.toggleArchivedTasks",
@@ -271,7 +272,6 @@ describe("WorkspaceSidebar Web remote mobile layout", () => {
   });
 
   it("places plugins immediately after automations on the desktop home sidebar", async () => {
-
     render(await createSidebarElement({ webRemoteControlWorkspaceSwitcher: undefined }));
     const automationsButton = screen.getByRole("button", {
       name: "workspace.openScheduledSettings",

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { shouldRenderWorkspaceHeader } from "../src/app-shell/workspaceHeaderVisibility.js";
 
 test("chat 主视图渲染头部：不区分平台与任务/草稿态（Web 草稿态对齐桌面）", () => {

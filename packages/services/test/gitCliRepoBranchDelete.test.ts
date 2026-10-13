@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { afterAll as after, beforeAll as before, test } from "vitest";
 import { createGitCliRepo } from "../src/git/repo/gitCliRepo.js";
 
 // 分支行新增的「删除分支」能力。默认安全删（git branch -d）：仅删已合并分支；

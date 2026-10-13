@@ -7,11 +7,11 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 ### `new TouchBarPopover(options)`
 
-* `options` Object
-  * `label` string (optional) - Popover button text.
-  * `icon` [NativeImage](native-image.md) (optional) - Popover button icon.
-  * `items` [TouchBar](touch-bar.md) - Items to display in the popover.
-  * `showCloseButton` boolean (optional) - `true` to display a close button
+- `options` Object
+  - `label` string (optional) - Popover button text.
+  - `icon` [NativeImage](native-image.md) (optional) - Popover button icon.
+  - `items` [TouchBar](touch-bar.md) - Items to display in the popover.
+  - `showCloseButton` boolean (optional) - `true` to display a close button
     on the left of the popover, `false` to not show it. Default is `true`.
 
 ### Instance Properties

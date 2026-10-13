@@ -21,11 +21,11 @@ An example demonstrating how you can create a file on the fly to be dragged out 
 In `preload.js` use the [`contextBridge`][] to inject a method `window.electron.startDrag(...)` that will send an IPC message to the main process.
 
 ```js
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld('electron', {
-  startDrag: (fileName) => ipcRenderer.send('ondragstart', fileName)
-})
+contextBridge.exposeInMainWorld("electron", {
+  startDrag: (fileName) => ipcRenderer.send("ondragstart", fileName),
+});
 ```
 
 ### Index.html
@@ -33,7 +33,13 @@ contextBridge.exposeInMainWorld('electron', {
 Add a draggable element to `index.html`, and reference your renderer script:
 
 ```html
-<div style="border:2px solid black;border-radius:3px;padding:5px;display:inline-block" draggable="true" id="drag">Drag me</div>
+<div
+  style="border:2px solid black;border-radius:3px;padding:5px;display:inline-block"
+  draggable="true"
+  id="drag"
+>
+  Drag me
+</div>
 <script src="renderer.js"></script>
 ```
 
@@ -42,10 +48,10 @@ Add a draggable element to `index.html`, and reference your renderer script:
 In `renderer.js` set up the renderer process to handle drag events by calling the method you added via the [`contextBridge`][] above.
 
 ```js @ts-expect-error=[3]
-document.getElementById('drag').ondragstart = (event) => {
-  event.preventDefault()
-  window.electron.startDrag('drag-and-drop.md')
-}
+document.getElementById("drag").ondragstart = (event) => {
+  event.preventDefault();
+  window.electron.startDrag("drag-and-drop.md");
+};
 ```
 
 ### Main.js

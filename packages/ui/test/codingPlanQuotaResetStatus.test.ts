@@ -7,13 +7,12 @@ import { CodingPlanQuotaResetStatusContent } from "@/components/coding-plan-quot
 import { burstCodingPlanQuotaResetConfetti } from "@/lib/codingPlanQuotaResetConfetti.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     locale: "zh-CN",
     intl: {
-      formatMessage: (
-        { id }: { id: string },
-        values?: Record<string, string>,
-      ) => {
+      formatMessage: ({ id }: { id: string }, values?: Record<string, string>) => {
         const messages: Record<string, string> = {
           "codingPlan.quotaReset.processing": "正在重置 5 小时额度…",
           "codingPlan.quotaReset.done": "5 小时额度已重置",
@@ -71,10 +70,7 @@ describe("burstCodingPlanQuotaResetConfetti", () => {
   });
 
   it("prefers-reduced-motion 时不撒花", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: true }),
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
     const origin = document.createElement("div");
 
     burstCodingPlanQuotaResetConfetti(origin);
@@ -84,10 +80,7 @@ describe("burstCodingPlanQuotaResetConfetti", () => {
   });
 
   it("允许动效时从触发器播放粒子", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: false }),
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
     const origin = document.createElement("div");
 
     burstCodingPlanQuotaResetConfetti(origin);

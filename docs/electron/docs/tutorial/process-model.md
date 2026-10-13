@@ -1,6 +1,6 @@
 ---
-title: 'Process Model'
-description: 'Electron inherits its multi-process architecture from Chromium, which makes the framework architecturally very similar to a modern web browser. This guide will expand on the concepts applied in the tutorial.'
+title: "Process Model"
+description: "Electron inherits its multi-process architecture from Chromium, which makes the framework architecturally very similar to a modern web browser. This guide will expand on the concepts applied in the tutorial."
 slug: process-model
 hide_title: false
 ---
@@ -55,13 +55,13 @@ a web page in a separate renderer process. You can interact with this web conten
 from the main process using the window's [`webContents`][web-contents] object.
 
 ```js title='main.js'
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow({ width: 800, height: 1500 })
-win.loadURL('https://github.com')
+const win = new BrowserWindow({ width: 800, height: 1500 });
+win.loadURL("https://github.com");
 
-const contents = win.webContents
-console.log(contents)
+const contents = win.webContents;
+console.log(contents);
 ```
 
 > [!NOTE]
@@ -92,9 +92,9 @@ uses `app` APIs to create a more native application window experience.
 
 ```js title='main.js'
 // quitting the app when no windows are open on non-macOS platforms
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
 ```
 
 [app]: ../api/app.md
@@ -158,13 +158,13 @@ A preload script can be attached to the main process in the `BrowserWindow` cons
 `webPreferences` option.
 
 ```js title='main.js'
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 // ...
 const win = new BrowserWindow({
   webPreferences: {
-    preload: 'path/to/preload.js'
-  }
-})
+    preload: "path/to/preload.js",
+  },
+});
 // ...
 ```
 
@@ -178,12 +178,12 @@ the [`contextIsolation`][context-isolation] default.
 
 ```js title='preload.js' @ts-nocheck
 window.myAPI = {
-  desktop: true
-}
+  desktop: true,
+};
 ```
 
 ```js title='renderer.js' @ts-nocheck
-console.log(window.myAPI)
+console.log(window.myAPI);
 // => undefined
 ```
 
@@ -194,15 +194,15 @@ Instead, use the [`contextBridge`][context-bridge] module to accomplish this
 securely:
 
 ```js title='preload.js'
-const { contextBridge } = require('electron')
+const { contextBridge } = require("electron");
 
-contextBridge.exposeInMainWorld('myAPI', {
-  desktop: true
-})
+contextBridge.exposeInMainWorld("myAPI", {
+  desktop: true,
+});
 ```
 
 ```js title='renderer.js' @ts-nocheck
-console.log(window.myAPI)
+console.log(window.myAPI);
 // => { desktop: true }
 ```
 
@@ -242,8 +242,8 @@ These aliases have no impact on runtime, but can be used for typechecking
 and autocomplete.
 
 ```js title="Usage example"
-const { shell } = require('electron/common')
-const { app } = require('electron/main')
+const { shell } = require("electron/common");
+const { app } = require("electron/main");
 ```
 
 [window-mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Window

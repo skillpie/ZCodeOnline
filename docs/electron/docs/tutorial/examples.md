@@ -1,6 +1,6 @@
 ---
-title: 'Examples Overview'
-description: 'A set of examples for common Electron features'
+title: "Examples Overview"
+description: "A set of examples for common Electron features"
 slug: examples
 hide_title: false
 ---
@@ -25,8 +25,8 @@ guide!).
 
 <!-- guide-table-start -->
 
-| Guide                 | Description                                                                                                         |
-| :-------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Guide                   | Description                                                                                                         |
+| :---------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | [Message ports][]       | This guide provides some examples of how you might use MessagePorts in your app to communicate different processes. |
 | [Device access][]       | Learn how to access the device hardware (Bluetooth, USB, Serial).                                                   |
 | [Keyboard shortcuts][]  | Configure local and global keyboard shortcuts for your Electron application.                                        |

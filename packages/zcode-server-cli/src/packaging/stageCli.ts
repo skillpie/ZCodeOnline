@@ -8,7 +8,11 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { SERVER_RUNTIME_NODE_VERSION } from "../contracts.js";
-import { currentServerTarget, supportedServerTargets, type ServerTarget } from "../runtime/manifest.js";
+import {
+  currentServerTarget,
+  supportedServerTargets,
+  type ServerTarget,
+} from "../runtime/manifest.js";
 import { stageRelease } from "./stage.js";
 import { upsertReleaseCatalogEntry } from "./releaseCatalog.js";
 import { resolveNodeDistBase } from "./nodeDistMirror.js";
@@ -29,7 +33,8 @@ async function findRepoRoot(startDir: string): Promise<string> {
   while (true) {
     if (await pathExists(join(current, "pnpm-workspace.yaml"))) return current;
     const parent = dirname(current);
-    if (parent === current) throw new Error("Unable to locate workspace root (pnpm-workspace.yaml)");
+    if (parent === current)
+      throw new Error("Unable to locate workspace root (pnpm-workspace.yaml)");
     current = parent;
   }
 }
@@ -40,7 +45,8 @@ async function runCommand(command: string, args: readonly string[], cwd: string)
     child.once("error", rejectPromise);
     child.once("exit", (code) => {
       if (code === 0) resolvePromise();
-      else rejectPromise(new Error(`${command} ${args.join(" ")} exited with code ${code ?? "null"}`));
+      else
+        rejectPromise(new Error(`${command} ${args.join(" ")} exited with code ${code ?? "null"}`));
     });
   });
 }
@@ -79,7 +85,11 @@ async function ensureNodeBinary(repoRoot: string, target: ServerTarget): Promise
   const nodeVersion = `v${SERVER_RUNTIME_NODE_VERSION}`;
   const isWindows = target.startsWith("win32-");
   const nodeTarget = isWindows ? target.replace(/^win32-/u, "win-") : target;
-  const cacheDir = join(repoRoot, "node_modules/.cache/zcode-server-cli", `node-${nodeVersion}-${target}`);
+  const cacheDir = join(
+    repoRoot,
+    "node_modules/.cache/zcode-server-cli",
+    `node-${nodeVersion}-${target}`,
+  );
   const cachedBinaryPath = join(cacheDir, isWindows ? "node.exe" : "node");
   if (await pathExists(cachedBinaryPath)) {
     log(`reuse cached node runtime: ${cachedBinaryPath}`);
@@ -95,9 +105,31 @@ async function ensureNodeBinary(repoRoot: string, target: ServerTarget): Promise
     await downloadFile(url, archivePath);
     await mkdir(cacheDir, { recursive: true });
     if (isWindows) {
-      await runCommand("tar", ["-xf", archivePath, "--strip-components=1", "-C", cacheDir, `node-${nodeVersion}-${nodeTarget}/node.exe`], repoRoot);
+      await runCommand(
+        "tar",
+        [
+          "-xf",
+          archivePath,
+          "--strip-components=1",
+          "-C",
+          cacheDir,
+          `node-${nodeVersion}-${nodeTarget}/node.exe`,
+        ],
+        repoRoot,
+      );
     } else {
-      await runCommand("tar", ["-xJf", archivePath, "--strip-components=2", "-C", cacheDir, `node-${nodeVersion}-${nodeTarget}/bin/node`], repoRoot);
+      await runCommand(
+        "tar",
+        [
+          "-xJf",
+          archivePath,
+          "--strip-components=2",
+          "-C",
+          cacheDir,
+          `node-${nodeVersion}-${nodeTarget}/bin/node`,
+        ],
+        repoRoot,
+      );
     }
     await chmod(cachedBinaryPath, 0o755);
     return cachedBinaryPath;
@@ -113,7 +145,11 @@ async function ensureAgentBundle(repoRoot: string, skipBuild: boolean): Promise<
     throw new Error(`Agent bundle missing: ${bundlePath} (remove --skip-agent-build to build it)`);
   }
   log("agent bundle missing, building via scripts/build-desktop-agent-cli.mjs");
-  await runCommand(process.execPath, [join(repoRoot, "scripts/build-desktop-agent-cli.mjs")], repoRoot);
+  await runCommand(
+    process.execPath,
+    [join(repoRoot, "scripts/build-desktop-agent-cli.mjs")],
+    repoRoot,
+  );
   if (!(await pathExists(bundlePath))) {
     throw new Error(`Agent bundle still missing after build: ${bundlePath}`);
   }
@@ -128,13 +164,18 @@ async function resolveNativeToolsDir(repoRoot: string, target: ServerTarget): Pr
   const [platform, arch] = target.split("-");
   const cacheDir = join(repoRoot, "node_modules/.cache/zcode-server-cli", "tools", target);
   log(`prepare native search target assets: ${target}`);
-  await runCommand(process.execPath, [
-    join(repoRoot, "scripts/prepare-native-search-tools.mjs"),
-    `--platform=${platform}`,
-    `--arch=${arch}`,
-    `--output-dir=${cacheDir}`,
-  ], repoRoot);
-  if (!(await pathExists(cacheDir))) throw new Error(`Native search tools preparation produced no directory for ${target}`);
+  await runCommand(
+    process.execPath,
+    [
+      join(repoRoot, "scripts/prepare-native-search-tools.mjs"),
+      `--platform=${platform}`,
+      `--arch=${arch}`,
+      `--output-dir=${cacheDir}`,
+    ],
+    repoRoot,
+  );
+  if (!(await pathExists(cacheDir)))
+    throw new Error(`Native search tools preparation produced no directory for ${target}`);
   return cacheDir;
 }
 
@@ -147,7 +188,9 @@ async function resolveWorkspacePackageDirs(repoRoot: string): Promise<Map<string
       const packageJsonPath = join(root, entry.name, "package.json");
       if (!(await pathExists(packageJsonPath))) continue;
       try {
-        const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as { name?: string };
+        const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as {
+          name?: string;
+        };
         if (packageJson.name) map.set(packageJson.name, join(root, entry.name));
       } catch {
         // 非 package 目录不影响其它 workspace 包 staging。
@@ -162,7 +205,9 @@ function parseTarget(argv: readonly string[]): ServerTarget {
   if (index < 0) return currentServerTarget();
   const value = argv[index + 1];
   if (!value || !supportedServerTargets.includes(value as ServerTarget)) {
-    throw new Error(`Invalid --target: ${value ?? "<missing>"} (supported: ${supportedServerTargets.join(", ")})`);
+    throw new Error(
+      `Invalid --target: ${value ?? "<missing>"} (supported: ${supportedServerTargets.join(", ")})`,
+    );
   }
   return value as ServerTarget;
 }
@@ -186,10 +231,14 @@ async function main(): Promise<void> {
 
   const distDir = join(packageRoot, "dist");
   if (!(await pathExists(join(distDir, "server-cli.js")))) {
-    throw new Error(`Missing tsup output in ${distDir}; run pnpm --filter @zcode/server-cli build first`);
+    throw new Error(
+      `Missing tsup output in ${distDir}; run pnpm --filter @zcode/server-cli build first`,
+    );
   }
 
-  const appVersion = (JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")) as { version: string }).version;
+  const appVersion = (
+    JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")) as { version: string }
+  ).version;
   const [agentBundlePath, nodeBinaryPath] = await Promise.all([
     ensureAgentBundle(repoRoot, argv.includes("--skip-agent-build")),
     ensureNodeBinary(repoRoot, target),

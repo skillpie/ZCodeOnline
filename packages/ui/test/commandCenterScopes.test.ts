@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { resolveQueryScope, scopeToPrefix } from "../src/command-center/commandCenterScopes.js";
 
 test("every scoped history entry maps to a stable search prefix", () => {

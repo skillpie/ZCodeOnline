@@ -33,6 +33,7 @@ import type {
   GitRepositorySummary,
   ModelSelection,
   ZCodeProvider,
+  ZCodeTaskChangeSummary,
 } from "@zcode/shared";
 import type {
   AttachmentRef,
@@ -394,6 +395,8 @@ export interface SessionPaneProps {
   gitDirtyFileCount?: number;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
   gitWorktreeReviewSourceId?: GitChangeSourceId | null;
+  activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
+  onRefreshGit?: () => void;
   onOpenGitReview?: (sourceId?: GitChangeSourceId) => void;
   summaryPanelVariantOverride?: ChatViewSummaryPanelVariant | null;
   onSummaryPanelVariantOverrideChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
@@ -592,6 +595,8 @@ export function SessionPane({
   gitDirtyFileCount,
   gitWorktreeChangeSummary,
   gitWorktreeReviewSourceId,
+  activeTaskChangeSummary,
+  onRefreshGit,
   onOpenGitReview,
   summaryPanelVariantOverride,
   onSummaryPanelVariantOverrideChange,
@@ -5509,14 +5514,6 @@ export function SessionPane({
                 })}
               </span>
             </div>
-
-        {readOnly && controlLastError ? (
-          <div
-            role="alert"
-            data-testid="v4-subagent-readonly-error"
-            className="mx-4 mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-hover)] px-3 py-2 text-ui-base text-[var(--color-danger)]"
-          >
-            {controlLastError.message}
           </div>
         ) : null}
         <ConversationHeader

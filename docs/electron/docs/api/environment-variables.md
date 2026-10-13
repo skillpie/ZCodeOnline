@@ -58,7 +58,7 @@ If the [`nodeOptions` fuse](../tutorial/fuses.md#nodeoptions) is disabled, `NODE
 See [Node.js cli documentation](https://github.com/nodejs/node/blob/main/doc/api/cli.md#node_extra_ca_certsfile) for details.
 
 ```sh
-export NODE_EXTRA_CA_CERTS=/path/to/cert.pem 
+export NODE_EXTRA_CA_CERTS=/path/to/cert.pem
 ```
 
 If the [`nodeOptions` fuse](../tutorial/fuses.md#nodeoptions) is disabled, `NODE_EXTRA_CA_CERTS` will be ignored.
@@ -72,7 +72,7 @@ and place the following code in your main process file, before opening any
 browser windows that will make geolocation requests:
 
 ```js
-process.env.GOOGLE_API_KEY = 'YOUR_KEY_HERE'
+process.env.GOOGLE_API_KEY = "YOUR_KEY_HERE";
 ```
 
 By default, a newly generated Google API key may not be allowed to make geolocation requests.
@@ -95,11 +95,11 @@ Starts the process as a normal Node.js process.
 In this mode, you will be able to pass [cli options](https://nodejs.org/api/cli.html) to Node.js as
 you would when running the normal Node.js executable, with the exception of the following flags:
 
-* "--openssl-config"
-* "--use-bundled-ca"
-* "--use-openssl-ca",
-* "--force-fips"
-* "--enable-fips"
+- "--openssl-config"
+- "--use-bundled-ca"
+- "--use-openssl-ca",
+- "--force-fips"
+- "--enable-fips"
 
 These flags are disabled owing to the fact that Electron uses BoringSSL instead of OpenSSL when building Node.js'
 `crypto` module, and so will not work as designed.
@@ -120,10 +120,10 @@ Set the trash implementation on Linux. Default is `gio`.
 
 Options:
 
-* `gvfs-trash`
-* `trash-cli`
-* `kioclient5`
-* `kioclient`
+- `gvfs-trash`
+- `trash-cli`
+- `kioclient5`
+- `kioclient`
 
 ## Development Variables
 

@@ -8,6 +8,7 @@
     "third-party/upstream/**",
     "third-party/native-search/licenses/**",
     "third-party/runtime/*.txt",
+    "docs/electron/**",
     "docs/knip/docs/LICENSE",
     "docs/knip/docs/licenses/**"
   ]

@@ -9,9 +9,9 @@ import {
 
 describe("useSessionSubscriptionErrorTelemetry", () => {
   it("preserves a standalone structured subscription reason code", () => {
-    expect(
-      resolveSessionSubscriptionErrorCode("fault.subscription.recoveryFailed"),
-    ).toBe("fault.subscription.recoveryFailed");
+    expect(resolveSessionSubscriptionErrorCode("fault.subscription.recoveryFailed")).toBe(
+      "fault.subscription.recoveryFailed",
+    );
   });
 
   it("reports each visible subscription error once through chat_error_banner", () => {

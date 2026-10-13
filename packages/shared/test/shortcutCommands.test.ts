@@ -97,11 +97,9 @@ describe("shortcutCommands 命令表", () => {
     expect(getDefaultShortcutBindings("openSettings")).toEqual(["CmdOrCtrl+,"]);
   });
 
-  it("openCommandCenter 保留双默认绑定", () => {
-    expect(getDefaultShortcutBindings("openCommandCenter")).toEqual([
-      "CmdOrCtrl+k",
-      "CmdOrCtrl+Shift+p",
-    ]);
+  it("openCommandCenter 只保留 ⌘K；⇧⌘P 已让位给 gitCommit（2026-09-29 用户决策）", () => {
+    expect(getDefaultShortcutBindings("openCommandCenter")).toEqual(["CmdOrCtrl+k"]);
+    expect(getDefaultShortcutBindings("gitCommit")).toEqual(["CmdOrCtrl+Shift+p"]);
   });
 
   it("未知命令返回空数组", () => {

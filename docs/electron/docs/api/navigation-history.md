@@ -28,7 +28,7 @@ Returns `boolean` - Whether the browser can go forward to next web page.
 
 #### `navigationHistory.canGoToOffset(offset)`
 
-* `offset` Integer
+- `offset` Integer
 
 Returns `boolean` - Whether the web page can go to the specified relative `offset` from the current entry.
 
@@ -42,7 +42,7 @@ Returns `Integer` - The index of the current page, from which we would go back/f
 
 #### `navigationHistory.getEntryAtIndex(index)`
 
-* `index` Integer
+- `index` Integer
 
 Returns [`NavigationEntry`](structures/navigation-entry.md) - Navigation entry at the given index.
 
@@ -58,13 +58,13 @@ Makes the browser go forward a web page.
 
 #### `navigationHistory.goToIndex(index)`
 
-* `index` Integer
+- `index` Integer
 
 Navigates browser to the specified absolute web page index.
 
 #### `navigationHistory.goToOffset(offset)`
 
-* `offset` Integer
+- `offset` Integer
 
 Navigates to the specified relative offset from the current entry.
 
@@ -74,7 +74,7 @@ Returns `Integer` - History length.
 
 #### `navigationHistory.removeEntryAtIndex(index)`
 
-* `index` Integer
+- `index` Integer
 
 Removes the navigation entry at the given index. Can't remove entry at the "current active index".
 
@@ -94,9 +94,9 @@ navigation entries are created, so ideally before you call `loadURL()` or `loadF
 
 This API allows you to create common flows that aim to restore, recreate, or clone other webContents.
 
-* `options` Object
-  * `entries` [NavigationEntry[]](structures/navigation-entry.md) - Result of a prior `getAllEntries()` call
-  * `index` Integer (optional) - Index of the stack that should be loaded. If you set it to `0`, the webContents will load the first (oldest) entry. If you leave it undefined, Electron will automatically load the last (newest) entry.
+- `options` Object
+  - `entries` [NavigationEntry[]](structures/navigation-entry.md) - Result of a prior `getAllEntries()` call
+  - `index` Integer (optional) - Index of the stack that should be loaded. If you set it to `0`, the webContents will load the first (oldest) entry. If you leave it undefined, Electron will automatically load the last (newest) entry.
 
 Returns `Promise<void>` - the promise will resolve when the page has finished loading the selected navigation entry
 (see [`did-finish-load`](web-contents.md#event-did-finish-load)), and rejects

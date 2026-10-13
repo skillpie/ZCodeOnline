@@ -125,7 +125,7 @@ const STANDARD_SLASH_TRIGGER = "/";
 
 import { HISTORY_NAVIGATION_UPDATE_TAG, PROGRAMMATIC_UPDATE_TAG } from "./lib/editorUpdateTags.js";
 
-function shouldSubmitLexicalEnter({
+export function shouldSubmitLexicalEnter({
   allowSubmitWhenEmpty = false,
   ctrlKey = false,
   enterSubmits,
@@ -143,7 +143,7 @@ function shouldSubmitLexicalEnter({
   return Boolean(text.trim() || allowSubmitWhenEmpty);
 }
 
-function shouldSubmitLexicalModifiedEnter({
+export function shouldSubmitLexicalModifiedEnter({
   allowSubmitWhenEmpty = false,
   ctrlKey = false,
   isComposing = false,
@@ -161,7 +161,7 @@ function shouldSubmitLexicalModifiedEnter({
   );
 }
 
-function shouldResetLexicalEditorAfterSubmit(result: LexicalSubmitResult): boolean {
+export function shouldResetLexicalEditorAfterSubmit(result: LexicalSubmitResult): boolean {
   return result !== false;
 }
 
@@ -246,7 +246,7 @@ function replaceEditorTextWithPluginMentions(editor: LexicalEditor, text: string
   );
 }
 
-function replaceEditorWithMention(
+export function replaceEditorWithMention(
   editor: LexicalEditor,
   mention: ComposerMentionPrefill,
   trailingText = " ",
@@ -272,7 +272,7 @@ function replaceEditorWithMention(
  * 不能通过 getMarkdown → setMention 重建：setMention 是替换型预填，会把旧 mention
  * 序列化后作为普通 TextNode 放回编辑器，导致已有 Plugin / 文件 / Skill chip 降级。
  */
-function prependEditorMentionIfMissing(
+export function prependEditorMentionIfMissing(
   editor: LexicalEditor,
   mention: ComposerMentionPrefill,
 ): boolean {
@@ -1228,7 +1228,7 @@ function PasteCapturePlugin({
 }
 
 /** 暴露 focus / clear / getText 给外部 */
-function insertEditorMention(
+export function insertEditorMention(
   editor: LexicalEditor,
   mention: ComposerMentionPrefill,
   selectionState?: EditorState,
@@ -1310,6 +1310,10 @@ function EditorApiPlugin({
 
 interface LexicalChatInputProps {
   placeholder?: string;
+  /** 官方 v3.15.1 语义：web-remote 手机视口下强制 16px 防 iOS 聚焦缩放。
+   * 本组件已按 specs/theme-default.md 对所有移动视口应用 16px 下限，此 prop 仅保留
+   * 调用方兼容（官方 ConversationComposer 会传入），不改变本组件行为。 */
+  avoidIosInputFocusZoom?: boolean;
   disabled?: boolean;
   submitDisabled?: boolean;
   allowSubmitWhenEmpty?: boolean;

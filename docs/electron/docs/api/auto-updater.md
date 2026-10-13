@@ -35,9 +35,9 @@ update process. Apps that need to disable ATS can add the
 On Windows, the `autoUpdater` module automatically selects the appropriate update mechanism
 based on how your app is packaged:
 
-* **MSIX packages**: If your app is running as an MSIX package (created with [electron-windows-msix][msix-lib] and detected via [`process.windowsStore`](process.md#processwindowsstore-readonly)),
+- **MSIX packages**: If your app is running as an MSIX package (created with [electron-windows-msix][msix-lib] and detected via [`process.windowsStore`](process.md#processwindowsstore-readonly)),
   the module uses the MSIX updater, which supports direct MSIX file links and JSON update feeds.
-* **Squirrel.Windows**: For apps installed via traditional installers (created with
+- **Squirrel.Windows**: For apps installed via traditional installers (created with
   [electron-winstaller][installer-lib] or [Electron Forge's Squirrel.Windows maker][electron-forge-lib]),
   the module uses Squirrel.Windows for updates.
 
@@ -70,8 +70,8 @@ not be able to pin your app properly in task bar.
 When your app is packaged as an MSIX, the `autoUpdater` module provides additional
 functionality:
 
-* Use the `allowAnyVersion` option in `setFeedURL()` to allow updates to older versions (downgrades)
-* Support for direct MSIX file links or JSON update feeds (similar to Squirrel.Mac format)
+- Use the `allowAnyVersion` option in `setFeedURL()` to allow updates to older versions (downgrades)
+- Support for direct MSIX file links or JSON update feeds (similar to Squirrel.Mac format)
 
 ## Events
 
@@ -81,7 +81,7 @@ The `autoUpdater` object emits the following events:
 
 Returns:
 
-* `error` Error
+- `error` Error
 
 Emitted when there is an error while updating.
 
@@ -102,11 +102,11 @@ Emitted when there is no available update.
 
 Returns:
 
-* `event` Event
-* `releaseNotes` string
-* `releaseName` string
-* `releaseDate` Date
-* `updateURL` string
+- `event` Event
+- `releaseNotes` string
+- `releaseName` string
+- `releaseDate` Date
+- `updateURL` string
 
 Emitted when an update has been downloaded.
 
@@ -145,12 +145,12 @@ changes:
 ```
 -->
 
-* `options` Object
-  * `url` string - The update server URL. For _Windows_ MSIX, this can be either a direct link to an MSIX file (e.g., `https://example.com/update.msix`) or a JSON endpoint that returns update information (see the [Squirrel.Mac][squirrel-mac] README for more information).
-  * `headers` Record\<string, string\> (optional) _macOS_ - HTTP request headers.
-  * `serverType` string (optional) _macOS_ - Can be `json` or `default`, see the [Squirrel.Mac][squirrel-mac]
+- `options` Object
+  - `url` string - The update server URL. For _Windows_ MSIX, this can be either a direct link to an MSIX file (e.g., `https://example.com/update.msix`) or a JSON endpoint that returns update information (see the [Squirrel.Mac][squirrel-mac] README for more information).
+  - `headers` Record\<string, string\> (optional) _macOS_ - HTTP request headers.
+  - `serverType` string (optional) _macOS_ - Can be `json` or `default`, see the [Squirrel.Mac][squirrel-mac]
     README for more information.
-  * `allowAnyVersion` boolean (optional) _Windows_ - If `true`, allows downgrades to older versions for MSIX packages.
+  - `allowAnyVersion` boolean (optional) _Windows_ - If `true`, allows downgrades to older versions for MSIX packages.
     Defaults to `false`.
 
 Sets the `url` and initialize the auto updater.
@@ -188,4 +188,4 @@ closed.
 [electron-forge-lib]: https://www.electronforge.io/config/makers/squirrel.windows
 [app-user-model-id]: https://learn.microsoft.com/en-us/windows/win32/shell/appids
 [event-emitter]: https://nodejs.org/api/events.html#events_class_eventemitter
-[msix-lib]:  https://github.com/electron-userland/electron-windows-msix
+[msix-lib]: https://github.com/electron-userland/electron-windows-msix

@@ -17,7 +17,7 @@ If your app doesn't use any native modules, then it's really easy to create an A
 Lots of Windows-specific code contains if... else logic that selects between either the x64 or x86 architectures.
 
 ```js
-if (process.arch === 'x64') {
+if (process.arch === "x64") {
   // Do 64-bit thing...
 } else {
   // Do 32-bit thing...

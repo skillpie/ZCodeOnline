@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, beforeEach, describe, test } from "node:test";
+import { afterAll as after, beforeEach, describe, test } from "vitest";
 import {
   clearStoredAssistCode,
   fetchAssistCodeViaDiscovery,

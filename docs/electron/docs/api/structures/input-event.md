@@ -1,6 +1,6 @@
 # InputEvent Object
 
-* `type` string - Can be `undefined`, `mouseDown`, `mouseUp`, `mouseMove`,
+- `type` string - Can be `undefined`, `mouseDown`, `mouseUp`, `mouseMove`,
   `mouseEnter`, `mouseLeave`, `contextMenu`, `mouseWheel`, `rawKeyDown`,
   `keyDown`, `keyUp`, `char`, `gestureScrollBegin`, `gestureScrollEnd`,
   `gestureScrollUpdate`, `gestureFlingStart`, `gestureFlingCancel`,
@@ -11,7 +11,7 @@
   `touchStart`, `touchMove`, `touchEnd`, `touchCancel`, `touchScrollStarted`,
   `pointerDown`, `pointerUp`, `pointerMove`, `pointerRawUpdate`,
   `pointerCancel` or `pointerCausedUaAction`.
-* `modifiers` string[] (optional) - An array of modifiers of the event, can
+- `modifiers` string[] (optional) - An array of modifiers of the event, can
   be `shift`, `control`, `ctrl`, `alt`, `meta`, `command`, `cmd`, `iskeypad`,
   `isautorepeat`, `leftbuttondown`, `middlebuttondown`, `rightbuttondown`,
   `capslock`, `numlock`, `left`, `right`.

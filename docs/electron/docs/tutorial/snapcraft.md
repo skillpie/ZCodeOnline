@@ -13,11 +13,11 @@ system modification.
 
 There are three ways to create a `.snap` file:
 
-1) Using [Electron Forge][electron-forge] or
+1. Using [Electron Forge][electron-forge] or
    [`electron-builder`][electron-builder], both tools that come with `snap`
    support out of the box. This is the easiest option.
-2) Using `electron-installer-snap`, which takes `@electron/packager`'s output.
-3) Using an already created `.deb` package.
+2. Using `electron-installer-snap`, which takes `@electron/packager`'s output.
+3. Using an already created `.deb` package.
 
 In some cases, you will need to have the `snapcraft` tool installed.
 Instructions to install `snapcraft` for your particular distribution are
@@ -73,10 +73,9 @@ If you have an existing build pipeline, you can use `electron-installer-snap`
 programmatically. For more information, see the [Snapcraft API docs][snapcraft-syntax].
 
 ```js @ts-nocheck
-const snap = require('electron-installer-snap')
+const snap = require("electron-installer-snap");
 
-snap(options)
-  .then(snapPath => console.log(`Created snap at ${snapPath}!`))
+snap(options).then((snapPath) => console.log(`Created snap at ${snapPath}!`));
 ```
 
 ## Using `snapcraft` with `@electron/packager`
@@ -94,7 +93,7 @@ Create a `snap` directory in your project root and add the following to
 
 ```yaml
 name: electron-packager-hello-world
-version: '0.1'
+version: "0.1"
 summary: Hello World Electron app
 description: |
   Simple Hello World Electron app as an example
@@ -107,9 +106,9 @@ apps:
     command: my-app/my-app --no-sandbox
     extensions: [gnome]
     plugs:
-    - browser-support
-    - network
-    - network-bind
+      - browser-support
+      - network
+      - network-bind
     environment:
       # Correct the TMPDIR path for Chromium Framework/Electron to ensure
       # libappindicator has readable resources.
@@ -120,16 +119,16 @@ parts:
     plugin: nil
     source: .
     override-build: |
-        npm install electron @electron/packager
-        npx electron-packager . --overwrite --platform=linux --output=release-build --prune=true
-        cp -rv ./my-app-linux-* $SNAPCRAFT_PART_INSTALL/my-app
+      npm install electron @electron/packager
+      npx electron-packager . --overwrite --platform=linux --output=release-build --prune=true
+      cp -rv ./my-app-linux-* $SNAPCRAFT_PART_INSTALL/my-app
     build-snaps:
-    - node/14/stable
+      - node/14/stable
     build-packages:
-    - unzip
+      - unzip
     stage-packages:
-    - libnss3
-    - libnspr4
+      - libnss3
+      - libnspr4
 ```
 
 If you want to apply this example to an existing project, replace all instances
@@ -179,11 +178,11 @@ Let's look at an example:
 
 ```yaml
 name: myApp
-version: '2.0.0'
+version: "2.0.0"
 summary: A little description for the app.
 description: |
- You know what? This app is amazing! It does all the things
- for you. Some say it keeps you young, maybe even happy.
+  You know what? This app is amazing! It does all the things
+  for you. Some say it keeps you young, maybe even happy.
 
 grade: stable
 confinement: classic
@@ -250,24 +249,24 @@ snap is set to `core22` or newer. Next, create a part called `pipewire` and add 
 the `after` section of your application:
 
 ```yaml
-  pipewire:
-    plugin: nil
-    build-packages: [libpipewire-0.3-dev]
-    stage-packages: [pipewire]
-    prime:
-      - usr/lib/*/pipewire-*
-      - usr/lib/*/spa-*
-      - usr/lib/*/libpipewire*.so*
-      - usr/share/pipewire
+pipewire:
+  plugin: nil
+  build-packages: [libpipewire-0.3-dev]
+  stage-packages: [pipewire]
+  prime:
+    - usr/lib/*/pipewire-*
+    - usr/lib/*/spa-*
+    - usr/lib/*/libpipewire*.so*
+    - usr/share/pipewire
 ```
 
 Finally, configure your application's environment for PipeWire:
 
 ```yaml
-    environment:
-      SPA_PLUGIN_DIR: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/spa-0.2
-      PIPEWIRE_CONFIG_NAME: $SNAP/usr/share/pipewire/pipewire.conf
-      PIPEWIRE_MODULE_DIR: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/pipewire-0.3
+environment:
+  SPA_PLUGIN_DIR: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/spa-0.2
+  PIPEWIRE_CONFIG_NAME: $SNAP/usr/share/pipewire/pipewire.conf
+  PIPEWIRE_MODULE_DIR: $SNAP/usr/lib/$CRAFT_ARCH_TRIPLET/pipewire-0.3
 ```
 
 [snapcraft-syntax]: https://docs.snapcraft.io/build-snaps/syntax

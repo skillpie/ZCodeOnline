@@ -102,6 +102,7 @@ import {
 
 export interface ConversationStatusPanelProps {
   workspacePath: string;
+  workspaceIdentity?: string;
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
@@ -419,7 +420,7 @@ function GitChangesStatusSection({
           <span className="text-[var(--color-diff-removed)]">-{git.removed}</span>
         </span>
       </button>
-    </StatusSection>    </StatusSection>
+    </StatusSection>
   );
 }
 
@@ -1917,15 +1918,7 @@ function ConversationStatusPanelImpl({
   const panelMenuLabel = intl.formatMessage({
     id: "chat.summaryPanel.displayMode",
   });
-  const shellStyle = useMemo(
-    () =>
-      ({
-        "--chat-summary-panel-mini-width": `${miniWidth}px`,
-      }) as CSSProperties,
-    [miniWidth],
-  );
-  // 2026-09-26 恢复「更改」浮动展示：仅更改行，分支切换/提交菜单不回归（留在头部）。
-  const canRenderGit = Boolean(model.git && gitSummary);
+  const canRenderGit = Boolean(model.git && gitSummary && onRefreshGit);
   const canRenderGoal = Boolean(model.goal);
   const canRenderSessionPlans = Boolean(model.sessionPlans);
   const canRenderPlan = Boolean(model.plan);

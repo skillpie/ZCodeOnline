@@ -7,15 +7,15 @@ Process: [Main](../glossary.md#main-process)
 For example, when registering for push notifications via Apple push notification services (APNS):
 
 ```js
-const { pushNotifications, Notification } = require('electron')
+const { pushNotifications, Notification } = require("electron");
 
 pushNotifications.registerForAPNSNotifications().then((token) => {
   // forward token to your remote notification server
-})
+});
 
-pushNotifications.on('received-apns-notification', (event, userInfo) => {
+pushNotifications.on("received-apns-notification", (event, userInfo) => {
   // generate a new Notification object with the relevant userInfo fields
-})
+});
 ```
 
 ## Events
@@ -26,8 +26,8 @@ The `pushNotification` module emits the following events:
 
 Returns:
 
-* `event` Event
-* `userInfo` Record\<String, any\>
+- `event` Event
+- `userInfo` Record\<String, any\>
 
 Emitted when the app receives a remote notification while running.
 See: https://developer.apple.com/documentation/appkit/nsapplicationdelegate/1428430-application?language=objc

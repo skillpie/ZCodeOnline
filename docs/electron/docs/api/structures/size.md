@@ -1,4 +1,4 @@
 # Size Object
 
-* `width` number
-* `height` number
+- `width` number
+- `height` number

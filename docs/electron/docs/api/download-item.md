@@ -11,32 +11,32 @@ control the download item.
 
 ```js
 // In the main process.
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow()
-win.webContents.session.on('will-download', (event, item, webContents) => {
+const win = new BrowserWindow();
+win.webContents.session.on("will-download", (event, item, webContents) => {
   // Set the save path, making Electron not to prompt a save dialog.
-  item.setSavePath('/tmp/save.pdf')
+  item.setSavePath("/tmp/save.pdf");
 
-  item.on('updated', (event, state) => {
-    if (state === 'interrupted') {
-      console.log('Download is interrupted but can be resumed')
-    } else if (state === 'progressing') {
+  item.on("updated", (event, state) => {
+    if (state === "interrupted") {
+      console.log("Download is interrupted but can be resumed");
+    } else if (state === "progressing") {
       if (item.isPaused()) {
-        console.log('Download is paused')
+        console.log("Download is paused");
       } else {
-        console.log(`Received bytes: ${item.getReceivedBytes()}`)
+        console.log(`Received bytes: ${item.getReceivedBytes()}`);
       }
     }
-  })
-  item.once('done', (event, state) => {
-    if (state === 'completed') {
-      console.log('Download successfully')
+  });
+  item.once("done", (event, state) => {
+    if (state === "completed") {
+      console.log("Download successfully");
     } else {
-      console.log(`Download failed: ${state}`)
+      console.log(`Download failed: ${state}`);
     }
-  })
-})
+  });
+});
 ```
 
 ### Instance Events
@@ -45,22 +45,22 @@ win.webContents.session.on('will-download', (event, item, webContents) => {
 
 Returns:
 
-* `event` Event
-* `state` string - Can be `progressing` or `interrupted`.
+- `event` Event
+- `state` string - Can be `progressing` or `interrupted`.
 
 Emitted when the download has been updated and is not done.
 
 The `state` can be one of following:
 
-* `progressing` - The download is in-progress.
-* `interrupted` - The download has interrupted and can be resumed.
+- `progressing` - The download is in-progress.
+- `interrupted` - The download has interrupted and can be resumed.
 
 #### Event: 'done'
 
 Returns:
 
-* `event` Event
-* `state` string - Can be `completed`, `cancelled` or `interrupted`.
+- `event` Event
+- `state` string - Can be `completed`, `cancelled` or `interrupted`.
 
 Emitted when the download is in a terminal state. This includes a completed
 download, a cancelled download (via `downloadItem.cancel()`), and interrupted
@@ -68,9 +68,9 @@ download that can't be resumed.
 
 The `state` can be one of following:
 
-* `completed` - The download completed successfully.
-* `cancelled` - The download has been cancelled.
-* `interrupted` - The download has interrupted and can not resume.
+- `completed` - The download completed successfully.
+- `cancelled` - The download has been cancelled.
+- `interrupted` - The download has interrupted and can not resume.
 
 ### Instance Methods
 
@@ -78,7 +78,7 @@ The `downloadItem` object has the following methods:
 
 #### `downloadItem.setSavePath(path)`
 
-* `path` string - Set the save file path of the download item.
+- `path` string - Set the save file path of the download item.
 
 The API is only available in session's `will-download` callback function.
 If `path` doesn't exist, Electron will try to make the directory recursively.
@@ -93,8 +93,8 @@ save dialog.
 
 #### `downloadItem.setSaveDialogOptions(options)`
 
-* `options` SaveDialogOptions - Set the save file dialog options. This object has the same
-properties as the `options` parameter of [`dialog.showSaveDialog()`](dialog.md).
+- `options` SaveDialogOptions - Set the save file dialog options. This object has the same
+  properties as the `options` parameter of [`dialog.showSaveDialog()`](dialog.md).
 
 This API allows the user to set custom options for the save dialog that opens
 for the download item by default.

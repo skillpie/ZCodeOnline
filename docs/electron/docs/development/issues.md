@@ -1,10 +1,10 @@
 # Issues In Electron
 
-* [How to Contribute to Issues](#how-to-contribute-to-issues)
-* [Asking for General Help](#asking-for-general-help)
-* [Submitting a Bug Report](#submitting-a-bug-report)
-* [Triaging a Bug Report](#triaging-a-bug-report)
-* [Resolving a Bug Report](#resolving-a-bug-report)
+- [How to Contribute to Issues](#how-to-contribute-to-issues)
+- [Asking for General Help](#asking-for-general-help)
+- [Submitting a Bug Report](#submitting-a-bug-report)
+- [Triaging a Bug Report](#triaging-a-bug-report)
+- [Resolving a Bug Report](#resolving-a-bug-report)
 
 ## How to Contribute to Issues
 

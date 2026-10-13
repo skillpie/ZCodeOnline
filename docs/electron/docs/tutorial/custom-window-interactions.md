@@ -61,10 +61,10 @@ events, you can call the [win.setIgnoreMouseEvents(ignore)][ignore-mouse-events]
 API:
 
 ```js title='main.js'
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow()
-win.setIgnoreMouseEvents(true)
+const win = new BrowserWindow();
+win.setIgnoreMouseEvents(true);
 ```
 
 ### Forward mouse events _macOS_ _Windows_
@@ -75,32 +75,32 @@ optional parameter can be used to forward mouse move messages to the web page,
 allowing events such as `mouseleave` to be emitted:
 
 ```js title='main.js'
-const { BrowserWindow, ipcMain } = require('electron')
+const { BrowserWindow, ipcMain } = require("electron");
 
-const path = require('node:path')
+const path = require("node:path");
 
 const win = new BrowserWindow({
   webPreferences: {
-    preload: path.join(__dirname, 'preload.js')
-  }
-})
+    preload: path.join(__dirname, "preload.js"),
+  },
+});
 
-ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
-  const win = BrowserWindow.fromWebContents(event.sender)
-  win.setIgnoreMouseEvents(ignore, options)
-})
+ipcMain.on("set-ignore-mouse-events", (event, ignore, options) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  win.setIgnoreMouseEvents(ignore, options);
+});
 ```
 
 ```js title='preload.js'
-window.addEventListener('DOMContentLoaded', () => {
-  const el = document.getElementById('clickThroughElement')
-  el.addEventListener('mouseenter', () => {
-    ipcRenderer.send('set-ignore-mouse-events', true, { forward: true })
-  })
-  el.addEventListener('mouseleave', () => {
-    ipcRenderer.send('set-ignore-mouse-events', false)
-  })
-})
+window.addEventListener("DOMContentLoaded", () => {
+  const el = document.getElementById("clickThroughElement");
+  el.addEventListener("mouseenter", () => {
+    ipcRenderer.send("set-ignore-mouse-events", true, { forward: true });
+  });
+  el.addEventListener("mouseleave", () => {
+    ipcRenderer.send("set-ignore-mouse-events", false);
+  });
+});
 ```
 
 This makes the web page click-through when over the `#clickThroughElement` element,

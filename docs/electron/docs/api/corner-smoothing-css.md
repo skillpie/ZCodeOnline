@@ -22,12 +22,12 @@ The following example shows the effect of corner smoothing at different percents
   height: 128px;
   background-color: cornflowerblue;
   border-radius: 24px;
-  -electron-corner-smoothing: var(--percent);  /* Column header in table below. */
+  -electron-corner-smoothing: var(--percent); /* Column header in table below. */
 }
 ```
 
-| 0% | 30% | 60% | 100% |
-| --- | --- | --- | --- |
+| 0%                                                                                           | 30%                                                                                            | 60%                                                                                            | 100%                                                                                             |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | ![A rectangle with round corners at 0% smoothness](../images/corner-smoothing-example-0.svg) | ![A rectangle with round corners at 30% smoothness](../images/corner-smoothing-example-30.svg) | ![A rectangle with round corners at 60% smoothness](../images/corner-smoothing-example-60.svg) | ![A rectangle with round corners at 100% smoothness](../images/corner-smoothing-example-100.svg) |
 
 ### Matching the system UI
@@ -40,13 +40,13 @@ Use the `system-ui` keyword to match the smoothness to the OS design language.
   height: 128px;
   background-color: cornflowerblue;
   border-radius: 24px;
-  -electron-corner-smoothing: system-ui;  /* Match the system UI design. */
+  -electron-corner-smoothing: system-ui; /* Match the system UI design. */
 }
 ```
 
-| OS: | macOS | Windows, Linux |
-| --- | --- | --- |
-| Value: | `60%` | `0%` |
+| OS:      | macOS                                                                                                       | Windows, Linux                                                                                                         |
+| -------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Value:   | `60%`                                                                                                       | `0%`                                                                                                                   |
 | Example: | ![A rectangle with round corners whose smoothness matches macOS](../images/corner-smoothing-example-60.svg) | ![A rectangle with round corners whose smoothness matches Windows and Linux](../images/corner-smoothing-example-0.svg) |
 
 ### Controlling availability
@@ -57,17 +57,17 @@ This CSS rule can be disabled using the Blink feature flag `ElectronCSSCornerSmo
 const myWindow = new BrowserWindow({
   // [...]
   webPreferences: {
-    disableBlinkFeatures: 'ElectronCSSCornerSmoothing' // Disables the `-electron-corner-smoothing` CSS rule
-  }
-})
+    disableBlinkFeatures: "ElectronCSSCornerSmoothing", // Disables the `-electron-corner-smoothing` CSS rule
+  },
+});
 ```
 
 ### Formal reference
 
-* **Initial value**: `0%`
-* **Inherited**: No
-* **Animatable**: No
-* **Computed value**: As specified
+- **Initial value**: `0%`
+- **Inherited**: No
+- **Animatable**: No
+- **Computed value**: As specified
 
 ```css
 -electron-corner-smoothing =

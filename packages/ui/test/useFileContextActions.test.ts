@@ -17,6 +17,8 @@ vi.mock("@/hooks/usePlatform.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -78,15 +80,11 @@ describe("useFileContextActions", () => {
     expect(latestResult!.canRevealInFileManager(target)).toBe(true);
     await latestResult!.revealInFileManager(target);
 
-    expect(mockOpenInEditor).toHaveBeenCalledWith(
-      "explorer",
-      "/workspace/repo/src",
-      {
-        pathKind: "directory",
-        remoteTarget,
-        workspaceIdentity: "remote:wsl:Ubuntu-24.04:dev:/workspace/repo",
-      },
-    );
+    expect(mockOpenInEditor).toHaveBeenCalledWith("explorer", "/workspace/repo/src", {
+      pathKind: "directory",
+      remoteTarget,
+      workspaceIdentity: "remote:wsl:Ubuntu-24.04:dev:/workspace/repo",
+    });
     expect(mockOpenInFileManager).not.toHaveBeenCalled();
   });
 

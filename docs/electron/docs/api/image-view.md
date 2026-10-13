@@ -13,24 +13,24 @@ when the content finishes loading.
 Note that `ImageView` is experimental and may be changed or removed in the future.
 
 ```js
-const { BaseWindow, ImageView, nativeImage, WebContentsView } = require('electron')
+const { BaseWindow, ImageView, nativeImage, WebContentsView } = require("electron");
 
-const path = require('node:path')
+const path = require("node:path");
 
-const win = new BaseWindow({ width: 800, height: 600 })
+const win = new BaseWindow({ width: 800, height: 600 });
 
 // Create a "splash screen" image to display while the WebContentsView loads
-const splashView = new ImageView()
-const splashImage = nativeImage.createFromPath(path.join(__dirname, 'loading.png'))
-splashView.setImage(splashImage)
-win.setContentView(splashView)
+const splashView = new ImageView();
+const splashImage = nativeImage.createFromPath(path.join(__dirname, "loading.png"));
+splashView.setImage(splashImage);
+win.setContentView(splashView);
 
-const webContentsView = new WebContentsView()
-webContentsView.webContents.once('did-finish-load', () => {
+const webContentsView = new WebContentsView();
+webContentsView.webContents.once("did-finish-load", () => {
   // Now that the WebContentsView has loaded, swap out the "splash screen" ImageView
-  win.setContentView(webContentsView)
-})
-webContentsView.webContents.loadURL('https://electronjs.org')
+  win.setContentView(webContentsView);
+});
+webContentsView.webContents.loadURL("https://electronjs.org");
 ```
 
 ## Class: ImageView extends `View`
@@ -79,7 +79,7 @@ added:
 ```
 -->
 
-* `image` NativeImage
+- `image` NativeImage
 
 Sets the image for this `ImageView`. Note that only image formats supported by
 `NativeImage` can be used with an `ImageView`.

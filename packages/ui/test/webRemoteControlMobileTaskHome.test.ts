@@ -16,6 +16,8 @@ import {
 import { hasWebRemoteControlMobileTaskHomeActiveTaskMatch } from "@/lib/webRemoteControlMobileTaskHome.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     locale: "zh-CN",
     intl: {
@@ -43,13 +45,7 @@ const defaultPreferences = {
   sortBy: "updated" as const,
 };
 
-function localTimestamp(
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-) {
+function localTimestamp(year: number, month: number, day: number, hour: number, minute: number) {
   // 修复原因：移动端 timeline 复用本地自然日分组；测试用本地时间构造，
   // 避免海外 runner 把 +08:00 的今天任务归到昨天。
   return new Date(year, month - 1, day, hour, minute).getTime();
@@ -320,9 +316,7 @@ describe("WebRemoteControlMobileTaskHome", () => {
       expect(html).toContain("taskTimeline.today");
       expect(html).toContain("taskTimeline.lastMonth");
       expect(html.indexOf("taskTimeline.today")).toBeLessThan(html.indexOf("Today task"));
-      expect(html.indexOf("taskTimeline.lastMonth")).toBeLessThan(
-        html.indexOf("Last month task"),
-      );
+      expect(html.indexOf("taskTimeline.lastMonth")).toBeLessThan(html.indexOf("Last month task"));
     } finally {
       vi.useRealTimers();
     }

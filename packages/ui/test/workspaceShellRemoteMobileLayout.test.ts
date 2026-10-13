@@ -143,6 +143,8 @@ vi.mock("@/DesktopWindowFrame.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -885,7 +887,7 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     expect(html).not.toContain('data-testid="new-task-draft-drag-region"');
   });
 
-  it("does not inject the workspace header into mobile remote chat while a new task draft is active", async () => {
+  it("injects the workspace header into mobile remote chat even while a new task draft is active（2026-09-27 用户决策：草稿态对齐桌面渲染头部，见 workspaceHeaderVisibility）", async () => {
     vi.stubGlobal("window", {
       innerHeight: 800,
       matchMedia: vi.fn(() => ({
@@ -916,13 +918,17 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     });
 
     expect(html).toContain('data-testid="web-remote-mobile-shell"');
-    expect(html).not.toContain('data-testid="workspace-header"');
+    expect(html).toContain('data-testid="workspace-header"');
 
     vi.unstubAllGlobals();
   });
 
   it("removes the legacy Linux floating chrome", async () => {
-    const html = await renderWorkspaceShell({ isDesktop: true, isMacDesktop: false, isWindowsDesktop: false });
+    const html = await renderWorkspaceShell({
+      isDesktop: true,
+      isMacDesktop: false,
+      isWindowsDesktop: false,
+    });
     expect(html).not.toContain('data-testid="linux-window-controls"');
     expect(html).not.toContain("w-[120px]");
     expect(html).toContain("rounded-xl");
@@ -942,6 +948,10 @@ it.each([
 it("places the workspace header inside the independent conversation frame", async () => {
   const html = await renderWorkspaceShell({ isDesktop: true, isMacDesktop: true });
   expect(html).toContain('data-workspace-conversation-frame="true"');
-  expect(html.indexOf('data-panel-id="conversation-column"')).toBeLessThan(html.indexOf('data-testid="workspace-header"'));
-  expect(html.indexOf('data-workspace-conversation-frame="true"')).toBeLessThan(html.indexOf('data-testid="workspace-header"'));
+  expect(html.indexOf('data-panel-id="conversation-column"')).toBeLessThan(
+    html.indexOf('data-testid="workspace-header"'),
+  );
+  expect(html.indexOf('data-workspace-conversation-frame="true"')).toBeLessThan(
+    html.indexOf('data-testid="workspace-header"'),
+  );
 });

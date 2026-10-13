@@ -4,8 +4,8 @@ This tutorial builds on the [general introduction to Native Code and Electron](.
 
 Specifically, we'll be integrating with two commonly used native Windows libraries:
 
-* `comctl32.lib`, which contains common controls and user interface components. It provides various UI elements like buttons, scrollbars, toolbars, status bars, progress bars, and tree views. As far as GUI development on Windows goes, this library is very low-level and basic - more modern frameworks like WinUI or WPF are more advanced alternatives but require a lot more C++ and Windows version considerations than are useful for this tutorial. This way, we can avoid the many perils of building native interfaces for multiple Windows versions!
-* `shcore.lib`, a library that provides high-DPI awareness functionality and other Shell-related features around managing displays and UI elements.
+- `comctl32.lib`, which contains common controls and user interface components. It provides various UI elements like buttons, scrollbars, toolbars, status bars, progress bars, and tree views. As far as GUI development on Windows goes, this library is very low-level and basic - more modern frameworks like WinUI or WPF are more advanced alternatives but require a lot more C++ and Windows version considerations than are useful for this tutorial. This way, we can avoid the many perils of building native interfaces for multiple Windows versions!
+- `shcore.lib`, a library that provides high-DPI awareness functionality and other Shell-related features around managing displays and UI elements.
 
 This tutorial will be most useful to those who already have some familiarity with native C++ GUI development on Windows. You should have experience with basic window classes and procedures, like `WNDCLASSEXW` and `WindowProc` functions. You should also be familiar with the Windows message loop, which is the heart of any native application - our code will be using `GetMessage`, `TranslateMessage`, and `DispatchMessage` to handle messages. Lastly, we'll be using (but not explaining) standard Win32 controls like `WC_EDITW` or `WC_BUTTONW`.
 
@@ -69,40 +69,26 @@ For a Windows-specific addon, we need to modify our `binding.gyp` file to includ
     {
       "target_name": "cpp_addon",
       "conditions": [
-        ['OS=="win"', {
-          "sources": [
-            "src/cpp_addon.cc",
-            "src/cpp_code.cc"
-          ],
-          "include_dirs": [
-            "<!@(node -p \"require('node-addon-api').include\")",
-            "include"
-          ],
-          "libraries": [
-            "comctl32.lib",
-            "shcore.lib"
-          ],
-          "dependencies": [
-            "<!(node -p \"require('node-addon-api').gyp\")"
-          ],
-          "msvs_settings": {
-            "VCCLCompilerTool": {
-              "ExceptionHandling": 1,
-              "DebugInformationFormat": "OldStyle",
-              "AdditionalOptions": [
-                "/FS"
-              ]
+        [
+          "OS==\"win\"",
+          {
+            "sources": ["src/cpp_addon.cc", "src/cpp_code.cc"],
+            "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")", "include"],
+            "libraries": ["comctl32.lib", "shcore.lib"],
+            "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
+            "msvs_settings": {
+              "VCCLCompilerTool": {
+                "ExceptionHandling": 1,
+                "DebugInformationFormat": "OldStyle",
+                "AdditionalOptions": ["/FS"]
+              },
+              "VCLinkerTool": {
+                "GenerateDebugInformation": "true"
+              }
             },
-            "VCLinkerTool": {
-              "GenerateDebugInformation": "true"
-            }
-          },
-          "defines": [
-            "NODE_ADDON_API_CPP_EXCEPTIONS",
-            "WINVER=0x0A00",
-            "_WIN32_WINNT=0x0A00"
-          ]
-        }]
+            "defines": ["NODE_ADDON_API_CPP_EXCEPTIONS", "WINVER=0x0A00", "_WIN32_WINNT=0x0A00"]
+          }
+        ]
       ]
     }
   ]
@@ -127,9 +113,9 @@ If you're curious about the details about this config, you can read on - otherwi
 }
 ```
 
-* `ExceptionHandling: 1`: This enables C++ exception handling with the /EHsc compiler flag. This is important because it enables the compiler to catch C++ exceptions, ensures proper stack unwinding when exceptions occur, and is required for Node-API to properly handle exceptions between JavaScript and C++.
-* `DebugInformationFormat: "OldStyle"`: This specifies the format of debugging information, using the older, more compatible PDB (Program Database) format. This supports compatibility with various debugging tools and works better with incremental builds.
-* `AdditionalOptions: ["/FS"]`: This adds the File Serialization flag, forcing serialized access to PDB files during compilation. It prevents build errors in parallel builds where multiple compiler processes try to access the same PDB file.
+- `ExceptionHandling: 1`: This enables C++ exception handling with the /EHsc compiler flag. This is important because it enables the compiler to catch C++ exceptions, ensures proper stack unwinding when exceptions occur, and is required for Node-API to properly handle exceptions between JavaScript and C++.
+- `DebugInformationFormat: "OldStyle"`: This specifies the format of debugging information, using the older, more compatible PDB (Program Database) format. This supports compatibility with various debugging tools and works better with incremental builds.
+- `AdditionalOptions: ["/FS"]`: This adds the File Serialization flag, forcing serialized access to PDB files during compilation. It prevents build errors in parallel builds where multiple compiler processes try to access the same PDB file.
 
 #### `VCLinkerTool` Settings
 
@@ -139,13 +125,13 @@ If you're curious about the details about this config, you can read on - otherwi
 }
 ```
 
-* `GenerateDebugInformation: "true"`: This tells the linker to include debug information, which allows source-level debugging in tools that use symbols. Most importantly, this will allow us to get human-readable stack traces if the addon crashes.
+- `GenerateDebugInformation: "true"`: This tells the linker to include debug information, which allows source-level debugging in tools that use symbols. Most importantly, this will allow us to get human-readable stack traces if the addon crashes.
 
 ### Preprocessor macros (`defines`):
 
-* `NODE_ADDON_API_CPP_EXCEPTIONS`: This macro enables C++ exception handling in the Node Addon API. By default, Node-API uses a return-value error handling pattern, but this define allows the C++ wrapper to throw and catch C++ exceptions, which makes the code more idiomatic C++ and easier to work with.
-* `WINVER=0x0A00`: This defines the minimum Windows version that the code is targeting. The value `0x0A00` corresponds to Windows 10. Setting this tells the compiler that the code can use features available in Windows 10, and it won't attempt to maintain backward compatibility with earlier Windows versions. Make sure to set this to the lowest version of Windows you intend to support with your Electron app.
-* `_WIN32_WINNT=0x0A00` - Similar to `WINVER`, this defines the minimum version of the Windows NT kernel that the code will run on. Again, 0x0A00 corresponds to Windows 10. This is commonly set to the same value as `WINVER`.
+- `NODE_ADDON_API_CPP_EXCEPTIONS`: This macro enables C++ exception handling in the Node Addon API. By default, Node-API uses a return-value error handling pattern, but this define allows the C++ wrapper to throw and catch C++ exceptions, which makes the code more idiomatic C++ and easier to work with.
+- `WINVER=0x0A00`: This defines the minimum Windows version that the code is targeting. The value `0x0A00` corresponds to Windows 10. Setting this tells the compiler that the code can use features available in Windows 10, and it won't attempt to maintain backward compatibility with earlier Windows versions. Make sure to set this to the lowest version of Windows you intend to support with your Electron app.
+- `_WIN32_WINNT=0x0A00` - Similar to `WINVER`, this defines the minimum version of the Windows NT kernel that the code will run on. Again, 0x0A00 corresponds to Windows 10. This is commonly set to the same value as `WINVER`.
 
 ## 3) Defining the C++ Interface
 
@@ -172,10 +158,10 @@ void setTodoAddedCallback(TodoCallback callback);
 
 This header:
 
-* Includes the basic `hello_world` function from the general tutorial
-* Adds a `hello_gui` function to create a Win32 GUI
-* Defines callback types for Todo operations (add). To keep this tutorial somewhat brief, we'll only be implementing one callback.
-* Provides setter functions for these callbacks
+- Includes the basic `hello_world` function from the general tutorial
+- Adds a `hello_gui` function to create a Win32 GUI
+- Defines callback types for Todo operations (add). To keep this tutorial somewhat brief, we'll only be implementing one callback.
+- Provides setter functions for these callbacks
 
 ## 4) Implementing Win32 GUI Code
 
@@ -234,10 +220,10 @@ namespace cpp_code
 
 In this section:
 
-* We include necessary Win32 headers
-* We set up pragma comments to link against required libraries
-* We define callback variables for Todo operations
-* We create a `TodoItem` struct with a method to convert to JSON
+- We include necessary Win32 headers
+- We set up pragma comments to link against required libraries
+- We define callback variables for Todo operations
+- We create a `TodoItem` struct with a method to convert to JSON
 
 Next, let's implement the basic functions and helper methods:
 
@@ -284,12 +270,12 @@ namespace cpp_code
 
 In this section, we've added a function that allows us to set the callback for an added todo item. We also added two helper functions that we need when working with JavaScript: One to scale our UI elements depending on the display's DPI - and another one to convert a Windows `SYSTEMTIME` to milliseconds since epoch, which is how JavaScript keeps track of time.
 
-Now, let's get to the part you probably came to this tutorial for - creating a GUI thread and drawing native pixels on screen.  We'll do that by adding a `void hello_gui()` function to our `cpp_code` namespace. There are a few considerations we need to make:
+Now, let's get to the part you probably came to this tutorial for - creating a GUI thread and drawing native pixels on screen. We'll do that by adding a `void hello_gui()` function to our `cpp_code` namespace. There are a few considerations we need to make:
 
-* We need to create a new thread for the GUI to avoid blocking the Node.js event loop. The Windows message loop that processes GUI events runs in an infinite loop, which would prevent Node.js from processing other events if run on the main thread. By running the GUI on a separate thread, we allow both the native Windows interface and Node.js to remain responsive. This separation also helps prevent potential deadlocks that could occur if GUI operations needed to wait for JavaScript callbacks. You don't need to do that for simpler Windows API interactions - but since you need to check the message loop, you do need to setup your own thread for GUI.
-* Then, within our thread, we need to run a message loop to handle any Windows messages.
-* We need to setup DPI awareness for proper display scaling.
-* We need to register a window class, create a window, and add various UI controls.
+- We need to create a new thread for the GUI to avoid blocking the Node.js event loop. The Windows message loop that processes GUI events runs in an infinite loop, which would prevent Node.js from processing other events if run on the main thread. By running the GUI on a separate thread, we allow both the native Windows interface and Node.js to remain responsive. This separation also helps prevent potential deadlocks that could occur if GUI operations needed to wait for JavaScript callbacks. You don't need to do that for simpler Windows API interactions - but since you need to check the message loop, you do need to setup your own thread for GUI.
+- Then, within our thread, we need to run a message loop to handle any Windows messages.
+- We need to setup DPI awareness for proper display scaling.
+- We need to register a window class, create a window, and add various UI controls.
 
 In the code below, we haven't added any actual controls yet. We're doing that on purpose to look at our added code in smaller portions here.
 

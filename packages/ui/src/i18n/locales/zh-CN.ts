@@ -6256,6 +6256,8 @@ const zhCN: Record<string, string> = {
   // 改过设置后前两个选项换描述（docs/dynamic-workflow/launch.md「The options」）：会话免确认只管
   // 「以后不再问」，调整只随这一次应答走。
   "chat.permission.workflow.allowOnce.adjusted": "按调整后的设置运行一次",
+  "chat.permission.workflow.allowForSession": "本会话内始终允许",
+  "chat.permission.workflow.allowForSession.description": "本会话内运行工作流不再询问",
   "chat.permission.workflow.allowForSession.adjusted":
     "本次按调整后的设置运行；之后的工作流不再询问，各用各的设置",
   // ── 可复用工作流（docs/dynamic-workflow/launch.md）──

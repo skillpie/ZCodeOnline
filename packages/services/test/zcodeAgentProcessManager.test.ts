@@ -100,6 +100,7 @@ describe("resolveDefaultZCodeAgentCommand", () => {
   ] as const;
 
   const originalCwd = process.cwd();
+  let savedArgv1: string | null = null;
   const originalCommand = process.env.ZCODE_AGENT_SERVER_COMMAND;
   const originalArgsJson = process.env.ZCODE_AGENT_SERVER_ARGS_JSON;
   const originalCwdEnv = process.env.ZCODE_AGENT_SERVER_CWD;
@@ -129,6 +130,10 @@ describe("resolveDefaultZCodeAgentCommand", () => {
 
   afterEach(async () => {
     process.chdir(originalCwd);
+    if (savedArgv1 !== null) {
+      process.argv[1] = savedArgv1;
+      savedArgv1 = null;
+    }
     restoreEnv("ZCODE_AGENT_SERVER_COMMAND", originalCommand);
     restoreEnv("ZCODE_AGENT_SERVER_ARGS_JSON", originalArgsJson);
     restoreEnv("ZCODE_AGENT_SERVER_CWD", originalCwdEnv);
@@ -319,6 +324,13 @@ describe("resolveDefaultZCodeAgentCommand", () => {
 
     const binaryPath = join(sandboxRoot, "zcode-agent");
     writeFileSync(binaryPath, "#!/bin/sh\necho zcode-agent\n");
+
+    // findUpward 会从运行入口（process.argv[1]）向上找 monorepo 入口（隧道宿主修复）。
+    // 本用例模拟「远端已部署」布局：运行入口也落在沙箱（部署的 server-cli），
+    // 这样 monorepo 对 resolver 真正不可达，GLM_BINARY_PATH 兜底才会生效。
+    savedArgv1 = process.argv[1];
+    process.argv[1] = join(sandboxRoot, "runtime", "server-cli.js");
+    createdDirs.push(sandboxRoot);
 
     process.env[ZCODE_AGENT_RUNTIME.binaryEnvVar] = binaryPath;
     process.chdir(sandboxRoot);

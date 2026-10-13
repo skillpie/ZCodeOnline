@@ -304,7 +304,8 @@ describe("快捷键生效表 resolve", () => {
   it("无覆盖时返回命令表默认绑定", () => {
     const effective = resolveEffectiveShortcutBindings();
     expect(effective.toggleSidebar).toEqual(["CmdOrCtrl+b"]);
-    expect(effective.openCommandCenter).toEqual(["CmdOrCtrl+k", "CmdOrCtrl+Shift+p"]);
+    expect(effective.openCommandCenter).toEqual(["CmdOrCtrl+k"]);
+    expect(effective.gitCommit).toEqual(["CmdOrCtrl+Shift+p"]);
   });
 
   it("覆盖为整组替换（双默认绑定同时失效）", () => {
@@ -448,10 +449,10 @@ describe("快捷键冲突检测（拒绝 + 标红）", () => {
       ownerCommandId: "newTask",
       binding: "CmdOrCtrl+n",
     });
-    // 占用者含双默认绑定时任一绑定都算占用
+    // ⇧⌘P 现归 gitCommit（2026-09-29 用户键位重分配），占用者为其头部 Git 工具命令。
     expect(checkShortcutBindingConflict("toggleSidebar", "CmdOrCtrl+Shift+p")).toEqual({
       kind: "occupied",
-      ownerCommandId: "openCommandCenter",
+      ownerCommandId: "gitCommit",
       binding: "CmdOrCtrl+Shift+p",
     });
   });
@@ -521,10 +522,10 @@ describe("按键搜索的物理等价比较 isSamePhysicalBinding", () => {
 });
 
 describe("拆行多绑定构建器（spec §8：一个命令多组键，行级操作）", () => {
-  // openCommandCenter 默认双键：CmdOrCtrl+k / CmdOrCtrl+Shift+p
+  // openCommandCenter 默认单键 ⌘K（⇧⌘P 已让位给 gitCommit）
   it("追加：默认键 + 已有覆盖全部保留，新键排尾", () => {
     const next = buildShortcutOverridesAfterAppend(undefined, "openCommandCenter", "CmdOrCtrl+g");
-    expect(next.openCommandCenter).toEqual(["CmdOrCtrl+k", "CmdOrCtrl+Shift+p", "CmdOrCtrl+g"]);
+    expect(next.openCommandCenter).toEqual(["CmdOrCtrl+k", "CmdOrCtrl+g"]);
     // 覆盖后的命令追加基于生效列表（覆盖整组替换语义）
     const replaced = buildShortcutOverridesAfterAppend(
       { openCommandCenter: ["Ctrl+y"] },
@@ -542,8 +543,10 @@ describe("拆行多绑定构建器（spec §8：一个命令多组键，行级�
   });
 
   it("删除：移除指定条，删空落显式 []（未分配），不影响其他命令", () => {
+    // openCommandCenter 现为单默认键 ⌘K（⇧⌘P 已让位给 gitCommit）：
+    // 删除唯一默认条 = 落显式未分配。
     const next = buildShortcutOverridesWithoutBindingAt(undefined, "openCommandCenter", 0);
-    expect(next.openCommandCenter).toEqual(["CmdOrCtrl+Shift+p"]);
+    expect(next.openCommandCenter).toEqual([]);
     const last = buildShortcutOverridesWithoutBindingAt(
       { openCommandCenter: ["CmdOrCtrl+k"], toggleSidebar: ["CmdOrCtrl+b"] },
       "openCommandCenter",
@@ -554,17 +557,17 @@ describe("拆行多绑定构建器（spec §8：一个命令多组键，行级�
     expect(last.toggleSidebar).toEqual(["CmdOrCtrl+b"]);
   });
 
-  it("替换：指定位置换新键，其余条目（含默认键）保留", () => {
+  it("替换：指定位置越界时为无操作（单默认键无第 1 条）", () => {
     const next = buildShortcutOverridesWithBindingAt(
       undefined,
       "openCommandCenter",
       1,
       "CmdOrCtrl+g",
     );
-    expect(next.openCommandCenter).toEqual(["CmdOrCtrl+k", "CmdOrCtrl+g"]);
-    // 无覆盖时替换第 0 条同样保留其余默认键
+    expect(next.openCommandCenter).toEqual(["CmdOrCtrl+k"]);
+    // 无覆盖时替换第 0 条 = 整组换成新键（单默认键没有其余条目）
     const first = buildShortcutOverridesWithBindingAt(undefined, "openCommandCenter", 0, "Ctrl+y");
-    expect(first.openCommandCenter).toEqual(["Ctrl+y", "CmdOrCtrl+Shift+p"]);
+    expect(first.openCommandCenter).toEqual(["Ctrl+y"]);
   });
 });
 
@@ -579,11 +582,11 @@ describe("快捷键二次确认抢绑", () => {
     expect(effective.toggleSidebar).toEqual([]);
   });
 
-  it("被抢命令是多默认绑定时只移除被抢的那条，其余保留", () => {
-    // 抢 openCommandCenter 的第一默认 CmdOrCtrl+k
+  it("被抢命令只剩单默认绑定时被抢即清空为未分配", () => {
+    // 抢 openCommandCenter 的唯一默认 CmdOrCtrl+k（⇧⌘P 已让位给 gitCommit）
     const next = buildShortcutOverridesAfterSteal(undefined, "toggleTerminal", "CmdOrCtrl+k");
     expect(next.toggleTerminal).toEqual(["CmdOrCtrl+k"]);
-    expect(next.openCommandCenter).toEqual(["CmdOrCtrl+Shift+p"]);
+    expect(next.openCommandCenter).toEqual([]);
   });
 
   it("抢绑在既有覆盖之上叠加，不丢失无关命令的覆盖", () => {
@@ -597,8 +600,7 @@ describe("快捷键二次确认抢绑", () => {
     expect(next.toggleTerminal).toEqual([]); // 被抢清空
   });
 
-  it("多绑定命令行级抢绑：replace 只换目标条，其余绑定保留（CR-01）", () => {
-    // replace 第 0 条：CmdOrCtrl+Shift+p 必须保留，不得被整组替换吞掉
+  it("行级抢绑 replace：openCommandCenter 单默认键被换后为显式未分配", () => {
     const replaceFirst = buildShortcutOverridesAfterSteal(
       undefined,
       "toggleTerminal",
@@ -606,15 +608,7 @@ describe("快捷键二次确认抢绑", () => {
       { mode: "replace", bindingIndex: 0 },
     );
     expect(replaceFirst.toggleTerminal).toEqual(["CmdOrCtrl+k"]);
-    expect(replaceFirst.openCommandCenter).toEqual(["CmdOrCtrl+Shift+p"]);
-    // replace 第 1 条：openCommandCenter 原有的 CmdOrCtrl+k 作为冲突键被移除，剩第 2 条
-    const replaceSecond = buildShortcutOverridesAfterSteal(
-      undefined,
-      "toggleTerminal",
-      "CmdOrCtrl+k",
-      { mode: "replace", bindingIndex: 1 },
-    );
-    expect(replaceSecond.openCommandCenter).toEqual(["CmdOrCtrl+Shift+p"]);
+    expect(replaceFirst.openCommandCenter).toEqual([]);
   });
 
   it("多绑定命令行级抢绑：未分配录第一条（append）与缺省旧行为", () => {
@@ -626,16 +620,16 @@ describe("快捷键二次确认抢绑", () => {
       { mode: "replace", bindingIndex: null },
     );
     expect(appendSteal.toggleTerminal).toEqual(["CmdOrCtrl+j", "CmdOrCtrl+k"]);
-    expect(appendSteal.openCommandCenter).toEqual(["CmdOrCtrl+Shift+p"]);
+    expect(appendSteal.openCommandCenter).toEqual([]);
     // add 模式 → 追加到现有列表尾部
     const addSteal = buildShortcutOverridesAfterSteal(undefined, "toggleTerminal", "CmdOrCtrl+k", {
       mode: "add",
       bindingIndex: null,
     });
-    expect(addSteal.openCommandCenter).toEqual(["CmdOrCtrl+Shift+p"]);
+    expect(addSteal.openCommandCenter).toEqual([]);
     // 缺省（未传 mode）保持旧整组替换行为，既有调用方不受影响
     const legacy = buildShortcutOverridesAfterSteal(undefined, "toggleTerminal", "CmdOrCtrl+k");
-    expect(legacy.openCommandCenter).toEqual(["CmdOrCtrl+Shift+p"]);
+    expect(legacy.openCommandCenter).toEqual([]);
   });
 });
 

@@ -20,7 +20,7 @@ Emitted when system is resuming.
 
 Emitted when the system changes to AC power.
 
-### Event: 'on-battery' _macOS_  _Windows_
+### Event: 'on-battery' _macOS_ _Windows_
 
 Emitted when system changes to battery power.
 
@@ -28,8 +28,8 @@ Emitted when system changes to battery power.
 
 Returns:
 
-* `details` Event\<\>
-  * `state` string - The system's new thermal state. Can be `unknown`, `nominal`, `fair`, `serious`, `critical`.
+- `details` Event\<\>
+  - `state` string - The system's new thermal state. Can be `unknown`, `nominal`, `fair`, `serious`, `critical`.
 
 Emitted when the thermal state of the system changes. Notification of a change
 in the thermal status of the system, such as entering a critical temperature
@@ -47,8 +47,8 @@ See https://developer.apple.com/library/archive/documentation/Performance/Concep
 
 Returns:
 
-* `details` Event\<\>
-  * `limit` number - The operating system's advertised speed limit for CPUs, in percent.
+- `details` Event\<\>
+  - `limit` number - The operating system's advertised speed limit for CPUs, in percent.
 
 Notification of a change in the operating system's advertised speed limit for
 CPUs, in percent. Values below 100 indicate that the system is impairing
@@ -83,12 +83,12 @@ The `powerMonitor` module has the following methods:
 
 ### `powerMonitor.getSystemIdleState(idleThreshold)`
 
-* `idleThreshold` Integer
+- `idleThreshold` Integer
 
 Returns `string` - The system's current idle state. Can be `active`, `idle`, `locked` or `unknown`.
 
 Calculate the system idle state. `idleThreshold` is the amount of time (in seconds)
-before considered idle.  `locked` is available on supported systems only.
+before considered idle. `locked` is available on supported systems only.
 
 ### `powerMonitor.getSystemIdleTime()`
 

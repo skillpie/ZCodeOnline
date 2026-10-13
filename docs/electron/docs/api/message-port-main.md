@@ -23,8 +23,8 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 #### `port.postMessage(message, [transfer])`
 
-* `message` any
-* `transfer` MessagePortMain[] (optional)
+- `message` any
+- `transfer` MessagePortMain[] (optional)
 
 Sends a message from the port, and optionally, transfers ownership of objects
 to other browsing contexts.
@@ -44,9 +44,9 @@ Disconnects the port, so it is no longer active.
 
 Returns:
 
-* `messageEvent` Object
-  * `data` any
-  * `ports` MessagePortMain[]
+- `messageEvent` Object
+  - `data` any
+  - `ports` MessagePortMain[]
 
 Emitted when a MessagePortMain object receives a message.
 

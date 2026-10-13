@@ -1238,6 +1238,11 @@ export function createHomeOnlyWebRemoteControlServices(): RootServices {
         "fileService.applyWorkspaceFileSearchIgnoreTransform",
       ),
       writeWorkspaceFileSearchIgnore: unsupported("fileService.writeWorkspaceFileSearchIgnore"),
+      // 文件树右键重命名/删除、预览编辑保存与命令中心内容搜索：Web stub 保持同形不支持面。
+      searchWorkspaceContent: unsupported("fileService.searchWorkspaceContent"),
+      writeTextFile: unsupported("fileService.writeTextFile"),
+      renameEntry: unsupported("fileService.renameEntry"),
+      deleteEntry: unsupported("fileService.deleteEntry"),
     },
     mediaPreviewService:
       createUnsupportedHomeOnlyService<NonNullable<RootServices["mediaPreviewService"]>>(
@@ -1412,6 +1417,9 @@ export function createHomeOnlyWebRemoteControlServices(): RootServices {
       createUnsupportedHomeOnlyService<RootServices["feedbackService"]>("feedbackService"),
     settingsSyncService:
       createUnsupportedHomeOnlyService<RootServices["settingsSyncService"]>("settingsSyncService"),
+    // SkillPie 技能市场（specs/skill-market.md）：Web stub 与其他 Home-only 服务同形不支持。
+    skillMarketService:
+      createUnsupportedHomeOnlyService<RootServices["skillMarketService"]>("skillMarketService"),
   };
 }
 

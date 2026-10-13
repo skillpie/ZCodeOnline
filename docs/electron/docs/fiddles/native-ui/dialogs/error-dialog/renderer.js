@@ -1,5 +1,5 @@
-const errorBtn = document.getElementById('error-dialog')
+const errorBtn = document.getElementById("error-dialog");
 
-errorBtn.addEventListener('click', () => {
-  window.electronAPI.openErrorDialog()
-})
+errorBtn.addEventListener("click", () => {
+  window.electronAPI.openErrorDialog();
+});

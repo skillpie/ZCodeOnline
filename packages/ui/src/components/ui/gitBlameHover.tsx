@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useZCodeIntlOrDefault } from "@/i18n/IntlProvider.js";
 
 export interface GitBlameHoverInfo {
   author: string;
@@ -53,7 +53,7 @@ export function useGitBlameHoverTooltip(resolveBlameLine: ResolveGitBlameLine | 
   /** 悬停提示浮层（已含 portal），调用方原样渲染进 JSX 即可 */
   tooltip: ReactNode;
 } {
-  const { intl } = useZCodeIntl();
+  const { intl } = useZCodeIntlOrDefault();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
   const hoveredLineRef = useRef<number | null>(null);

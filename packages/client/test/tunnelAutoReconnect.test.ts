@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { backoffDelayMs, createAutoReconnect } from "../src/tunnel/autoReconnect.js";
 
 // 浏览器隧道自动重连调度器验收：指数退避序列、pending 合并、尝试上限与

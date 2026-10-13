@@ -252,7 +252,9 @@ describe("mobile text input zoom guard", () => {
     expect(permissionDialogSource).toContain("avoidIosInputFocusZoom");
     expect(promptEditorSource).toContain("avoidIosInputFocusZoom={avoidIosInputFocusZoom}");
     expect(promptEditorSource).toContain("compactPlaceholder={compactPlaceholder}");
-    expect(lexicalInputSource).toContain("resolveMobileInputTextSizeClassName({");
+    // 本实现直接对移动视口固定 16px 下限（text-mobile-input-safe），md 视口恢复 ui-base，
+    // 覆盖面比官方的 web-remote 条件写法更宽（specs/theme-default.md 同源决策）。
+    expect(lexicalInputSource).toContain("text-mobile-input-safe md:text-ui-base");
     expect(lexicalInputSource).toContain('compactPlaceholder ? "line-clamp-2" : ""');
     expect(lexicalInputSource).not.toContain("user-scalable=no");
     expect(lexicalInputSource).not.toContain("maximum-scale");

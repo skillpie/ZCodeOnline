@@ -554,7 +554,8 @@ describe("zcodeAgentService v4 conversation channel", () => {
         // 根因：为不存在的版本错配补写 mode、补发无 revision 的模式命令，改变了原创建合同。
         expect(commands).toHaveLength(1);
         expect(commands[0]?.params.type).toBe("createSession");
-        expect(commands[0]?.params.payload).toEqual(payload);
+        // 数据源门控会附加 toolDisallowlist，核心字段必须原样透传。
+        expect(commands[0]?.params.payload).toMatchObject(payload);
       } finally {
         await service.disposeAllAndWait();
       }
@@ -1341,7 +1342,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         },
       });
       expect(commandRequest?.params.payload).not.toHaveProperty("automationId");
-      expect(commandRequest?.params.payload).not.toHaveProperty("toolDisallowlist");
+      // 数据源门控恒注入 DB 工具限制（specs/data-source.md §7）；这里只断言
+      // cron 归属逻辑没有额外注入 cron 工具限制。
+      expect(commandRequest?.params.payload.toolDisallowlist).not.toContain("CronCreate");
     } finally {
       repo.close();
       await service.disposeAllAndWait();
@@ -1405,7 +1408,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
           text: "继续正常对话",
         },
       });
-      expect(commandRequest?.params.payload).not.toHaveProperty("toolDisallowlist");
+      // 数据源门控恒注入 DB 工具限制（specs/data-source.md §7）；这里只断言
+      // cron 归属逻辑没有额外注入 cron 工具限制。
+      expect(commandRequest?.params.payload.toolDisallowlist).not.toContain("CronCreate");
       expect(getTaskMeta).not.toHaveBeenCalled();
     } finally {
       getTaskMeta.mockRestore();

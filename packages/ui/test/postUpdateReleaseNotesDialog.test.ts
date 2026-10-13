@@ -18,13 +18,15 @@ vi.mock("@/components/ui/GlmMonochromeIcon.js", () => ({
 
 vi.mock("@/components/ui/dialog.js", () => ({
   Dialog: ({ open, children }: { open: boolean; children: unknown }) =>
-    (open ? createElement("div", { "data-testid": "dialog-root" }, children) : null),
+    open ? createElement("div", { "data-testid": "dialog-root" }, children) : null,
   DialogContent: ({ children, ...props }: Record<string, unknown>) =>
     createElement("div", props, children),
   DialogTitle: ({ children }: { children: unknown }) => createElement("h1", null, children),
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: vi.fn((descriptor: { id: string }) => {
@@ -42,9 +44,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
 
 describe("PostUpdateReleaseNotesDialog", () => {
   it("renders title row, markdown body and acknowledge button", async () => {
-    const { PostUpdateReleaseNotesDialog } = await import(
-      "@/root/PostUpdateReleaseNotesDialog.js"
-    );
+    const { PostUpdateReleaseNotesDialog } = await import("@/root/PostUpdateReleaseNotesDialog.js");
 
     const html = renderToStaticMarkup(
       createElement(PostUpdateReleaseNotesDialog, {
@@ -64,9 +64,7 @@ describe("PostUpdateReleaseNotesDialog", () => {
   });
 
   it("falls back to localized default title when payload title is empty", async () => {
-    const { PostUpdateReleaseNotesDialog } = await import(
-      "@/root/PostUpdateReleaseNotesDialog.js"
-    );
+    const { PostUpdateReleaseNotesDialog } = await import("@/root/PostUpdateReleaseNotesDialog.js");
 
     const html = renderToStaticMarkup(
       createElement(PostUpdateReleaseNotesDialog, {

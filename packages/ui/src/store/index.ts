@@ -401,7 +401,11 @@ export function createZCodeStore(
     cleanupSystemThemeListener?.();
     cleanupSystemThemeListener = null;
 
-    if (theme !== "system" || typeof window === "undefined") {
+    if (
+      theme !== "system" ||
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
       return;
     }
 

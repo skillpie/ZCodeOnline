@@ -14,16 +14,16 @@ The following is an example of setting up Electron to automatically submit
 crash reports to a remote server:
 
 ```js
-const { crashReporter } = require('electron')
+const { crashReporter } = require("electron");
 
-crashReporter.start({ submitURL: 'https://your-domain.com/url-to-submit' })
+crashReporter.start({ submitURL: "https://your-domain.com/url-to-submit" });
 ```
 
 For setting up a server to accept and process crash reports, you can use
 following projects:
 
-* [socorro](https://github.com/mozilla-services/socorro)
-* [mini-breakpad-server](https://github.com/electron/mini-breakpad-server)
+- [socorro](https://github.com/mozilla-services/socorro)
+- [mini-breakpad-server](https://github.com/electron/mini-breakpad-server)
 
 > [!NOTE]
 > Electron uses Crashpad, not Breakpad, to collect and upload
@@ -31,10 +31,10 @@ following projects:
 
 Or use a 3rd party hosted solution:
 
-* [Backtrace](https://backtrace.io/electron/)
-* [Sentry](https://docs.sentry.io/clients/electron)
-* [BugSplat](https://www.bugsplat.com/docs/platforms/electron)
-* [Bugsnag](https://docs.bugsnag.com/platforms/electron/)
+- [Backtrace](https://backtrace.io/electron/)
+- [Sentry](https://docs.sentry.io/clients/electron)
+- [BugSplat](https://www.bugsplat.com/docs/platforms/electron)
+- [Bugsnag](https://docs.bugsnag.com/platforms/electron/)
 
 Crash reports are stored temporarily before being uploaded in a directory
 underneath the app's user data directory, called 'Crashpad'. You can override
@@ -66,30 +66,30 @@ changes:
 ```
 -->
 
-* `options` Object
-  * `submitURL` string (optional) - URL that crash reports will be sent to as
+- `options` Object
+  - `submitURL` string (optional) - URL that crash reports will be sent to as
     POST. Required unless `uploadToServer` is `false`.
-  * `productName` string (optional) - Defaults to `app.name`.
-  * `companyName` string (optional) _Deprecated_ - Deprecated alias for
+  - `productName` string (optional) - Defaults to `app.name`.
+  - `companyName` string (optional) _Deprecated_ - Deprecated alias for
     `{ globalExtra: { _companyName: ... } }`.
-  * `uploadToServer` boolean (optional) - Whether crash reports should be sent
+  - `uploadToServer` boolean (optional) - Whether crash reports should be sent
     to the server. If false, crash reports will be collected and stored in the
     crashes directory, but not uploaded. Default is `true`.
-  * `ignoreSystemCrashHandler` boolean (optional) - If true, crashes generated
+  - `ignoreSystemCrashHandler` boolean (optional) - If true, crashes generated
     in the main process will not be forwarded to the system crash handler.
     Default is `false`.
-  * `rateLimit` boolean (optional) _macOS_ _Windows_ - If true, limit the
+  - `rateLimit` boolean (optional) _macOS_ _Windows_ - If true, limit the
     number of crashes uploaded to 1/hour. Default is `false`.
-  * `compress` boolean (optional) - If true, crash reports will be compressed
+  - `compress` boolean (optional) - If true, crash reports will be compressed
     and uploaded with `Content-Encoding: gzip`. Default is `true`.
-  * `extra` Record\<string, string\> (optional) - Extra string key/value
+  - `extra` Record\<string, string\> (optional) - Extra string key/value
     annotations that will be sent along with crash reports that are generated
     in the main process. Only string values are supported. Crashes generated in
     child processes will not include these extra parameters. To add extra
     parameters to crash reports generated from child processes, call
     [`addExtraParameter`](#crashreporteraddextraparameterkey-value) from the
     child process.
-  * `globalExtra` Record\<string, string\> (optional) - Extra string key/value
+  - `globalExtra` Record\<string, string\> (optional) - Extra string key/value
     annotations that will be sent along with any crash reports generated in any
     process. These annotations cannot be changed once the crash reporter has
     been started. If a key is present in both the global extra parameters and
@@ -191,7 +191,7 @@ changes:
 ```
 -->
 
-* `uploadToServer` boolean - Whether reports should be submitted to the server.
+- `uploadToServer` boolean - Whether reports should be submitted to the server.
 
 This would normally be controlled by user preferences. This has no effect if
 called before `start` is called.
@@ -201,8 +201,8 @@ called before `start` is called.
 
 ### `crashReporter.addExtraParameter(key, value)`
 
-* `key` string - Parameter key, must be no longer than 39 bytes.
-* `value` string - Parameter value, must be no longer than 127 bytes.
+- `key` string - Parameter key, must be no longer than 39 bytes.
+- `value` string - Parameter value, must be no longer than 127 bytes.
 
 Set an extra parameter to be sent with the crash report. The values specified
 here will be sent in addition to any values set via the `extra` option when
@@ -223,7 +223,7 @@ with crashes that occur in other renderer processes or in the main process.
 
 ### `crashReporter.removeExtraParameter(key)`
 
-* `key` string - Parameter key, must be no longer than 39 bytes.
+- `key` string - Parameter key, must be no longer than 39 bytes.
 
 Remove an extra parameter from the current set of parameters. Future crashes
 will not include this parameter.
@@ -263,16 +263,16 @@ See [`crashReporter.removeExtraParameter(key)`](#crashreporterremoveextraparamet
 The crash reporter will send the following data to the `submitURL` as
 a `multipart/form-data` `POST`:
 
-* `ver` string - The version of Electron.
-* `platform` string - e.g. 'win32'.
-* `process_type` string - e.g. 'renderer'.
-* `guid` string - e.g. '5e1286fc-da97-479e-918b-6bfb0c3d1c72'.
-* `_version` string - The version in `package.json`.
-* `_productName` string - The product name in the `crashReporter` `options`
+- `ver` string - The version of Electron.
+- `platform` string - e.g. 'win32'.
+- `process_type` string - e.g. 'renderer'.
+- `guid` string - e.g. '5e1286fc-da97-479e-918b-6bfb0c3d1c72'.
+- `_version` string - The version in `package.json`.
+- `_productName` string - The product name in the `crashReporter` `options`
   object.
-* `prod` string - Name of the underlying product. In this case Electron.
-* `_companyName` string - The company name in the `crashReporter` `options`
+- `prod` string - Name of the underlying product. In this case Electron.
+- `_companyName` string - The company name in the `crashReporter` `options`
   object.
-* `upload_file_minidump` File - The crash report in the format of `minidump`.
-* All level one properties of the `extra` object in the `crashReporter`
+- `upload_file_minidump` File - The crash report in the format of `minidump`.
+- All level one properties of the `extra` object in the `crashReporter`
   `options` object.

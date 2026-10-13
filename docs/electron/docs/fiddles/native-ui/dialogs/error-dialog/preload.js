@@ -1,5 +1,5 @@
-const { contextBridge, ipcRenderer } = require('electron/renderer')
+const { contextBridge, ipcRenderer } = require("electron/renderer");
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  openErrorDialog: () => ipcRenderer.send('open-error-dialog')
-})
+contextBridge.exposeInMainWorld("electronAPI", {
+  openErrorDialog: () => ipcRenderer.send("open-error-dialog"),
+});

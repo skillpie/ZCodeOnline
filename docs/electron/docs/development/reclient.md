@@ -34,8 +34,8 @@ If you're using `build-tools`, appropriate `-j` values will automatically be use
 ## Access
 
 For security and cost reasons, access to Electron's RBE backend is currently restricted
-to Electron Maintainers.  If you want access, please head to `#access-requests` in
-Slack and ping `@infra-wg` to ask for it.  Please be aware that being a
+to Electron Maintainers. If you want access, please head to `#access-requests` in
+Slack and ping `@infra-wg` to ask for it. Please be aware that being a
 maintainer does not _automatically_ grant access. Access is determined on a
 case-by-case basis.
 

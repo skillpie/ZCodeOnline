@@ -7,10 +7,7 @@ import {
   useComposerAttachments,
   type ComposerAttachmentsApi,
 } from "@/v4/composer/useComposerAttachments.js";
-import {
-  dispatchWhiteboardAddToChat,
-  WHITEBOARD_ADD_TO_CHAT_EVENT,
-} from "@/lib/whiteboard.js";
+import { dispatchWhiteboardAddToChat, WHITEBOARD_ADD_TO_CHAT_EVENT } from "@/lib/whiteboard.js";
 
 const mocks = vi.hoisted(() => ({
   platform: {
@@ -31,6 +28,8 @@ vi.mock("@/hooks/useServices.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,

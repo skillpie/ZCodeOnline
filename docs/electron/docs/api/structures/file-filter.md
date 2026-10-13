@@ -1,4 +1,4 @@
 # FileFilter Object
 
-* `name` string
-* `extensions` string[]
+- `name` string
+- `extensions` string[]

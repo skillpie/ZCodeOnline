@@ -58,6 +58,7 @@ $ ninja -C out/Debug electron
 Now you can use `LLDB` for breakpoint debugging.
 
 ## Platform-Specific Debugging
+
 <!-- TODO(@codebytere): add debugging file for Linux-->
 
 - [macOS Debugging](debugging-on-macos.md)

@@ -64,5 +64,7 @@ it("使用部署 endpoint 的新接口并提取反馈地址", async () => {
   ).toBe("https://remote.feedback");
   expect(new URL(String(fetchImpl.mock.calls[0][0])).searchParams.has("platform")).toBe(false);
   expect(fetchImpl.mock.calls[0][0]).toContain("https://test.example.com/api/v1/client/configs?");
-  expect(await resolveWebCommunityUrl("zh-CN", { fetchImpl })).toBe("https://remote.community");
+  // 本地策略：社区地址只读内置配置，远端下发的 community_urls 不生效。
+  expect(await resolveWebCommunityUrl("zh-CN", { fetchImpl })).not.toBe("https://remote.community");
+  expect(await resolveWebCommunityUrl("zh-CN", { fetchImpl })).toContain("applink.feishu.cn");
 });

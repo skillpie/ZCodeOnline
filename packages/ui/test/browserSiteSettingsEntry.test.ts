@@ -5,6 +5,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { BrowserSiteSettingsEntry } from "@/browser-use/BrowserSiteSettingsEntry.js";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 beforeEach(() => {
@@ -36,9 +38,7 @@ it("点击权限设置后弹窗关闭再回调（否则 trigger 随 tab 隐藏�
   expect(await screen.findByTestId("browser-permission-popover")).toBeTruthy();
   fireEvent.click(screen.getByTestId("browser-permission-open-settings"));
   expect(onOpenSettings).toHaveBeenCalledWith("https://example.com");
-  await waitFor(() =>
-    expect(screen.queryByTestId("browser-permission-popover")).toBeNull(),
-  );
+  await waitFor(() => expect(screen.queryByTestId("browser-permission-popover")).toBeNull());
 });
 
 it("点击权限设置回调目标 origin；无回调时入口禁用", async () => {

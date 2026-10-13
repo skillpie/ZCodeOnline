@@ -11,14 +11,14 @@ project.
 
 _Notes_:
 
-* There are two rendering modes that can be used (see the section below) and only
-the dirty area is passed to the `paint` event to be more efficient.
-* You can stop/continue the rendering as well as set the frame rate.
-* When `webPreferences.offscreen.useSharedTexture` is `false`, the maximum frame rate is 240 because greater values bring only performance
-losses with no benefits.
-* When nothing is happening on a webpage, no frames are generated.
-* An offscreen window is always created as a
-[Frameless Window](../tutorial/window-customization.md).
+- There are two rendering modes that can be used (see the section below) and only
+  the dirty area is passed to the `paint` event to be more efficient.
+- You can stop/continue the rendering as well as set the frame rate.
+- When `webPreferences.offscreen.useSharedTexture` is `false`, the maximum frame rate is 240 because greater values bring only performance
+  losses with no benefits.
+- When nothing is happening on a webpage, no frames are generated.
+- An offscreen window is always created as a
+  [Frameless Window](../tutorial/window-customization.md).
 
 ### Rendering Modes
 
@@ -31,22 +31,22 @@ setting.
 
 1. Use GPU shared texture
 
-    Used when `webPreferences.offscreen.useSharedTexture` is set to `true`.
+   Used when `webPreferences.offscreen.useSharedTexture` is set to `true`.
 
-    This is an advanced feature requiring a native node module to work with your own code.
-    The frames are directly copied in GPU textures, thus this mode is very fast because
-    there's no CPU-GPU memory copies overhead, and you can directly import the shared
-    texture to your own rendering program. You can read more details
-    [here](../../shell/common/api/shared_texture/README.md).
+   This is an advanced feature requiring a native node module to work with your own code.
+   The frames are directly copied in GPU textures, thus this mode is very fast because
+   there's no CPU-GPU memory copies overhead, and you can directly import the shared
+   texture to your own rendering program. You can read more details
+   [here](../../shell/common/api/shared_texture/README.md).
 
 2. Use CPU shared memory bitmap
 
-    Used when `webPreferences.offscreen.useSharedTexture` is set to `false` (default behavior).
+   Used when `webPreferences.offscreen.useSharedTexture` is set to `false` (default behavior).
 
-    The texture is accessible using the `NativeImage` API at the cost of performance.
-    The frame has to be copied from the GPU to the CPU bitmap which requires more system
-    resources, thus this mode is slower than the Software output device mode. But it supports
-    GPU related functionalities.
+   The texture is accessible using the `NativeImage` API at the cost of performance.
+   The frame has to be copied from the GPU to the CPU bitmap which requires more system
+   resources, thus this mode is slower than the Software output device mode. But it supports
+   GPU related functionalities.
 
 #### Software output device
 

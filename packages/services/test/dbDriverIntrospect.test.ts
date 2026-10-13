@@ -2,7 +2,7 @@
 // node-postgres 的 query() 返回 QueryResult 对象（行集合在 .rows 上），
 // mysql2 返回 [rows, fields] 元组，两种形状都必须正确解构（回归 "rows.map is not a function"）。
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import type { DataSourceConfig } from "@zcode/shared";
 import { introspectColumns, introspectTables } from "../src/data-source/dbDriver.js";
 

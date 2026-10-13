@@ -103,14 +103,14 @@ following code snippet to your menu template:
 
 ```json
 {
-  "submenu":[
+  "submenu": [
     {
-      "label":"Open Recent",
-      "role":"recentdocuments",
-      "submenu":[
+      "label": "Open Recent",
+      "role": "recentdocuments",
+      "submenu": [
         {
-          "label":"Clear Recent",
-          "role":"clearrecentdocuments"
+          "label": "Clear Recent",
+          "role": "clearrecentdocuments"
         }
       ]
     }
@@ -122,16 +122,16 @@ Make sure the application menu is added after the [`'ready'`](../api/app.md#even
 event and not before, or the menu item will be disabled:
 
 ```js
-const { app, Menu } = require('electron')
+const { app, Menu } = require("electron");
 
 const template = [
   // Menu template here
-]
-const menu = Menu.buildFromTemplate(template)
+];
+const menu = Menu.buildFromTemplate(template);
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(menu)
-})
+  Menu.setApplicationMenu(menu);
+});
 ```
 
 ![macOS Recent Documents menu item][menu-item-image]

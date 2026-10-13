@@ -17,15 +17,15 @@ Notification objects created using this module do not appear unless their `show(
 method is called.
 
 ```js title='Main Process'
-const { Notification } = require('electron')
+const { Notification } = require("electron");
 
-const NOTIFICATION_TITLE = 'Basic Notification'
-const NOTIFICATION_BODY = 'Notification from the Main process'
+const NOTIFICATION_TITLE = "Basic Notification";
+const NOTIFICATION_BODY = "Notification from the Main process";
 
 new Notification({
   title: NOTIFICATION_TITLE,
-  body: NOTIFICATION_BODY
-}).show()
+  body: NOTIFICATION_BODY,
+}).show();
 ```
 
 Here's a full example that you can open with Electron Fiddle:
@@ -70,13 +70,12 @@ Notifications can be displayed directly from the renderer process with the
 [web Notifications API](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API/Using_the_Notifications_API).
 
 ```js title='Renderer Process'
-const NOTIFICATION_TITLE = 'Title'
-const NOTIFICATION_BODY =
-  'Notification from the Renderer process. Click to log to console.'
-const CLICK_MESSAGE = 'Notification clicked'
+const NOTIFICATION_TITLE = "Title";
+const NOTIFICATION_BODY = "Notification from the Renderer process. Click to log to console.";
+const CLICK_MESSAGE = "Notification clicked";
 
-new Notification(NOTIFICATION_TITLE, { body: NOTIFICATION_BODY }).onclick =
-  () => console.log(CLICK_MESSAGE)
+new Notification(NOTIFICATION_TITLE, { body: NOTIFICATION_BODY }).onclick = () =>
+  console.log(CLICK_MESSAGE);
 ```
 
 Here's a full example that you can open with Electron Fiddle:

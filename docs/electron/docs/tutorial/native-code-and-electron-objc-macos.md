@@ -4,8 +4,8 @@ This tutorial builds on the [general introduction to Native Code and Electron](.
 
 Specifically, we'll be integrating with two macOS frameworks:
 
-* AppKit - The primary UI framework for macOS applications that provides components like windows, buttons, text fields, and more.
-* Foundation - A framework that provides data management, file system interaction, and other essential services.
+- AppKit - The primary UI framework for macOS applications that provides components like windows, buttons, text fields, and more.
+- Foundation - A framework that provides data management, file system interaction, and other essential services.
 
 This tutorial will be most useful to those who already have some familiarity with Objective-C and Cocoa development. You should understand basic concepts like delegates, NSObjects, and the target-action pattern commonly used in macOS development.
 
@@ -16,8 +16,8 @@ This tutorial will be most useful to those who already have some familiarity wit
 
 Just like our general introduction to Native Code and Electron, this tutorial assumes you have Node.js and npm installed, as well as the basic tools necessary for compiling native code on macOS. You'll need:
 
-* Xcode installed (available from the Mac App Store)
-* Xcode Command Line Tools (can be installed by running `xcode-select --install` in Terminal)
+- Xcode installed (available from the Mac App Store)
+- Xcode Command Line Tools (can be installed by running `xcode-select --install` in Terminal)
 
 ## 1) Creating a package
 
@@ -72,36 +72,23 @@ For a macOS-specific addon using Objective-C, we need to modify our `binding.gyp
     {
       "target_name": "objc_addon",
       "conditions": [
-        ['OS=="mac"', {
-          "sources": [
-            "src/objc_addon.mm",
-            "src/objc_code.mm"
-          ],
-          "include_dirs": [
-            "<!@(node -p \"require('node-addon-api').include\")",
-            "include"
-          ],
-          "libraries": [
-            "-framework Foundation",
-            "-framework AppKit"
-          ],
-          "dependencies": [
-            "<!(node -p \"require('node-addon-api').gyp\")"
-          ],
-          "xcode_settings": {
-            "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-            "CLANG_CXX_LIBRARY": "libc++",
-            "MACOSX_DEPLOYMENT_TARGET": "11.0",
-            "CLANG_ENABLE_OBJC_ARC": "YES",
-            "OTHER_CFLAGS": [
-              "-ObjC++",
-              "-std=c++17"
-            ]
-          },
-          "defines": [
-            "NODE_ADDON_API_CPP_EXCEPTIONS"
-          ]
-        }]
+        [
+          "OS==\"mac\"",
+          {
+            "sources": ["src/objc_addon.mm", "src/objc_code.mm"],
+            "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")", "include"],
+            "libraries": ["-framework Foundation", "-framework AppKit"],
+            "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
+            "xcode_settings": {
+              "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+              "CLANG_CXX_LIBRARY": "libc++",
+              "MACOSX_DEPLOYMENT_TARGET": "11.0",
+              "CLANG_ENABLE_OBJC_ARC": "YES",
+              "OTHER_CFLAGS": ["-ObjC++", "-std=c++17"]
+            },
+            "defines": ["NODE_ADDON_API_CPP_EXCEPTIONS"]
+          }
+        ]
       ]
     }
   ]
@@ -110,12 +97,12 @@ For a macOS-specific addon using Objective-C, we need to modify our `binding.gyp
 
 Note the key macOS-specific settings:
 
-* `.mm` extension for source files: This indicates Objective-C++ files which can mix Objective-C and C++.
-* `libraries`: This section includes the Foundation and AppKit frameworks
-* `xcode_settings` includes:
-  * `CLANG_ENABLE_OBJC_ARC`: "YES" enables Automatic Reference Counting for easier memory management
-  * `OTHER_CFLAGS`: `-ObjC++` to properly handle Objective-C++ compilation
-  * `MACOSX_DEPLOYMENT_TARGET`: This flag specifies the minimum macOS version supported. You'll likely want this to match the lowest version of macOS you support with your app.
+- `.mm` extension for source files: This indicates Objective-C++ files which can mix Objective-C and C++.
+- `libraries`: This section includes the Foundation and AppKit frameworks
+- `xcode_settings` includes:
+  - `CLANG_ENABLE_OBJC_ARC`: "YES" enables Automatic Reference Counting for easier memory management
+  - `OTHER_CFLAGS`: `-ObjC++` to properly handle Objective-C++ compilation
+  - `MACOSX_DEPLOYMENT_TARGET`: This flag specifies the minimum macOS version supported. You'll likely want this to match the lowest version of macOS you support with your app.
 
 ## 3) Defining the Objective-C Interface
 
@@ -142,10 +129,10 @@ void setTodoAddedCallback(TodoCallback callback);
 
 This header:
 
-* Includes a basic hello_world function from the general tutorial
-* Adds a `hello_gui` function to create a native macOS GUI
-* Defines callback types for Todo operations
-* Provides setter functions for these callbacks
+- Includes a basic hello_world function from the general tutorial
+- Adds a `hello_gui` function to create a native macOS GUI
+- Defines callback types for Todo operations
+- Provides setter functions for these callbacks
 
 ## 4) Implementing the Objective-C Code
 
@@ -192,11 +179,11 @@ At the bottom of `objc_code.mm`, add the following code to define our window con
 
 This declares our TodoWindowController class which will manage the window and UI components:
 
-* A text field (`NSTextField`) for entering todo text
-* A date picker (`NSDatePicker`) for selecting the date
-* An "Add" button (`NSButton`)
-* A table view to display the todos (`NSTableView`)
-* An array to store the todo items (`NSMutableArray`)
+- A text field (`NSTextField`) for entering todo text
+- A date picker (`NSDatePicker`) for selecting the date
+- An "Add" button (`NSButton`)
+- A table view to display the todos (`NSTableView`)
+- An array to store the todo items (`NSMutableArray`)
 
 ### Implementing the Window Controller
 
@@ -491,8 +478,8 @@ Let's implement the table view data source methods to display our todos:
 
 These methods:
 
-* Return the number of todos for the table view
-* Provide the text or formatted date for each cell in the table
+- Return the number of todos for the table view
+- Provide the text or formatted date for each cell in the table
 
 ### Implementing the C++ Functions
 
@@ -873,11 +860,11 @@ private:
 
 This code:
 
-* Sets up the constructor with member initialization
-* Creates a threadsafe function using N-API, which allows safe callbacks from any thread
-* Defines a lambda to create callback functions for different event types
-* Registers the "todoAdded" callback with our Objective-C code
-* Implements a destructor to clean up resources when the addon is destroyed
+- Sets up the constructor with member initialization
+- Creates a threadsafe function using N-API, which allows safe callbacks from any thread
+- Defines a lambda to create callback functions for different event types
+- Registers the "todoAdded" callback with our Objective-C code
+- Implements a destructor to clean up resources when the addon is destroyed
 
 The threadsafe function is important because UI events in Objective-C might happen on a different thread than the JavaScript event loop. This mechanism safely bridges those thread boundaries.
 
@@ -919,9 +906,9 @@ Napi::Value On(const Napi::CallbackInfo& info) {
 
 Let's take a look at what we've added in this step:
 
-* `HelloWorld()`: Takes a string input, calls our Objective-C function, and returns the result
-* `HelloGui()`:  A simple wrapper around the Objective-C `hello_gui` function
-* `On`: Allows JavaScript to register event listeners that will be called when native events occur
+- `HelloWorld()`: Takes a string input, calls our Objective-C function, and returns the result
+- `HelloGui()`: A simple wrapper around the Objective-C `hello_gui` function
+- `On`: Allows JavaScript to register event listeners that will be called when native events occur
 
 The `On` method is particularly important as it creates the event system that our JavaScript code will use to receive notifications from the native UI.
 
@@ -1075,43 +1062,43 @@ NODE_API_MODULE(objc_addon, Init)
 You're so close! We now have working Objective-C and thread-safe ways to expose methods and events to JavaScript. In this final step, let's create a JavaScript wrapper in `js/index.js` to provide a more friendly API:
 
 ```js title='js/index.js' @ts-expect-error=[10]
-const EventEmitter = require('node:events')
+const EventEmitter = require("node:events");
 
 class ObjcMacosAddon extends EventEmitter {
-  constructor () {
-    super()
+  constructor() {
+    super();
 
-    if (process.platform !== 'darwin') {
-      throw new Error('This module is only available on macOS')
+    if (process.platform !== "darwin") {
+      throw new Error("This module is only available on macOS");
     }
 
-    const native = require('bindings')('objc_addon')
-    this.addon = new native.ObjcMacosAddon()
+    const native = require("bindings")("objc_addon");
+    this.addon = new native.ObjcMacosAddon();
 
-    this.addon.on('todoAdded', (payload) => {
-      this.emit('todoAdded', this.parse(payload))
-    })
+    this.addon.on("todoAdded", (payload) => {
+      this.emit("todoAdded", this.parse(payload));
+    });
   }
 
-  helloWorld (input = '') {
-    return this.addon.helloWorld(input)
+  helloWorld(input = "") {
+    return this.addon.helloWorld(input);
   }
 
-  helloGui () {
-    this.addon.helloGui()
+  helloGui() {
+    this.addon.helloGui();
   }
 
-  parse (payload) {
-    const parsed = JSON.parse(payload)
+  parse(payload) {
+    const parsed = JSON.parse(payload);
 
-    return { ...parsed, date: new Date(parsed.date) }
+    return { ...parsed, date: new Date(parsed.date) };
   }
 }
 
-if (process.platform === 'darwin') {
-  module.exports = new ObjcMacosAddon()
+if (process.platform === "darwin") {
+  module.exports = new ObjcMacosAddon();
 } else {
-  module.exports = {}
+  module.exports = {};
 }
 ```
 
@@ -1140,13 +1127,13 @@ You've now built a complete native Node.js addon for macOS using Objective-C and
 
 The approach demonstrated here allows you to:
 
-* Create native macOS UIs using AppKit
-* Implement bidirectional communication between JavaScript and Objective-C
-* Leverage macOS-specific features and frameworks
-* Integrate with existing Objective-C codebases
+- Create native macOS UIs using AppKit
+- Implement bidirectional communication between JavaScript and Objective-C
+- Leverage macOS-specific features and frameworks
+- Integrate with existing Objective-C codebases
 
 For more information on developing with Objective-C and Cocoa, refer to Apple's developer documentation:
 
-* [Objective-C Programming](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html)
-* [AppKit Framework](https://developer.apple.com/documentation/appkit)
-* [macOS Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/macos)
+- [Objective-C Programming](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/Introduction/Introduction.html)
+- [AppKit Framework](https://developer.apple.com/documentation/appkit)
+- [macOS Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/macos)

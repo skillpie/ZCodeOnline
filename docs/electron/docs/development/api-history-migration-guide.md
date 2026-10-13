@@ -8,13 +8,13 @@ Here are some resources you can use to find information on the history of an API
 
 ### Breaking Changes
 
-* [`breaking-changes.md`](../breaking-changes.md)
+- [`breaking-changes.md`](../breaking-changes.md)
 
 ### Additions
 
-* `git blame`
-* [Release notes](https://github.com/electron/electron/releases/)
-* [`electron-api-historian`](https://github.com/electron/electron-api-historian)
+- `git blame`
+- [Release notes](https://github.com/electron/electron/releases/)
+- [`electron-api-historian`](https://github.com/electron/electron-api-historian)
 
 ## Example
 
@@ -27,6 +27,7 @@ If we search through [`breaking-changes.md`](../breaking-changes.md) we can find
 
 ```markdown
 <!-- docs/breaking-changes.md -->
+
 ### Deprecated: `BrowserWindow.getTrafficLightPosition()`
 
 `BrowserWindow.getTrafficLightPosition()` has been deprecated, the
@@ -35,6 +36,7 @@ which returns `null` instead of `{ x: 0, y: 0 }` when there is no custom
 position.
 
 <!-- docs/api/browser-window.md  -->
+
 #### `win.getTrafficLightPosition()` _macOS_ _Deprecated_
 
 Returns `Point` - The custom position for the traffic light buttons in
@@ -45,7 +47,7 @@ position.
 We can then use `git blame` to find the Pull Request associated with that entry:
 
 ```bash
-$ grep -n "BrowserWindow.getTrafficLightPosition" docs/breaking-changes.md 
+$ grep -n "BrowserWindow.getTrafficLightPosition" docs/breaking-changes.md
 523:### Deprecated: `BrowserWindow.getTrafficLightPosition()`
 525:`BrowserWindow.getTrafficLightPosition()` has been deprecated, the
 
@@ -66,9 +68,9 @@ API History:
 
 > [!NOTE]
 > Refer to the [API History section of `style-guide.md`](./style-guide.md#api-history)
-for information on how to create API History blocks.
+> for information on how to create API History blocks.
 
-`````markdown
+````markdown
 #### `win.getTrafficLightPosition()` _macOS_ _Deprecated_
 
 <!--
@@ -82,7 +84,7 @@ deprecated:
 Returns `Point` - The custom position for the traffic light buttons in
 frameless window, `{ x: 0, y: 0 }` will be returned when there is no custom
 position.
-`````
+````
 
 You can keep looking through `breaking-changes.md` to find other breaking changes
 and add those in.
@@ -101,7 +103,7 @@ Date:   Wed Dec 16 14:30:39 2020 +0900
 Verify that the Pull Request is correct and make a corresponding entry in the
 API History:
 
-`````markdown
+````markdown
 #### `win.getTrafficLightPosition()` _macOS_ _Deprecated_
 
 <!--
@@ -118,7 +120,7 @@ changes:
 Returns `Point` - The custom position for the traffic light buttons in
 frameless window, `{ x: 0, y: 0 }` will be returned when there is no custom
 position.
-`````
+````
 
 We will then look for when the API was originally added:
 
@@ -142,12 +144,12 @@ $ grep -n "getTrafficLightPosition" docs/api/browser-window.md
 
 $ git blame -L1867,1868 -- docs/api/browser-window.md
 0de1012280e (Cheng Zhao    2023-02-17 19:06:32 +0900 1867) #### `win.getTrafficLightPosition()` _macOS_ _Deprecated_
-3e2cec83d92 (Samuel Attard 2020-03-05 14:22:12 -0800 1868) 
+3e2cec83d92 (Samuel Attard 2020-03-05 14:22:12 -0800 1868)
 
 $ git checkout 0de1012280e^
 HEAD is now at 0a5e634736 test: rename & split internal module tests (#37318)
 
-$ grep -n "getTrafficLightPosition" docs/api/browser-window.md 
+$ grep -n "getTrafficLightPosition" docs/api/browser-window.md
 1851:#### `win.getTrafficLightPosition()` _macOS_
 
 $ git blame -L1851,1852 -- docs/api/browser-window.md
@@ -167,7 +169,7 @@ HEAD is now at 3e2cec83d9 feat: programmatically modify traffic light positionin
 Verify that the Pull Request is correct and make a corresponding entry in the
 API History:
 
-`````markdown
+````markdown
 #### `win.getTrafficLightPosition()` _macOS_ _Deprecated_
 
 <!--
@@ -187,4 +189,4 @@ deprecated:
 Returns `Point` - The custom position for the traffic light buttons in
 frameless window, `{ x: 0, y: 0 }` will be returned when there is no custom
 position.
-`````
+````

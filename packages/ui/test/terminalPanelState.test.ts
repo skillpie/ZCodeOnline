@@ -232,7 +232,6 @@ test("single tab still reports close-panel and direct close stays a no-op", () =
   assert.equal(closeTerminalSession(state, onlyId), state);
 });
 
-
 function createSession(
   id: string,
   index: number,
@@ -400,4 +399,3 @@ describe("terminalPanelState", () => {
     });
   });
 });
-

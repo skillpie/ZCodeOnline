@@ -1,6 +1,6 @@
 ---
-title: 'Application Packaging'
-description: 'To distribute your app with Electron, you need to package and rebrand it. To do this, you can either use specialized tooling or manual approaches.'
+title: "Application Packaging"
+description: "To distribute your app with Electron, you need to package and rebrand it. To do this, you can either use specialized tooling or manual approaches."
 slug: application-distribution
 hide_title: false
 ---
@@ -87,7 +87,6 @@ before distributing it to users.
 - **macOS:** You can rename `Electron.app` to any name you want, and you also have to rename
   the `CFBundleDisplayName`, `CFBundleIdentifier` and `CFBundleName` fields in the
   following files:
-
   - `Electron.app/Contents/Info.plist`
   - `Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Info.plist`
 

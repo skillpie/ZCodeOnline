@@ -41,19 +41,21 @@ After running the configuration wizard, your `wdio.conf.js` should include rough
 ```js title='wdio.conf.js' @ts-nocheck
 export const config = {
   // ...
-  services: ['electron'],
-  capabilities: [{
-    browserName: 'electron',
-    'wdio:electronServiceOptions': {
-      // WebdriverIO can automatically find your bundled application
-      // if you use Electron Forge or electron-builder, otherwise you
-      // can define it here, e.g.:
-      // appBinaryPath: './path/to/bundled/application.exe',
-      appArgs: ['foo', 'bar=baz']
-    }
-  }]
+  services: ["electron"],
+  capabilities: [
+    {
+      browserName: "electron",
+      "wdio:electronServiceOptions": {
+        // WebdriverIO can automatically find your bundled application
+        // if you use Electron Forge or electron-builder, otherwise you
+        // can define it here, e.g.:
+        // appBinaryPath: './path/to/bundled/application.exe',
+        appArgs: ["foo", "bar=baz"],
+      },
+    },
+  ],
   // ...
-}
+};
 ```
 
 #### Write your tests
@@ -61,37 +63,37 @@ export const config = {
 Use the [WebdriverIO API](https://webdriver.io/docs/api) to interact with elements on the screen. The framework provides custom "matchers" that make asserting the state of your application easy, e.g.:
 
 ```js @ts-nocheck
-import { browser, $, expect } from '@wdio/globals'
+import { browser, $, expect } from "@wdio/globals";
 
-describe('keyboard input', () => {
-  it('should detect keyboard input', async () => {
-    await browser.keys(['y', 'o'])
-    await expect($('keypress-count')).toHaveText('YO')
-  })
-})
+describe("keyboard input", () => {
+  it("should detect keyboard input", async () => {
+    await browser.keys(["y", "o"]);
+    await expect($("keypress-count")).toHaveText("YO");
+  });
+});
 ```
 
 Furthermore, WebdriverIO allows you to access Electron APIs to get static information about your application:
 
 ```js @ts-nocheck
-import { browser } from '@wdio/globals'
+import { browser } from "@wdio/globals";
 
-describe('trigger message modal', async () => {
-  it('message modal can be triggered from a test', async () => {
+describe("trigger message modal", async () => {
+  it("message modal can be triggered from a test", async () => {
     await browser.electron.execute(
       (electron, param1, param2, param3) => {
-        const appWindow = electron.BrowserWindow.getFocusedWindow()
+        const appWindow = electron.BrowserWindow.getFocusedWindow();
         electron.dialog.showMessageBox(appWindow, {
-          message: 'Hello World!',
-          detail: `${param1} + ${param2} + ${param3} = ${param1 + param2 + param3}`
-        })
+          message: "Hello World!",
+          detail: `${param1} + ${param2} + ${param3} = ${param1 + param2 + param3}`,
+        });
       },
       1,
       2,
-      3
-    )
-  })
-})
+      3,
+    );
+  });
+});
 ```
 
 #### Run your tests
@@ -141,28 +143,28 @@ normal websites, except that you have to manually specify how to connect
 ChromeDriver and where to find the binary of your Electron app:
 
 ```js title='test.js' @ts-expect-error=[1]
-const webdriver = require('selenium-webdriver')
+const webdriver = require("selenium-webdriver");
 
 const driver = new webdriver.Builder()
   // The "9515" is the port opened by ChromeDriver.
-  .usingServer('http://localhost:9515')
+  .usingServer("http://localhost:9515")
   .withCapabilities({
-    'goog:chromeOptions': {
+    "goog:chromeOptions": {
       // Here is the path to your Electron binary.
-      binary: '/Path-to-Your-App.app/Contents/MacOS/Electron'
-    }
+      binary: "/Path-to-Your-App.app/Contents/MacOS/Electron",
+    },
   })
-  .forBrowser('chrome') // note: use .forBrowser('electron') for selenium-webdriver <= 3.6.0
-  .build()
-driver.get('https://www.google.com')
-driver.findElement(webdriver.By.name('q')).sendKeys('webdriver')
-driver.findElement(webdriver.By.name('btnG')).click()
+  .forBrowser("chrome") // note: use .forBrowser('electron') for selenium-webdriver <= 3.6.0
+  .build();
+driver.get("https://www.google.com");
+driver.findElement(webdriver.By.name("q")).sendKeys("webdriver");
+driver.findElement(webdriver.By.name("btnG")).click();
 driver.wait(() => {
   return driver.getTitle().then((title) => {
-    return title === 'webdriver - Google Search'
-  })
-}, 1000)
-driver.quit()
+    return title === "webdriver - Google Search";
+  });
+}, 1000);
+driver.quit();
 ```
 
 ## Using Playwright
@@ -194,73 +196,73 @@ To point this API to your Electron app, you can pass the path to your main proce
 entry point (here, it is `main.js`).
 
 ```js {5} @ts-nocheck
-import { test, _electron as electron } from '@playwright/test'
+import { test, _electron as electron } from "@playwright/test";
 
-test('launch app', async () => {
-  const electronApp = await electron.launch({ args: ['.'] })
+test("launch app", async () => {
+  const electronApp = await electron.launch({ args: ["."] });
   // close app
-  await electronApp.close()
-})
+  await electronApp.close();
+});
 ```
 
 After that, you will have access to an instance of Playwright's `ElectronApp` class. This
 is a powerful class that has access to main process modules for example:
 
 ```js {5-10} @ts-nocheck
-import { test, _electron as electron } from '@playwright/test'
+import { test, _electron as electron } from "@playwright/test";
 
-test('get isPackaged', async () => {
-  const electronApp = await electron.launch({ args: ['.'] })
+test("get isPackaged", async () => {
+  const electronApp = await electron.launch({ args: ["."] });
   const isPackaged = await electronApp.evaluate(async ({ app }) => {
     // This runs in Electron's main process, parameter here is always
     // the result of the require('electron') in the main app script.
-    return app.isPackaged
-  })
-  console.log(isPackaged) // false (because we're in development mode)
+    return app.isPackaged;
+  });
+  console.log(isPackaged); // false (because we're in development mode)
   // close app
-  await electronApp.close()
-})
+  await electronApp.close();
+});
 ```
 
 It can also create individual [Page][playwright-page] objects from Electron BrowserWindow instances.
 For example, to grab the first BrowserWindow and save a screenshot:
 
 ```js {6-7} @ts-nocheck
-import { test, _electron as electron } from '@playwright/test'
+import { test, _electron as electron } from "@playwright/test";
 
-test('save screenshot', async () => {
-  const electronApp = await electron.launch({ args: ['.'] })
-  const window = await electronApp.firstWindow()
-  await window.screenshot({ path: 'intro.png' })
+test("save screenshot", async () => {
+  const electronApp = await electron.launch({ args: ["."] });
+  const window = await electronApp.firstWindow();
+  await window.screenshot({ path: "intro.png" });
   // close app
-  await electronApp.close()
-})
+  await electronApp.close();
+});
 ```
 
 Putting all this together using the Playwright test-runner, let's create an `example.spec.js`
 test file with a single test and assertion:
 
 ```js title='example.spec.js' @ts-nocheck
-import { test, expect, _electron as electron } from '@playwright/test'
+import { test, expect, _electron as electron } from "@playwright/test";
 
-test('example test', async () => {
-  const electronApp = await electron.launch({ args: ['.'] })
+test("example test", async () => {
+  const electronApp = await electron.launch({ args: ["."] });
   const isPackaged = await electronApp.evaluate(async ({ app }) => {
     // This runs in Electron's main process, parameter here is always
     // the result of the require('electron') in the main app script.
-    return app.isPackaged
-  })
+    return app.isPackaged;
+  });
 
-  expect(isPackaged).toBe(false)
+  expect(isPackaged).toBe(false);
 
   // Wait for the first BrowserWindow to open
   // and return its Page object
-  const window = await electronApp.firstWindow()
-  await window.screenshot({ path: 'intro.png' })
+  const window = await electronApp.firstWindow();
+  await window.screenshot({ path: "intro.png" });
 
   // close app
-  await electronApp.close()
-})
+  await electronApp.close();
+});
 ```
 
 Then, run Playwright Test using `npx playwright test`. You should see the test pass in your
@@ -295,22 +297,24 @@ To create a custom driver, we'll use Node.js' [`child_process`](https://nodejs.o
 The test suite will spawn the Electron process, then establish a simple messaging protocol:
 
 ```js title='testDriver.js' @ts-nocheck
-const electronPath = require('electron')
+const electronPath = require("electron");
 
-const childProcess = require('node:child_process')
+const childProcess = require("node:child_process");
 
 // spawn the process
-const env = { /* ... */ }
-const stdio = ['inherit', 'inherit', 'inherit', 'ipc']
-const appProcess = childProcess.spawn(electronPath, ['./app'], { stdio, env })
+const env = {
+  /* ... */
+};
+const stdio = ["inherit", "inherit", "inherit", "ipc"];
+const appProcess = childProcess.spawn(electronPath, ["./app"], { stdio, env });
 
 // listen for IPC messages from the app
-appProcess.on('message', (msg) => {
+appProcess.on("message", (msg) => {
   // ...
-})
+});
 
 // send an IPC message to the app
-appProcess.send({ my: 'message' })
+appProcess.send({ my: "message" });
 ```
 
 From within the Electron app, you can listen for messages and send replies using the Node.js
@@ -318,12 +322,12 @@ From within the Electron app, you can listen for messages and send replies using
 
 ```js title='main.js'
 // listen for messages from the test suite
-process.on('message', (msg) => {
+process.on("message", (msg) => {
   // ...
-})
+});
 
 // send a message to the test suite
-process.send({ my: 'message' })
+process.send({ my: "message" });
 ```
 
 We can now communicate from the test suite to the Electron app using the `appProcess` object.
@@ -334,78 +338,81 @@ a `TestDriver` class:
 
 ```js title='testDriver.js' @ts-nocheck
 class TestDriver {
-  constructor ({ path, args, env }) {
-    this.rpcCalls = []
+  constructor({ path, args, env }) {
+    this.rpcCalls = [];
 
     // start child process
-    env.APP_TEST_DRIVER = 1 // let the app know it should listen for messages
-    this.process = childProcess.spawn(path, args, { stdio: ['inherit', 'inherit', 'inherit', 'ipc'], env })
+    env.APP_TEST_DRIVER = 1; // let the app know it should listen for messages
+    this.process = childProcess.spawn(path, args, {
+      stdio: ["inherit", "inherit", "inherit", "ipc"],
+      env,
+    });
 
     // handle rpc responses
-    this.process.on('message', (message) => {
+    this.process.on("message", (message) => {
       // pop the handler
-      const rpcCall = this.rpcCalls[message.msgId]
-      if (!rpcCall) return
-      this.rpcCalls[message.msgId] = null
+      const rpcCall = this.rpcCalls[message.msgId];
+      if (!rpcCall) return;
+      this.rpcCalls[message.msgId] = null;
       // reject/resolve
-      if (message.reject) rpcCall.reject(message.reject)
-      else rpcCall.resolve(message.resolve)
-    })
+      if (message.reject) rpcCall.reject(message.reject);
+      else rpcCall.resolve(message.resolve);
+    });
 
     // wait for ready
-    this.isReady = this.rpc('isReady').catch((err) => {
-      console.error('Application failed to start', err)
-      this.stop()
-      process.exit(1)
-    })
+    this.isReady = this.rpc("isReady").catch((err) => {
+      console.error("Application failed to start", err);
+      this.stop();
+      process.exit(1);
+    });
   }
 
   // simple RPC call
   // to use: driver.rpc('method', 1, 2, 3).then(...)
-  async rpc (cmd, ...args) {
+  async rpc(cmd, ...args) {
     // send rpc request
-    const msgId = this.rpcCalls.length
-    this.process.send({ msgId, cmd, args })
-    return new Promise((resolve, reject) => this.rpcCalls.push({ resolve, reject }))
+    const msgId = this.rpcCalls.length;
+    this.process.send({ msgId, cmd, args });
+    return new Promise((resolve, reject) => this.rpcCalls.push({ resolve, reject }));
   }
 
-  stop () {
-    this.process.kill()
+  stop() {
+    this.process.kill();
   }
 }
 
-module.exports = { TestDriver }
+module.exports = { TestDriver };
 ```
 
 In your app code, you can then write a simple handler to receive RPC calls:
 
 ```js title='main.js'
 const METHODS = {
-  isReady () {
+  isReady() {
     // do any setup needed
-    return true
-  }
+    return true;
+  },
   // define your RPC-able methods here
-}
+};
 
 const onMessage = async ({ msgId, cmd, args }) => {
-  let method = METHODS[cmd]
-  if (!method) method = () => new Error('Invalid method: ' + cmd)
+  let method = METHODS[cmd];
+  if (!method) method = () => new Error("Invalid method: " + cmd);
   try {
-    const resolve = await method(...args)
-    process.send({ msgId, resolve })
+    const resolve = await method(...args);
+    process.send({ msgId, resolve });
   } catch (err) {
     const reject = {
       message: err.message,
       stack: err.stack,
-      name: err.name
-    }
-    process.send({ msgId, reject })
+      name: err.name,
+    };
+    process.send({ msgId, reject });
   }
-}
+};
 
 if (process.env.APP_TEST_DRIVER) {
-  process.on('message', onMessage)
+  process.on("message", onMessage);
 }
 ```
 
@@ -415,25 +422,25 @@ framework of your choosing. The following example uses
 or Mocha would work as well:
 
 ```js title='test.js' @ts-nocheck
-const electronPath = require('electron')
+const electronPath = require("electron");
 
-const test = require('ava')
+const test = require("ava");
 
-const { TestDriver } = require('./testDriver')
+const { TestDriver } = require("./testDriver");
 
 const app = new TestDriver({
   path: electronPath,
-  args: ['./app'],
+  args: ["./app"],
   env: {
-    NODE_ENV: 'test'
-  }
-})
-test.before(async t => {
-  await app.isReady
-})
-test.after.always('cleanup', async t => {
-  await app.stop()
-})
+    NODE_ENV: "test",
+  },
+});
+test.before(async (t) => {
+  await app.isReady;
+});
+test.after.always("cleanup", async (t) => {
+  await app.stop();
+});
 ```
 
 [chrome-driver]: https://sites.google.com/chromium.org/driver/

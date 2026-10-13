@@ -61,18 +61,18 @@ Starting with a working application from the
 following lines:
 
 ```js
-const { app } = require('electron')
+const { app } = require("electron");
 
 app.setUserTasks([
   {
     program: process.execPath,
-    arguments: '--new-window',
+    arguments: "--new-window",
     iconPath: process.execPath,
     iconIndex: 0,
-    title: 'New Window',
-    description: 'Create a new window'
-  }
-])
+    title: "New Window",
+    description: "Create a new window",
+  },
+]);
 ```
 
 ##### Clear tasks list
@@ -81,13 +81,13 @@ To clear your tasks list, you need to call `app.setUserTasks` with an empty
 array in the `main.js` file.
 
 ```js
-const { app } = require('electron')
+const { app } = require("electron");
 
-app.setUserTasks([])
+app.setUserTasks([]);
 ```
 
 > NOTE: The user tasks will still be displayed even after closing your
-application, so the icon and program path specified for a task should exist until your application is uninstalled.
+> application, so the icon and program path specified for a task should exist until your application is uninstalled.
 
 [msdn-jumplist]: https://learn.microsoft.com/en-us/windows/win32/shell/taskbar-extensions#tasks
 
@@ -111,7 +111,7 @@ As quoted from [MSDN][msdn-thumbnail]:
 ![Thumbnail toolbar](../images/windows-taskbar-thumbnail-toolbar.png)
 
 > NOTE: The screenshot above is an example of thumbnail toolbar of Windows
-Media Player
+> Media Player
 
 To set thumbnail toolbar in your application, you need to use
 [BrowserWindow.setThumbarButtons][setthumbarbuttons]
@@ -125,24 +125,29 @@ Starting with a working application from the
 following lines:
 
 ```js
-const { BrowserWindow, nativeImage } = require('electron')
+const { BrowserWindow, nativeImage } = require("electron");
 
-const path = require('node:path')
+const path = require("node:path");
 
-const win = new BrowserWindow()
+const win = new BrowserWindow();
 
 win.setThumbarButtons([
   {
-    tooltip: 'button1',
-    icon: nativeImage.createFromPath(path.join(__dirname, 'button1.png')),
-    click () { console.log('button1 clicked') }
-  }, {
-    tooltip: 'button2',
-    icon: nativeImage.createFromPath(path.join(__dirname, 'button2.png')),
-    flags: ['enabled', 'dismissonclick'],
-    click () { console.log('button2 clicked.') }
-  }
-])
+    tooltip: "button1",
+    icon: nativeImage.createFromPath(path.join(__dirname, "button1.png")),
+    click() {
+      console.log("button1 clicked");
+    },
+  },
+  {
+    tooltip: "button2",
+    icon: nativeImage.createFromPath(path.join(__dirname, "button2.png")),
+    flags: ["enabled", "dismissonclick"],
+    click() {
+      console.log("button2 clicked.");
+    },
+  },
+]);
 ```
 
 ##### Clear thumbnail toolbar
@@ -151,10 +156,10 @@ To clear thumbnail toolbar buttons, you need to call
 `BrowserWindow.setThumbarButtons` with an empty array in the `main.js` file.
 
 ```js
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow()
-win.setThumbarButtons([])
+const win = new BrowserWindow();
+win.setThumbarButtons([]);
 ```
 
 [msdn-thumbnail]: https://learn.microsoft.com/en-us/windows/win32/shell/taskbar-extensions#thumbnail-toolbars
@@ -190,11 +195,11 @@ Starting with a working application from the
 following lines:
 
 ```js
-const { BrowserWindow, nativeImage } = require('electron')
+const { BrowserWindow, nativeImage } = require("electron");
 
-const win = new BrowserWindow()
+const win = new BrowserWindow();
 
-win.setOverlayIcon(nativeImage.createFromPath('path/to/overlay.png'), 'Description for overlay')
+win.setOverlayIcon(nativeImage.createFromPath("path/to/overlay.png"), "Description for overlay");
 ```
 
 [msdn-icon-overlay]: https://learn.microsoft.com/en-us/windows/win32/shell/taskbar-extensions#icon-overlays
@@ -219,17 +224,17 @@ Starting with a working application from the
 following lines:
 
 ```js
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-const win = new BrowserWindow()
+const win = new BrowserWindow();
 
-win.once('focus', () => win.flashFrame(false))
-win.flashFrame(true)
+win.once("focus", () => win.flashFrame(false));
+win.flashFrame(true);
 ```
 
 > NOTE: Don't forget to call `win.flashFrame(false)` to turn off the flash.
-In the above example, it is called when the window comes into focus,
-but you might use a timeout or some other event to disable it.
+> In the above example, it is called when the window comes into focus,
+> but you might use a timeout or some other event to disable it.
 
 [msdn-flash-frame]: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-flashwindow#remarks
 [setthumbarbuttons]: ../api/browser-window.md#winsetthumbarbuttonsbuttons-windows

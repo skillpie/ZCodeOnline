@@ -1,3 +1,3 @@
 # SharedTextureSyncToken Object
 
-* `syncToken` string - The opaque data for sync token.
+- `syncToken` string - The opaque data for sync token.

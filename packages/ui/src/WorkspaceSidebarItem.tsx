@@ -275,10 +275,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   const shouldMountWorkspaceRowActions =
     // workspace action 以前常驻 DOM，仅靠 opacity 隐藏；相邻 tooltip 会在
     // 浮层定位完成前误认隐藏 trigger，短暂显示到错误位置。改为交互时挂载，菜单打开时保活。
-    workspaceRowHovered ||
-    workspaceRowFocusWithin ||
-    workspaceActionMenuOpen ||
-    isHoverNone;
+    workspaceRowHovered || workspaceRowFocusWithin || workspaceActionMenuOpen || isHoverNone;
   const remoteErrorCopyResetRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -322,11 +319,13 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
 
   const handleSelectTask = useCallback(
     (taskId: string) => {
-      // 性能优化：上层 handleSelectTask 已经会按 workspacePath 激活 tab。
-      // 这里重复 activate 会额外触发一轮 tab store 更新，把整列 workspace 行都带着重渲染一次。
-      onSelectTask(tab.workspacePath, taskId, tab.workspaceIdentity);
+      // 合并列表里的 worktree 会话行：按任务自身的 workspacePath 导航——Shell 会打开/
+      // 激活对应 worktree 标签页并原地恢复会话（cwd 正确）；主树任务维持原行为。
+      const taskWorkspacePath =
+        taskItems.find((task) => task.taskId === taskId)?.workspacePath ?? tab.workspacePath;
+      onSelectTask(taskWorkspacePath, taskId, tab.workspaceIdentity);
     },
-    [onSelectTask, tab.workspaceIdentity, tab.workspacePath],
+    [onSelectTask, tab.workspaceIdentity, tab.workspacePath, taskItems],
   );
 
   const handleActionMouseDown = useCallback((event: MouseEvent<HTMLElement>) => {
@@ -750,7 +749,9 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       <span className="relative flex size-4 shrink-0 items-center justify-center">
         {renderWorkspaceIcon()}
       </span>
-      <div className="min-w-0 truncate text-ui-base text-foreground-subtle">{workspaceSidebarLabel}</div>
+      <div className="min-w-0 truncate text-ui-base text-foreground-subtle">
+        {workspaceSidebarLabel}
+      </div>
       {!isExpanded && taskListHasUnread ? (
         <span
           aria-hidden="true"
@@ -911,9 +912,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                         open={workspaceActionMenuOpen}
                         onOpenChange={setWorkspaceActionMenuOpen}
                       >
-                        <ControlHintTooltip
-                          title={intl.formatMessage({ id: "common.more" })}
-                        >
+                        <ControlHintTooltip title={intl.formatMessage({ id: "common.more" })}>
                           <DropdownMenuTrigger asChild>
                             <Button
                               type="button"

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { afterAll as after, beforeAll as before, test } from "vitest";
 import { createGitCliRepo } from "../src/git/repo/gitCliRepo.js";
 
 // Review 面板「撤销改动」按未暂存行逐文件丢弃。工作区三类状态此前只有普通改动可走

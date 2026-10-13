@@ -61,13 +61,13 @@ Starting with the `index.html` file:
 ```html title='index.html'
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Hello World!</title>
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
-    <link rel="stylesheet" type="text/css" href="./styles.css">
-</head>
-<body>
+    <link rel="stylesheet" type="text/css" href="./styles.css" />
+  </head>
+  <body>
     <h1>Hello World!</h1>
     <p>Current theme source: <strong id="theme-source">System</strong></p>
 
@@ -75,7 +75,7 @@ Starting with the `index.html` file:
     <button id="reset-to-system">Reset to System Theme</button>
 
     <script src="renderer.js"></script>
-</body>
+  </body>
 </html>
 ```
 
@@ -83,117 +83,123 @@ And the `styles.css` file:
 
 ```css title='styles.css'
 @media (prefers-color-scheme: dark) {
-  body { background: #333; color: white; }
+  body {
+    background: #333;
+    color: white;
+  }
 }
 
 @media (prefers-color-scheme: light) {
-  body { background: #ddd; color: black; }
+  body {
+    background: #ddd;
+    color: black;
+  }
 }
 ```
 
 The example renders an HTML page with a couple elements. The `<strong id="theme-source">`
- element shows which theme is currently selected, and the two `<button>` elements are the
- controls. The CSS file uses the [`prefers-color-scheme`][prefers-color-scheme] media query
- to set the `<body>` element background and text colors.
+element shows which theme is currently selected, and the two `<button>` elements are the
+controls. The CSS file uses the [`prefers-color-scheme`][prefers-color-scheme] media query
+to set the `<body>` element background and text colors.
 
 The `preload.js` script adds a new API to the `window` object called `darkMode`. This API
- exposes two IPC channels to the renderer process, `'dark-mode:toggle'` and `'dark-mode:system'`.
- It also assigns two methods, `toggle` and `system`, which pass messages from the renderer to the
- main process.
+exposes two IPC channels to the renderer process, `'dark-mode:toggle'` and `'dark-mode:system'`.
+It also assigns two methods, `toggle` and `system`, which pass messages from the renderer to the
+main process.
 
 ```js title='preload.js'
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld('darkMode', {
-  toggle: () => ipcRenderer.invoke('dark-mode:toggle'),
-  system: () => ipcRenderer.invoke('dark-mode:system')
-})
+contextBridge.exposeInMainWorld("darkMode", {
+  toggle: () => ipcRenderer.invoke("dark-mode:toggle"),
+  system: () => ipcRenderer.invoke("dark-mode:system"),
+});
 ```
 
 Now the renderer process can communicate with the main process securely and perform the necessary
- mutations to the `nativeTheme` object.
+mutations to the `nativeTheme` object.
 
 The `renderer.js` file is responsible for controlling the `<button>` functionality.
 
 ```js title='renderer.js' @ts-expect-error=[2,7]
-document.getElementById('toggle-dark-mode').addEventListener('click', async () => {
-  const isDarkMode = await window.darkMode.toggle()
-  document.getElementById('theme-source').innerHTML = isDarkMode ? 'Dark' : 'Light'
-})
+document.getElementById("toggle-dark-mode").addEventListener("click", async () => {
+  const isDarkMode = await window.darkMode.toggle();
+  document.getElementById("theme-source").innerHTML = isDarkMode ? "Dark" : "Light";
+});
 
-document.getElementById('reset-to-system').addEventListener('click', async () => {
-  await window.darkMode.system()
-  document.getElementById('theme-source').innerHTML = 'System'
-})
+document.getElementById("reset-to-system").addEventListener("click", async () => {
+  await window.darkMode.system();
+  document.getElementById("theme-source").innerHTML = "System";
+});
 ```
 
 Using `addEventListener`, the `renderer.js` file adds `'click'` [event listeners][event-listeners]
- to each button element. Each event listener handler makes calls to the respective `window.darkMode`
- API methods.
+to each button element. Each event listener handler makes calls to the respective `window.darkMode`
+API methods.
 
 Finally, the `main.js` file represents the main process and contains the actual `nativeTheme` API.
 
 ```js
-const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron')
+const { app, BrowserWindow, ipcMain, nativeTheme } = require("electron");
 
-const path = require('node:path')
+const path = require("node:path");
 
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    }
-  })
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
 
-  win.loadFile('index.html')
+  win.loadFile("index.html");
 
-  ipcMain.handle('dark-mode:toggle', () => {
+  ipcMain.handle("dark-mode:toggle", () => {
     if (nativeTheme.shouldUseDarkColors) {
-      nativeTheme.themeSource = 'light'
+      nativeTheme.themeSource = "light";
     } else {
-      nativeTheme.themeSource = 'dark'
+      nativeTheme.themeSource = "dark";
     }
-    return nativeTheme.shouldUseDarkColors
-  })
+    return nativeTheme.shouldUseDarkColors;
+  });
 
-  ipcMain.handle('dark-mode:system', () => {
-    nativeTheme.themeSource = 'system'
-  })
-}
+  ipcMain.handle("dark-mode:system", () => {
+    nativeTheme.themeSource = "system";
+  });
+};
 
 app.whenReady().then(() => {
-  createWindow()
+  createWindow();
 
-  app.on('activate', () => {
+  app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      createWindow();
     }
-  })
-})
+  });
+});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
   }
-})
+});
 ```
 
 The `ipcMain.handle` methods are how the main process responds to the click events from the buttons
- on the HTML page.
+on the HTML page.
 
 The `'dark-mode:toggle'` IPC channel handler method checks the `shouldUseDarkColors` boolean property,
- sets the corresponding `themeSource`, and then returns the current `shouldUseDarkColors` property.
- Looking back on the renderer process event listener for this IPC channel, the return value from this
- handler is utilized to assign the correct text to the `<strong id='theme-source'>` element.
+sets the corresponding `themeSource`, and then returns the current `shouldUseDarkColors` property.
+Looking back on the renderer process event listener for this IPC channel, the return value from this
+handler is utilized to assign the correct text to the `<strong id='theme-source'>` element.
 
 The `'dark-mode:system'` IPC channel handler method assigns the string `'system'` to the `themeSource`
- and returns nothing. This also corresponds with the relative renderer process event listener as the
- method is awaited with no return value expected.
+and returns nothing. This also corresponds with the relative renderer process event listener as the
+method is awaited with no return value expected.
 
 Run the example using Electron Fiddle and then click the "Toggle Dark Mode" button; the app should
- start alternating between a light and dark background color.
+start alternating between a light and dark background color.
 
 ![Dark Mode](../images/dark_mode.gif)
 

@@ -38,22 +38,24 @@ To set an app-defined custom Dock menu, pass any [Menu](../api/menu.md) instance
 ## Attaching a context menu
 
 ```js title='Setting a Dock menu'
-const { app, BrowserWindow, Menu } = require('electron/main')
+const { app, BrowserWindow, Menu } = require("electron/main");
 
 // dock.setMenu only works after the 'ready' event is fired
 app.whenReady().then(() => {
   const dockMenu = Menu.buildFromTemplate([
     {
-      label: 'New Window',
-      click: () => { const win = new BrowserWindow() }
-    }
+      label: "New Window",
+      click: () => {
+        const win = new BrowserWindow();
+      },
+    },
     // add more menu options to the array
-  ])
+  ]);
 
   // Dock is undefined on platforms outside of macOS
   // highlight-next-line
-  app.dock?.setMenu(dockMenu)
-})
+  app.dock?.setMenu(dockMenu);
+});
 ```
 
 > [!NOTE]
@@ -70,4 +72,5 @@ Below is a runnable example of how you can use the Dock menu to create and close
 Electron app.
 
 ```fiddle docs/fiddles/menus/dock-menu
+
 ```

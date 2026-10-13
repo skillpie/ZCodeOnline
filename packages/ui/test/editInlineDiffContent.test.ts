@@ -19,15 +19,12 @@ const TEST_CODE_PREVIEW_SETTINGS = {
 } as const;
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
-      formatMessage: (
-        { id }: { id: string },
-        values?: Record<string, string>,
-      ) =>
-        id === "diff.preview.truncatedLines"
-          ? `omitted ${values?.count ?? ""}`
-          : id,
+      formatMessage: ({ id }: { id: string }, values?: Record<string, string>) =>
+        id === "diff.preview.truncatedLines" ? `omitted ${values?.count ?? ""}` : id,
     },
   }),
 }));
@@ -46,12 +43,9 @@ describe("EditInlineDiffContent", () => {
       code: " return next;",
       marker: " ",
     });
-    expect(
-      buildInlineDiffHighlightCode([
-        "+  const next = 1;",
-        "-  const prev = 0;",
-      ]),
-    ).toBe("  const next = 1;\n  const prev = 0;");
+    expect(buildInlineDiffHighlightCode(["+  const next = 1;", "-  const prev = 0;"])).toBe(
+      "  const next = 1;\n  const prev = 0;",
+    );
   });
 
   it("renders lightweight hunk code without diff protocol markers", () => {

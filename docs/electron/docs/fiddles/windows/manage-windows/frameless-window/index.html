@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -10,14 +10,14 @@
       <h1>Create and Manage Windows</h1>
 
       <h3>
-        The <code>BrowserWindow</code> module in Electron allows you to create a
-        new browser window or manage an existing one.
+        The <code>BrowserWindow</code> module in Electron allows you to create a new browser window
+        or manage an existing one.
       </h3>
 
       <p>
-        Each browser window is a separate process, known as the renderer
-        process. This process, like the main process that controls the life
-        cycle of the app, has full access to the Node.js APIs.
+        Each browser window is a separate process, known as the renderer process. This process, like
+        the main process that controls the life cycle of the app, has full access to the Node.js
+        APIs.
       </p>
 
       <p>
@@ -38,18 +38,15 @@
           </div>
           <p>
             A frameless window is a window that has no
-            <a href="https://developer.mozilla.org/en-US/docs/Glossary/Chrome">
-              "chrome"
-            </a>
-            , such as toolbars, title bars, status bars, borders, etc. You can
-            make a browser window frameless by setting <code>frame</code> to
-            <code>false</code> when creating the window.
+            <a href="https://developer.mozilla.org/en-US/docs/Glossary/Chrome"> "chrome" </a>
+            , such as toolbars, title bars, status bars, borders, etc. You can make a browser window
+            frameless by setting <code>frame</code> to <code>false</code> when creating the window.
           </p>
 
           <p>
             Windows can have a transparent background, too. By setting the
-            <code>transparent</code> option to <code>true</code>, you can also
-            make your frameless window transparent:
+            <code>transparent</code> option to <code>true</code>, you can also make your frameless
+            window transparent:
           </p>
           <pre>
 <code class="language-js">var win = new BrowserWindow({
@@ -61,7 +58,6 @@
             For more details, see the
             <a href="https://www.electronjs.org/docs/latest/tutorial/window-customization">
               Window Customization
-
             </a>
             documentation.
           </p>

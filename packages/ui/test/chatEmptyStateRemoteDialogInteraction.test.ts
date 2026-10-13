@@ -8,6 +8,8 @@ vi.mock("@/hooks/useRemoteConnectionEntryVisibility.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,
@@ -69,9 +71,7 @@ afterEach(() => {
 
 describe("ChatEmptyWorkspacePreviewMenu remote dialog interaction", () => {
   it("打开远程连接弹窗时关闭工作区菜单", async () => {
-    const { ChatEmptyWorkspacePreviewMenu } = await import(
-      "../src/ChatEmptyState.js"
-    );
+    const { ChatEmptyWorkspacePreviewMenu } = await import("../src/ChatEmptyState.js");
 
     render(
       createElement(ChatEmptyWorkspacePreviewMenu, {
@@ -91,13 +91,10 @@ describe("ChatEmptyWorkspacePreviewMenu remote dialog interaction", () => {
       }),
     );
 
-    fireEvent.pointerDown(
-      screen.getByRole("button", { name: "chat.empty.workspaceMenu" }),
-      {
-        button: 0,
-        ctrlKey: false,
-      },
-    );
+    fireEvent.pointerDown(screen.getByRole("button", { name: "chat.empty.workspaceMenu" }), {
+      button: 0,
+      ctrlKey: false,
+    });
     const remoteEntry = await screen.findByText("remote.trigger");
 
     fireEvent.click(remoteEntry);

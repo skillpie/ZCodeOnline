@@ -8,17 +8,17 @@ An example of implementing a protocol that has the same effect as the
 `file://` protocol:
 
 ```js
-const { app, protocol, net } = require('electron')
+const { app, protocol, net } = require("electron");
 
-const path = require('node:path')
-const url = require('node:url')
+const path = require("node:path");
+const url = require("node:url");
 
 app.whenReady().then(() => {
-  protocol.handle('atom', (request) => {
-    const filePath = request.url.slice('atom://'.length)
-    return net.fetch(url.pathToFileURL(path.join(__dirname, filePath)).toString())
-  })
-})
+  protocol.handle("atom", (request) => {
+    const filePath = request.url.slice("atom://".length);
+    return net.fetch(url.pathToFileURL(path.join(__dirname, filePath)).toString());
+  });
+});
 ```
 
 > [!NOTE]
@@ -38,22 +38,22 @@ To have your custom protocol work in combination with a custom session, you need
 to register it to that session explicitly.
 
 ```js
-const { app, BrowserWindow, net, protocol, session } = require('electron')
+const { app, BrowserWindow, net, protocol, session } = require("electron");
 
-const path = require('node:path')
-const url = require('node:url')
+const path = require("node:path");
+const url = require("node:url");
 
 app.whenReady().then(() => {
-  const partition = 'persist:example'
-  const ses = session.fromPartition(partition)
+  const partition = "persist:example";
+  const ses = session.fromPartition(partition);
 
-  ses.protocol.handle('atom', (request) => {
-    const filePath = request.url.slice('atom://'.length)
-    return net.fetch(url.pathToFileURL(path.resolve(__dirname, filePath)).toString())
-  })
+  ses.protocol.handle("atom", (request) => {
+    const filePath = request.url.slice("atom://".length);
+    return net.fetch(url.pathToFileURL(path.resolve(__dirname, filePath)).toString());
+  });
 
-  const mainWindow = new BrowserWindow({ webPreferences: { partition } })
-})
+  const mainWindow = new BrowserWindow({ webPreferences: { partition } });
+});
 ```
 
 ## Methods
@@ -62,7 +62,7 @@ The `protocol` module has the following methods:
 
 ### `protocol.registerSchemesAsPrivileged(customSchemes)`
 
-* `customSchemes` [CustomScheme[]](structures/custom-scheme.md)
+- `customSchemes` [CustomScheme[]](structures/custom-scheme.md)
 
 > [!NOTE]
 > This method can only be used before the `ready` event of the `app`
@@ -77,11 +77,9 @@ An example of registering a privileged scheme, that bypasses Content Security
 Policy:
 
 ```js
-const { protocol } = require('electron')
+const { protocol } = require("electron");
 
-protocol.registerSchemesAsPrivileged([
-  { scheme: 'foo', privileges: { bypassCSP: true } }
-])
+protocol.registerSchemesAsPrivileged([{ scheme: "foo", privileges: { bypassCSP: true } }]);
 ```
 
 A standard scheme adheres to what RFC 3986 calls [generic URI syntax](https://tools.ietf.org/html/rfc3986#section-3).
@@ -97,7 +95,7 @@ non-standard schemes can not recognize relative URLs:
 
 ```html
 <body>
-  <img src='test.png'>
+  <img src="test.png" />
 </body>
 ```
 
@@ -117,10 +115,10 @@ expect streaming responses.
 
 ### `protocol.handle(scheme, handler)`
 
-* `scheme` string - scheme to handle, for example `https` or `my-app`. This is
+- `scheme` string - scheme to handle, for example `https` or `my-app`. This is
   the bit before the `:` in a URL.
-* `handler` Function\<[GlobalResponse](https://nodejs.org/api/globals.html#response) | Promise\<GlobalResponse\>\>
-  * `request` [GlobalRequest](https://nodejs.org/api/globals.html#request)
+- `handler` Function\<[GlobalResponse](https://nodejs.org/api/globals.html#response) | Promise\<GlobalResponse\>\>
+  - `request` [GlobalRequest](https://nodejs.org/api/globals.html#request)
 
 Register a protocol handler for `scheme`. Requests made to URLs with this
 scheme will delegate to this handler to determine what response should be sent.
@@ -130,66 +128,67 @@ Either a `Response` or a `Promise<Response>` can be returned.
 Example:
 
 ```js
-const { app, net, protocol } = require('electron')
+const { app, net, protocol } = require("electron");
 
-const path = require('node:path')
-const { pathToFileURL } = require('node:url')
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 protocol.registerSchemesAsPrivileged([
   {
-    scheme: 'app',
+    scheme: "app",
     privileges: {
       standard: true,
       secure: true,
-      supportFetchAPI: true
-    }
-  }
-])
+      supportFetchAPI: true,
+    },
+  },
+]);
 
 app.whenReady().then(() => {
-  protocol.handle('app', (req) => {
-    const { host, pathname } = new URL(req.url)
-    if (host === 'bundle') {
-      if (pathname === '/') {
-        return new Response('<h1>hello, world</h1>', {
-          headers: { 'content-type': 'text/html' }
-        })
+  protocol.handle("app", (req) => {
+    const { host, pathname } = new URL(req.url);
+    if (host === "bundle") {
+      if (pathname === "/") {
+        return new Response("<h1>hello, world</h1>", {
+          headers: { "content-type": "text/html" },
+        });
       }
       // NB, this checks for paths that escape the bundle, e.g.
       // app://bundle/../../secret_file.txt
-      const pathToServe = path.resolve(__dirname, pathname)
-      const relativePath = path.relative(__dirname, pathToServe)
-      const isSafe = relativePath && !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
+      const pathToServe = path.resolve(__dirname, pathname);
+      const relativePath = path.relative(__dirname, pathToServe);
+      const isSafe =
+        relativePath && !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
       if (!isSafe) {
-        return new Response('bad', {
+        return new Response("bad", {
           status: 400,
-          headers: { 'content-type': 'text/html' }
-        })
+          headers: { "content-type": "text/html" },
+        });
       }
 
-      return net.fetch(pathToFileURL(pathToServe).toString())
-    } else if (host === 'api') {
-      return net.fetch('https://api.my-server.com/' + pathname, {
+      return net.fetch(pathToFileURL(pathToServe).toString());
+    } else if (host === "api") {
+      return net.fetch("https://api.my-server.com/" + pathname, {
         method: req.method,
         headers: req.headers,
-        body: req.body
-      })
+        body: req.body,
+      });
     }
-  })
-})
+  });
+});
 ```
 
 See the MDN docs for [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) and [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response) for more details.
 
 ### `protocol.unhandle(scheme)`
 
-* `scheme` string - scheme for which to remove the handler.
+- `scheme` string - scheme for which to remove the handler.
 
 Removes a protocol handler registered with `protocol.handle`.
 
 ### `protocol.isProtocolHandled(scheme)`
 
-* `scheme` string
+- `scheme` string
 
 Returns `boolean` - Whether `scheme` is already handled.
 
@@ -204,11 +203,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (string | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (string | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully registered
 
@@ -234,11 +233,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (Buffer | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (Buffer | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully registered
 
@@ -251,9 +250,9 @@ property.
 Example:
 
 ```js
-protocol.registerBufferProtocol('atom', (request, callback) => {
-  callback({ mimeType: 'text/html', data: Buffer.from('<h5>Response</h5>') })
-})
+protocol.registerBufferProtocol("atom", (request, callback) => {
+  callback({ mimeType: "text/html", data: Buffer.from("<h5>Response</h5>") });
+});
 ```
 
 ### `protocol.registerStringProtocol(scheme, handler)` _Deprecated_
@@ -267,11 +266,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (string | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (string | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully registered
 
@@ -292,11 +291,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` [ProtocolResponse](structures/protocol-response.md)
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` [ProtocolResponse](structures/protocol-response.md)
 
 Returns `boolean` - Whether the protocol was successfully registered
 
@@ -316,11 +315,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (ReadableStream | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (ReadableStream | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully registered
 
@@ -333,35 +332,35 @@ has the `data` property.
 Example:
 
 ```js
-const { protocol } = require('electron')
+const { protocol } = require("electron");
 
-const { PassThrough } = require('node:stream')
+const { PassThrough } = require("node:stream");
 
-function createStream (text) {
-  const rv = new PassThrough() // PassThrough is also a Readable stream
-  rv.push(text)
-  rv.push(null)
-  return rv
+function createStream(text) {
+  const rv = new PassThrough(); // PassThrough is also a Readable stream
+  rv.push(text);
+  rv.push(null);
+  return rv;
 }
 
-protocol.registerStreamProtocol('atom', (request, callback) => {
+protocol.registerStreamProtocol("atom", (request, callback) => {
   callback({
     statusCode: 200,
     headers: {
-      'content-type': 'text/html'
+      "content-type": "text/html",
     },
-    data: createStream('<h5>Response</h5>')
-  })
-})
+    data: createStream("<h5>Response</h5>"),
+  });
+});
 ```
 
 It is possible to pass any object that implements the readable stream API (emits
 `data`/`end`/`error` events). For example, here's how a file could be returned:
 
 ```js
-protocol.registerStreamProtocol('atom', (request, callback) => {
-  callback(fs.createReadStream('index.html'))
-})
+protocol.registerStreamProtocol("atom", (request, callback) => {
+  callback(fs.createReadStream("index.html"));
+});
 ```
 
 ### `protocol.unregisterProtocol(scheme)` _Deprecated_
@@ -375,7 +374,7 @@ deprecated:
 ```
 -->
 
-* `scheme` string
+- `scheme` string
 
 Returns `boolean` - Whether the protocol was successfully unregistered
 
@@ -392,7 +391,7 @@ deprecated:
 ```
 -->
 
-* `scheme` string
+- `scheme` string
 
 Returns `boolean` - Whether `scheme` is already registered.
 
@@ -407,11 +406,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (string | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (string | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully intercepted
 
@@ -429,11 +428,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (string | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (string | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully intercepted
 
@@ -451,11 +450,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (Buffer | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (Buffer | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully intercepted
 
@@ -473,11 +472,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` [ProtocolResponse](structures/protocol-response.md)
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` [ProtocolResponse](structures/protocol-response.md)
 
 Returns `boolean` - Whether the protocol was successfully intercepted
 
@@ -495,11 +494,11 @@ deprecated:
 ```
 -->
 
-* `scheme` string
-* `handler` Function
-  * `request` [ProtocolRequest](structures/protocol-request.md)
-  * `callback` Function
-    * `response` (ReadableStream | [ProtocolResponse](structures/protocol-response.md))
+- `scheme` string
+- `handler` Function
+  - `request` [ProtocolRequest](structures/protocol-request.md)
+  - `callback` Function
+    - `response` (ReadableStream | [ProtocolResponse](structures/protocol-response.md))
 
 Returns `boolean` - Whether the protocol was successfully intercepted
 
@@ -517,7 +516,7 @@ deprecated:
 ```
 -->
 
-* `scheme` string
+- `scheme` string
 
 Returns `boolean` - Whether the protocol was successfully unintercepted
 
@@ -534,7 +533,7 @@ deprecated:
 ```
 -->
 
-* `scheme` string
+- `scheme` string
 
 Returns `boolean` - Whether `scheme` is already intercepted.
 

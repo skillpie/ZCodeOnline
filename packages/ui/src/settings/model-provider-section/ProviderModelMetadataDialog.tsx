@@ -190,6 +190,8 @@ export function ProviderModelMetadataDialog({
                   onChange={(value) => onDraftChange({ idValue: value })}
                   onBlur={onModelIdBlur}
                   onEnterKey={handleTechnicalInputKeyDown}
+                  onCompositionStart={handleCompositionStart}
+                  onCompositionEnd={handleCompositionEnd}
                   onPick={(item) => {
                     const patch: Partial<ProviderModelDraftValues> = { idValue: item.id };
                     // API 明确给出大小且字段为空时自动补上；其余交给智能配置或手填。

@@ -21,6 +21,8 @@ export function ProviderModelIdField({
   onChange,
   onBlur,
   onEnterKey,
+  onCompositionStart,
+  onCompositionEnd,
   onPick,
 }: {
   value: string;
@@ -31,6 +33,10 @@ export function ProviderModelIdField({
   onBlur?: () => void;
   /** Enter 提交（带输入法组合判定），由弹窗注入。 */
   onEnterKey: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
+  /** 输入法组合状态透传：部分平台 nativeEvent.isComposing 过早恢复 false，
+   * 弹窗的 Enter 守卫需要本地 composition 状态（见 ProviderModelMetadataDialog）。 */
+  onCompositionStart?: () => void;
+  onCompositionEnd?: () => void;
   onPick: (item: ProviderModelListItem) => void;
 }) {
   const { intl } = useZCodeIntl();
@@ -58,6 +64,8 @@ export function ProviderModelIdField({
           setOpen(true);
         }}
         onBlur={onBlur}
+        onCompositionStart={onCompositionStart}
+        onCompositionEnd={onCompositionEnd}
         onKeyDown={onEnterKey}
       />
       {hasSuggestions ? (

@@ -1,6 +1,6 @@
 // 会话级数据源门控纯函数的行为测试（specs/data-source.md §7）。
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   CONVERSATION_DB_TOOL_NAMES,
   mergeFirstInputDbToolGate,

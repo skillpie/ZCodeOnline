@@ -30,6 +30,7 @@ For example, if you want to provide a context menu for links, check for the `lin
 If you want to check for editable elements such as `<textarea/>`, check for the `isEditable` parameter.
 
 ```fiddle docs/fiddles/menus/context-menu/web-contents
+
 ```
 
 ## Using the `contextmenu` event (renderer)
@@ -41,6 +42,7 @@ event available on DOM elements in the renderer process and call the `menu.popup
 > To learn more about IPC basics in Electron, see the [Inter-Process Communication](./ipc.md) guide.
 
 ```fiddle docs/fiddles/menus/context-menu/dom|focus=preload.js
+
 ```
 
 ## Additional macOS menu items (e.g. Writing Tools)
@@ -53,17 +55,17 @@ are disabled by default for context menus in Electron. To enable these features,
 parameter in `menu.popup`.
 
 ```js title='Associating a frame to the context menu'
-const { BrowserWindow, Menu } = require('electron/main')
+const { BrowserWindow, Menu } = require("electron/main");
 
-const menu = Menu.buildFromTemplate([{ role: 'editMenu' }])
-const win = new BrowserWindow()
-win.webContents.on('context-menu', (_event, params) => {
+const menu = Menu.buildFromTemplate([{ role: "editMenu" }]);
+const win = new BrowserWindow();
+win.webContents.on("context-menu", (_event, params) => {
   // Whether the context is editable.
   if (params.isEditable) {
     menu.popup({
-    // highlight-next-line
-      frame: params.frame
-    })
+      // highlight-next-line
+      frame: params.frame,
+    });
   }
-})
+});
 ```

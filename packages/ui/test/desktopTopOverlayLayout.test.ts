@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { resolveSidebarToggleVariant } from "../src/desktopTopOverlayLayout.js";
 
 test("web（平台标志缺省）渲染 plain 折叠按钮，保证收起后仍有展开入口", () => {

@@ -91,14 +91,13 @@ vi.mock("@/components/ui/dialog.js", () => ({
 }));
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => {
     const locale = remoteSkillSyncIntlMockState.locale;
     return {
       intl: {
-        formatMessage: (
-          { id }: { id: string },
-          values?: Record<string, string | number>,
-        ) => {
+        formatMessage: ({ id }: { id: string }, values?: Record<string, string | number>) => {
           const messages: Record<string, string> = {
             "settings.skills.remoteSync.title": "Sync Skills to remote target",
             "settings.skills.remoteSync.warningTitle": "Skill data and environment availability",
@@ -484,8 +483,7 @@ describe("RemoteSkillSyncDialog", () => {
     );
 
     const dialogContentClass =
-      html.match(/<div class="([^"]*max-h-\[min\(720px,calc\(100dvh-2rem\)\)\][^"]*)"/u)?.[1] ??
-      "";
+      html.match(/<div class="([^"]*max-h-\[min\(720px,calc\(100dvh-2rem\)\)\][^"]*)"/u)?.[1] ?? "";
     expect(dialogContentClass.split(/\s+/u)).toEqual(
       expect.arrayContaining([
         "h-[min(720px,calc(100dvh-2rem))]",
@@ -522,8 +520,7 @@ describe("RemoteSkillSyncDialog", () => {
     );
 
     expect(html).toContain("line-clamp-1");
-    const descriptionClass =
-      html.match(/class="([^"]*line-clamp-1[^"]*)"/u)?.[1] ?? "";
+    const descriptionClass = html.match(/class="([^"]*line-clamp-1[^"]*)"/u)?.[1] ?? "";
     expect(descriptionClass.split(/\s+/u)).not.toContain("block");
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('aria-label="Show more"');
@@ -575,5 +572,4 @@ describe("RemoteSkillSyncDialog", () => {
       html.indexOf("Show existing remote skills"),
     );
   });
-
 });

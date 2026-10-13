@@ -9,46 +9,46 @@ The `webFrameMain` module can be used to lookup frames across existing
 use case.
 
 ```js
-const { BrowserWindow, webFrameMain } = require('electron')
+const { BrowserWindow, webFrameMain } = require("electron");
 
-const win = new BrowserWindow({ width: 800, height: 1500 })
-win.loadURL('https://twitter.com')
+const win = new BrowserWindow({ width: 800, height: 1500 });
+win.loadURL("https://twitter.com");
 
 win.webContents.on(
-  'did-frame-navigate',
+  "did-frame-navigate",
   (event, url, httpResponseCode, httpStatusText, isMainFrame, frameProcessId, frameRoutingId) => {
-    const frame = webFrameMain.fromId(frameProcessId, frameRoutingId)
+    const frame = webFrameMain.fromId(frameProcessId, frameRoutingId);
     if (frame) {
-      const code = 'document.body.innerHTML = document.body.innerHTML.replaceAll("heck", "h*ck")'
-      frame.executeJavaScript(code)
+      const code = 'document.body.innerHTML = document.body.innerHTML.replaceAll("heck", "h*ck")';
+      frame.executeJavaScript(code);
     }
-  }
-)
+  },
+);
 ```
 
 You can also access frames of existing pages by using the `mainFrame` property
 of [`WebContents`](web-contents.md).
 
 ```js
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
-async function main () {
-  const win = new BrowserWindow({ width: 800, height: 600 })
-  await win.loadURL('https://reddit.com')
+async function main() {
+  const win = new BrowserWindow({ width: 800, height: 600 });
+  await win.loadURL("https://reddit.com");
 
   const youtubeEmbeds = win.webContents.mainFrame.frames.filter((frame) => {
     try {
-      const url = new URL(frame.url)
-      return url.host === 'www.youtube.com'
+      const url = new URL(frame.url);
+      return url.host === "www.youtube.com";
     } catch {
-      return false
+      return false;
     }
-  })
+  });
 
-  console.log(youtubeEmbeds)
+  console.log(youtubeEmbeds);
 }
 
-main()
+main();
 ```
 
 ## Methods
@@ -57,8 +57,8 @@ These methods can be accessed from the `webFrameMain` module:
 
 ### `webFrameMain.fromId(processId, routingId)`
 
-* `processId` Integer - An `Integer` representing the internal ID of the process which owns the frame.
-* `routingId` Integer - An `Integer` representing the unique frame ID in the
+- `processId` Integer - An `Integer` representing the internal ID of the process which owns the frame.
+- `routingId` Integer - An `Integer` representing the unique frame ID in the
   current renderer process. Routing IDs can be retrieved from `WebFrameMain`
   instances (`frame.routingId`) and are also passed by frame
   specific `WebContents` navigation events (e.g. `did-frame-navigate`).
@@ -68,8 +68,8 @@ or `undefined` if there is no WebFrameMain associated with the given IDs.
 
 ### `webFrameMain.fromFrameToken(processId, frameToken)`
 
-* `processId` Integer - An `Integer` representing the internal ID of the process which owns the frame.
-* `frameToken` string - A `string` token identifying the unique frame. Can also
+- `processId` Integer - An `Integer` representing the internal ID of the process which owns the frame.
+- `frameToken` string - A `string` token identifying the unique frame. Can also
   be retrieved in the renderer process via
   [`webFrame.frameToken`](web-frame.md#webframeframetoken-readonly).
 
@@ -91,8 +91,8 @@ Emitted when the document is loaded.
 
 #### `frame.executeJavaScript(code[, userGesture])`
 
-* `code` string
-* `userGesture` boolean (optional) - Default is `false`.
+- `code` string
+- `userGesture` boolean (optional) - Default is `false`.
 
 Returns `Promise<unknown>` - A promise that resolves with the result of the executed
 code or is rejected if execution throws or results in a rejected promise.
@@ -113,8 +113,8 @@ Returns `boolean` - Whether the frame is destroyed.
 
 #### `frame.send(channel, ...args)`
 
-* `channel` string
-* `...args` any[]
+- `channel` string
+- `...args` any[]
 
 Send an asynchronous message to the renderer process via `channel`, along with
 arguments. Arguments will be serialized with the [Structured Clone Algorithm][SCA],
@@ -126,9 +126,9 @@ The renderer process can handle the message by listening to `channel` with the
 
 #### `frame.postMessage(channel, message, [transfer])`
 
-* `channel` string
-* `message` any
-* `transfer` MessagePortMain[] (optional)
+- `channel` string
+- `message` any
+- `transfer` MessagePortMain[] (optional)
 
 Send a message to the renderer process, optionally transferring ownership of
 zero or more [`MessagePortMain`][] objects.
@@ -141,15 +141,15 @@ For example:
 
 ```js
 // Main process
-const win = new BrowserWindow()
-const { port1, port2 } = new MessageChannelMain()
-win.webContents.mainFrame.postMessage('port', { message: 'hello' }, [port1])
+const win = new BrowserWindow();
+const { port1, port2 } = new MessageChannelMain();
+win.webContents.mainFrame.postMessage("port", { message: "hello" }, [port1]);
 
 // Renderer process
-ipcRenderer.on('port', (e, msg) => {
-  const [port] = e.ports
+ipcRenderer.on("port", (e, msg) => {
+  const [port] = e.ports;
   // ...
-})
+});
 ```
 
 #### `frame.collectJavaScriptCallStack()` _Experimental_
@@ -162,30 +162,30 @@ This can be useful to determine why the frame is unresponsive in cases where the
 For more information, see the [proposed Crash Reporting API.](https://wicg.github.io/crash-reporting/)
 
 ```js
-const { app } = require('electron')
+const { app } = require("electron");
 
-app.commandLine.appendSwitch('enable-features', 'DocumentPolicyIncludeJSCallStacksInCrashReports')
+app.commandLine.appendSwitch("enable-features", "DocumentPolicyIncludeJSCallStacksInCrashReports");
 
-app.on('web-contents-created', (_, webContents) => {
-  webContents.on('unresponsive', async () => {
+app.on("web-contents-created", (_, webContents) => {
+  webContents.on("unresponsive", async () => {
     // Interrupt execution and collect call stack from unresponsive renderer
-    const callStack = await webContents.mainFrame.collectJavaScriptCallStack()
-    console.log('Renderer unresponsive\n', callStack)
-  })
-})
+    const callStack = await webContents.mainFrame.collectJavaScriptCallStack();
+    console.log("Renderer unresponsive\n", callStack);
+  });
+});
 ```
 
 #### `frame.copyVideoFrameAt(x, y)`
 
-* `x` Integer
-* `y` Integer
+- `x` Integer
+- `y` Integer
 
 When executed on a video media element, copies the frame at (x, y) to the clipboard.
 
 #### `frame.saveVideoFrameAs(x, y)`
 
-* `x` Integer
-* `y` Integer
+- `x` Integer
+- `y` Integer
 
 When executed on a video media element, shows a save dialog and saves the frame at (x, y) to disk.
 

@@ -1,4 +1,4 @@
 # ExtensionInfo Object
 
-* `name` string
-* `version` string
+- `name` string
+- `version` string

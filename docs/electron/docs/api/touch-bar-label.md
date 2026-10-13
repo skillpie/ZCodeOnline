@@ -7,10 +7,10 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 ### `new TouchBarLabel(options)`
 
-* `options` Object
-  * `label` string (optional) - Text to display.
-  * `accessibilityLabel` string (optional) - A short description of the button for use by screenreaders like VoiceOver.
-  * `textColor` string (optional) - Hex color of text, i.e `#ABCDEF`.
+- `options` Object
+  - `label` string (optional) - Text to display.
+  - `accessibilityLabel` string (optional) - A short description of the button for use by screenreaders like VoiceOver.
+  - `textColor` string (optional) - Hex color of text, i.e `#ABCDEF`.
 
 When defining `accessibilityLabel`, ensure you have considered macOS [best practices](https://developer.apple.com/documentation/appkit/nsaccessibilitybutton/1524910-accessibilitylabel?language=objc).
 

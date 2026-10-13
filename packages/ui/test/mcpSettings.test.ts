@@ -359,12 +359,7 @@ describe("MCP Settings Shared", () => {
 
   describe("FormState 类型", () => {
     it("应支持所有传输类型", () => {
-      const validTypes: FormState["type"][] = [
-        "stdio",
-        "http",
-        "sse",
-        "streamableHttp",
-      ];
+      const validTypes: FormState["type"][] = ["stdio", "http", "sse", "streamableHttp"];
 
       expect(validTypes).toHaveLength(4);
       expect(validTypes).toContain("streamableHttp");

@@ -1,5 +1,5 @@
-const { contextBridge, ipcRenderer } = require('electron/renderer')
+const { contextBridge, ipcRenderer } = require("electron/renderer");
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  takeScreenshot: () => ipcRenderer.invoke('take-screenshot', window.devicePixelRatio)
-})
+contextBridge.exposeInMainWorld("electronAPI", {
+  takeScreenshot: () => ipcRenderer.invoke("take-screenshot", window.devicePixelRatio),
+});

@@ -26,8 +26,8 @@ added:
 
 Returns:
 
-* `event` Event
-* `transactions` Transaction[] - Array of [`Transaction`](structures/transaction.md) objects.
+- `event` Event
+- `transactions` Transaction[] - Array of [`Transaction`](structures/transaction.md) objects.
 
 Emitted when one or more transactions have been updated.
 
@@ -50,10 +50,10 @@ changes:
 ```
 -->
 
-* `productID` string
-* `opts` Integer | Object (optional) - If specified as an integer, defines the quantity.
-  * `quantity` Integer (optional) - The number of items the user wants to purchase.
-  * `username` string (optional) - The string that associates the transaction with a user account on your service (applicationUsername).
+- `productID` string
+- `opts` Integer | Object (optional) - If specified as an integer, defines the quantity.
+  - `quantity` Integer (optional) - The number of items the user wants to purchase.
+  - `username` string (optional) - The string that associates the transaction with a user account on your service (applicationUsername).
 
 Returns `Promise<boolean>` - Returns `true` if the product is valid and added to the payment queue.
 
@@ -72,7 +72,7 @@ changes:
 ```
 -->
 
-* `productIDs` string[] - The identifiers of the products to get.
+- `productIDs` string[] - The identifiers of the products to get.
 
 Returns `Promise<Product[]>` - Resolves with an array of [`Product`](structures/product.md) objects.
 
@@ -133,6 +133,6 @@ added:
 ```
 -->
 
-* `date` string - The ISO formatted date of the transaction to finish.
+- `date` string - The ISO formatted date of the transaction to finish.
 
 Completes the pending transactions corresponding to the date.

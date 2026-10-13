@@ -61,10 +61,10 @@ ELECTRON_INSTALL_ARCH=x64 electron .
 Supported architectures are a subset of Node.js [`process.arch`](https://nodejs.org/api/process.html#processarch)
 values, and include:
 
-* `x64` (Intel Mac and 64-bit Windows)
-* `ia32` (32-bit Windows)
-* `arm64` (Apple silicon, Windows on ARM, ARM64 Linux)
-* `arm` (32-bit ARM)
+- `x64` (Intel Mac and 64-bit Windows)
+- `ia32` (32-bit Windows)
+- `arm64` (Apple silicon, Windows on ARM, ARM64 Linux)
+- `arm` (32-bit ARM)
 
 In addition to changing the architecture, you can also specify the platform
 (e.g., `win32`, `linux`, etc.) using the `--platform` flag:
@@ -76,10 +76,10 @@ ELECTRON_INSTALL_PLATFORM=mas electron .
 
 Supported platforms are Node-like [platform strings](https://nodejs.org/api/process.html#processplatform):
 
-* `darwin`
-* `mas` ([Mac App Store](./mac-app-store-submission-guide.md))
-* `win32`
-* `linux`
+- `darwin`
+- `mas` ([Mac App Store](./mac-app-store-submission-guide.md))
+- `win32`
+- `linux`
 
 > [!TIP]
 > To see all available platform/architecture combinations for a particular release, see the artifacts
@@ -90,8 +90,8 @@ Supported platforms are Node-like [platform strings](https://nodejs.org/api/proc
 If you need to use an HTTP proxy, you need to set the `ELECTRON_GET_USE_PROXY` variable to any
 value, plus additional environment variables depending on your host system's Node version:
 
-* [Node 10 and above][proxy-env-10]
-* [Before Node 10][proxy-env]
+- [Node 10 and above][proxy-env-10]
+- [Before Node 10][proxy-env]
 
 ## Custom mirrors and caches
 
@@ -111,7 +111,7 @@ look for Electron binaries, and the binary filename. The URL used by `@electron/
 is composed as follows:
 
 ```js @ts-nocheck
-url = ELECTRON_MIRROR + ELECTRON_CUSTOM_DIR + '/' + ELECTRON_CUSTOM_FILENAME
+url = ELECTRON_MIRROR + ELECTRON_CUSTOM_DIR + "/" + ELECTRON_CUSTOM_FILENAME;
 ```
 
 For instance, to use the China CDN mirror:
@@ -146,9 +146,9 @@ downloaded binaries in a local directory to not stress your network. You can use
 that cache folder to provide custom builds of Electron or to avoid making contact
 with the network at all.
 
-* Linux: `$XDG_CACHE_HOME` or `~/.cache/electron/`
-* macOS: `~/Library/Caches/electron/`
-* Windows: `$LOCALAPPDATA/electron/Cache` or `~/AppData/Local/electron/Cache/`
+- Linux: `$XDG_CACHE_HOME` or `~/.cache/electron/`
+- macOS: `~/Library/Caches/electron/`
+- Windows: `$LOCALAPPDATA/electron/Cache` or `~/AppData/Local/electron/Cache/`
 
 On environments that have been using older versions of Electron, you might find the
 cache also in `~/.electron`.

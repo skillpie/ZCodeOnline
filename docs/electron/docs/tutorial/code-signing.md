@@ -1,6 +1,6 @@
 ---
-title: 'Code Signing'
-description: 'Code signing is a security technology that you use to certify that an app was created by you.'
+title: "Code Signing"
+description: "Code signing is a security technology that you use to certify that an app was created by you."
 slug: code-signing
 hide_title: false
 ---
@@ -60,16 +60,16 @@ If the example below does not meet your needs, please see [`@electron/osx-sign`]
 [`@electron/notarize`][] for the many possible configuration options.
 
 ```js @ts-nocheck
-const packager = require('@electron/packager')
+const packager = require("@electron/packager");
 
 packager({
-  dir: '/path/to/my/app',
+  dir: "/path/to/my/app",
   osxSign: {},
   osxNotarize: {
-    appleId: 'felix@felix.fun',
-    appleIdPassword: 'my-apple-id-password'
-  }
-})
+    appleId: "felix@felix.fun",
+    appleIdPassword: "my-apple-id-password",
+  },
+});
 ```
 
 ### Signing Mac App Store applications
@@ -136,16 +136,16 @@ If the example below does not meet your needs, please see [`@electron/windows-si
 for the many possible configuration options.
 
 ```js @ts-nocheck
-const packager = require('@electron/packager')
+const packager = require("@electron/packager");
 
 packager({
-  dir: '/path/to/my/app',
+  dir: "/path/to/my/app",
   windowsSign: {
-    signWithParams: '--my=custom --parameters',
+    signWithParams: "--my=custom --parameters",
     // If signtool.exe does not work for you, customize!
-    signToolPath: 'C:\\Path\\To\\my-custom-tool.exe'
-  }
-})
+    signToolPath: "C:\\Path\\To\\my-custom-tool.exe",
+  },
+});
 ```
 
 #### Using electron-winstaller (Squirrel.Windows)
@@ -157,24 +157,24 @@ Electron app. This is the tool used under the hood by Electron Forge's
 options.
 
 ```js {10-11} @ts-nocheck
-const electronInstaller = require('electron-winstaller')
+const electronInstaller = require("electron-winstaller");
 // NB: Use this syntax within an async function, Node does not have support for
 //     top-level await as of Node 12.
 try {
   await electronInstaller.createWindowsInstaller({
-    appDirectory: '/tmp/build/my-app-64',
-    outputDirectory: '/tmp/build/installer64',
-    authors: 'My App Inc.',
-    exe: 'myapp.exe',
+    appDirectory: "/tmp/build/my-app-64",
+    outputDirectory: "/tmp/build/installer64",
+    authors: "My App Inc.",
+    exe: "myapp.exe",
     windowsSign: {
-      signWithParams: '--my=custom --parameters',
+      signWithParams: "--my=custom --parameters",
       // If signtool.exe does not work for you, customize!
-      signToolPath: 'C:\\Path\\To\\my-custom-tool.exe'
-    }
-  })
-  console.log('It worked!')
+      signToolPath: "C:\\Path\\To\\my-custom-tool.exe",
+    },
+  });
+  console.log("It worked!");
 } catch (e) {
-  console.log(`No dice: ${e.message}`)
+  console.log(`No dice: ${e.message}`);
 }
 ```
 
@@ -188,37 +188,37 @@ Just like `@electron/packager`, it uses [`@electron/windows-sign`][] under the h
 and supports the same `windowsSign` options.
 
 ```js {12-13} @ts-nocheck
-import { MSICreator } from 'electron-wix-msi'
+import { MSICreator } from "electron-wix-msi";
 
 // Step 1: Instantiate the MSICreator
 const msiCreator = new MSICreator({
-  appDirectory: '/path/to/built/app',
-  description: 'My amazing Kitten simulator',
-  exe: 'kittens',
-  name: 'Kittens',
-  manufacturer: 'Kitten Technologies',
-  version: '1.1.2',
-  outputDirectory: '/path/to/output/folder',
+  appDirectory: "/path/to/built/app",
+  description: "My amazing Kitten simulator",
+  exe: "kittens",
+  name: "Kittens",
+  manufacturer: "Kitten Technologies",
+  version: "1.1.2",
+  outputDirectory: "/path/to/output/folder",
   windowsSign: {
-    signWithParams: '--my=custom --parameters',
+    signWithParams: "--my=custom --parameters",
     // If signtool.exe does not work for you, customize!
-    signToolPath: 'C:\\Path\\To\\my-custom-tool.exe'
-  }
-})
+    signToolPath: "C:\\Path\\To\\my-custom-tool.exe",
+  },
+});
 
 // Step 2: Create a .wxs template file
-const supportBinaries = await msiCreator.create()
+const supportBinaries = await msiCreator.create();
 
 // 🆕 Step 2a: optionally sign support binaries if you
 // sign your binaries as part of your packaging script
 for (const binary of supportBinaries) {
   // Binaries are the new stub executable and optionally
   // the Squirrel auto updater.
-  await signFile(binary)
+  await signFile(binary);
 }
 
 // Step 3: Compile the template to a .msi file
-await msiCreator.compile()
+await msiCreator.compile();
 ```
 
 For full configuration options, check out the [`electron-wix-msi`][] repository!

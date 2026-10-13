@@ -17,7 +17,7 @@ implementation, see the [freedesktop.org Specification][spec].
 ![audacious][audacious-launcher]
 
 > NOTE: The screenshot above is an example of launcher shortcuts in Audacious
-audio player
+> audio player
 
 To create a shortcut, you need to provide `Name` and `Exec` properties for the
 entry you want to add to the shortcut menu. Unity will execute the command

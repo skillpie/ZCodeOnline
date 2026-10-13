@@ -1,5 +1,5 @@
-const { contextBridge, ipcRenderer } = require('electron/renderer')
+const { contextBridge, ipcRenderer } = require("electron/renderer");
 
-contextBridge.exposeInMainWorld('electron', {
-  startDrag: (fileName) => ipcRenderer.send('ondragstart', fileName)
-})
+contextBridge.exposeInMainWorld("electron", {
+  startDrag: (fileName) => ipcRenderer.send("ondragstart", fileName),
+});

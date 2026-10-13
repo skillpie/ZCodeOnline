@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
+import { afterAll as after, beforeAll as before, test } from "vitest";
 import { createGitCliRepo } from "../src/git/repo/gitCliRepo.js";
 
 // 分支切换器新增的 worktree 能力。git 本身是唯一事实：addWorktree 负责把分支检出为

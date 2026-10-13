@@ -1,5 +1,5 @@
 ---
-title: 'Updating Applications'
+title: "Updating Applications"
 description: "There are several ways to update an Electron application. The easiest and officially supported one is taking advantage of the built-in Squirrel framework and Electron's autoUpdater module."
 slug: updates
 hide_title: false
@@ -108,14 +108,14 @@ For static storage updates, point the `updateSource.baseUrl` parameter to
 the directory containing your release metadata files.
 
 ```js title="main.js" @ts-nocheck
-const { updateElectronApp, UpdateSourceType } = require('update-electron-app')
+const { updateElectronApp, UpdateSourceType } = require("update-electron-app");
 
 updateElectronApp({
   updateSource: {
     type: UpdateSourceType.StaticStorage,
-    baseUrl: `https://my-bucket.s3.amazonaws.com/my-app-updates/${process.platform}/${process.arch}`
-  }
-})
+    baseUrl: `https://my-bucket.s3.amazonaws.com/my-app-updates/${process.platform}/${process.arch}`,
+  },
+});
 ```
 
 ## Using update.electronjs.org
@@ -141,7 +141,7 @@ npm install update-electron-app
 Then, invoke the updater from your app's main process file:
 
 ```js title="main.js" @ts-nocheck
-require('update-electron-app')()
+require("update-electron-app")();
 ```
 
 By default, this module will check for updates at app startup, then every ten
@@ -190,25 +190,25 @@ You can use the [app.isPackaged](../api/app.md#appispackaged-readonly) API to ch
 :::
 
 ```js title='main.js'
-const { app, autoUpdater, dialog } = require('electron')
+const { app, autoUpdater, dialog } = require("electron");
 ```
 
 Next, construct the URL of the update server feed and tell
 [autoUpdater](../api/auto-updater.md) about it:
 
 ```js title='main.js'
-const server = 'https://your-deployment-url.com'
-const url = `${server}/update/${process.platform}/${app.getVersion()}`
+const server = "https://your-deployment-url.com";
+const url = `${server}/update/${process.platform}/${app.getVersion()}`;
 
-autoUpdater.setFeedURL({ url })
+autoUpdater.setFeedURL({ url });
 ```
 
 As the final step, check for updates. The example below will check every minute:
 
 ```js title='main.js'
 setInterval(() => {
-  autoUpdater.checkForUpdates()
-}, 60000)
+  autoUpdater.checkForUpdates();
+}, 60000);
 ```
 
 Once your application is [packaged](./application-distribution.md),
@@ -222,20 +222,19 @@ need to ensure that the user will get notified when there's an update. This
 can be achieved using the [autoUpdater API events](../api/auto-updater.md#events):
 
 ```js title="main.js" @ts-expect-error=[11]
-autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
+autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName) => {
   const dialogOpts = {
-    type: 'info',
-    buttons: ['Restart', 'Later'],
-    title: 'Application Update',
-    message: process.platform === 'win32' ? releaseNotes : releaseName,
-    detail:
-      'A new version has been downloaded. Restart the application to apply the updates.'
-  }
+    type: "info",
+    buttons: ["Restart", "Later"],
+    title: "Application Update",
+    message: process.platform === "win32" ? releaseNotes : releaseName,
+    detail: "A new version has been downloaded. Restart the application to apply the updates.",
+  };
 
   dialog.showMessageBox(dialogOpts).then((returnValue) => {
-    if (returnValue.response === 0) autoUpdater.quitAndInstall()
-  })
-})
+    if (returnValue.response === 0) autoUpdater.quitAndInstall();
+  });
+});
 ```
 
 Also make sure that errors are
@@ -243,10 +242,10 @@ Also make sure that errors are
 for logging them to `stderr`:
 
 ```js title="main.js"
-autoUpdater.on('error', (message) => {
-  console.error('There was a problem updating the application')
-  console.error(message)
-})
+autoUpdater.on("error", (message) => {
+  console.error("There was a problem updating the application");
+  console.error(message);
+});
 ```
 
 :::info Handling updates manually
@@ -270,14 +269,14 @@ but you can use a single server for both platforms by sending requests to
 different endpoints depending on the value of `process.platform`.
 
 ```js title='main.js'
-const { app, autoUpdater } = require('electron')
+const { app, autoUpdater } = require("electron");
 
-const server = 'https://your-deployment-url.com'
+const server = "https://your-deployment-url.com";
 // e.g. for Windows and app version 1.2.3
 // https://your-deployment-url.com/update/win32/1.2.3
-const url = `${server}/update/${process.platform}/${app.getVersion()}`
+const url = `${server}/update/${process.platform}/${app.getVersion()}`;
 
-autoUpdater.setFeedURL({ url })
+autoUpdater.setFeedURL({ url });
 ```
 
 ### Windows
@@ -305,10 +304,10 @@ app update. All other properties in the object are optional.
 
 ```json title='https://your-deployment-url.com/update/darwin/0.31.0'
 {
-    "url": "https://your-static.storage/your-app-1.2.3-darwin.zip",
-    "name": "1.2.3",
-    "notes": "These are some release notes innit",
-    "pub_date": "2024-09-18T12:29:53+01:00"
+  "url": "https://your-static.storage/your-app-1.2.3-darwin.zip",
+  "name": "1.2.3",
+  "notes": "These are some release notes innit",
+  "pub_date": "2024-09-18T12:29:53+01:00"
 }
 ```
 

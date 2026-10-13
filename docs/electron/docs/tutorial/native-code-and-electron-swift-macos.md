@@ -15,8 +15,8 @@ This tutorial will be most useful to those who already have some familiarity wit
 
 Just like our [general introduction to Native Code and Electron](./native-code-and-electron.md), this tutorial assumes you have Node.js and npm installed, as well as the basic tools necessary for compiling native code on macOS. You'll need:
 
-* Xcode installed (available from the Mac App Store)
-* Xcode Command Line Tools (can be installed by running `xcode-select --install` in Terminal)
+- Xcode installed (available from the Mac App Store)
+- Xcode Command Line Tools (can be installed by running `xcode-select --install` in Terminal)
 
 ## 1) Creating a package
 
@@ -77,72 +77,66 @@ Let's start by adding a basic structure:
 
 ```json title='binding.gyp'
 {
-  "targets": [{
-    "target_name": "swift_addon",
-    "conditions": [
-      ['OS=="mac"', {
-        "sources": [
-          "src/swift_addon.mm",
-          "src/SwiftBridge.m",
-          "src/SwiftCode.swift"
-        ],
-        "include_dirs": [
-          "<!@(node -p \"require('node-addon-api').include\")",
-          "include",
-          "build_swift"
-        ],
-        "dependencies": [
-          "<!(node -p \"require('node-addon-api').gyp\")"
-        ],
-        "libraries": [
-          "<(PRODUCT_DIR)/libSwiftCode.a"
-        ],
-        "cflags!": [ "-fno-exceptions" ],
-        "cflags_cc!": [ "-fno-exceptions" ],
-        "xcode_settings": {
-          "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-          "CLANG_ENABLE_OBJC_ARC": "YES",
-          "SWIFT_OBJC_BRIDGING_HEADER": "include/SwiftBridge.h",
-          "SWIFT_VERSION": "5.0",
-          "SWIFT_OBJC_INTERFACE_HEADER_NAME": "swift_addon-Swift.h",
-          "MACOSX_DEPLOYMENT_TARGET": "11.0",
-          "OTHER_CFLAGS": [
-            "-ObjC++",
-            "-fobjc-arc"
-          ],
-          "OTHER_LDFLAGS": [
-            "-Wl,-rpath,@loader_path",
-            "-Wl,-install_name,@rpath/libSwiftCode.a"
-          ],
-          "HEADER_SEARCH_PATHS": [
-            "$(SRCROOT)/include",
-            "$(CONFIGURATION_BUILD_DIR)",
-            "$(SRCROOT)/build/Release",
-            "$(SRCROOT)/build_swift"
-          ]
-        },
-        "actions": []
-      }]
-    ]
-  }]
+  "targets": [
+    {
+      "target_name": "swift_addon",
+      "conditions": [
+        [
+          "OS==\"mac\"",
+          {
+            "sources": ["src/swift_addon.mm", "src/SwiftBridge.m", "src/SwiftCode.swift"],
+            "include_dirs": [
+              "<!@(node -p \"require('node-addon-api').include\")",
+              "include",
+              "build_swift"
+            ],
+            "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
+            "libraries": ["<(PRODUCT_DIR)/libSwiftCode.a"],
+            "cflags!": ["-fno-exceptions"],
+            "cflags_cc!": ["-fno-exceptions"],
+            "xcode_settings": {
+              "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+              "CLANG_ENABLE_OBJC_ARC": "YES",
+              "SWIFT_OBJC_BRIDGING_HEADER": "include/SwiftBridge.h",
+              "SWIFT_VERSION": "5.0",
+              "SWIFT_OBJC_INTERFACE_HEADER_NAME": "swift_addon-Swift.h",
+              "MACOSX_DEPLOYMENT_TARGET": "11.0",
+              "OTHER_CFLAGS": ["-ObjC++", "-fobjc-arc"],
+              "OTHER_LDFLAGS": [
+                "-Wl,-rpath,@loader_path",
+                "-Wl,-install_name,@rpath/libSwiftCode.a"
+              ],
+              "HEADER_SEARCH_PATHS": [
+                "$(SRCROOT)/include",
+                "$(CONFIGURATION_BUILD_DIR)",
+                "$(SRCROOT)/build/Release",
+                "$(SRCROOT)/build_swift"
+              ]
+            },
+            "actions": []
+          }
+        ]
+      ]
+    }
+  ]
 }
 ```
 
 We include our Objective-C++ files (`sources`), specify the necessary macOS frameworks, and set up C++ exceptions and ARC. We also set various Xcode flags:
 
-* `GCC_ENABLE_CPP_EXCEPTIONS`: Enables C++ exception handling in the native code.
-* `CLANG_ENABLE_OBJC_ARC`: Enables Automatic Reference Counting for Objective-C memory management.
-* `SWIFT_OBJC_BRIDGING_HEADER`: Specifies the header file that bridges Swift and Objective-C code.
-* `SWIFT_VERSION`: Sets the Swift language version to 5.0.
-* `SWIFT_OBJC_INTERFACE_HEADER_NAME`: Names the automatically generated header that exposes Swift code to Objective-C.
-* `MACOSX_DEPLOYMENT_TARGET`: Sets the minimum macOS version (11.0/Big Sur) required.
-* `OTHER_CFLAGS`: Additional compiler flags: `-ObjC++` specifies Objective-C++ mode. `-fobjc-arc` enables ARC at the compiler level.
+- `GCC_ENABLE_CPP_EXCEPTIONS`: Enables C++ exception handling in the native code.
+- `CLANG_ENABLE_OBJC_ARC`: Enables Automatic Reference Counting for Objective-C memory management.
+- `SWIFT_OBJC_BRIDGING_HEADER`: Specifies the header file that bridges Swift and Objective-C code.
+- `SWIFT_VERSION`: Sets the Swift language version to 5.0.
+- `SWIFT_OBJC_INTERFACE_HEADER_NAME`: Names the automatically generated header that exposes Swift code to Objective-C.
+- `MACOSX_DEPLOYMENT_TARGET`: Sets the minimum macOS version (11.0/Big Sur) required.
+- `OTHER_CFLAGS`: Additional compiler flags: `-ObjC++` specifies Objective-C++ mode. `-fobjc-arc` enables ARC at the compiler level.
 
 Then, with `OTHER_LDFLAGS`, we set Linker flags:
 
-* `-Wl,-rpath,@loader_path`: Sets runtime search path for libraries
-* `-Wl,-install_name,@rpath/libSwiftCode.a`: Configures library install name
-* `HEADER_SEARCH_PATHS`: Directories to search for header files during compilation.
+- `-Wl,-rpath,@loader_path`: Sets runtime search path for libraries
+- `-Wl,-install_name,@rpath/libSwiftCode.a`: Configures library install name
+- `HEADER_SEARCH_PATHS`: Directories to search for header files during compilation.
 
 You might also notice that we added a currently empty `actions` array to the JSON. In the next step, we'll be compiling Swift.
 
@@ -156,30 +150,27 @@ We'll add two actions: One to compile our Swift code (so that it can be linked) 
   "actions": [
     {
       "action_name": "build_swift",
-      "inputs": [
-        "src/SwiftCode.swift"
-      ],
-      "outputs": [
-        "build_swift/libSwiftCode.a",
-        "build_swift/swift_addon-Swift.h"
-      ],
+      "inputs": ["src/SwiftCode.swift"],
+      "outputs": ["build_swift/libSwiftCode.a", "build_swift/swift_addon-Swift.h"],
       "action": [
         "swiftc",
         "src/SwiftCode.swift",
-        "-emit-objc-header-path", "./build_swift/swift_addon-Swift.h",
-        "-emit-library", "-o", "./build_swift/libSwiftCode.a",
-        "-emit-module", "-module-name", "swift_addon",
-        "-module-link-name", "SwiftCode"
+        "-emit-objc-header-path",
+        "./build_swift/swift_addon-Swift.h",
+        "-emit-library",
+        "-o",
+        "./build_swift/libSwiftCode.a",
+        "-emit-module",
+        "-module-name",
+        "swift_addon",
+        "-module-link-name",
+        "SwiftCode"
       ]
     },
     {
       "action_name": "copy_swift_lib",
-      "inputs": [
-        "<(module_root_dir)/build_swift/libSwiftCode.a"
-      ],
-      "outputs": [
-        "<(PRODUCT_DIR)/libSwiftCode.a"
-      ],
+      "inputs": ["<(module_root_dir)/build_swift/libSwiftCode.a"],
+      "outputs": ["<(PRODUCT_DIR)/libSwiftCode.a"],
       "action": [
         "sh",
         "-c",
@@ -193,10 +184,10 @@ We'll add two actions: One to compile our Swift code (so that it can be linked) 
 
 These actions:
 
-* Compile the Swift code to a static library using `swiftc`
-* Generate an Objective-C header from the Swift code
-* Copy the compiled Swift library to the output directory
-* Fix the library path with `install_name_tool` to ensure the dynamic linker can find the library at runtime by setting the correct install name
+- Compile the Swift code to a static library using `swiftc`
+- Generate an Objective-C header from the Swift code
+- Copy the compiled Swift library to the output directory
+- Fix the library path with `install_name_tool` to ensure the dynamic linker can find the library at runtime by setting the correct install name
 
 ## 3) Creating the Objective-C Bridge Header
 
@@ -222,9 +213,9 @@ We'll need to setup a bridge between the Swift code and the native Node.js C++ a
 
 This header defines the Objective-C interface that we'll use to bridge between our Swift code and the Node.js addon. It includes:
 
-* A simple `helloWorld` method that takes a string input and returns a string
-* A `helloGui` method that will display a native SwiftUI interface
-* Methods to set callbacks for todo operations (add, update, delete)
+- A simple `helloWorld` method that takes a string input and returns a string
+- A `helloGui` method that will display a native SwiftUI interface
+- Methods to set callbacks for todo operations (add, update, delete)
 
 ## 4) Implementing the Objective-C Bridge
 
@@ -269,10 +260,10 @@ static void (^todoDeletedCallback)(NSString*);
 
 This bridge:
 
-* Imports the Swift-generated header (`swift_addon-Swift.h`)
-* Implements the methods defined in our header
-* Simply forwards calls to the Swift code
-* Stores the callbacks for later use in static variables, allowing them to persist throughout the application's lifecycle. This ensures that the JavaScript callbacks can be invoked at any time when todo items are added, updated, or deleted.
+- Imports the Swift-generated header (`swift_addon-Swift.h`)
+- Implements the methods defined in our header
+- Simply forwards calls to the Swift code
+- Stores the callbacks for later use in static variables, allowing them to persist throughout the application's lifecycle. This ensures that the JavaScript callbacks can be invoked at any time when todo items are added, updated, or deleted.
 
 ## 5) Implementing the Swift Code
 
@@ -536,9 +527,9 @@ public class SwiftCode: NSObject {
 
 This part of the code:
 
-* Creates a SwiftUI view with a form to add new todos, featuring a text field for the todo description, a date picker for setting due dates, and an Add button that validates input, creates a new TodoItem, adds it to the local array, triggers the `onTodoAdded` callback to notify JavaScript, and then resets the input fields for the next entry.
-* Implements a list to display todos with edit and delete capabilities
-* Calls the appropriate callbacks when todos are added, updated, or deleted
+- Creates a SwiftUI view with a form to add new todos, featuring a text field for the todo description, a date picker for setting due dates, and an Add button that validates input, creates a new TodoItem, adds it to the local array, triggers the `onTodoAdded` callback to notify JavaScript, and then resets the input fields for the next entry.
+- Implements a list to display todos with edit and delete capabilities
+- Calls the appropriate callbacks when todos are added, updated, or deleted
 
 The final file should look as follows:
 
@@ -1088,51 +1079,51 @@ NODE_API_MODULE(swift_addon, Init)
 You're so close! We now have working Objective-C, Swift, and thread-safe ways to expose methods and events to JavaScript. In this final step, let's create a JavaScript wrapper in `js/index.js` to provide a more friendly API:
 
 ```js title='js/index.js' @ts-expect-error=[10]
-const EventEmitter = require('node:events')
+const EventEmitter = require("node:events");
 
 class SwiftAddon extends EventEmitter {
-  constructor () {
-    super()
+  constructor() {
+    super();
 
-    if (process.platform !== 'darwin') {
-      throw new Error('This module is only available on macOS')
+    if (process.platform !== "darwin") {
+      throw new Error("This module is only available on macOS");
     }
 
-    const native = require('bindings')('swift_addon')
-    this.addon = new native.SwiftAddon()
+    const native = require("bindings")("swift_addon");
+    this.addon = new native.SwiftAddon();
 
-    this.addon.on('todoAdded', (payload) => {
-      this.emit('todoAdded', this.parse(payload))
-    })
+    this.addon.on("todoAdded", (payload) => {
+      this.emit("todoAdded", this.parse(payload));
+    });
 
-    this.addon.on('todoUpdated', (payload) => {
-      this.emit('todoUpdated', this.parse(payload))
-    })
+    this.addon.on("todoUpdated", (payload) => {
+      this.emit("todoUpdated", this.parse(payload));
+    });
 
-    this.addon.on('todoDeleted', (payload) => {
-      this.emit('todoDeleted', this.parse(payload))
-    })
+    this.addon.on("todoDeleted", (payload) => {
+      this.emit("todoDeleted", this.parse(payload));
+    });
   }
 
-  helloWorld (input = '') {
-    return this.addon.helloWorld(input)
+  helloWorld(input = "") {
+    return this.addon.helloWorld(input);
   }
 
-  helloGui () {
-    this.addon.helloGui()
+  helloGui() {
+    this.addon.helloGui();
   }
 
-  parse (payload) {
-    const parsed = JSON.parse(payload)
+  parse(payload) {
+    const parsed = JSON.parse(payload);
 
-    return { ...parsed, date: new Date(parsed.date) }
+    return { ...parsed, date: new Date(parsed.date) };
   }
 }
 
-if (process.platform === 'darwin') {
-  module.exports = new SwiftAddon()
+if (process.platform === "darwin") {
+  module.exports = new SwiftAddon();
 } else {
-  module.exports = {}
+  module.exports = {};
 }
 ```
 
@@ -1161,15 +1152,15 @@ You've now built a complete native Node.js addon for macOS using Swift and Swift
 
 The approach demonstrated here allows you to:
 
-* Setting up a project structure that bridges Swift, Objective-C, and JavaScript
-* Implementing Swift code with SwiftUI for native UI
-* Creating an Objective-C bridge to connect Swift with Node.js
-* Setting up bidirectional communication using callbacks and events
-* Configuring a custom build process to compile Swift code
+- Setting up a project structure that bridges Swift, Objective-C, and JavaScript
+- Implementing Swift code with SwiftUI for native UI
+- Creating an Objective-C bridge to connect Swift with Node.js
+- Setting up bidirectional communication using callbacks and events
+- Configuring a custom build process to compile Swift code
 
 For more information on developing with Swift and SwiftUI, refer to Apple's developer documentation:
 
-* [Swift Programming Language](https://developer.apple.com/swift/)
-* [SwiftUI Framework](https://developer.apple.com/documentation/swiftui)
-* [macOS Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/macos)
-* [Swift and Objective-C Interoperability Guide](https://developer.apple.com/documentation/swift/importing-swift-into-objective-c)
+- [Swift Programming Language](https://developer.apple.com/swift/)
+- [SwiftUI Framework](https://developer.apple.com/documentation/swiftui)
+- [macOS Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/macos)
+- [Swift and Objective-C Interoperability Guide](https://developer.apple.com/documentation/swift/importing-swift-into-objective-c)

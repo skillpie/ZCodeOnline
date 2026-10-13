@@ -9,24 +9,24 @@ You can also use [XCode for debugging](debugging-with-xcode.md) if you prefer a 
 
 ## Requirements
 
-* **A testing build of Electron**: The easiest way is usually to build it from source,
+- **A testing build of Electron**: The easiest way is usually to build it from source,
   which you can do by following the instructions in the [build instructions](./build-instructions-macos.md). While you can attach to and debug Electron as you can download it directly, you will
   find that it is heavily optimized, making debugging substantially more difficult.
   In this case the debugger will not be able to show you the content of all
   variables and the execution path can seem strange because of inlining,
   tail calls, and other compiler optimizations.
 
-* **Xcode**: In addition to Xcode, you should also install the Xcode command line tools.
+- **Xcode**: In addition to Xcode, you should also install the Xcode command line tools.
   They include [LLDB](https://lldb.llvm.org/), the default debugger in Xcode on macOS. It supports
   debugging C, Objective-C and C++ on the desktop and iOS devices and simulator.
 
-* **.lldbinit**: Create or edit `~/.lldbinit` to allow Chromium code to be properly source-mapped.
+- **.lldbinit**: Create or edit `~/.lldbinit` to allow Chromium code to be properly source-mapped.
 
-   ```text
-   # e.g: ['~/electron/src/tools/lldb']
-   script sys.path[:0] = ['<...path/to/electron/src/tools/lldb>']
-   script import lldbinit
-   ```
+  ```text
+  # e.g: ['~/electron/src/tools/lldb']
+  script sys.path[:0] = ['<...path/to/electron/src/tools/lldb>']
+  script import lldbinit
+  ```
 
 ## Attaching to and Debugging Electron
 

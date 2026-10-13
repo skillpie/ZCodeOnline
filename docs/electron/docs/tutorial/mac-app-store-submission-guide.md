@@ -2,16 +2,16 @@
 
 This guide provides information on:
 
-* How to sign Electron apps on macOS;
-* How to submit Electron apps to Mac App Store (MAS);
-* The limitations of the MAS build.
+- How to sign Electron apps on macOS;
+- How to submit Electron apps to Mac App Store (MAS);
+- The limitations of the MAS build.
 
 ## Requirements
 
 To sign Electron apps, the following tools must be installed first:
 
-* Xcode 11 or above.
-* The [@electron/osx-sign][] npm module.
+- Xcode 11 or above.
+- The [@electron/osx-sign][] npm module.
 
 You also have to register an Apple Developer account and join the
 [Apple Developer Program][developer-program].
@@ -34,8 +34,8 @@ The simplest way to get signing certificates is to use Xcode:
 3. Select a team and click "Manage Certificates";
 4. In the lower-left corner of the signing certificates sheet, click the Add
    button (+), and add following certificates:
-   * "Apple Development"
-   * "Apple Distribution"
+   - "Apple Development"
+   - "Apple Distribution"
 
 The "Apple Development" certificate is used to sign apps for development and
 testing, on machines that have been registered on Apple Developer website. The
@@ -74,9 +74,9 @@ Apple has been changing the names of certificates during past years, you might
 encounter them when reading old documentations, and some utilities are still
 using one of the old names.
 
-* The "Apple Distribution" certificate was also named as "3rd Party Mac
+- The "Apple Distribution" certificate was also named as "3rd Party Mac
   Developer Application" and "Mac App Distribution".
-* The "Apple Development" certificate was also named as "Mac Developer" and
+- The "Apple Development" certificate was also named as "Mac Developer" and
   "Development".
 
 ### Prepare provisioning profile
@@ -163,6 +163,7 @@ When using `@electron/osx-sign` the `ElectronTeamID` key will be added
 automatically by extracting the Team ID from the certificate's name. You may
 need to manually add this key if `@electron/osx-sign` could not find the correct
 Team ID.
+
 </details>
 
 ### Sign apps for development
@@ -172,13 +173,13 @@ the "Apple Development" certificate and pass the provisioning profile to
 `@electron/osx-sign`.
 
 ```js @ts-nocheck
-const { signAsync } = require('@electron/osx-sign')
+const { signAsync } = require("@electron/osx-sign");
 
 signAsync({
-  app: '/path/to/your.app',
-  identity: 'Apple Development',
-  provisioningProfile: '/path/to/your.provisionprofile'
-})
+  app: "/path/to/your.app",
+  identity: "Apple Development",
+  provisioningProfile: "/path/to/your.provisionprofile",
+});
 ```
 
 If you are signing without `@electron/osx-sign`, you must place the provisioning
@@ -195,12 +196,12 @@ the "Apple Distribution" certificate. Note that apps signed with this
 certificate will not run anywhere, unless it is downloaded from Mac App Store.
 
 ```js @ts-nocheck
-const { signAsync } = require('@electron/osx-sign')
+const { signAsync } = require("@electron/osx-sign");
 
 signAsync({
-  app: 'path/to/your.app',
-  identity: 'Apple Distribution'
-})
+  app: "path/to/your.app",
+  identity: "Apple Distribution",
+});
 ```
 
 ## Submit apps to the Mac App Store
@@ -230,14 +231,14 @@ After uploading, you should [submit your app for review][submit-for-review].
 In order to satisfy all requirements for app sandboxing, the following modules
 have been disabled in the MAS build:
 
-* `crashReporter`
-* `autoUpdater`
+- `crashReporter`
+- `autoUpdater`
 
 and the following behaviors have been changed:
 
-* Video capture may not work for some machines.
-* Certain accessibility features may not work.
-* Apps will not be aware of DNS changes.
+- Video capture may not work for some machines.
+- Certain accessibility features may not work.
+- Apps will not be aware of DNS changes.
 
 Also, due to the usage of app sandboxing, the resources which can be accessed by
 the app are strictly limited; you can read [App Sandboxing][app-sandboxing] for
@@ -264,22 +265,22 @@ MAS app.
 With `@electron/osx-sign`, you can set custom entitlements per file as such:
 
 ```js @ts-nocheck
-const { signAsync } = require('@electron/osx-sign')
+const { signAsync } = require("@electron/osx-sign");
 
-function getEntitlementsForFile (filePath) {
-  if (filePath.startsWith('my-path-1')) {
-    return './my-path-1.plist'
+function getEntitlementsForFile(filePath) {
+  if (filePath.startsWith("my-path-1")) {
+    return "./my-path-1.plist";
   } else {
-    return './alternate.plist'
+    return "./alternate.plist";
   }
 }
 
 signAsync({
   optionsForFile: (filePath) => ({
     // Ensure you return the right entitlements path here based on the file being signed.
-    entitlements: getEntitlementsForFile(filePath)
-  })
-})
+    entitlements: getEntitlementsForFile(filePath),
+  }),
+});
 ```
 
 #### Network access
@@ -331,29 +332,29 @@ more information.
 
 Electron uses following cryptographic algorithms:
 
-* AES - [NIST SP 800-38A](https://csrc.nist.gov/publications/nistpubs/800-38a/sp800-38a.pdf), [NIST SP 800-38D](https://csrc.nist.gov/publications/nistpubs/800-38D/SP-800-38D.pdf), [RFC 3394](https://www.ietf.org/rfc/rfc3394.txt)
-* HMAC - [FIPS 198-1](https://csrc.nist.gov/publications/fips/fips198-1/FIPS-198-1_final.pdf)
-* ECDSA - ANS X9.62–2005
-* ECDH - ANS X9.63–2001
-* HKDF - [NIST SP 800-56C](https://csrc.nist.gov/publications/nistpubs/800-56C/SP-800-56C.pdf)
-* PBKDF2 - [RFC 2898](https://tools.ietf.org/html/rfc2898)
-* RSA - [RFC 3447](https://www.ietf.org/rfc/rfc3447)
-* SHA - [FIPS 180-4](https://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf)
-* Blowfish - https://www.schneier.com/cryptography/blowfish/
-* CAST - [RFC 2144](https://tools.ietf.org/html/rfc2144), [RFC 2612](https://tools.ietf.org/html/rfc2612)
-* DES - [FIPS 46-3](https://csrc.nist.gov/publications/fips/fips46-3/fips46-3.pdf)
-* DH - [RFC 2631](https://tools.ietf.org/html/rfc2631)
-* DSA - [ANSI X9.30](https://webstore.ansi.org/RecordDetail.aspx?sku=ANSI+X9.30-1%3A1997)
-* EC - [SEC 1](https://www.secg.org/sec1-v2.pdf)
-* IDEA - "On the Design and Security of Block Ciphers" book by X. Lai
-* MD2 - [RFC 1319](https://tools.ietf.org/html/rfc1319)
-* MD4 - [RFC 6150](https://tools.ietf.org/html/rfc6150)
-* MD5 - [RFC 1321](https://tools.ietf.org/html/rfc1321)
-* MDC2 - [ISO/IEC 10118-2](https://wiki.openssl.org/index.php/Manual:Mdc2(3))
-* RC2 - [RFC 2268](https://tools.ietf.org/html/rfc2268)
-* RC4 - [RFC 4345](https://tools.ietf.org/html/rfc4345)
-* RC5 - https://people.csail.mit.edu/rivest/Rivest-rc5rev.pdf
-* RIPEMD - [ISO/IEC 10118-3](https://webstore.ansi.org/RecordDetail.aspx?sku=ISO%2FIEC%2010118-3:2004)
+- AES - [NIST SP 800-38A](https://csrc.nist.gov/publications/nistpubs/800-38a/sp800-38a.pdf), [NIST SP 800-38D](https://csrc.nist.gov/publications/nistpubs/800-38D/SP-800-38D.pdf), [RFC 3394](https://www.ietf.org/rfc/rfc3394.txt)
+- HMAC - [FIPS 198-1](https://csrc.nist.gov/publications/fips/fips198-1/FIPS-198-1_final.pdf)
+- ECDSA - ANS X9.62–2005
+- ECDH - ANS X9.63–2001
+- HKDF - [NIST SP 800-56C](https://csrc.nist.gov/publications/nistpubs/800-56C/SP-800-56C.pdf)
+- PBKDF2 - [RFC 2898](https://tools.ietf.org/html/rfc2898)
+- RSA - [RFC 3447](https://www.ietf.org/rfc/rfc3447)
+- SHA - [FIPS 180-4](https://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf)
+- Blowfish - https://www.schneier.com/cryptography/blowfish/
+- CAST - [RFC 2144](https://tools.ietf.org/html/rfc2144), [RFC 2612](https://tools.ietf.org/html/rfc2612)
+- DES - [FIPS 46-3](https://csrc.nist.gov/publications/fips/fips46-3/fips46-3.pdf)
+- DH - [RFC 2631](https://tools.ietf.org/html/rfc2631)
+- DSA - [ANSI X9.30](https://webstore.ansi.org/RecordDetail.aspx?sku=ANSI+X9.30-1%3A1997)
+- EC - [SEC 1](https://www.secg.org/sec1-v2.pdf)
+- IDEA - "On the Design and Security of Block Ciphers" book by X. Lai
+- MD2 - [RFC 1319](https://tools.ietf.org/html/rfc1319)
+- MD4 - [RFC 6150](https://tools.ietf.org/html/rfc6150)
+- MD5 - [RFC 1321](https://tools.ietf.org/html/rfc1321)
+- MDC2 - [ISO/IEC 10118-2](<https://wiki.openssl.org/index.php/Manual:Mdc2(3)>)
+- RC2 - [RFC 2268](https://tools.ietf.org/html/rfc2268)
+- RC4 - [RFC 4345](https://tools.ietf.org/html/rfc4345)
+- RC5 - https://people.csail.mit.edu/rivest/Rivest-rc5rev.pdf
+- RIPEMD - [ISO/IEC 10118-3](https://webstore.ansi.org/RecordDetail.aspx?sku=ISO%2FIEC%2010118-3:2004)
 
 [developer-program]: https://developer.apple.com/support/compare-memberships/
 [@electron/osx-sign]: https://github.com/electron/osx-sign

@@ -4,9 +4,9 @@ This tutorial builds on the [general introduction to Native Code and Electron](.
 
 Specifically, we'll be using GTK3 for our GUI interface, which provides:
 
-* A comprehensive set of UI widgets like buttons, entry fields, and lists
-* Cross-desktop compatibility across various Linux distributions
-* Integration with the native theming and accessibility features of Linux desktops
+- A comprehensive set of UI widgets like buttons, entry fields, and lists
+- Cross-desktop compatibility across various Linux distributions
+- Integration with the native theming and accessibility features of Linux desktops
 
 > [!NOTE]
 > We specifically use GTK3 because that's what Chromium (and by extension, Electron) uses internally. Using GTK4 would cause runtime conflicts since both GTK3 and GTK4 would be loaded in the same process. If and when Chromium upgrades to GTK4, you will likely be able to easily upgrade your native code to GTK4, too.
@@ -20,9 +20,9 @@ This tutorial will be most useful to those who already have some familiarity wit
 
 Just like our general introduction to Native Code and Electron, this tutorial assumes you have Node.js and npm installed, as well as the basic tools necessary for compiling native code. Since this tutorial discusses writing native code that interacts with GTK3, you'll need:
 
-* A Linux distribution with GTK3 development files installed
-* The [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) tool
-* G++ compiler and build tools
+- A Linux distribution with GTK3 development files installed
+- The [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) tool
+- G++ compiler and build tools
 
 On Ubuntu/Debian, you can install these with:
 
@@ -84,40 +84,25 @@ For a Linux-specific addon using GTK3, we need to configure our `binding.gyp` fi
     {
       "target_name": "cpp_addon",
       "conditions": [
-        ['OS=="linux"', {
-          "sources": [
-            "src/cpp_addon.cc",
-            "src/cpp_code.cc"
-          ],
-          "include_dirs": [
-            "<!@(node -p \"require('node-addon-api').include\")",
-            "include",
-            "<!@(pkg-config --cflags-only-I gtk+-3.0 | sed s/-I//g)"
-          ],
-          "libraries": [
-            "<!@(pkg-config --libs gtk+-3.0)",
-            "-luuid"
-          ],
-          "cflags": [
-            "-fexceptions",
-            "<!@(pkg-config --cflags gtk+-3.0)",
-            "-pthread"
-          ],
-          "cflags_cc": [
-            "-fexceptions",
-            "<!@(pkg-config --cflags gtk+-3.0)",
-            "-pthread"
-          ],
-          "ldflags": [
-            "-pthread"
-          ],
-          "cflags!": ["-fno-exceptions"],
-          "cflags_cc!": ["-fno-exceptions"],
-          "defines": ["NODE_ADDON_API_CPP_EXCEPTIONS"],
-          "dependencies": [
-            "<!(node -p \"require('node-addon-api').gyp\")"
-          ]
-        }]
+        [
+          "OS==\"linux\"",
+          {
+            "sources": ["src/cpp_addon.cc", "src/cpp_code.cc"],
+            "include_dirs": [
+              "<!@(node -p \"require('node-addon-api').include\")",
+              "include",
+              "<!@(pkg-config --cflags-only-I gtk+-3.0 | sed s/-I//g)"
+            ],
+            "libraries": ["<!@(pkg-config --libs gtk+-3.0)", "-luuid"],
+            "cflags": ["-fexceptions", "<!@(pkg-config --cflags gtk+-3.0)", "-pthread"],
+            "cflags_cc": ["-fexceptions", "<!@(pkg-config --cflags gtk+-3.0)", "-pthread"],
+            "ldflags": ["-pthread"],
+            "cflags!": ["-fno-exceptions"],
+            "cflags_cc!": ["-fno-exceptions"],
+            "defines": ["NODE_ADDON_API_CPP_EXCEPTIONS"],
+            "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"]
+          }
+        ]
       ]
     }
   ]
@@ -153,10 +138,10 @@ void setTodoDeletedCallback(TodoCallback callback);
 
 This header defines:
 
-* A basic `hello_world` function
-* A `hello_gui` function to create a GTK3 GUI
-* Callback types for Todo operations (add, update, delete)
-* Setter functions for the callback
+- A basic `hello_world` function
+- A `hello_gui` function to create a GTK3 GUI
+- Callback types for Todo operations (add, update, delete)
+- Setter functions for the callback
 
 ## 4) Implementing GTK3 GUI Code
 
@@ -218,13 +203,13 @@ namespace cpp_code
 
 In this section:
 
-* We include necessary headers for GTK3, standard library components, and UUID generation.
-* Define a `TodoCallback` type to handle communication back to JavaScript.
-* Create a `TodoItem` struct to store our todo data with:
-  * A UUID for unique identification
-  * Text content and a timestamp
-  * A method to convert to JSON for sending to JavaScript
-  * A static helper to format dates for display
+- We include necessary headers for GTK3, standard library components, and UUID generation.
+- Define a `TodoCallback` type to handle communication back to JavaScript.
+- Create a `TodoItem` struct to store our todo data with:
+  - A UUID for unique identification
+  - Text content and a timestamp
+  - A method to convert to JSON for sending to JavaScript
+  - A static helper to format dates for display
 
 The `toJson()` method is particularly important as it's what allows our C++ objects to be serialized for transmission to JavaScript. There are probably better ways to do that, but this tutorial is about combining C++ for native Linux UI development with Electron, so we'll give ourselves a pass for not writing better JSON serialization code here. There are many libraries to work with JSON in C++ with different trade-offs. See https://www.json.org/json-en.html for a list.
 
@@ -254,12 +239,12 @@ Below the code already in your `src/cpp_code.cc`, add the following:
 
 Here we:
 
-* Forward-declare helper functions we'll use later
-* Set up global state in an anonymous namespace, including:
-  * Callbacks for the `add`, `update`, and `delete` todo operations
-  * GTK main context and loop pointers for thread management
-  * A pointer to the GTK thread itself
-  * A vector to store our todos
+- Forward-declare helper functions we'll use later
+- Set up global state in an anonymous namespace, including:
+  - Callbacks for the `add`, `update`, and `delete` todo operations
+  - GTK main context and loop pointers for thread management
+  - A pointer to the GTK thread itself
+  - A vector to store our todos
 
 These global variables keep track of application state and allow different parts of our code to interact with each other. The thread management variables (`g_gtk_main_context`, `g_main_loop`, and `g_gtk_thread`) are particularly important because GTK requires running in its own event loop. Since our code will be called from Node.js/Electron's main thread, we need to run GTK in a separate thread to avoid blocking the JavaScript event loop. This separation ensures that our native UI remains responsive while still allowing bidirectional communication with the Electron application. The callbacks enable us to send events back to JavaScript when the user interacts with our native GTK interface.
 
@@ -328,12 +313,12 @@ Moving on, we're adding more code below the code we've already written. In this 
 
 These helper functions are crucial for our application:
 
-* `notify_callback`: Safely invokes JavaScript callbacks from the GTK thread using `g_main_context_invoke`, which schedules function execution in the GTK main context. As a reminder, the GTK main context is the environment where GTK operations must be performed to ensure thread safety, as GTK is not thread-safe and all UI operations must happen on the main thread.
-* `update_todo_row_label`: Updates a row in the todo list with new text and formatted date.
-* `create_todo_dialog`: Creates a dialog for adding or editing todos with:
-  * A text entry field for the todo text
-  * A calendar widget for selecting the date
-  * Appropriate buttons for saving or canceling
+- `notify_callback`: Safely invokes JavaScript callbacks from the GTK thread using `g_main_context_invoke`, which schedules function execution in the GTK main context. As a reminder, the GTK main context is the environment where GTK operations must be performed to ensure thread safety, as GTK is not thread-safe and all UI operations must happen on the main thread.
+- `update_todo_row_label`: Updates a row in the todo list with new text and formatted date.
+- `create_todo_dialog`: Creates a dialog for adding or editing todos with:
+  - A text entry field for the todo text
+  - A calendar widget for selecting the date
+  - Appropriate buttons for saving or canceling
 
 ### Event handlers
 
@@ -455,19 +440,19 @@ These event handlers manage user interactions:
 
 `edit_action`: Handles editing a todo by:
 
-* Getting the selected row
-* Creating a dialog with the current todo data
-* Updating the todo if the user confirms
-* Notifying JavaScript via callback
+- Getting the selected row
+- Creating a dialog with the current todo data
+- Updating the todo if the user confirms
+- Notifying JavaScript via callback
 
 `delete_action`: Removes a todo and notifies JavaScript.
 
 `on_add_clicked`: Adds a new todo when the user clicks the Add button:
 
-* Gets text and date from input fields
-* Creates a new TodoItem with a unique ID
-* Adds it to the list and the underlying data store
-* Notifies JavaScript
+- Gets text and date from input fields
+- Creates a new TodoItem with a unique ID
+- Adds it to the list and the underlying data store
+- Notifies JavaScript
 
 `on_row_activated`: Shows a popup menu when a todo is clicked, with options to edit or delete.
 
@@ -568,12 +553,12 @@ Now, we'll need to setup our GTK application. This might be counter-intuitive, g
 
 Let's take a closer look at the code above:
 
-* `init_gtk_app`: Runs the GTK application main loop.
-* `activate_handler`: Sets up the application UI when activated:
-  * Creates a GtkBuilder for loading the UI
-  * Registers edit and delete actions
-  * Defines the UI layout using GTK's XML markup language
-  * Connects signals to our event handlers
+- `init_gtk_app`: Runs the GTK application main loop.
+- `activate_handler`: Sets up the application UI when activated:
+  - Creates a GtkBuilder for loading the UI
+  - Registers edit and delete actions
+  - Defines the UI layout using GTK's XML markup language
+  - Connects signals to our event handlers
 
 The UI layout is defined inline using XML, which is a common pattern in GTK applications. It creates a main window, input controls (text entry, calendar, and add button), a list box for displaying todos, and proper layout containers and scrolling.
 
@@ -638,8 +623,8 @@ Now that we have everything wired, up, we can add our two core GUI functions: `h
 
 These functions manage the GTK application lifecycle:
 
-* `hello_gui`: The entry point exposed to JavaScript that checks if GTK is already running, initializes GTK, creates a new main context and loop, launches a thread to run the GTK application, and detaches the thread so it runs independently.
-* `cleanup_gui`: Properly cleans up GTK resources when the application closes.
+- `hello_gui`: The entry point exposed to JavaScript that checks if GTK is already running, initializes GTK, creates a new main context and loop, launches a thread to run the GTK application, and detaches the thread so it runs independently.
+- `cleanup_gui`: Properly cleans up GTK resources when the application closes.
 
 Running GTK in a separate thread is crucial for Electron integration, as it prevents the GTK main loop from blocking Node.js's event loop.
 
@@ -1141,15 +1126,15 @@ Here, we create a C++ class that inherits from `Napi::ObjectWrap<CppAddon>`:
 
 `static Napi::Object Init` defines our JavaScript interface with three methods:
 
-* `helloWorld`: A simple function to test the bridge
-* `helloGui`: The function to launch our GTK3 UI
-* `on`: A method to register event callbacks
+- `helloWorld`: A simple function to test the bridge
+- `helloGui`: The function to launch our GTK3 UI
+- `on`: A method to register event callbacks
 
 The constructor initializes:
 
-* `emitter`: An object that will emit events to JavaScript
-* `callbacks`: A map of registered JavaScript callback functions
-* `tsfn_`: A thread-safe function handle (crucial for GTK3 thread communication)
+- `emitter`: An object that will emit events to JavaScript
+- `callbacks`: A map of registered JavaScript callback functions
+- `tsfn_`: A thread-safe function handle (crucial for GTK3 thread communication)
 
 The destructor properly cleans up the thread-safe function when the object is garbage collected.
 
@@ -1184,22 +1169,22 @@ void HelloGui(const Napi::CallbackInfo &info)
 
 `HelloWorld()`:
 
-* Validates the input argument (must be a string)
-* Calls our C++ hello_world function
-* Returns the result as a JavaScript string
+- Validates the input argument (must be a string)
+- Calls our C++ hello_world function
+- Returns the result as a JavaScript string
 
 `HelloGui()`:
 
-* Simply calls our C++ hello_gui function without arguments
-* Returns nothing (void) as the function just launches the UI
-* These methods form the direct bridge between JavaScript calls and our native C++ functions.
+- Simply calls our C++ hello_gui function without arguments
+- Returns nothing (void) as the function just launches the UI
+- These methods form the direct bridge between JavaScript calls and our native C++ functions.
 
 You might be wondering what `Napi::CallbackInfo` is or where it comes from. This is a class provided by the Node-API (N-API) C++ wrapper, specifically from the [`node-addon-api`](https://github.com/nodejs/node-addon-api) package. It encapsulates all the information about a JavaScript function call, including:
 
-* The arguments passed from JavaScript
-* The JavaScript execution environment (via `info.Env()`)
-* The `this` value of the function call
-* The number of arguments (via `info.Length()`)
+- The arguments passed from JavaScript
+- The JavaScript execution environment (via `info.Env()`)
+- The `this` value of the function call
+- The number of arguments (via `info.Length()`)
 
 This class is fundamental to the Node.js native addon development as it serves as the bridge between JavaScript function calls and C++ method implementations. Every native method that can be called from JavaScript receives a `CallbackInfo` object as its parameter, allowing the C++ code to access and validate the JavaScript arguments before processing them. You can see us using it in `HelloWorld()` to get function parameters and other information about the function call. Our `HelloGui()` function doesn't use it, but if it did, it'd follow the same pattern.
 
@@ -1318,14 +1303,14 @@ This is the most complex part of our bridge: implementing bidirectional communic
 
 `CallbackData` struct:
 
-* Holds the event type, JSON payload, and a reference to our addon.
+- Holds the event type, JSON payload, and a reference to our addon.
 
 In the constructor:
 
-* We create a thread-safe function (`napi_create_threadsafe_function`) which is crucial for calling into JavaScript from the GTK3 thread
-* The thread-safe function callback unpacks the data and calls the appropriate JavaScript callback
-* We create a lambda `makeCallback` that produces callback functions for different event types
-* We register these callbacks with our C++ code using the setter functions
+- We create a thread-safe function (`napi_create_threadsafe_function`) which is crucial for calling into JavaScript from the GTK3 thread
+- The thread-safe function callback unpacks the data and calls the appropriate JavaScript callback
+- We create a lambda `makeCallback` that produces callback functions for different event types
+- We register these callbacks with our C++ code using the setter functions
 
 Let's talk about `napi_create_threadsafe_function`. The orchestration of different threads is maybe the most difficult part about native addon development - and in our experience, the place where developers are most likely to give up. `napi_create_threadsafe_function` is provided by the N-API and allows you to safely call JavaScript functions from any thread. This is essential when working with GUI frameworks like GTK3 that run on their own thread. Here's why it's important:
 
@@ -1565,11 +1550,11 @@ if (process.platform === 'linux') {
 
 This wrapper:
 
-* Extends EventEmitter for native event handling
-* Only loads on Linux platforms
-* Forwards events from C++ to JavaScript
-* Provides clean methods to call into C++
-* Converts JSON data into proper JavaScript objects
+- Extends EventEmitter for native event handling
+- Only loads on Linux platforms
+- Forwards events from C++ to JavaScript
+- Provides clean methods to call into C++
+- Converts JSON data into proper JavaScript objects
 
 ## 7) Building and testing the addon
 
@@ -1587,28 +1572,28 @@ Once you've built the addon, you can use it in your Electron application. Here's
 
 ```js @ts-expect-error=[2]
 // In your Electron main process or renderer process
-import cppLinux from 'cpp-linux'
+import cppLinux from "cpp-linux";
 
 // Test the basic functionality
-console.log(cppLinux.helloWorld('Hi!'))
+console.log(cppLinux.helloWorld("Hi!"));
 // Output: "Hello from C++! You said: Hi!"
 
 // Set up event listeners for GTK GUI interactions
-cppLinux.on('todoAdded', (todo) => {
-  console.log('New todo added:', todo)
+cppLinux.on("todoAdded", (todo) => {
+  console.log("New todo added:", todo);
   // todo: { id: "uuid-string", text: "Todo text", date: Date object }
-})
+});
 
-cppLinux.on('todoUpdated', (todo) => {
-  console.log('Todo updated:', todo)
-})
+cppLinux.on("todoUpdated", (todo) => {
+  console.log("Todo updated:", todo);
+});
 
-cppLinux.on('todoDeleted', (todo) => {
-  console.log('Todo deleted:', todo)
-})
+cppLinux.on("todoDeleted", (todo) => {
+  console.log("Todo deleted:", todo);
+});
 
 // Launch the native GTK GUI
-cppLinux.helloGui()
+cppLinux.helloGui();
 ```
 
 When you run this code:
@@ -1616,11 +1601,11 @@ When you run this code:
 1. The `helloWorld()` call will return a greeting from C++
 2. The event listeners will be triggered when users interact with the GTK3 GUI
 3. The `helloGui()` call will open a native GTK3 window with:
-   * A text entry field for todo items
-   * A calendar widget for selecting dates
-   * An "Add" button to create new todos
-   * A scrollable list showing all todos
-   * Right-click context menus for editing and deleting todos
+   - A text entry field for todo items
+   - A calendar widget for selecting dates
+   - An "Add" button to create new todos
+   - A scrollable list showing all todos
+   - Right-click context menus for editing and deleting todos
 
 All interactions with the native GTK3 interface will trigger the corresponding JavaScript events, allowing your Electron application to respond to native GUI actions in real-time.
 

@@ -4,12 +4,12 @@ These are the guidelines for writing Electron documentation.
 
 ## Headings
 
-* Each page must have a single `#`-level title at the top.
-* Chapters in the same page must have `##`-level headings.
-* Sub-chapters need to increase the number of `#` in the heading according to
+- Each page must have a single `#`-level title at the top.
+- Chapters in the same page must have `##`-level headings.
+- Sub-chapters need to increase the number of `#` in the heading according to
   their nesting depth.
-* The page's title must follow [APA title case][title-case].
-* All chapters must follow [APA sentence case][sentence-case].
+- The page's title must follow [APA title case][title-case].
+- All chapters must follow [APA sentence case][sentence-case].
 
 Using `Quick Start` as example:
 
@@ -50,18 +50,19 @@ folder.
 There are a few style guidelines that aren't covered by the linter rules:
 
 <!--TODO(erickzhao): make sure this matches with the lint:markdownlint task-->
-* Use `sh` instead of `cmd` in code blocks (due to the syntax highlighter).
-* Keep line lengths between 80 and 100 characters if possible for readability
+
+- Use `sh` instead of `cmd` in code blocks (due to the syntax highlighter).
+- Keep line lengths between 80 and 100 characters if possible for readability
   purposes.
-* No nesting lists more than 2 levels (due to the markdown renderer).
-* All `js` and `javascript` code blocks are linted with
-[standard-markdown](https://www.npmjs.com/package/standard-markdown).
-* For unordered lists, use asterisks instead of dashes.
+- No nesting lists more than 2 levels (due to the markdown renderer).
+- All `js` and `javascript` code blocks are linted with
+  [standard-markdown](https://www.npmjs.com/package/standard-markdown).
+- For unordered lists, use asterisks instead of dashes.
 
 ## Picking words
 
-* Use "will" over "would" when describing outcomes.
-* Prefer "in the ___ process" over "on".
+- Use "will" over "would" when describing outcomes.
+- Prefer "in the \_\_\_ process" over "on".
 
 ## API references
 
@@ -104,22 +105,22 @@ Using `autoUpdater` as an example:
 
 ### Classes
 
-* API classes or classes that are part of modules must be listed under a
+- API classes or classes that are part of modules must be listed under a
   `## Class: TheClassName` chapter.
-* One page can have multiple classes.
-* Constructors must be listed with `###`-level headings.
-* [Static Methods](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/static)
+- One page can have multiple classes.
+- Constructors must be listed with `###`-level headings.
+- [Static Methods](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/static)
   must be listed under a `### Static Methods` chapter.
-* [Instance Methods](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes#Prototype_methods)
+- [Instance Methods](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes#Prototype_methods)
   must be listed under an `### Instance Methods` chapter.
-* All methods that have a return value must start their description with
+- All methods that have a return value must start their description with
   "Returns `[TYPE]` - \[Return description]"
-  * If the method returns an `Object`, its structure can be specified using a colon
+  - If the method returns an `Object`, its structure can be specified using a colon
     followed by a newline then an unordered list of properties in the same style as
     function parameters.
-* Instance Events must be listed under an `### Instance Events` chapter.
-* Instance Properties must be listed under an `### Instance Properties` chapter.
-  * Instance Properties must start with "A \[Property Type] ..."
+- Instance Events must be listed under an `### Instance Events` chapter.
+- Instance Properties must be listed under an `### Instance Properties` chapter.
+  - Instance Properties must start with "A \[Property Type] ..."
 
 Using the `Session` and `Cookies` classes as an example:
 
@@ -162,8 +163,8 @@ The methods chapter must be in the following form:
 ```markdown
 ### `objectName.methodName(required[, optional]))`
 
-* `required` string - A parameter description.
-* `optional` Integer (optional) - Another parameter description.
+- `required` string - A parameter description.
+- `optional` Integer (optional) - Another parameter description.
 
 ...
 ```
@@ -215,7 +216,7 @@ denoted using a space-delimited italicized list following the datatype. Values
 can be `macOS`, `Windows` or `Linux`.
 
 ```markdown
-* `animate` boolean (optional) _macOS_ _Windows_ - Animate the thing.
+- `animate` boolean (optional) _macOS_ _Windows_ - Animate the thing.
 ```
 
 ### Events
@@ -227,7 +228,7 @@ The events chapter must be in following form:
 
 Returns:
 
-* `time` string
+- `time` string
 
 ...
 ```
@@ -255,7 +256,7 @@ belongs to a module or a class.
 An "API History" block is a YAML code block encapsulated by an HTML comment that
 should be placed directly after the Markdown header for a class or method, like so:
 
-`````markdown
+````markdown
 #### `win.setTrafficLightPosition(position)` _macOS_
 
 <!--
@@ -271,10 +272,10 @@ deprecated:
 ```
 -->
 
-* `position` [Point](structures/point.md)
+- `position` [Point](structures/point.md)
 
 Set a custom position for the traffic light buttons. Can only be used with `titleBarStyle` set to `hidden`.
-`````
+````
 
 It should adhere to the API History [JSON Schema](https://json-schema.org/)
 (`api-history.schema.json`) which you can find in the `docs` folder.
@@ -283,9 +284,9 @@ explanations for each aspect of the schema.
 
 The purpose of the API History block is to describe when/where/how/why an API was:
 
-* Added
-* Changed (usually breaking changes)
-* Deprecated
+- Added
+- Changed (usually breaking changes)
+- Deprecated
 
 Each API change listed in the block should include a link to the
 PR where that change was made along with an optional short description of the
@@ -303,36 +304,36 @@ There are a few style guidelines that aren't covered by the linting script:
 
 Always adhere to this format:
 
-  ```markdown
-  API HEADER                  |  #### `win.flashFrame(flag)`
-  BLANK LINE                  | 
-  HTML COMMENT OPENING TAG    |  <!--
-  API HISTORY OPENING TAG     |  ```YAML history
-  API HISTORY                 |  added:
-                              |    - pr-url: https://github.com/electron/electron/pull/22533
-  API HISTORY CLOSING TAG     |  ```
-  HTML COMMENT CLOSING TAG    |  -->
-  BLANK LINE                  |
-  ```
+````markdown
+API HEADER | #### `win.flashFrame(flag)`
+BLANK LINE |
+HTML COMMENT OPENING TAG | <!--
+API HISTORY OPENING TAG     |  ```YAML history
+API HISTORY                 |  added:
+                            |    - pr-url: https://github.com/electron/electron/pull/22533
+API HISTORY CLOSING TAG     |  ```
+HTML COMMENT CLOSING TAG    |  -->
+BLANK LINE |
+````
 
 ### YAML
 
-* Use two spaces for indentation.
-* Do not use comments.
+- Use two spaces for indentation.
+- Do not use comments.
 
 ### Descriptions
 
-* Always wrap descriptions with double quotation marks (i.e. "example").
-  * [Certain special characters (e.g. `[`, `]`) can break YAML parsing](https:/stackoverflow.com/a/37015689/19020549).
-* Describe the change in a way relevant to app developers and make it
+- Always wrap descriptions with double quotation marks (i.e. "example").
+  - [Certain special characters (e.g. `[`, `]`) can break YAML parsing](https:/stackoverflow.com/a/37015689/19020549).
+- Describe the change in a way relevant to app developers and make it
   capitalized, punctuated, and past tense.
-  * Refer to [Clerk](https://github.com/electron/clerk/blob/main/README.md#examples)
+  - Refer to [Clerk](https://github.com/electron/clerk/blob/main/README.md#examples)
     for examples.
-* Keep descriptions concise.
-  * Ideally, a description will match its corresponding header in the
+- Keep descriptions concise.
+  - Ideally, a description will match its corresponding header in the
     breaking changes document.
-  * Favor using the release notes from the associated PR whenever possible.
-  * Developers can always view the breaking changes document or linked
+  - Favor using the release notes from the associated PR whenever possible.
+  - Developers can always view the breaking changes document or linked
     pull request for more details.
 
 ### Placement
@@ -343,22 +344,22 @@ is ambiguous:
 
 #### Chromium bump
 
-* [chore: bump chromium to 122.0.6194.0 (main)](https://github.com/electron/electron/pull/40750)
-  * [Behavior Changed: cross-origin iframes now use Permission Policy to access features][api-history-cross-origin]
+- [chore: bump chromium to 122.0.6194.0 (main)](https://github.com/electron/electron/pull/40750)
+  - [Behavior Changed: cross-origin iframes now use Permission Policy to access features][api-history-cross-origin]
 
 Sometimes a breaking change doesn't relate to any of the existing APIs. In this
 case, it is ok not to add API History anywhere.
 
 #### Change affecting multiple APIs
 
-* [refactor: ensure IpcRenderer is not bridgable](https://github.com/electron/electron/pull/40330)
-  * [Behavior Changed: ipcRenderer can no longer be sent over the contextBridge][api-history-ipc-renderer]
+- [refactor: ensure IpcRenderer is not bridgable](https://github.com/electron/electron/pull/40330)
+  - [Behavior Changed: ipcRenderer can no longer be sent over the contextBridge][api-history-ipc-renderer]
 
 Sometimes a breaking change involves multiple APIs. In this case, place the
 API History block under the top-level Markdown header for each of the
 involved APIs.
 
-`````markdown
+````markdown
 # contextBridge
 
 <!--
@@ -371,9 +372,9 @@ changes:
 -->
 
 > Create a safe, bi-directional, synchronous bridge across isolated contexts
-`````
+````
 
-`````markdown
+````markdown
 # ipcRenderer
 
 <!--
@@ -386,11 +387,11 @@ changes:
 -->
 
 Process: [Renderer](../glossary.md#renderer-process)
-`````
+````
 
 Notice how an API History block wasn't added under:
 
-* `contextBridge.exposeInMainWorld(apiKey, api)`
+- `contextBridge.exposeInMainWorld(apiKey, api)`
 
 since that function wasn't changed, only how it may be used:
 

@@ -245,7 +245,6 @@ export function WorkspaceHeader({
           onRefreshGit={onRefreshGit}
         />
       </div>
-
     </header>
   );
 }

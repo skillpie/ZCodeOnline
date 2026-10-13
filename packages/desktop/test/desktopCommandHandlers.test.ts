@@ -195,12 +195,13 @@ describe("desktopCommandHandlers resolveFeedbackUrl", () => {
     expect(feedbackUrl).toBeUndefined();
   });
 
-  it("中文界面只打开中文社群入口，缺失时不跨语言回退", async () => {
+  it("社群地址只取本地内置配置：远端下发的 community_urls 不生效（specs/helpAppConfig 本地策略）", async () => {
     const logger = {
       warn: vi.fn(),
     };
     const { resolveCommunityUrl } = await import("../src/main/desktopCommandHandlers.js");
 
+    // 远端下发与本地不同的地址时，只认本地。
     await expect(
       resolveCommunityUrl({
         locale: "zh-CN",
@@ -211,9 +212,16 @@ describe("desktopCommandHandlers resolveFeedbackUrl", () => {
             "en-US": "https://remote.example.com/en-community",
           },
         }),
+        readLocalConfig: () => ({
+          community_urls: {
+            "zh-CN": "https://local.example.com/zh-community",
+            "en-US": "https://local.example.com/en-community",
+          },
+        }),
       }),
-    ).resolves.toBe("https://remote.example.com/zh-community");
+    ).resolves.toBe("https://local.example.com/zh-community");
 
+    // 本地缺失对应语言时保持隐藏，不跨语言回退，也不回落远端。
     await expect(
       resolveCommunityUrl({
         locale: "zh-CN",
@@ -221,6 +229,11 @@ describe("desktopCommandHandlers resolveFeedbackUrl", () => {
         fetchRemoteConfig: async () => ({
           community_urls: {
             "en-US": "https://remote.example.com/en-community",
+          },
+        }),
+        readLocalConfig: () => ({
+          community_urls: {
+            "en-US": "https://local.example.com/en-community",
           },
         }),
       }),

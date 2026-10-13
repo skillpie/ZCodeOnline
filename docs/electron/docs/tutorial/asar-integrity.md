@@ -1,6 +1,6 @@
 ---
-title: 'ASAR Integrity'
-description: 'An experimental feature that ensures the validity of ASAR contents at runtime.'
+title: "ASAR Integrity"
+description: "An experimental feature that ensures the validity of ASAR contents at runtime."
 slug: asar-integrity
 hide_title: false
 ---
@@ -12,8 +12,8 @@ ASAR integrity is a security feature that validates the contents of your app's
 
 Currently, ASAR integrity checking is supported on:
 
-* macOS as of `electron>=16.0.0`
-* Windows as of `electron>=30.0.0`
+- macOS as of `electron>=16.0.0`
+- Windows as of `electron>=30.0.0`
 
 > [!NOTE]
 > ASAR integrity is fully supported in Mac App Store (MAS) builds and is recommended
@@ -59,7 +59,7 @@ When enabling this fuse, you typically also want to enable the `onlyLoadAppFromA
 Otherwise, the validity checking can be bypassed via the Electron app code search path.
 
 ```js @ts-nocheck
-const { flipFuses, FuseVersion, FuseV1Options } = require('@electron/fuses')
+const { flipFuses, FuseVersion, FuseV1Options } = require("@electron/fuses");
 
 flipFuses(
   // E.g. /a/b/Foo.app
@@ -67,9 +67,9 @@ flipFuses(
   {
     version: FuseVersion.V1,
     [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-    [FuseV1Options.OnlyLoadAppFromAsar]: true
-  }
-)
+    [FuseV1Options.OnlyLoadAppFromAsar]: true,
+  },
+);
 ```
 
 > [!TIP]
@@ -87,8 +87,8 @@ on package time. The process of providing this packaged hash is different for ma
 Electron Forge and Electron Packager do this setup automatically for you with no additional
 configuration whenever `asar` is enabled. The minimum required versions for ASAR integrity are:
 
-* `@electron/packager@18.3.1`
-* `@electron/forge@7.4.0`
+- `@electron/packager@18.3.1`
+- `@electron/forge@7.4.0`
 
 ### Using other build systems
 

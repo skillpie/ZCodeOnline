@@ -7,6 +7,7 @@ import {
   DesktopCommandIds,
   REWARDS_PARTITION,
   TEST_ZCODE_ENDPOINT_ORIGIN,
+  getCommunityUrlFromConfig,
   getCommunityUrlFromConfigs,
   getFeedbackUrlFromConfig,
   normalizeZCodeEndpointOrigin,

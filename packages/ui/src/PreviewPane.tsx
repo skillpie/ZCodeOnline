@@ -125,7 +125,7 @@ function isMarkdownFilePath(path?: string): boolean {
   return normalizedPath.endsWith(".md") || normalizedPath.endsWith(".markdown");
 }
 
-function isPreviewPaneMissingFileError(error: unknown): boolean {
+export function isPreviewPaneMissingFileError(error: unknown): boolean {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = (error as { code?: unknown }).code;
     if (code === "ENOENT") {
@@ -137,7 +137,7 @@ function isPreviewPaneMissingFileError(error: unknown): boolean {
   return /\bENOENT\b/i.test(message) || /no such file or directory/i.test(message);
 }
 
-function shouldToastPptxReferenceFileMissing(
+export function shouldToastPptxReferenceFileMissing(
   source: CodeViewerSource | null,
   error: unknown,
 ): boolean {
@@ -148,12 +148,12 @@ function shouldToastPptxReferenceFileMissing(
   );
 }
 
-function isPreviewPaneFileTooLargeError(error: unknown): boolean {
+export function isPreviewPaneFileTooLargeError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /file is too large to preview/i.test(message);
 }
 
-function getPreviewPaneSafeErrorMessage(error: unknown, sourcePath: string): string {
+export function getPreviewPaneSafeErrorMessage(error: unknown, sourcePath: string): string {
   const message = error instanceof Error ? error.message : String(error);
   if (!isAbsoluteFilePath(sourcePath)) {
     return message;
@@ -175,7 +175,7 @@ function getPreviewPaneSafeErrorMessage(error: unknown, sourcePath: string): str
   return safeMessage;
 }
 
-function resolvePptxPreviewReadErrorMessage(
+export function resolvePptxPreviewReadErrorMessage(
   error: unknown,
   options: {
     sourcePath: string;
@@ -196,7 +196,7 @@ function resolvePptxPreviewReadErrorMessage(
   return getPreviewPaneSafeErrorMessage(error, options.sourcePath);
 }
 
-function readPreviewPaneScrollMetrics(
+export function readPreviewPaneScrollMetrics(
   container: Pick<HTMLElement, "scrollHeight" | "scrollTop"> | null,
 ) {
   if (!container) {
@@ -209,7 +209,7 @@ function readPreviewPaneScrollMetrics(
   };
 }
 
-function resolvePreviewPaneTextFileResult(result: FileTextSlice): {
+export function resolvePreviewPaneTextFileResult(result: FileTextSlice): {
   filePreview: FileTextSlice | null;
   fileTooLarge: boolean;
 } {
@@ -246,7 +246,7 @@ const PDF_RANGE_CHUNK_BYTES = 256 * 1024;
 const PDF_FULL_READ_MAX_BYTES = 2 * 1024 * 1024;
 const PPTX_MAX_FILE_BYTES = 64 * 1024 * 1024;
 
-function isPptxPreviewFileTooLarge(size: number): boolean {
+export function isPptxPreviewFileTooLarge(size: number): boolean {
   return size > PPTX_MAX_FILE_BYTES;
 }
 
@@ -275,7 +275,7 @@ function PreviewPaneDeferredHeavyContent({ style }: { style?: CSSProperties }) {
   );
 }
 
-function resolvePreviewPaneImageSource(
+export function resolvePreviewPaneImageSource(
   source: CodeViewerSource | null,
 ): Extract<CodeViewerSource, { type: "image" }> | null {
   if (!source) {
@@ -303,7 +303,7 @@ function resolvePreviewPaneImageSource(
   };
 }
 
-function resolvePreviewPaneMediaSource(
+export function resolvePreviewPaneMediaSource(
   source: CodeViewerSource | null,
 ): MediaCodeViewerSource | null {
   if (!source) return null;
@@ -314,13 +314,13 @@ function resolvePreviewPaneMediaSource(
   return { ...source, type: "media", ...media };
 }
 
-function resolveMediaPlaybackErrorMessageId(
+export function resolveMediaPlaybackErrorMessageId(
   code: number | undefined,
 ): "codeViewer.mediaUnsupported" | "codeViewer.mediaLoadFailed" {
   return code === 3 || code === 4 ? "codeViewer.mediaUnsupported" : "codeViewer.mediaLoadFailed";
 }
 
-function resolvePreviewPanePdfSource(
+export function resolvePreviewPanePdfSource(
   source: CodeViewerSource | null,
 ): Extract<CodeViewerSource, { type: "pdf" }> | null {
   if (!source) {
@@ -342,7 +342,7 @@ function resolvePreviewPanePdfSource(
   };
 }
 
-function resolvePreviewPanePptxSource(
+export function resolvePreviewPanePptxSource(
   source: CodeViewerSource | null,
 ): Extract<CodeViewerSource, { type: "pptx" }> | null {
   if (!source) {
@@ -363,7 +363,7 @@ function resolvePreviewPanePptxSource(
   };
 }
 
-function shouldShowPreviewPaneHeaderDivider(source: CodeViewerSource | null): boolean {
+export function shouldShowPreviewPaneHeaderDivider(source: CodeViewerSource | null): boolean {
   return Boolean(
     resolvePreviewPanePdfSource(source) ||
     resolvePreviewPanePptxSource(source) ||
@@ -402,7 +402,7 @@ function isPlainCodeSource(source: CodeViewerSource | null): boolean {
   return false;
 }
 
-function getPreviewPaneDisplayOptions(
+export function getPreviewPaneDisplayOptions(
   source: CodeViewerSource | null,
   viewModes: {
     markdownViewMode?: "preview" | "code";

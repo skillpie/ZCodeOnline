@@ -1,9 +1,9 @@
 // 模式菜单草稿切换的单元覆盖。
 // 核心不变量（产品规则）：计划模式与评审模式互斥——二选一或不选；
 // 权限单选（build/edit/yolo）与两者正交；评审关闭时协议字段保持缺省。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { after, beforeEach } from "node:test";
+import { afterAll as after, beforeEach } from "vitest";
 import { applyComposerModeSwitch } from "../src/v4/composer/composerModeSwitch.js";
 import { applyComposerPlanTransition } from "../src/v4/composer/composerPlanTransition.js";
 import {

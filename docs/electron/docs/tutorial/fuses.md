@@ -132,9 +132,9 @@ If you aren't serving pages from `file://`, you should disable this fuse.
 
 The extra privileges granted to the `file://` protocol by this fuse are incompletely documented below:
 
-* `file://` protocol pages can use `fetch` to load other assets over `file://`
-* `file://` protocol pages can use service workers
-* `file://` protocol pages have universal access granted to child frames also running on `file://`
+- `file://` protocol pages can use `fetch` to load other assets over `file://`
+- `file://` protocol pages can use service workers
+- `file://` protocol pages have universal access granted to child frames also running on `file://`
   protocols regardless of sandbox settings
 
 ### `wasmTrapHandlers`
@@ -148,8 +148,8 @@ access from WebAssembly. The feature works by surrounding the WebAssembly memory
 and then installing a signal handler that traps attempt to access memory in the guard region. The feature
 is only supported on the following 64-bit systems:
 
-* Linux, macOS, Windows - x86_64
-* Linux, macOS - aarch64
+- Linux, macOS, Windows - x86_64
+- Linux, macOS - aarch64
 
 ```text
 | Guard Pages | WASM heap | Guard Pages |
@@ -159,12 +159,12 @@ is only supported on the following 64-bit systems:
 When the fuse is disabled V8 will use explicit bound checks in the generated WebAssembly code to ensure
 memory safety. However, this method has some downsides
 
-* The compiler generates extra nodes for each memory reference, leading to longer compile times due to the
-additional processing time needed for these nodes.
-* In turn, these extra nodes lead to lots of extra code being generated, making WebAssembly modules bigger
-than they ideally should be.
-* This extra code, particularly the compare and branch before every memory reference,
-incurs a significant runtime cost.
+- The compiler generates extra nodes for each memory reference, leading to longer compile times due to the
+  additional processing time needed for these nodes.
+- In turn, these extra nodes lead to lots of extra code being generated, making WebAssembly modules bigger
+  than they ideally should be.
+- This extra code, particularly the compare and branch before every memory reference,
+  incurs a significant runtime cost.
 
 ## How do I flip fuses?
 
@@ -173,17 +173,17 @@ incurs a significant runtime cost.
 [`@electron/fuses`](https://npmjs.com/package/@electron/fuses) is a JavaScript utility designed to make flipping these fuses easy. Check out the README of that module for more details on usage and potential error cases.
 
 ```js @ts-nocheck
-const { flipFuses, FuseVersion, FuseV1Options } = require('@electron/fuses')
+const { flipFuses, FuseVersion, FuseV1Options } = require("@electron/fuses");
 
 flipFuses(
   // Path to electron
-  require('electron'),
+  require("electron"),
   // Fuses to flip
   {
     version: FuseVersion.V1,
-    [FuseV1Options.RunAsNode]: false
-  }
-)
+    [FuseV1Options.RunAsNode]: false,
+  },
+);
 ```
 
 You can validate the fuses that have been flipped or check the fuse status of an arbitrary Electron
@@ -193,7 +193,7 @@ app using the `@electron/fuses` CLI.
 npx @electron/fuses read --app /Applications/Foo.app
 ```
 
->[!NOTE]
+> [!NOTE]
 > If you are using Electron Forge to distribute your application, you can flip fuses using
 > [`@electron-forge/plugin-fuses`](https://www.electronforge.io/config/plugins/fuses),
 > which comes pre-installed with all templates.
@@ -203,9 +203,9 @@ npx @electron/fuses read --app /Applications/Foo.app
 > [!IMPORTANT]
 > Glossary:
 >
-> * **Fuse Wire**: A sequence of bytes in the Electron binary used to control the fuses
-> * **Sentinel**: A static known sequence of bytes you can use to locate the fuse wire
-> * **Fuse Schema**: The format/allowed values for the fuse wire
+> - **Fuse Wire**: A sequence of bytes in the Electron binary used to control the fuses
+> - **Sentinel**: A static known sequence of bytes you can use to locate the fuse wire
+> - **Fuse Schema**: The format/allowed values for the fuse wire
 
 Manually flipping fuses requires editing the Electron binary and modifying the fuse wire to be the
 sequence of bytes that represent the state of the fuses you want.
@@ -216,13 +216,13 @@ Somewhere in the Electron binary, there will be a sequence of bytes that look li
 | ...binary | sentinel_bytes | fuse_version | fuse_wire_length | fuse_wire | ...binary |
 ```
 
-* `sentinel_bytes` is always this exact string: `dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX`
-* `fuse_version` is a single byte whose unsigned integer value represents the version of the fuse schema
-* `fuse_wire_length` is a single byte whose unsigned integer value represents the number of fuses in the following fuse wire
-* `fuse_wire` is a sequence of N bytes, each byte represents a single fuse and its state.
-  * "0" (0x30) indicates the fuse is disabled
-  * "1" (0x31) indicates the fuse is enabled
-  * "r" (0x72) indicates the fuse has been removed and changing the byte to either 1 or 0 will have no effect.
+- `sentinel_bytes` is always this exact string: `dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX`
+- `fuse_version` is a single byte whose unsigned integer value represents the version of the fuse schema
+- `fuse_wire_length` is a single byte whose unsigned integer value represents the number of fuses in the following fuse wire
+- `fuse_wire` is a sequence of N bytes, each byte represents a single fuse and its state.
+  - "0" (0x30) indicates the fuse is disabled
+  - "1" (0x31) indicates the fuse is enabled
+  - "r" (0x72) indicates the fuse has been removed and changing the byte to either 1 or 0 will have no effect.
 
 To flip a fuse, you find its position in the fuse wire and change it to "0" or "1" depending on the state you'd like.
 

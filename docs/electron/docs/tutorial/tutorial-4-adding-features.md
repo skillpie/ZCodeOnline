@@ -1,6 +1,6 @@
 ---
-title: 'Adding Features'
-description: 'In this step of the tutorial, we will share some resources you should read to add features to your application'
+title: "Adding Features"
+description: "In this step of the tutorial, we will share some resources you should read to add features to your application"
 slug: tutorial-adding-features
 hide_title: false
 ---

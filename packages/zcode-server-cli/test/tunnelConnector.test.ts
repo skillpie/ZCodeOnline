@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
-import { after, before, test } from "node:test";
+import { afterAll as after, beforeAll as before, test } from "vitest";
 import { WebSocket, WebSocketServer, type WebSocket as WsSocket } from "ws";
 import {
   TUNNEL_PROTOCOL_VERSION,

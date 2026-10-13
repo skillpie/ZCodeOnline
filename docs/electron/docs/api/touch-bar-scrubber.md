@@ -7,17 +7,17 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 ### `new TouchBarScrubber(options)`
 
-* `options` Object
-  * `items` [ScrubberItem[]](structures/scrubber-item.md) - An array of items to place in this scrubber.
-  * `select` Function (optional) - Called when the user taps an item that was not the last tapped item.
-    * `selectedIndex` Integer - The index of the item the user selected.
-  * `highlight` Function (optional) - Called when the user taps any item.
-    * `highlightedIndex` Integer - The index of the item the user touched.
-  * `selectedStyle` string (optional) - Selected item style. Can be `background`, `outline` or `none`. Defaults to `none`.
-  * `overlayStyle` string (optional) - Selected overlay item style. Can be `background`, `outline` or `none`. Defaults to `none`.
-  * `showArrowButtons` boolean (optional) - Whether to show arrow buttons. Defaults to `false` and is only shown if `items` is non-empty.
-  * `mode` string (optional) - Can be `fixed` or `free`. The default is `free`.
-  * `continuous` boolean (optional) - Defaults to `true`.
+- `options` Object
+  - `items` [ScrubberItem[]](structures/scrubber-item.md) - An array of items to place in this scrubber.
+  - `select` Function (optional) - Called when the user taps an item that was not the last tapped item.
+    - `selectedIndex` Integer - The index of the item the user selected.
+  - `highlight` Function (optional) - Called when the user taps any item.
+    - `highlightedIndex` Integer - The index of the item the user touched.
+  - `selectedStyle` string (optional) - Selected item style. Can be `background`, `outline` or `none`. Defaults to `none`.
+  - `overlayStyle` string (optional) - Selected overlay item style. Can be `background`, `outline` or `none`. Defaults to `none`.
+  - `showArrowButtons` boolean (optional) - Whether to show arrow buttons. Defaults to `false` and is only shown if `items` is non-empty.
+  - `mode` string (optional) - Can be `fixed` or `free`. The default is `free`.
+  - `continuous` boolean (optional) - Defaults to `true`.
 
 ### Instance Properties
 
@@ -33,9 +33,9 @@ updates the control in the touch bar. Updating deep properties inside this array
 A `string` representing the style that selected items in the scrubber should have. Updating this value immediately
 updates the control in the touch bar. Possible values:
 
-* `background` - Maps to `[NSScrubberSelectionStyle roundedBackgroundStyle]`.
-* `outline` - Maps to `[NSScrubberSelectionStyle outlineOverlayStyle]`.
-* `none` - Removes all styles.
+- `background` - Maps to `[NSScrubberSelectionStyle roundedBackgroundStyle]`.
+- `outline` - Maps to `[NSScrubberSelectionStyle outlineOverlayStyle]`.
+- `none` - Removes all styles.
 
 #### `touchBarScrubber.overlayStyle`
 
@@ -43,9 +43,9 @@ A `string` representing the style that selected items in the scrubber should hav
 of the scrubber item instead of being placed behind it. Updating this value immediately updates the control in the
 touch bar. Possible values:
 
-* `background` - Maps to `[NSScrubberSelectionStyle roundedBackgroundStyle]`.
-* `outline` - Maps to `[NSScrubberSelectionStyle outlineOverlayStyle]`.
-* `none` - Removes all styles.
+- `background` - Maps to `[NSScrubberSelectionStyle roundedBackgroundStyle]`.
+- `outline` - Maps to `[NSScrubberSelectionStyle outlineOverlayStyle]`.
+- `none` - Removes all styles.
 
 #### `touchBarScrubber.showArrowButtons`
 
@@ -57,8 +57,8 @@ immediately updates the control in the touch bar.
 A `string` representing the mode of this scrubber. Updating this value immediately
 updates the control in the touch bar. Possible values:
 
-* `fixed` - Maps to `NSScrubberModeFixed`.
-* `free` - Maps to `NSScrubberModeFree`.
+- `fixed` - Maps to `NSScrubberModeFixed`.
+- `free` - Maps to `NSScrubberModeFree`.
 
 #### `touchBarScrubber.continuous`
 

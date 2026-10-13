@@ -9,8 +9,8 @@ hide_title: true
 
 Each Electron app has a single top-level application menu.
 
-* On macOS, this menu is shown in the system [menu bar](https://support.apple.com/en-ca/guide/mac-help/mchlp1446/mac).
-* On Windows and Linux, this menu is shown at the top of each [BaseWindow](../api/base-window.md).
+- On macOS, this menu is shown in the system [menu bar](https://support.apple.com/en-ca/guide/mac-help/mchlp1446/mac).
+- On Windows and Linux, this menu is shown at the top of each [BaseWindow](../api/base-window.md).
 
 ## Building application menus
 
@@ -23,115 +23,101 @@ Electron will set a default menu for your app if this API is never called. Below
 that default menu being created manually using shorthand [`MenuItem` roles](./menus.md#roles).
 
 ```js title='Manually creating the default menu' @ts-expect-error=[107]
-const { shell } = require('electron/common')
-const { app, Menu } = require('electron/main')
+const { shell } = require("electron/common");
+const { app, Menu } = require("electron/main");
 
-const isMac = process.platform === 'darwin'
+const isMac = process.platform === "darwin";
 const template = [
   // { role: 'appMenu' }
   ...(isMac
-    ? [{
-        label: app.name,
-        submenu: [
-          { role: 'about' },
-          { type: 'separator' },
-          { role: 'services' },
-          { type: 'separator' },
-          { role: 'hide' },
-          { role: 'hideOthers' },
-          { role: 'unhide' },
-          { type: 'separator' },
-          { role: 'quit' }
-        ]
-      }]
+    ? [
+        {
+          label: app.name,
+          submenu: [
+            { role: "about" },
+            { type: "separator" },
+            { role: "services" },
+            { type: "separator" },
+            { role: "hide" },
+            { role: "hideOthers" },
+            { role: "unhide" },
+            { type: "separator" },
+            { role: "quit" },
+          ],
+        },
+      ]
     : []),
   // { role: 'fileMenu' }
   {
-    label: 'File',
-    submenu: [
-      isMac ? { role: 'close' } : { role: 'quit' }
-    ]
+    label: "File",
+    submenu: [isMac ? { role: "close" } : { role: "quit" }],
   },
   // { role: 'editMenu' }
   {
-    label: 'Edit',
+    label: "Edit",
     submenu: [
-      { role: 'undo' },
-      { role: 'redo' },
-      { type: 'separator' },
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' },
+      { role: "undo" },
+      { role: "redo" },
+      { type: "separator" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
       ...(isMac
         ? [
-            { role: 'pasteAndMatchStyle' },
-            { role: 'delete' },
-            { role: 'selectAll' },
-            { type: 'separator' },
+            { role: "pasteAndMatchStyle" },
+            { role: "delete" },
+            { role: "selectAll" },
+            { type: "separator" },
             {
-              label: 'Speech',
-              submenu: [
-                { role: 'startSpeaking' },
-                { role: 'stopSpeaking' }
-              ]
-            }
+              label: "Speech",
+              submenu: [{ role: "startSpeaking" }, { role: "stopSpeaking" }],
+            },
           ]
-        : [
-            { role: 'delete' },
-            { type: 'separator' },
-            { role: 'selectAll' }
-          ])
-    ]
+        : [{ role: "delete" }, { type: "separator" }, { role: "selectAll" }]),
+    ],
   },
   // { role: 'viewMenu' }
   {
-    label: 'View',
+    label: "View",
     submenu: [
-      { role: 'reload' },
-      { role: 'forceReload' },
-      { role: 'toggleDevTools' },
-      { type: 'separator' },
-      { role: 'resetZoom' },
-      { role: 'zoomIn' },
-      { role: 'zoomOut' },
-      { type: 'separator' },
-      { role: 'togglefullscreen' }
-    ]
+      { role: "reload" },
+      { role: "forceReload" },
+      { role: "toggleDevTools" },
+      { type: "separator" },
+      { role: "resetZoom" },
+      { role: "zoomIn" },
+      { role: "zoomOut" },
+      { type: "separator" },
+      { role: "togglefullscreen" },
+    ],
   },
   // { role: 'windowMenu' }
   {
-    label: 'Window',
+    label: "Window",
     submenu: [
-      { role: 'minimize' },
-      { role: 'zoom' },
+      { role: "minimize" },
+      { role: "zoom" },
       ...(isMac
-        ? [
-            { type: 'separator' },
-            { role: 'front' },
-            { type: 'separator' },
-            { role: 'window' }
-          ]
-        : [
-            { role: 'close' }
-          ])
-    ]
+        ? [{ type: "separator" }, { role: "front" }, { type: "separator" }, { role: "window" }]
+        : [{ role: "close" }]),
+    ],
   },
   {
-    role: 'help',
+    role: "help",
     submenu: [
       {
-        label: 'Learn More',
+        label: "Learn More",
         click: async () => {
-          const { shell } = require('electron')
-          await shell.openExternal('https://electronjs.org')
-        }
-      }
-    ]
-  }
-]
+          const { shell } = require("electron");
+          await shell.openExternal("https://electronjs.org");
+        },
+      },
+    ],
+  },
+];
 
-const menu = Menu.buildFromTemplate(template)
-Menu.setApplicationMenu(menu)
+const menu = Menu.buildFromTemplate(template);
+Menu.setApplicationMenu(menu);
 ```
 
 > [!IMPORTANT]
@@ -149,33 +135,31 @@ Defining each submenu explicitly can get very verbose. If you want to re-use def
 in your app, you can use various submenu-related roles provided by Electron.
 
 ```js title='Using default roles for each submenu' @ts-expect-error=[26]
-const { shell } = require('electron/common')
-const { app, Menu } = require('electron/main')
+const { shell } = require("electron/common");
+const { app, Menu } = require("electron/main");
 
 const template = [
-  ...(process.platform === 'darwin'
-    ? [{ role: 'appMenu' }]
-    : []),
-  { role: 'fileMenu' },
-  { role: 'editMenu' },
-  { role: 'viewMenu' },
-  { role: 'windowMenu' },
+  ...(process.platform === "darwin" ? [{ role: "appMenu" }] : []),
+  { role: "fileMenu" },
+  { role: "editMenu" },
+  { role: "viewMenu" },
+  { role: "windowMenu" },
   {
-    role: 'help',
+    role: "help",
     submenu: [
       {
-        label: 'Learn More',
+        label: "Learn More",
         click: async () => {
-          const { shell } = require('electron')
-          await shell.openExternal('https://electronjs.org')
-        }
-      }
-    ]
-  }
-]
+          const { shell } = require("electron");
+          await shell.openExternal("https://electronjs.org");
+        },
+      },
+    ],
+  },
+];
 
-const menu = Menu.buildFromTemplate(template)
-Menu.setApplicationMenu(menu)
+const menu = Menu.buildFromTemplate(template);
+Menu.setApplicationMenu(menu);
 ```
 
 > [!NOTE]
@@ -188,19 +172,16 @@ Since the root application menu exists on each `BaseWindow` on Windows and Linux
 it with a window-specific `Menu` instance via the [`win.setMenu`](../api/browser-window.md#winsetmenumenu-linux-windows) method.
 
 ```js title='Override a window's menu'
-const { BrowserWindow, Menu } = require('electron/main')
+const { BrowserWindow, Menu } = require("electron/main");
 
-const win = new BrowserWindow()
+const win = new BrowserWindow();
 const menu = Menu.buildFromTemplate([
   {
-    label: 'my custom menu',
-    submenu: [
-      { role: 'copy' },
-      { role: 'paste' }
-    ]
-  }
-])
-win.setMenu(menu)
+    label: "my custom menu",
+    submenu: [{ role: "copy" }, { role: "paste" }],
+  },
+]);
+win.setMenu(menu);
 ```
 
 > [!TIP]

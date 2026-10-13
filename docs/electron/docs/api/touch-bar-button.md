@@ -7,15 +7,15 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 ### `new TouchBarButton(options)`
 
-* `options` Object
-  * `label` string (optional) - Button text.
-  * `accessibilityLabel` string (optional) - A short description of the button for use by screenreaders like VoiceOver.
-  * `backgroundColor` string (optional) - Button background color in hex format,
+- `options` Object
+  - `label` string (optional) - Button text.
+  - `accessibilityLabel` string (optional) - A short description of the button for use by screenreaders like VoiceOver.
+  - `backgroundColor` string (optional) - Button background color in hex format,
     i.e `#ABCDEF`.
-  * `icon` [NativeImage](native-image.md) | string (optional) - Button icon.
-  * `iconPosition` string (optional) - Can be `left`, `right` or `overlay`. Defaults to `overlay`.
-  * `click` Function (optional) - Function to call when the button is clicked.
-  * `enabled` boolean (optional) - Whether the button is in an enabled state.  Default is `true`.
+  - `icon` [NativeImage](native-image.md) | string (optional) - Button icon.
+  - `iconPosition` string (optional) - Can be `left`, `right` or `overlay`. Defaults to `overlay`.
+  - `click` Function (optional) - Function to call when the button is clicked.
+  - `enabled` boolean (optional) - Whether the button is in an enabled state. Default is `true`.
 
 When defining `accessibilityLabel`, ensure you have considered macOS [best practices](https://developer.apple.com/documentation/appkit/nsaccessibilitybutton/1524910-accessibilitylabel?language=objc).
 
@@ -44,7 +44,7 @@ in the touch bar.
 
 #### `touchBarButton.iconPosition`
 
-A `string` - Can be `left`, `right` or `overlay`.  Defaults to `overlay`.
+A `string` - Can be `left`, `right` or `overlay`. Defaults to `overlay`.
 
 #### `touchBarButton.enabled`
 

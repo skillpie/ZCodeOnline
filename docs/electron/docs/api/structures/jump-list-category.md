@@ -1,18 +1,18 @@
 # JumpListCategory Object
 
-* `type` string (optional) - One of the following:
-  * `tasks` - Items in this category will be placed into the standard `Tasks`
+- `type` string (optional) - One of the following:
+  - `tasks` - Items in this category will be placed into the standard `Tasks`
     category. There can be only one such category, and it will always be
     displayed at the bottom of the Jump List.
-  * `frequent` - Displays a list of files frequently opened by the app, the
+  - `frequent` - Displays a list of files frequently opened by the app, the
     name of the category and its items are set by Windows.
-  * `recent` - Displays a list of files recently opened by the app, the name
+  - `recent` - Displays a list of files recently opened by the app, the name
     of the category and its items are set by Windows. Items may be added to
     this category indirectly using `app.addRecentDocument(path)`.
-  * `custom` - Displays tasks or file links, `name` must be set by the app.
-* `name` string (optional) - Must be set if `type` is `custom`, otherwise it should be
+  - `custom` - Displays tasks or file links, `name` must be set by the app.
+- `name` string (optional) - Must be set if `type` is `custom`, otherwise it should be
   omitted.
-* `items` JumpListItem[] (optional) - Array of [`JumpListItem`](jump-list-item.md) objects if `type` is `tasks` or
+- `items` JumpListItem[] (optional) - Array of [`JumpListItem`](jump-list-item.md) objects if `type` is `tasks` or
   `custom`, otherwise it should be omitted.
 
 > [!NOTE]

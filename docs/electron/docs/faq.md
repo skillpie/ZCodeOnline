@@ -68,31 +68,31 @@ garbage collected.
 
 If you encounter this problem, the following articles may prove helpful:
 
-* [Memory Management][memory-management]
-* [Closures][closures]
+- [Memory Management][memory-management]
+- [Closures][closures]
 
 If you want a quick fix, you can make the variables global by changing your
 code from this:
 
 ```js
-const { app, Tray } = require('electron')
+const { app, Tray } = require("electron");
 
 app.whenReady().then(() => {
-  const tray = new Tray('/path/to/icon.png')
-  tray.setTitle('hello world')
-})
+  const tray = new Tray("/path/to/icon.png");
+  tray.setTitle("hello world");
+});
 ```
 
 to this:
 
 ```js
-const { app, Tray } = require('electron')
+const { app, Tray } = require("electron");
 
-let tray = null
+let tray = null;
 app.whenReady().then(() => {
-  tray = new Tray('/path/to/icon.png')
-  tray.setTitle('hello world')
-})
+  tray = new Tray("/path/to/icon.png");
+  tray.setTitle("hello world");
+});
 ```
 
 ## I can not use jQuery/RequireJS/Meteor/AngularJS in Electron.
@@ -105,14 +105,14 @@ To solve this, you can turn off node integration in Electron:
 
 ```js
 // In the main process.
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
 const win = new BrowserWindow({
   webPreferences: {
-    nodeIntegration: false
-  }
-})
-win.show()
+    nodeIntegration: false,
+  },
+});
+win.show();
 ```
 
 But if you want to keep the abilities of using Node.js and Electron APIs, you
@@ -120,13 +120,13 @@ have to rename the symbols in the page before including other libraries:
 
 ```html
 <head>
-<script>
-window.nodeRequire = require;
-delete window.require;
-delete window.exports;
-delete window.module;
-</script>
-<script type="text/javascript" src="jquery.js"></script>
+  <script>
+    window.nodeRequire = require;
+    delete window.require;
+    delete window.exports;
+    delete window.module;
+  </script>
+  <script type="text/javascript" src="jquery.js"></script>
 </head>
 ```
 
@@ -154,11 +154,11 @@ Sub-pixel anti-aliasing needs a non-transparent background of the layer containi
 To achieve this goal, set the background in the constructor for [BrowserWindow][browser-window]:
 
 ```js
-const { BrowserWindow } = require('electron')
+const { BrowserWindow } = require("electron");
 
 const win = new BrowserWindow({
-  backgroundColor: '#fff'
-})
+  backgroundColor: "#fff",
+});
 ```
 
 The effect is visible only on (some?) LCD screens. Even if you don't see a difference, some of your users may. It is best to always set the background this way, unless you have reasons not to do so.

@@ -1079,7 +1079,8 @@ const enUS: Record<string, string> = {
   "browser.permission.deviceBluetooth": "Bluetooth devices",
   "browser.permission.unknownCapability": "an unknown capability",
   "browser.permission.screenShareTitle": "{origin} wants to share your screen",
-  "browser.permission.screenShareDescription": "Choose the screen or window to share. This choice applies only to this session.",
+  "browser.permission.screenShareDescription":
+    "Choose the screen or window to share. This choice applies only to this session.",
   "browser.permission.deviceTitle": "{origin} wants to connect a device",
   "browser.permission.connect": "Connect",
   "browser.permission.screenGroup.screen": "Entire Screen",
@@ -6551,6 +6552,9 @@ const enUS: Record<string, string> = {
   // 改过设置后前两个选项换描述（docs/dynamic-workflow/launch.md「The options」）：会话免确认只管
   // 「以后不再问」，调整只随这一次应答走。
   "chat.permission.workflow.allowOnce.adjusted": "Run once with the adjusted settings",
+  "chat.permission.workflow.allowForSession": "Always allow in this session",
+  "chat.permission.workflow.allowForSession.description":
+    "Do not ask again for workflows in this session",
   "chat.permission.workflow.allowForSession.adjusted":
     "This run with the adjusted settings; later runs are not asked and carry their own",
   // ── 可复用工作流（docs/dynamic-workflow/launch.md）──

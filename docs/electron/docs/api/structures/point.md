@@ -1,7 +1,7 @@
 # Point Object
 
-* `x` number
-* `y` number
+- `x` number
+- `y` number
 
 > [!NOTE]
 > Both `x` and `y` must be whole integers, when providing a point object

@@ -6,21 +6,21 @@ For guides on Electron app development, see
 
 ## Table of Contents
 
-* [Issues](issues.md)
-* [Pull Requests](pull-requests.md)
-* [Documentation Styleguide](coding-style.md#documentation)
-* [Source Code Directory Structure](source-code-directory-structure.md)
-* [Coding Style](coding-style.md)
-* [Using clang-tidy on C++ Code](clang-tidy.md)
-* [Build Instructions](build-instructions-gn.md)
-  * [macOS](build-instructions-macos.md)
-  * [Windows](build-instructions-windows.md)
-  * [Linux](build-instructions-linux.md)
-* [Chromium Development](chromium-development.md)
-* [V8 Development](v8-development.md)
-* [Testing](testing.md)
-* [Debugging](debugging.md)
-* [Patches](patches.md)
+- [Issues](issues.md)
+- [Pull Requests](pull-requests.md)
+- [Documentation Styleguide](coding-style.md#documentation)
+- [Source Code Directory Structure](source-code-directory-structure.md)
+- [Coding Style](coding-style.md)
+- [Using clang-tidy on C++ Code](clang-tidy.md)
+- [Build Instructions](build-instructions-gn.md)
+  - [macOS](build-instructions-macos.md)
+  - [Windows](build-instructions-windows.md)
+  - [Linux](build-instructions-linux.md)
+- [Chromium Development](chromium-development.md)
+- [V8 Development](v8-development.md)
+- [Testing](testing.md)
+- [Debugging](debugging.md)
+- [Patches](patches.md)
 
 ## Getting Started
 
@@ -38,14 +38,14 @@ of what each directory is responsible for. The [source code directory structure]
 For any issue, there are generally three ways an individual can contribute:
 
 1. By opening the issue for discussion
-    * If you believe that you have found a new bug in Electron, you should report it by creating a new issue in
-    the [`electron/electron` issue tracker](https://github.com/electron/electron/issues).
+   - If you believe that you have found a new bug in Electron, you should report it by creating a new issue in
+     the [`electron/electron` issue tracker](https://github.com/electron/electron/issues).
 2. By helping to triage the issue
-    * You can do this either by providing assistive details (a reproducible test case that demonstrates a bug) or by providing suggestions to address the issue.
+   - You can do this either by providing assistive details (a reproducible test case that demonstrates a bug) or by providing suggestions to address the issue.
 3. By helping to resolve the issue
-    * This can be done by demonstrating that the issue is not a bug or is fixed;
-      but more often, by opening a pull request that changes the source in `electron/electron`
-      in a concrete and reviewable manner.
+   - This can be done by demonstrating that the issue is not a bug or is fixed;
+     but more often, by opening a pull request that changes the source in `electron/electron`
+     in a concrete and reviewable manner.
 
 See [issues](issues.md) for more information.
 

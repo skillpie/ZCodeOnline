@@ -1,46 +1,50 @@
-const { app, BrowserWindow, Menu } = require('electron/main')
-const { shell } = require('electron/common')
+const { app, BrowserWindow, Menu } = require("electron/main");
+const { shell } = require("electron/common");
 
-function createWindow () {
-  const win = new BrowserWindow()
-  win.loadFile('index.html')
+function createWindow() {
+  const win = new BrowserWindow();
+  win.loadFile("index.html");
 }
 
-function closeAllWindows () {
-  const wins = BrowserWindow.getAllWindows()
+function closeAllWindows() {
+  const wins = BrowserWindow.getAllWindows();
   for (const win of wins) {
-    win.close()
+    win.close();
   }
 }
 
 app.whenReady().then(() => {
-  createWindow()
+  createWindow();
 
   const dockMenu = Menu.buildFromTemplate([
     {
-      label: 'New Window',
-      click: () => { createWindow() }
-    },
-    {
-      label: 'Close All Windows',
-      click: () => { closeAllWindows() }
-    },
-    {
-      label: 'Open Electron Docs',
+      label: "New Window",
       click: () => {
-        shell.openExternal('https://electronjs.org/docs')
-      }
-    }
+        createWindow();
+      },
+    },
+    {
+      label: "Close All Windows",
+      click: () => {
+        closeAllWindows();
+      },
+    },
+    {
+      label: "Open Electron Docs",
+      click: () => {
+        shell.openExternal("https://electronjs.org/docs");
+      },
+    },
     // add more menu options to the array
-  ])
+  ]);
 
-  app.dock.setMenu(dockMenu)
+  app.dock.setMenu(dockMenu);
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
+  app.on("activate", function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
 
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit()
-})
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
+});

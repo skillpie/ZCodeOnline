@@ -99,7 +99,7 @@ Electron
 |   |   |         message loop into Chromium's message loop.
 |   |   └── api/ - The implementation of common APIs, and foundations of
 |   |              Electron's built-in modules.
-│   ├── services/node/ - Provides a Node.js runtime to utility processes. 
+│   ├── services/node/ - Provides a Node.js runtime to utility processes.
 │   └── utility - Code that runs in the utility process.
 ├── spec/ - Components of Electron's test suite run in the main process.
 ├── typings/ - Internal TypeScript types that aren't exported in electron.d.ts.
@@ -108,13 +108,13 @@ Electron
 
 ## Structure of other Electron directories
 
-* **.github** - GitHub-specific config files including issues templates, CI with GitHub Actions and CODEOWNERS.
-* **dist** - Temporary directory created by `script/create-dist.py` script
+- **.github** - GitHub-specific config files including issues templates, CI with GitHub Actions and CODEOWNERS.
+- **dist** - Temporary directory created by `script/create-dist.py` script
   when creating a distribution.
-* **node_modules** - Third party node modules used for building.
-* **npm** - Logic for installation of Electron via npm.
-* **out** - Temporary output directory for `siso`.
-* **script** - Scripts used for development purpose like building, packaging,
+- **node_modules** - Third party node modules used for building.
+- **npm** - Logic for installation of Electron via npm.
+- **out** - Temporary output directory for `siso`.
+- **script** - Scripts used for development purpose like building, packaging,
   testing, etc.
 
 ```plaintext
@@ -126,4 +126,4 @@ script/ - The set of all scripts Electron runs for a variety of purposes.
     └── uploaders/ - Uploads various release-related files during release.
 ```
 
-* **typings** - TypeScript typings for Electron's internal code.
+- **typings** - TypeScript typings for Electron's internal code.

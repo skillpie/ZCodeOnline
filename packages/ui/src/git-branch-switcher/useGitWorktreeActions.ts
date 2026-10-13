@@ -11,6 +11,8 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
+import { mainWorkspacePathOf } from "@/lib/worktreeTaskScope.js";
+import { refreshWorktreeScopes } from "@/hooks/useWorkspaceWorktreeScopes.js";
 import { logger } from "@/logger.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
@@ -193,6 +195,7 @@ export function useGitWorktreeActions({
         toast(
           intl.formatMessage({ id: "git.worktree.toast.created" }, { path: result.worktree.path }),
         );
+        refreshWorktreeScopes(mainWorkspacePathOf(workspacePath));
         openWorktreeTab(result.worktree.path);
       } catch (error: unknown) {
         const message = getErrorMessage(error);
@@ -287,6 +290,7 @@ export function useGitWorktreeActions({
           worktreePath: worktree.path,
         });
         toast(intl.formatMessage({ id: "git.worktree.toast.removed" }, { path: worktree.path }));
+        refreshWorktreeScopes(mainWorkspacePathOf(workspacePath));
         await loadWorktrees();
       } catch (error: unknown) {
         const message = getErrorMessage(error);
@@ -371,6 +375,7 @@ export function useGitWorktreeActions({
         newBranchName,
       });
       toast(intl.formatMessage({ id: "git.worktree.toast.renamed" }, { path: newPath }));
+      refreshWorktreeScopes(mainWorkspacePathOf(workspacePath));
       closeRenameDialog();
       // 目录移动后，指向旧路径的已打开标签页要迁到新路径，否则点击会落在不存在的目录上。
       tabStoreApi.getState().migrateWorkspaceTabPath(target.path, newPath);

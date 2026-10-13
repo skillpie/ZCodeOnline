@@ -12,9 +12,9 @@ so the `nodeIntegrationInWorker` option should be set to `true` in
 ```js
 const win = new BrowserWindow({
   webPreferences: {
-    nodeIntegrationInWorker: true
-  }
-})
+    nodeIntegrationInWorker: true,
+  },
+});
 ```
 
 The `nodeIntegrationInWorker` can be used independent of `nodeIntegration`, but
@@ -45,9 +45,9 @@ loads no native modules after the Web Workers get started.
 
 ```js
 process.dlopen = () => {
-  throw new Error('Load native module is not safe')
-}
-const worker = new Worker('script.js')
+  throw new Error("Load native module is not safe");
+};
+const worker = new Worker("script.js");
 ```
 
 [web-workers]: https://developer.mozilla.org/en/docs/Web/API/Web_Workers_API/Using_web_workers

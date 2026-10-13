@@ -10,9 +10,9 @@ Electron exposes the [Node.js `repl` module](https://nodejs.org/dist/latest/docs
 through the `--interactive` CLI flag. Assuming you have `electron` installed as a local project
 dependency, you should be able to access the REPL with the following command:
 
-  ```sh
-  ./node_modules/.bin/electron --interactive
-  ```
+```sh
+./node_modules/.bin/electron --interactive
+```
 
 > [!NOTE]
 > `electron --interactive` is not available on Windows

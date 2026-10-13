@@ -26,9 +26,9 @@ you to specify the progress bar in the launcher.
 ![Linux Progress Bar](../images/linux-progress-bar.png)
 
 > NOTE: on Windows, each window can have its own progress bar, whereas on macOS
-and Linux (Unity) there can be only one progress bar for the application.
+> and Linux (Unity) there can be only one progress bar for the application.
 
-----
+---
 
 All three cases are covered by the same API - the
 [`setProgressBar()`][setprogressbar] method available on an instance of

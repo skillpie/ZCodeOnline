@@ -7,13 +7,13 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 ### `new TouchBarColorPicker(options)`
 
-* `options` Object
-  * `availableColors` string[] (optional) - Array of hex color strings to
+- `options` Object
+  - `availableColors` string[] (optional) - Array of hex color strings to
     appear as possible colors to select.
-  * `selectedColor` string (optional) - The selected hex color in the picker,
+  - `selectedColor` string (optional) - The selected hex color in the picker,
     i.e `#ABCDEF`.
-  * `change` Function (optional) - Function to call when a color is selected.
-    * `color` string - The color that the user selected from the picker.
+  - `change` Function (optional) - Function to call when a color is selected.
+    - `color` string - The color that the user selected from the picker.
 
 ### Instance Properties
 

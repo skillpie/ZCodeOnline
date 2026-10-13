@@ -4,10 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { GoalState } from "@zcode/shared/zcode-protocol-v4";
-import {
-  CodeBlockCopyButton,
-  CodeBlockWrapButton,
-} from "@/components/ai-elements/code-block.js";
+import { CodeBlockCopyButton, CodeBlockWrapButton } from "@/components/ai-elements/code-block.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { ConversationGoalBanner } from "@/v4/ConversationGoalBanner.js";
@@ -20,6 +17,8 @@ const labels: Record<string, string> = {
 };
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: (descriptor: { id: string }) => labels[descriptor.id] ?? descriptor.id,
@@ -39,9 +38,7 @@ function goal(overrides: Partial<GoalState> = {}): GoalState {
 
 describe("硬编码文案 i18n 回归", () => {
   it("ConversationGoalBanner 的「目标」标签走 i18n", () => {
-    const html = renderToStaticMarkup(
-      createElement(ConversationGoalBanner, { goal: goal() }),
-    );
+    const html = renderToStaticMarkup(createElement(ConversationGoalBanner, { goal: goal() }));
     expect(html).toContain(">Goal<");
     expect(html).not.toContain("目标");
   });

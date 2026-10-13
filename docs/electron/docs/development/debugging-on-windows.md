@@ -11,7 +11,7 @@ with breakpoints inside Electron's source code.
 
 ## Requirements
 
-* **A debug build of Electron**: The easiest way is usually building it
+- **A debug build of Electron**: The easiest way is usually building it
   yourself, using the tools and prerequisites listed in the
   [build instructions for Windows](build-instructions-windows.md). While you can
   attach to and debug Electron as you can download it directly, you will
@@ -20,14 +20,14 @@ with breakpoints inside Electron's source code.
   variables and the execution path can seem strange because of inlining,
   tail calls, and other compiler optimizations.
 
-* **Visual Studio with C++ Tools**: The free community editions of Visual
+- **Visual Studio with C++ Tools**: The free community editions of Visual
   Studio 2013 and Visual Studio 2015 both work. Once installed,
   [configure Visual Studio to use Electron's Symbol server](debugging-with-symbol-server.md).
   It will enable Visual Studio to gain a better understanding of what happens
   inside Electron, making it easier to present variables in a human-readable
   format.
 
-* **ProcMon**: The [free SysInternals tool][sys-internals] allows you to inspect
+- **ProcMon**: The [free SysInternals tool][sys-internals] allows you to inspect
   a process's parameters, file handles, and registry operations.
 
 ## Attaching to and Debugging Electron
@@ -92,6 +92,7 @@ out [this video tutorial][procmon-instructions] provided by Microsoft.
 [procmon-instructions]: https://learn.microsoft.com/en-us/shows/defrag-tools/4-process-monitor
 
 ## Using WinDbg
+
 <!-- TODO(@codebytere): add images and more information here? -->
 
 It's possible to debug crashes and issues in the Renderer process with [WinDbg](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/getting-started-with-windbg).

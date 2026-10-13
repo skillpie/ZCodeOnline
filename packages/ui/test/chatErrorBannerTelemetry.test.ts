@@ -166,7 +166,8 @@ describe("chat error banner telemetry", () => {
 
   it("normalizes provider rate-limit text for ARMS without changing the visible message", () => {
     const payload = buildChatErrorBannerTelemetryPayload({
-      displayMessage: "proxy: ERROR_RATE_LIMITED: Request higher limits to continue using this proxy",
+      displayMessage:
+        "proxy: ERROR_RATE_LIMITED: Request higher limits to continue using this proxy",
       error: {
         code: "model_request_failed",
         message: "Model request failed.",
@@ -184,7 +185,8 @@ describe("chat error banner telemetry", () => {
 
     expect(payload.properties).toMatchObject({
       failure_reason: "rate_limited",
-      error_message: "proxy: ERROR_RATE_LIMITED: Request higher limits to continue using this proxy",
+      error_message:
+        "proxy: ERROR_RATE_LIMITED: Request higher limits to continue using this proxy",
       provider_scope: "custom",
       provider_id: "custom",
       model_id: "custom",

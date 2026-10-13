@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test } from "node:test";
+import { afterEach, beforeEach, test } from "vitest";
 import { listProviderModels, parseModelEntries } from "../src/main/desktopProviderModels.js";
 
 // 供应商一键获取模型列表（specs/model-fetch.md）：

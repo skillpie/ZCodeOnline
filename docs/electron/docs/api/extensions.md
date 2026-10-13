@@ -18,11 +18,11 @@ work). Extensions are installed per-`session`. To load an extension, call
 [`ses.extensions.loadExtension`](extensions-api.md#extensionsloadextensionpath-options):
 
 ```js
-const { session } = require('electron')
+const { session } = require("electron");
 
-session.defaultSession.loadExtension('path/to/unpacked/extension').then(({ id }) => {
+session.defaultSession.loadExtension("path/to/unpacked/extension").then(({ id }) => {
   // ...
-})
+});
 ```
 
 Loaded extensions will not be automatically remembered across exits; if you do

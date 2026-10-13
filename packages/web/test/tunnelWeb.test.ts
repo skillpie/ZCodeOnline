@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { buildPairingUrl, generateTunnelSecret, parsePairingUrl } from "@zcode/shared";
 import { TunnelPairingError, pairWithCode } from "../src/tunnel/tunnelSession.js";
 

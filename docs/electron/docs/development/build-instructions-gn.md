@@ -8,9 +8,9 @@ Follow the guidelines below for building **Electron itself**, for the purposes o
 
 Check the build prerequisites for your platform before proceeding:
 
-* [macOS](build-instructions-macos.md#prerequisites)
-* [Linux](build-instructions-linux.md#prerequisites)
-* [Windows](build-instructions-windows.md#prerequisites)
+- [macOS](build-instructions-macos.md#prerequisites)
+- [Linux](build-instructions-linux.md#prerequisites)
+- [Windows](build-instructions-windows.md#prerequisites)
 
 ## Setting up `@electron/build-tools` (recommended)
 
@@ -57,15 +57,15 @@ Once the build is done compiling, you can test it by running `e start` (or by lo
 
 Some quick tips on building once your checkout is set up:
 
-* **Directory structure:** Within the project, Chromium code is synced to `${root}/src/` while Electron's code (i.e. code in
+- **Directory structure:** Within the project, Chromium code is synced to `${root}/src/` while Electron's code (i.e. code in
   https://github.com/electron/electron) lives in `${root}/src/electron/`. Note that both directories
   have their own git repositories.
-* **Updating your checkout:** Run git commands such as `git checkout <branch>` and `git pull` from `${root}/src/electron`.
+- **Updating your checkout:** Run git commands such as `git checkout <branch>` and `git pull` from `${root}/src/electron`.
   Whenever you update your commit `HEAD`, make sure to `e sync` before `e build` to sync dependencies
   such as Chromium and Node.js. This is especially relevant because the Chromium version in
   [`DEPS`](../../DEPS) changes frequently.
-* **Rebuilding:** When making changes to code in `${root}/src/electron/` in a local branch, you only need to re-run `e build`.
-* **Adding patches:** When contributing changes in `${root}/src/` outside of `${root}/src/electron/`, you need to do so
+- **Rebuilding:** When making changes to code in `${root}/src/electron/` in a local branch, you only need to re-run `e build`.
+- **Adding patches:** When contributing changes in `${root}/src/` outside of `${root}/src/electron/`, you need to do so
   via Electron's [patch system](./patches.md). The `e patches` command can export all relevant patches to
   `${root}/src/electron/patches/` once your code change is ready.
 
@@ -98,9 +98,9 @@ Project configurations can be found in the `.gn` and `.gni` files in the `electr
 
 The following `gn` files contain the main rules for building Electron:
 
-* [`BUILD.gn`](../../BUILD.gn) defines how Electron itself
+- [`BUILD.gn`](../../BUILD.gn) defines how Electron itself
   is built and includes the default configurations for linking with Chromium.
-* [`build/args/{testing,release,all}.gn`](https://github.com/electron/electron/tree/main/build/args)
+- [`build/args/{testing,release,all}.gn`](https://github.com/electron/electron/tree/main/build/args)
   contain the default build arguments for building Electron.
 
 ### GN prerequisites
@@ -111,7 +111,7 @@ used for fetching Chromium and its dependencies.
 Also, on Windows, you'll need to set the environment variable
 `DEPOT_TOOLS_WIN_TOOLCHAIN=0`. To do so, open `Control Panel` → `System and
 Security` → `System` → `Advanced system settings` and add a system variable
-`DEPOT_TOOLS_WIN_TOOLCHAIN` with value `0`.  This tells `depot_tools` to use
+`DEPOT_TOOLS_WIN_TOOLCHAIN` with value `0`. This tells `depot_tools` to use
 your locally installed version of Visual Studio (by default, `depot_tools` will
 try to download a Google-internal version that only Googlers have access to).
 
@@ -159,9 +159,9 @@ $ cd -
 
 > [!TIP]
 > `gclient` works by checking a file called `DEPS` inside the
-`${root}/src/electron` folder for dependencies (like Chromium or Node.js).
-Running `gclient sync -f` ensures that all dependencies required
-to build Electron match that file.
+> `${root}/src/electron` folder for dependencies (like Chromium or Node.js).
+> Running `gclient sync -f` ensures that all dependencies required
+> to build Electron match that file.
 
 In order to pull, you'd run the following commands:
 
@@ -285,7 +285,7 @@ $ gn gen out/Testing-x86 --args='... target_cpu = "x86"'
 Not all combinations of source and target CPU/OS are supported by Chromium.
 
 | Host        | Target        | Status               |
-|-------------|---------------|----------------------|
+| ----------- | ------------- | -------------------- |
 | Windows x64 | Windows arm64 | Experimental         |
 | Windows x64 | Windows x86   | Automatically tested |
 | Linux x64   | Linux x86     | Automatically tested |
@@ -391,7 +391,7 @@ appropriate repository should do the trick.
 ### I'm being asked for a username/password for chromium-internal.googlesource.com
 
 If you see a prompt for `Username for 'https://chrome-internal.googlesource.com':` when running `gclient sync` on Windows, it's probably because the `DEPOT_TOOLS_WIN_TOOLCHAIN` environment variable is not set to 0. Open `Control Panel` → `System and Security` → `System` → `Advanced system settings` and add a system variable
-`DEPOT_TOOLS_WIN_TOOLCHAIN` with value `0`.  This tells `depot_tools` to use
+`DEPOT_TOOLS_WIN_TOOLCHAIN` with value `0`. This tells `depot_tools` to use
 your locally installed version of Visual Studio (by default, `depot_tools` will
 try to download a Google-internal version that only Googlers have access to).
 

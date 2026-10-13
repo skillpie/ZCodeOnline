@@ -7,5 +7,5 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 ### `new TouchBarGroup(options)`
 
-* `options` Object
-  * `items` [TouchBar](touch-bar.md) - Items to display as a group.
+- `options` Object
+  - `items` [TouchBar](touch-bar.md) - Items to display as a group.

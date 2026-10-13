@@ -13,12 +13,12 @@ offering better support for web proxies. It also supports checking network statu
 The following is a non-exhaustive list of why you may consider using the `net`
 module instead of the native Node.js modules:
 
-* Automatic management of system proxy configuration, support of the wpad
+- Automatic management of system proxy configuration, support of the wpad
   protocol and proxy pac configuration files.
-* Automatic tunneling of HTTPS requests.
-* Support for authenticating proxies using basic, digest, NTLM, Kerberos or
+- Automatic tunneling of HTTPS requests.
+- Support for authenticating proxies using basic, digest, NTLM, Kerberos or
   negotiate authentication schemes.
-* Support for traffic monitoring proxies: Fiddler-like proxies used for access
+- Support for traffic monitoring proxies: Fiddler-like proxies used for access
   control and monitoring.
 
 The API components (including classes, methods, properties and event names) are similar to those used in
@@ -27,23 +27,23 @@ Node.js.
 Example usage:
 
 ```js
-const { app } = require('electron')
+const { app } = require("electron");
 
 app.whenReady().then(() => {
-  const { net } = require('electron')
-  const request = net.request('https://github.com')
-  request.on('response', (response) => {
-    console.log(`STATUS: ${response.statusCode}`)
-    console.log(`HEADERS: ${JSON.stringify(response.headers)}`)
-    response.on('data', (chunk) => {
-      console.log(`BODY: ${chunk}`)
-    })
-    response.on('end', () => {
-      console.log('No more data in response.')
-    })
-  })
-  request.end()
-})
+  const { net } = require("electron");
+  const request = net.request("https://github.com");
+  request.on("response", (response) => {
+    console.log(`STATUS: ${response.statusCode}`);
+    console.log(`HEADERS: ${JSON.stringify(response.headers)}`);
+    response.on("data", (chunk) => {
+      console.log(`BODY: ${chunk}`);
+    });
+    response.on("end", () => {
+      console.log("No more data in response.");
+    });
+  });
+  request.end();
+});
 ```
 
 The `net` API can be used only after the application emits the `ready` event.
@@ -55,7 +55,7 @@ The `net` module has the following methods:
 
 ### `net.request(options)`
 
-* `options` ([ClientRequestConstructorOptions](client-request.md#new-clientrequestoptions) | string) - The `ClientRequest` constructor options.
+- `options` ([ClientRequestConstructorOptions](client-request.md#new-clientrequestoptions) | string) - The `ClientRequest` constructor options.
 
 Returns [`ClientRequest`](./client-request.md)
 
@@ -66,8 +66,8 @@ requests according to the specified protocol scheme in the `options` object.
 
 ### `net.fetch(input[, init])`
 
-* `input` string | [GlobalRequest](https://nodejs.org/api/globals.html#request)
-* `init` [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/fetch#options) & \{ bypassCustomProtocolHandlers?: boolean \} (optional)
+- `input` string | [GlobalRequest](https://nodejs.org/api/globals.html#request)
+- `init` [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/fetch#options) & \{ bypassCustomProtocolHandlers?: boolean \} (optional)
 
 Returns `Promise<GlobalResponse>` - see [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response).
 
@@ -78,10 +78,10 @@ Node.js's HTTP stack.
 Example:
 
 ```js
-async function example () {
-  const response = await net.fetch('https://my.app')
+async function example() {
+  const response = await net.fetch("https://my.app");
   if (response.ok) {
-    const body = await response.json()
+    const body = await response.json();
     // ... use the result.
   }
 }
@@ -96,9 +96,9 @@ details.
 
 Limitations:
 
-* `net.fetch()` does not support the `data:` or `blob:` schemes.
-* The value of the `integrity` option is ignored.
-* The `.type` and `.url` values of the returned `Response` object are
+- `net.fetch()` does not support the `data:` or `blob:` schemes.
+- The value of the `integrity` option is ignored.
+- The `.type` and `.url` values of the returned `Response` object are
   incorrect.
 
 By default, requests made with `net.fetch` can be made to [custom protocols](protocol.md)
@@ -109,13 +109,13 @@ intercepted request to the built-in handler. [webRequest](web-request.md)
 handlers will still be triggered when bypassing custom protocols.
 
 ```js
-protocol.handle('https', (req) => {
-  if (req.url === 'https://my-app.com') {
-    return new Response('<body>my app</body>')
+protocol.handle("https", (req) => {
+  if (req.url === "https://my-app.com") {
+    return new Response("<body>my app</body>");
   } else {
-    return net.fetch(req, { bypassCustomProtocolHandlers: true })
+    return net.fetch(req, { bypassCustomProtocolHandlers: true });
   }
-})
+});
 ```
 
 > [!NOTE]
@@ -134,36 +134,36 @@ will be successful.
 
 ### `net.resolveHost(host, [options])`
 
-* `host` string - Hostname to resolve.
-* `options` Object (optional)
-  * `queryType` string (optional) - Requested DNS query type. If unspecified,
+- `host` string - Hostname to resolve.
+- `options` Object (optional)
+  - `queryType` string (optional) - Requested DNS query type. If unspecified,
     resolver will pick A or AAAA (or both) based on IPv4/IPv6 settings:
-    * `A` - Fetch only A records
-    * `AAAA` - Fetch only AAAA records.
-  * `source` string (optional) - The source to use for resolved addresses.
+    - `A` - Fetch only A records
+    - `AAAA` - Fetch only AAAA records.
+  - `source` string (optional) - The source to use for resolved addresses.
     Default allows the resolver to pick an appropriate source. Only affects use
     of big external sources (e.g. calling the system for resolution or using
     DNS). Even if a source is specified, results can still come from cache,
     resolving "localhost" or IP literals, etc. One of the following values:
-    * `any` (default) - Resolver will pick an appropriate source. Results could
+    - `any` (default) - Resolver will pick an appropriate source. Results could
       come from DNS, MulticastDNS, HOSTS file, etc
-    * `system` - Results will only be retrieved from the system or OS, e.g. via
+    - `system` - Results will only be retrieved from the system or OS, e.g. via
       the `getaddrinfo()` system call
-    * `dns` - Results will only come from DNS queries
-    * `mdns` - Results will only come from Multicast DNS queries
-    * `localOnly` - No external sources will be used. Results will only come
+    - `dns` - Results will only come from DNS queries
+    - `mdns` - Results will only come from Multicast DNS queries
+    - `localOnly` - No external sources will be used. Results will only come
       from fast local sources that are available no matter the source setting,
       e.g. cache, hosts file, IP literal resolution, etc.
-  * `cacheUsage` string (optional) - Indicates what DNS cache entries, if any,
+  - `cacheUsage` string (optional) - Indicates what DNS cache entries, if any,
     can be used to provide a response. One of the following values:
-    * `allowed` (default) - Results may come from the host cache if non-stale
-    * `staleAllowed` - Results may come from the host cache even if stale (by
+    - `allowed` (default) - Results may come from the host cache if non-stale
+    - `staleAllowed` - Results may come from the host cache even if stale (by
       expiration or network changes)
-    * `disallowed` - Results will not come from the host cache.
-  * `secureDnsPolicy` string (optional) - Controls the resolver's Secure DNS
+    - `disallowed` - Results will not come from the host cache.
+  - `secureDnsPolicy` string (optional) - Controls the resolver's Secure DNS
     behavior for this request. One of the following values:
-    * `allow` (default)
-    * `disable`
+    - `allow` (default)
+    - `disable`
 
 Returns [`Promise<ResolvedHost>`](structures/resolved-host.md) - Resolves with the resolved IP addresses for the `host`.
 

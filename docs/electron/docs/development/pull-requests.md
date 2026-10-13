@@ -124,10 +124,12 @@ Common prefixes:
 Other things to keep in mind when writing a commit message:
 
 1. The first line should:
-  - contain a short description of the change (preferably 50 characters or less,
-   and no more than 72 characters)
-  - be entirely in lowercase with the exception of proper nouns, acronyms, and
-   the words that refer to code, like function/variable names
+
+- contain a short description of the change (preferably 50 characters or less,
+  and no more than 72 characters)
+- be entirely in lowercase with the exception of proper nouns, acronyms, and
+  the words that refer to code, like function/variable names
+
 2. Keep the second line blank.
 3. Wrap all other lines at 72 columns.
 
@@ -232,7 +234,7 @@ of the area you modified in order to land. Whenever a maintainer reviews a pull
 request they may request changes. These may be small, such as fixing a typo, or
 may involve substantive changes. Such requests are intended to be helpful, but
 at times may come across as abrupt or unhelpful, especially if they do not include
-concrete suggestions on *how* to change them.
+concrete suggestions on _how_ to change them.
 
 Try not to be discouraged. If you feel that a review is unfair, say so or seek
 the input of another project contributor. Often such comments are the result of

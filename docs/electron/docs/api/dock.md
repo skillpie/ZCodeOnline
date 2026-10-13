@@ -12,8 +12,8 @@ _This class is not exported from the `'electron'` module. It is only available a
 
 #### `dock.bounce([type])` _macOS_
 
-* `type` string (optional) - Can be `critical` or `informational`. The default is
- `informational`
+- `type` string (optional) - Can be `critical` or `informational`. The default is
+  `informational`
 
 Returns `Integer` - an ID representing the request.
 
@@ -29,19 +29,19 @@ or the request is canceled.
 
 #### `dock.cancelBounce(id)` _macOS_
 
-* `id` Integer
+- `id` Integer
 
 Cancel the bounce of `id`.
 
 #### `dock.downloadFinished(filePath)` _macOS_
 
-* `filePath` string
+- `filePath` string
 
 Bounces the Downloads stack if the filePath is inside the Downloads folder.
 
 #### `dock.setBadge(text)` _macOS_
 
-* `text` string
+- `text` string
 
 Sets the string to be displayed in the dock’s badging area.
 
@@ -66,7 +66,7 @@ Returns `boolean` - Whether the dock icon is visible.
 
 #### `dock.setMenu(menu)` _macOS_
 
-* `menu` [Menu](menu.md)
+- `menu` [Menu](menu.md)
 
 Sets the application's [dock menu][dock-menu].
 
@@ -76,7 +76,7 @@ Returns `Menu | null` - The application's [dock menu][dock-menu].
 
 #### `dock.setIcon(image)` _macOS_
 
-* `image` ([NativeImage](native-image.md) | string)
+- `image` ([NativeImage](native-image.md) | string)
 
 Sets the `image` associated with this dock icon.
 

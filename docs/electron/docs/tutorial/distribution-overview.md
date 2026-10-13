@@ -1,6 +1,6 @@
 ---
-title: 'Distribution Overview'
-description: 'To distribute your app with Electron, you need to package and rebrand it. To do this, you can either use specialized tooling or manual approaches.'
+title: "Distribution Overview"
+description: "To distribute your app with Electron, you need to package and rebrand it. To do this, you can either use specialized tooling or manual approaches."
 slug: distribution-overview
 hide_title: false
 ---

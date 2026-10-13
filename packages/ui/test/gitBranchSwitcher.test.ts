@@ -8,10 +8,16 @@ vi.mock("lucide-react", () => {
 
   return {
     ChevronDownIcon: createIcon("chevron-down"),
+    CloudDownloadIcon: createIcon("cloud-download"),
+    FolderGit2: createIcon("folder-git2"),
     GitBranchIcon: createIcon("git-branch"),
     GitGraph: createIcon("git-graph"),
+    GitMergeIcon: createIcon("git-merge"),
     LoaderIcon: createIcon("loader"),
     PlusIcon: createIcon("plus"),
+    XIcon: createIcon("x"),
+    SquarePenIcon: createIcon("square-pen"),
+    Trash2Icon: createIcon("trash2"),
   };
 });
 
@@ -22,15 +28,12 @@ vi.mock("@/components/ui/button.js", () => ({
 
 vi.mock("@/components/ui/command.js", () => ({
   Command: ({ children }: { children: ReactNode }) => createElement("div", null, children),
-  CommandEmpty: ({ children }: { children: ReactNode }) =>
-    createElement("div", null, children),
-  CommandGroup: ({ children }: { children: ReactNode }) =>
-    createElement("div", null, children),
+  CommandEmpty: ({ children }: { children: ReactNode }) => createElement("div", null, children),
+  CommandGroup: ({ children }: { children: ReactNode }) => createElement("div", null, children),
   CommandInput: (props: Record<string, unknown>) => createElement("input", props),
   CommandItem: ({ children, ...props }: { children: ReactNode }) =>
     createElement("div", props, children),
-  CommandList: ({ children }: { children: ReactNode }) =>
-    createElement("div", null, children),
+  CommandList: ({ children }: { children: ReactNode }) => createElement("div", null, children),
 }));
 
 vi.mock("@/components/ui/popover.js", () => ({
@@ -76,7 +79,26 @@ vi.mock("@/hooks/useGitBranchSwitcher.js", () => ({
   }),
 }));
 
+vi.mock("@/git-branch-switcher/useGitWorktreeActions.js", () => ({
+  useGitWorktreeActions: () => ({
+    worktreesResult: null,
+    worktreePending: false,
+    loadWorktrees: vi.fn(),
+    openWorktreeTab: vi.fn(),
+    checkoutBranchAsWorktree: vi.fn(),
+    removeWorktree: vi.fn(),
+    renameTarget: null,
+    renameBranchName: "",
+    setRenameBranchName: vi.fn(),
+    openRenameDialog: vi.fn(),
+    closeRenameDialog: vi.fn(),
+    submitRename: vi.fn(),
+  }),
+}));
+
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({
     intl: {
       formatMessage: ({ id }: { id: string }) => id,

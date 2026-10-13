@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, beforeEach, test } from "node:test";
+import { afterAll as after, beforeEach, test } from "vitest";
 import {
   DEFAULT_SKILL_MARKET_ENTRY_URL,
   clearStoredSkillMarketUrl,

@@ -149,8 +149,11 @@ vi.mock("@/v4/composer/useDraftConfigControl.js", async (importOriginal) => {
     // 本用例只验证到期采样，不需要真实草稿；但 SessionPane 渲染期直接读
     // modelSelectionRead.state.status，stub 缺这个字段会读 undefined 崩溃。
     useDraftConfigControl: () => ({
+      composerDraft: { text: "", updatedAt: 0 },
       modelSelectionRead: { state: { status: "loading" as const }, reload: vi.fn() },
       draftConfigRef: { current: {} },
+      // composerDraftRef 为本地数据源/评审透传特性对 hook 的新增返回，官方 mock 需同步提供。
+      composerDraftRef: { current: {} },
       resolveInitialDraftConfig: () => undefined,
       captureAcceptedModelSelection: () => vi.fn(),
       handleDraftSelectModel: () => {},

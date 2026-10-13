@@ -38,32 +38,32 @@ app.whenReady().then(() => {
 Another example of creating a window in the external display:
 
 ```js
-const { app, BrowserWindow, screen } = require('electron')
+const { app, BrowserWindow, screen } = require("electron");
 
-let win
+let win;
 
 app.whenReady().then(() => {
-  const displays = screen.getAllDisplays()
+  const displays = screen.getAllDisplays();
   const externalDisplay = displays.find((display) => {
-    return display.bounds.x !== 0 || display.bounds.y !== 0
-  })
+    return display.bounds.x !== 0 || display.bounds.y !== 0;
+  });
 
   if (externalDisplay) {
     win = new BrowserWindow({
       x: externalDisplay.bounds.x + 50,
-      y: externalDisplay.bounds.y + 50
-    })
-    win.loadURL('https://github.com')
+      y: externalDisplay.bounds.y + 50,
+    });
+    win.loadURL("https://github.com");
   }
-})
+});
 ```
 
 > [!NOTE]
 > Screen coordinates used by this module are [`Point`](structures/point.md) structures.
 > There are two kinds of coordinates available to the process:
 >
-> * **Physical screen points** are raw hardware pixels on a display.
-> * **Device-independent pixel (DIP) points** are virtualized screen points scaled based on the DPI
+> - **Physical screen points** are raw hardware pixels on a display.
+> - **Device-independent pixel (DIP) points** are virtualized screen points scaled based on the DPI
 >   (dots per inch) of the display.
 
 ## Events
@@ -74,8 +74,8 @@ The `screen` module emits the following events:
 
 Returns:
 
-* `event` Event
-* `newDisplay` [Display](structures/display.md)
+- `event` Event
+- `newDisplay` [Display](structures/display.md)
 
 Emitted when `newDisplay` has been added.
 
@@ -83,8 +83,8 @@ Emitted when `newDisplay` has been added.
 
 Returns:
 
-* `event` Event
-* `oldDisplay` [Display](structures/display.md)
+- `event` Event
+- `oldDisplay` [Display](structures/display.md)
 
 Emitted when `oldDisplay` has been removed.
 
@@ -92,9 +92,9 @@ Emitted when `oldDisplay` has been removed.
 
 Returns:
 
-* `event` Event
-* `display` [Display](structures/display.md)
-* `changedMetrics` string[]
+- `event` Event
+- `display` [Display](structures/display.md)
+- `changedMetrics` string[]
 
 Emitted when one or more metrics change in a `display`. The `changedMetrics` is
 an array of strings that describe the changes. Possible changes are `bounds`,
@@ -125,20 +125,20 @@ Returns [`Display[]`](structures/display.md) - An array of displays that are cur
 
 ### `screen.getDisplayNearestPoint(point)`
 
-* `point` [Point](structures/point.md)
+- `point` [Point](structures/point.md)
 
 Returns [`Display`](structures/display.md) - The display nearest the specified point.
 
 ### `screen.getDisplayMatching(rect)`
 
-* `rect` [Rectangle](structures/rectangle.md)
+- `rect` [Rectangle](structures/rectangle.md)
 
 Returns [`Display`](structures/display.md) - The display that most closely
 intersects the provided bounds.
 
 ### `screen.screenToDipPoint(point)` _Windows_ _Linux_
 
-* `point` [Point](structures/point.md)
+- `point` [Point](structures/point.md)
 
 Returns [`Point`](structures/point.md)
 
@@ -150,7 +150,7 @@ in with no changes.
 
 ### `screen.dipToScreenPoint(point)` _Windows_ _Linux_
 
-* `point` [Point](structures/point.md)
+- `point` [Point](structures/point.md)
 
 Returns [`Point`](structures/point.md)
 
@@ -161,8 +161,8 @@ Not currently supported on Wayland.
 
 ### `screen.screenToDipRect(window, rect)` _Windows_
 
-* `window` [BrowserWindow](browser-window.md) | null
-* `rect` [Rectangle](structures/rectangle.md)
+- `window` [BrowserWindow](browser-window.md) | null
+- `rect` [Rectangle](structures/rectangle.md)
 
 Returns [`Rectangle`](structures/rectangle.md)
 
@@ -172,8 +172,8 @@ If `window` is null, scaling will be performed to the display nearest to `rect`.
 
 ### `screen.dipToScreenRect(window, rect)` _Windows_
 
-* `window` [BrowserWindow](browser-window.md) | null
-* `rect` [Rectangle](structures/rectangle.md)
+- `window` [BrowserWindow](browser-window.md) | null
+- `rect` [Rectangle](structures/rectangle.md)
 
 Returns [`Rectangle`](structures/rectangle.md)
 

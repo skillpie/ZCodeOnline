@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -10,15 +10,14 @@
       <h1>Use system dialogs</h1>
 
       <h3>
-        The <code>dialog</code> module in Electron allows you to use native
-        system dialogs for opening files or directories, saving a file or
-        displaying informational messages.
+        The <code>dialog</code> module in Electron allows you to use native system dialogs for
+        opening files or directories, saving a file or displaying informational messages.
       </h3>
 
       <p>
-        This is a main process module because this process is more efficient
-        with native utilities and it allows the call to happen without
-        interrupting the visible elements in your page's renderer process.
+        This is a main process module because this process is more efficient with native utilities
+        and it allows the call to happen without interrupting the visible elements in your page's
+        renderer process.
       </p>
 
       <p>
@@ -39,10 +38,9 @@
             <span id="file-saved"></span>
           </div>
           <p>
-            In this demo, the <code>ipc</code> module is used to send a message
-            from the renderer process instructing the main process to launch the
-            save dialog. It returns the path selected by the user which can be
-            relayed back to the renderer process.
+            In this demo, the <code>ipc</code> module is used to send a message from the renderer
+            process instructing the main process to launch the save dialog. It returns the path
+            selected by the user which can be relayed back to the renderer process.
           </p>
           <h5>Renderer Process</h5>
           <pre>

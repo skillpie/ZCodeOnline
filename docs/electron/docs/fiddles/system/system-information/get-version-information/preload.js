@@ -1,3 +1,3 @@
-const { contextBridge } = require('electron/renderer')
+const { contextBridge } = require("electron/renderer");
 
-contextBridge.exposeInMainWorld('electronVersion', process.versions.electron)
+contextBridge.exposeInMainWorld("electronVersion", process.versions.electron);

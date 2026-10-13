@@ -11,6 +11,8 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("@/hooks/useAlertDialog.js", () => ({ useAlertDialog: () => vi.fn() }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
+  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
+  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
   useZCodeIntl: () => ({ intl: { formatMessage: () => "登录失败" } }),
 }));
 vi.mock("@/root/useAccountConnectionLossNotification.js", () => ({

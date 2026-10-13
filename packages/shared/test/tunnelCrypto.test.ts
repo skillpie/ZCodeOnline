@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { TunnelCipher, deriveTunnelKeys } from "../src/tunnelCrypto.js";
 import { generateTunnelSecret } from "../src/tunnel.js";
 
