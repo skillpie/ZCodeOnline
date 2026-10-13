@@ -1286,7 +1286,6 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.label": "Branch",
   "git.branchSwitcher.trigger.ariaLabel": "Switch Git branch",
   "git.branchSwitcher.searchPlaceholder": "Search branches",
-  "git.branchSwitcher.section.branches": "Branches",
   "git.branchSwitcher.empty": "No matching branches",
   "git.branchSwitcher.currentDirty": "Uncommitted changes: {count} files",
   "git.branchSwitcher.createAction": "Create and switch to new branch...",
@@ -1351,7 +1350,6 @@ const enUS: Record<string, string> = {
     "That branch is already checked out in another worktree.",
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
-  "git.branchSwitcher.section.worktrees": "Worktrees",
   "git.branchSwitcher.deleteAction.ariaLabel": "Delete branch {branchName}",
   "git.branchSwitcher.deleteConfirm.title": "Delete branch",
   "git.branchSwitcher.deleteConfirm.description":

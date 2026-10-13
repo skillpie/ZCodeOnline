@@ -3,11 +3,6 @@ import type { GitWorktreeRecord } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { CommandItem } from "@/components/ui/command.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
-import {
-  useSustainedHover,
-  DELETE_REVEAL_DELAY_MS,
-} from "@/git-branch-switcher/useSustainedHover.js";
 import { FolderGit2, SquarePenIcon, Trash2Icon } from "lucide-react";
 
 interface GitWorktreeListRowProps {
@@ -42,15 +37,11 @@ export function GitWorktreeListRow({
   const [hovered, setHovered] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
   const canMutate = !worktree.isCurrentWorkspace;
+  // 重命名 / 移除仅在交互（hover / focus）时浮现。
   const interactive = hovered || focusWithin;
   const shouldMountMutateActions = canMutate && interactive;
   const canRename = canMutate && Boolean(worktree.branchName);
-  // 移除是破坏性动作：hover / focus 持续 2 秒才浮现（触屏无 hover 立即显示）；重命名保持即时。
-  const removeRevealed = useSustainedHover(
-    interactive,
-    isCoarseTouchDevice() ? 0 : DELETE_REVEAL_DELAY_MS,
-  );
-  const shouldMountRemoveAction = shouldMountMutateActions && removeRevealed;
+  const shouldMountRemoveAction = shouldMountMutateActions;
 
   return (
     <CommandItem
@@ -95,7 +86,7 @@ export function GitWorktreeListRow({
             { id: "git.worktree.renameAction.ariaLabel" },
             { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
           )}
-          className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          className="-ml-2 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
             // 阻止冒泡到 cmdk Item，避免行内动作被当作“打开 worktree”。
             event.stopPropagation();
@@ -115,7 +106,7 @@ export function GitWorktreeListRow({
             { id: "git.worktree.removeAction.ariaLabel" },
             { name: worktree.branchName ?? labelFromWorktreePath(worktree.path) },
           )}
-          className="shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          className="-ml-2 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
             // 阻止冒泡到 cmdk Item，避免移除动作被当作“打开 worktree”。
             event.stopPropagation();

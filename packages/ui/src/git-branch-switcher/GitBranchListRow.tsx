@@ -7,10 +7,6 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import type { WorkspaceConversationPromptScope } from "@/lib/workspaceConversationPromptRuntime.js";
 import { cn } from "@/components/lib/utils.js";
-import {
-  useSustainedHover,
-  DELETE_REVEAL_DELAY_MS,
-} from "@/git-branch-switcher/useSustainedHover.js";
 import { FolderGit2, GitBranchIcon, Trash2Icon } from "lucide-react";
 
 interface GitBranchListRowProps {
@@ -59,14 +55,10 @@ export function GitBranchListRow({
   // 所有分支行（含当前分支）都提供 worktree 动作：当前分支在该动作下走“并行副本”语义。
   const shouldMountWorktreeAction =
     Boolean(onCheckoutAsWorktree) && (isCoarseTouchDevice() || hovered || focusWithin);
-  // 删除是破坏性动作：hover / focus 持续 2 秒才浮现（触屏无 hover 立即显示）；当前分支不可删。
+  // 删除为破坏性动作，仅在交互（hover / focus）时浮现；当前检出中的分支不可删。
   const interactive = hovered || focusWithin;
-  const deleteRevealed = useSustainedHover(
-    interactive,
-    isCoarseTouchDevice() ? 0 : DELETE_REVEAL_DELAY_MS,
-  );
   const shouldMountDeleteAction =
-    !isCurrent && !checkedOutInWorktree && Boolean(onDeleteBranch) && interactive && deleteRevealed;
+    !isCurrent && !checkedOutInWorktree && Boolean(onDeleteBranch) && interactive;
 
   return (
     <CommandItem
@@ -131,7 +123,7 @@ export function GitBranchListRow({
             { branchName: branch.name },
           )}
           title={intl.formatMessage({ id: "git.worktree.checkoutAction" })}
-          className="-mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          className="-ml-2 -mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
             // 阻止冒泡到 cmdk Item，避免行内动作被当作分支切换。
             event.stopPropagation();
@@ -151,7 +143,7 @@ export function GitBranchListRow({
             { id: "git.branchSwitcher.deleteAction.ariaLabel" },
             { branchName: branch.name },
           )}
-          className="-mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          className="-ml-2 -mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
             // 阻止冒泡到 cmdk Item，避免删除动作被当作分支切换。
             event.stopPropagation();

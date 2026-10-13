@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { GitRepositorySummary } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandList,
-} from "@/components/ui/command.js";
+import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -27,8 +21,8 @@ import {
 } from "@/lib/pickerFocus.js";
 import { GitBranchListRow } from "@/git-branch-switcher/GitBranchListRow.js";
 import { GitBranchPopoverFooter } from "@/git-branch-switcher/GitBranchPopoverFooter.js";
+import { GitWorktreeListRow } from "@/git-branch-switcher/GitWorktreeListRow.js";
 import { GitWorktreeRenameDialog } from "@/git-branch-switcher/GitWorktreeRenameDialog.js";
-import { GitWorktreeSection } from "@/git-branch-switcher/GitWorktreeSection.js";
 import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
 import { ChevronDownIcon, GitBranchIcon, LoaderIcon } from "lucide-react";
 
@@ -306,44 +300,40 @@ export function GitBranchSwitcher({
                 })}
                 className="h-8"
               />
-              <CommandList ref={commandListRef} className={cn("max-h-72", branchListClassName)}>
+              <CommandList ref={commandListRef} className={cn("max-h-72 p-1", branchListClassName)}>
                 <CommandEmpty className="px-4 py-5 text-foreground-subtle">
                   {loadingBranches
                     ? intl.formatMessage({ id: "common.loading" })
                     : intl.formatMessage({ id: "git.branchSwitcher.empty" })}
                 </CommandEmpty>
-                <CommandGroup
-                  heading={intl.formatMessage({
-                    id: "git.branchSwitcher.section.branches",
-                  })}
-                  className="space-y-0.5 p-1 **:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2 **:[[cmdk-group-heading]]:text-ui-base **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-foreground-subtle"
-                >
-                  {(branchesResult?.branches ?? []).map((branch) => (
-                    <GitBranchListRow
-                      key={branch.name}
-                      branch={branch}
-                      isCurrent={branch.name === displayedCurrentBranchName}
-                      currentDirtyLabel={currentBranchDirtyLabel}
-                      mutationPending={listMutationPending}
-                      onSwitch={switchBranch}
-                      enableConversationAction={enableConversationActions}
-                      conversationPromptScope={conversationPromptScope}
-                      onConversationActionTriggered={() => {
-                        setOpen(false);
-                      }}
-                      onCheckoutAsWorktree={handleCheckoutAsWorktree}
-                      onDeleteBranch={handleDeleteBranch}
-                      checkedOutInWorktree={branchNamesInWorktrees.has(branch.name)}
-                    />
-                  ))}
-                </CommandGroup>
-                <GitWorktreeSection
-                  worktrees={worktreesResult?.worktrees ?? []}
-                  mutationPending={listMutationPending}
-                  onOpen={handleOpenWorktree}
-                  onRename={openRenameDialog}
-                  onRemove={removeWorktree}
-                />
+                {(branchesResult?.branches ?? []).map((branch) => (
+                  <GitBranchListRow
+                    key={branch.name}
+                    branch={branch}
+                    isCurrent={branch.name === displayedCurrentBranchName}
+                    currentDirtyLabel={currentBranchDirtyLabel}
+                    mutationPending={listMutationPending}
+                    onSwitch={switchBranch}
+                    enableConversationAction={enableConversationActions}
+                    conversationPromptScope={conversationPromptScope}
+                    onConversationActionTriggered={() => {
+                      setOpen(false);
+                    }}
+                    onCheckoutAsWorktree={handleCheckoutAsWorktree}
+                    onDeleteBranch={handleDeleteBranch}
+                    checkedOutInWorktree={branchNamesInWorktrees.has(branch.name)}
+                  />
+                ))}
+                {(worktreesResult?.worktrees ?? []).map((worktree) => (
+                  <GitWorktreeListRow
+                    key={worktree.path}
+                    worktree={worktree}
+                    mutationPending={listMutationPending}
+                    onOpen={handleOpenWorktree}
+                    onRename={openRenameDialog}
+                    onRemove={removeWorktree}
+                  />
+                ))}
               </CommandList>
             </Command>
             {showFooterActions ? (

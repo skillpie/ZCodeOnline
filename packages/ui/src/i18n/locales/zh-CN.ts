@@ -1187,7 +1187,6 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.label": "分支",
   "git.branchSwitcher.trigger.ariaLabel": "切换 Git 分支",
   "git.branchSwitcher.searchPlaceholder": "搜索分支",
-  "git.branchSwitcher.section.branches": "分支",
   "git.branchSwitcher.empty": "未找到匹配分支",
   "git.branchSwitcher.currentDirty": "未提交的更改：{count} 个文件",
   "git.branchSwitcher.createAction": "创建并检出新分支...",
@@ -1242,7 +1241,6 @@ const zhCN: Record<string, string> = {
     "目标分支已在其他 worktree 中被检出，当前工作区无法直接切换。",
   "git.branchSwitcher.error.unknown": "切换分支失败，请稍后重试。",
   "git.branchSwitcher.error.requestFailed": "分支操作失败：{error}",
-  "git.branchSwitcher.section.worktrees": "Worktrees",
   "git.branchSwitcher.deleteAction.ariaLabel": "删除分支 {branchName}",
   "git.branchSwitcher.deleteConfirm.title": "删除分支",
   "git.branchSwitcher.deleteConfirm.description":

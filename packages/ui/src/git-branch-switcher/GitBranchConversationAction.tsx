@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { CloudDownloadIcon, GitMergeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
@@ -22,15 +23,19 @@ interface GitBranchConversationActionProps {
 
 const ACTION_MESSAGE_IDS = {
   merge: {
-    action: "git.branchSwitcher.mergeAction",
     aria: "git.branchSwitcher.mergeAction.ariaLabel",
     prompt: "git.branchSwitcher.mergePrompt",
   },
   pull: {
-    action: "git.branchSwitcher.pullAction",
     aria: "git.branchSwitcher.pullAction.ariaLabel",
     prompt: "git.branchSwitcher.pullPrompt",
   },
+} as const;
+
+/** 行尾对话动作的图标：合入 = GitMerge；拉取与头部拉取按钮同用云朵下载形态。 */
+const ACTION_ICONS = {
+  merge: GitMergeIcon,
+  pull: CloudDownloadIcon,
 } as const;
 
 /**
@@ -64,21 +69,24 @@ export function GitBranchConversationAction({
     return null;
   }
 
+  const ActionIcon = ACTION_ICONS[kind];
+
   return (
     <Button
       type="button"
       variant="outline"
-      size="sm"
+      size="icon-sm"
       disabled={mutationPending}
       aria-label={intl.formatMessage({ id: messageIds.aria }, { branchName })}
-      className="-mt-0.5 shrink-0 rounded-sm"
+      title={intl.formatMessage({ id: messageIds.aria }, { branchName })}
+      className="-ml-2 -mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
       onClick={(event) => {
         // 阻止冒泡到 cmdk Item，避免行内动作被当作分支切换。
         event.stopPropagation();
         handleAction();
       }}
     >
-      {intl.formatMessage({ id: messageIds.action })}
+      <ActionIcon className="size-3.5" />
     </Button>
   );
 }
