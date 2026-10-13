@@ -52,6 +52,9 @@ export const SERVER_HTTP_EXTERNAL_DEPENDENCIES = [
   "yauzl",
   // 数据源服务引入 mysql2 / pg（纯 JS 但为 CJS），其依赖（如 sql-escaper）在 ESM
   // bundle 加载时命中动态 require("buffer") 直接崩溃；与 yazl/yauzl 同策略外置。
+  // Bugfix: 外置后运行时从 @zcode/server 自身 node_modules 解析，pnpm 不会暴露 services
+  // 的传递依赖，server 的 package.json dependencies 必须同步声明 mysql2 / pg（由
+  // test/tsupConfig.test.ts 守护），否则独立分发场景加载即 MODULE_NOT_FOUND。
   "mysql2",
   "pg",
 ];
