@@ -21,19 +21,12 @@ import {
 } from "@/lib/pickerFocus.js";
 import { GitBranchListRow } from "@/git-branch-switcher/GitBranchListRow.js";
 import { GitBranchPopoverFooter } from "@/git-branch-switcher/GitBranchPopoverFooter.js";
-import { GitWorktreeListRow } from "@/git-branch-switcher/GitWorktreeListRow.js";
-import { GitWorktreeRenameDialog } from "@/git-branch-switcher/GitWorktreeRenameDialog.js";
 import { useGitWorktreeActions } from "@/git-branch-switcher/useGitWorktreeActions.js";
 import { ChevronDownIcon, GitBranchIcon, LoaderIcon } from "lucide-react";
 
 /** cmdk 的分支搜索过滤：仅按分支名包含匹配。 */
 function branchSearchFilter(value: string, search: string): number {
   return matchesGitBranchSearch(value, search) ? 1 : 0;
-}
-
-/** worktree 目录名（路径末段），与创建时的副本分支净化名一致，作为 worktree 的稳定行名。 */
-function worktreeDirName(worktreePath: string): string {
-  return worktreePath.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? "";
 }
 
 interface GitBranchSwitcherProps {
@@ -104,49 +97,14 @@ export function GitBranchSwitcher({
     headRefType: gitSummary.headRefType,
     onRefreshGit,
   });
-  const {
-    worktreesResult,
-    worktreePending,
-    openWorktreeTab,
-    checkoutBranchAsWorktree,
-    removeWorktree,
-    renameTarget,
-    renameBranchName,
-    setRenameBranchName,
-    openRenameDialog,
-    closeRenameDialog,
-    submitRename,
-  } = useGitWorktreeActions({ workspacePath, open, branchesResult });
-  // 分支与 worktree 是同一仓库的两类 git 变更，任一进行中都统一禁用列表动作，避免并发变更。
-  const listMutationPending = mutationPending || worktreePending;
-  const handleOpenWorktree = useCallback(
-    (worktreePath: string) => {
-      setOpen(false);
-      openWorktreeTab(worktreePath);
-    },
-    [openWorktreeTab, setOpen],
-  );
+  const { worktreePending, createWorktreeForProject } = useGitWorktreeActions({ workspacePath });
+  const handleCreateWorktreeClick = useCallback(() => {
+    setOpen(false);
+    void createWorktreeForProject();
+  }, [createWorktreeForProject, setOpen]);
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
   const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
-  // 正被某个 worktree 检出的分支由对应 worktree 行代表：不再单列分支行（避免同一分支
-  // 「分支行 + worktree 行」两行展示）；worktree 移除后分支行自动恢复。
-  // .worktrees/ 下的 worktree 目录名即创建时副本分支的净化名：同名分支行由 worktree 行
-  // 代表，不再单列（避免同一分支两行展示）。目录名不随 worktree 内切分支变化，列表稳定；
-  // worktree 移除或改名后分支行同步恢复/更新。
-  const worktreeDirNames = new Set(
-    (worktreesResult?.worktrees ?? []).map((worktree) => worktreeDirName(worktree.path)),
-  );
-  const visibleBranches = (branchesResult?.branches ?? []).filter(
-    (branch) => !worktreeDirNames.has(branch.name),
-  );
-  const handleCheckoutAsWorktree = useCallback(
-    (branchName: string) => {
-      setOpen(false);
-      void checkoutBranchAsWorktree(branchName);
-    },
-    [checkoutBranchAsWorktree, setOpen],
-  );
   const handleDeleteBranch = useCallback(
     (branchName: string) => {
       setOpen(false);
@@ -322,38 +280,27 @@ export function GitBranchSwitcher({
                     ? intl.formatMessage({ id: "common.loading" })
                     : intl.formatMessage({ id: "git.branchSwitcher.empty" })}
                 </CommandEmpty>
-                {visibleBranches.map((branch) => (
+                {(branchesResult?.branches ?? []).map((branch) => (
                   <GitBranchListRow
                     key={branch.name}
                     branch={branch}
                     isCurrent={branch.name === displayedCurrentBranchName}
                     currentDirtyLabel={currentBranchDirtyLabel}
-                    mutationPending={listMutationPending}
+                    mutationPending={mutationPending}
                     onSwitch={switchBranch}
                     enableConversationAction={enableConversationActions}
                     conversationPromptScope={conversationPromptScope}
                     onConversationActionTriggered={() => {
                       setOpen(false);
                     }}
-                    onCheckoutAsWorktree={handleCheckoutAsWorktree}
                     onDeleteBranch={handleDeleteBranch}
-                  />
-                ))}
-                {(worktreesResult?.worktrees ?? []).map((worktree) => (
-                  <GitWorktreeListRow
-                    key={worktree.path}
-                    worktree={worktree}
-                    mutationPending={listMutationPending}
-                    onOpen={handleOpenWorktree}
-                    onRename={openRenameDialog}
-                    onRemove={removeWorktree}
                   />
                 ))}
               </CommandList>
             </Command>
             {showFooterActions ? (
               <GitBranchPopoverFooter
-                disabled={listMutationPending}
+                disabled={mutationPending}
                 onCreateBranchClick={() => {
                   setOpen(false);
                   setCreateDialogOpen(true);
@@ -385,22 +332,6 @@ export function GitBranchSwitcher({
         }}
         onSubmit={() => {
           void createBranchAndSwitch();
-        }}
-      />
-
-      <GitWorktreeRenameDialog
-        open={Boolean(renameTarget)}
-        branchName={renameBranchName}
-        mutationPending={worktreePending}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            closeRenameDialog();
-          }
-        }}
-        onBranchNameChange={setRenameBranchName}
-        onCancel={closeRenameDialog}
-        onSubmit={() => {
-          void submitRename();
         }}
       />
 

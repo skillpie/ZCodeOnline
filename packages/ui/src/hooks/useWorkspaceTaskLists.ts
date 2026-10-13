@@ -4,7 +4,6 @@ import type { IServiceAccessor } from "@zcode/services";
 import type { ZCodeWorkspaceEvent } from "@zcode/shared";
 import { logger } from "@/logger.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
-import { useWorkspaceWorktreeScopes } from "@/hooks/useWorkspaceWorktreeScopes.js";
 import { useZCodeSessionStore, selectWorkspaceZCodeState } from "@/store/zcodeSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import {
@@ -46,15 +45,12 @@ import {
   useWorkspaceSessionsIndexItems,
 } from "@/v4/useWorkspaceSessionsIndexItems.js";
 import { resolveWorkspaceTaskVisibleLimit } from "@/lib/workspaceTaskPagination.js";
-import { expandWorkspaceTaskScopes } from "@/lib/worktreeTaskScope.js";
 
 interface WorkspaceTaskListQueryConfig {
   scope: {
     workspacePath: string;
     workspaceIdentity?: string;
   };
-  /** 主 scope + 其 `.worktrees/*` worktree scope：合并列表查询与缓存的完整范围。 */
-  allScopes: Array<{ workspacePath: string; workspaceIdentity?: string }>;
   workspaceKey: string;
   remoteSessionId?: string;
   isRemoteWorkspace: boolean;
@@ -106,11 +102,7 @@ function updateBlockingLoadingState(
 // items 来自全部 scope 并保留各自 workspacePath（供会话行标注 worktree 归属）。
 async function buildWorkspaceGroupsFromSessions(params: {
   service: IServiceAccessor["zcodeTaskService"];
-  scopeGroups: Array<{
-    groupKey: string;
-    primary: { workspacePath: string; workspaceIdentity?: string };
-    scopes: Array<{ workspacePath: string; workspaceIdentity?: string }>;
-  }>;
+  scopes: Array<{ workspacePath: string; workspaceIdentity?: string }>;
   sessions: ZCodeTaskMeta[];
   sortBy: "created" | "updated";
   /** 差量更新：membership 只随 membershipVersion 变化，按版本缓存避免每次内容帧都重拉。 */
@@ -127,27 +119,21 @@ async function buildWorkspaceGroupsFromSessions(params: {
     cronAutomationIdByTaskId,
   } = await fetchTaskListMembershipSetsForEndpointsCached({
     cacheKey: params.membershipCacheKey,
-    endpoints: [
-      { service: params.service, scopes: params.scopeGroups.flatMap((group) => group.scopes) },
-    ],
+    endpoints: [{ service: params.service, scopes: params.scopes }],
   });
   const map = new Map<string, WorkspaceTaskListGroupResult>();
-  for (const scopeGroup of params.scopeGroups) {
-    const scopeKeys = new Set(
-      scopeGroup.scopes.map((scope) =>
-        buildTaskWorkspaceKey(scope.workspacePath, scope.workspaceIdentity),
-      ),
+  for (const scope of params.scopes) {
+    const scopeKey = buildTaskWorkspaceKey(scope.workspacePath, scope.workspaceIdentity);
+    const scopeSessions = params.sessions.filter(
+      (task) => buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity) === scopeKey,
     );
-    const groupSessions = params.sessions.filter((task) =>
-      scopeKeys.has(buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity)),
-    );
-    const groupTaskIndexItems = taskIndexItems.filter((task) =>
-      scopeKeys.has(buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity)),
+    const scopeTaskIndexItems = taskIndexItems.filter(
+      (task) => buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity) === scopeKey,
     );
     // "workspace" 视图规则 = !pinned && !archived，与 "timeline" 同（matchesTaskMembership）。
     const result = buildTaskListResult({
-      taskIndexItems: groupTaskIndexItems,
-      sessions: groupSessions,
+      taskIndexItems: scopeTaskIndexItems,
+      sessions: scopeSessions,
       kind: "timeline",
       pinnedIds,
       archivedIds,
@@ -158,11 +144,9 @@ async function buildWorkspaceGroupsFromSessions(params: {
       cronAutomationIdByTaskId,
       sortBy: params.sortBy,
     });
-    map.set(scopeGroup.groupKey, {
-      workspacePath: scopeGroup.primary.workspacePath,
-      ...(scopeGroup.primary.workspaceIdentity
-        ? { workspaceIdentity: scopeGroup.primary.workspaceIdentity }
-        : {}),
+    map.set(scopeKey, {
+      workspacePath: scope.workspacePath,
+      ...(scope.workspaceIdentity ? { workspaceIdentity: scope.workspaceIdentity } : {}),
       items: result.items,
       total: result.total,
       hasMore: false,
@@ -219,8 +203,6 @@ export function useWorkspaceTaskLists(params: {
   defaultVisibleLimit: number;
 }) {
   const baseServices = useBaseWorkspaceServices();
-  // 主工作区下属 `.worktrees/*` worktree 目录：其会话合并进主工作区列表展示。
-  const worktreeDirsByWorkspacePath = useWorkspaceWorktreeScopes(params.workspaceTabs);
   const sessionsById = useRemoteWorkspaceSessionStore((state) => state.sessionsById);
   const sessionIdByWorkspaceIdentity = useRemoteWorkspaceSessionStore(
     (state) => state.sessionIdByWorkspaceIdentity,
@@ -310,11 +292,6 @@ export function useWorkspaceTaskLists(params: {
           workspacePath: tab.workspacePath,
           workspaceIdentity: tab.workspaceIdentity,
         };
-        // 主树工作区扩展纳入其 `.worktrees/*` worktree scope：会话列表合并展示。
-        const allScopes = expandWorkspaceTaskScopes(
-          scope,
-          worktreeDirsByWorkspacePath[tab.workspacePath] ?? [],
-        );
         const resolvedRemoteSessionId = resolveWorkspaceRemoteSessionId(tab, serviceResolverState);
         const isRemoteWorkspace = isRemoteWorkspaceTarget(tab, resolvedRemoteSessionId);
         const workspaceKey = buildTaskWorkspaceKey(scope.workspacePath, scope.workspaceIdentity);
@@ -325,7 +302,7 @@ export function useWorkspaceTaskLists(params: {
         );
         const descriptor = buildTaskListCacheDescriptor({
           kind: "workspace",
-          workspaceScopes: allScopes,
+          workspaceScopes: [scope],
           sortBy: params.sortBy,
           search: "",
           expanded: false,
@@ -333,7 +310,6 @@ export function useWorkspaceTaskLists(params: {
         });
         return {
           scope,
-          allScopes,
           workspaceKey,
           remoteSessionId: resolvedRemoteSessionId,
           isRemoteWorkspace,
@@ -355,7 +331,6 @@ export function useWorkspaceTaskLists(params: {
       params.workspaceTabs,
       serviceResolverState,
       taskListVersionByWorkspaceKey,
-      worktreeDirsByWorkspacePath,
     ],
   );
   const endpointShards = useMemo(() => {
@@ -410,14 +385,14 @@ export function useWorkspaceTaskLists(params: {
   const sessionsIndexScopes = useMemo(
     () =>
       endpointShards.flatMap((shard) =>
-        shard.configs.flatMap((config) =>
-          config.allScopes.map((scope) => ({
-            workspacePath: scope.workspacePath,
-            ...(scope.workspaceIdentity ? { workspaceIdentity: scope.workspaceIdentity } : {}),
-            ...(shard.shardKey === "__base__" ? {} : { endpointKey: shard.shardKey }),
-            agentService: shard.services.zcodeAgentService,
-          })),
-        ),
+        shard.configs.map((config) => ({
+          workspacePath: config.scope.workspacePath,
+          ...(config.scope.workspaceIdentity
+            ? { workspaceIdentity: config.scope.workspaceIdentity }
+            : {}),
+          ...(shard.shardKey === "__base__" ? {} : { endpointKey: shard.shardKey }),
+          agentService: shard.services.zcodeAgentService,
+        })),
       ),
     [endpointShards],
   );
@@ -557,11 +532,7 @@ export function useWorkspaceTaskLists(params: {
             // 再用同 endpoint/workspace 的 sessions-index activity/detail enrich。
             const groupByWorkspaceKey = await buildWorkspaceGroupsFromSessions({
               service: shard.services.zcodeTaskService,
-              scopeGroups: shardConfigs.map((config) => ({
-                groupKey: config.workspaceKey,
-                primary: config.scope,
-                scopes: config.allScopes,
-              })),
+              scopes: shardConfigs.map((config) => config.scope),
               sessions: sessionsForRequest,
               sortBy: params.sortBy,
               membershipCacheKey: `${membershipVersion}::workspace::${shard.shardKey}::${shardConfigs

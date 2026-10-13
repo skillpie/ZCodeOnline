@@ -81,18 +81,8 @@ vi.mock("@/hooks/useGitBranchSwitcher.js", () => ({
 
 vi.mock("@/git-branch-switcher/useGitWorktreeActions.js", () => ({
   useGitWorktreeActions: () => ({
-    worktreesResult: null,
     worktreePending: false,
-    loadWorktrees: vi.fn(),
-    openWorktreeTab: vi.fn(),
-    checkoutBranchAsWorktree: vi.fn(),
-    removeWorktree: vi.fn(),
-    renameTarget: null,
-    renameBranchName: "",
-    setRenameBranchName: vi.fn(),
-    openRenameDialog: vi.fn(),
-    closeRenameDialog: vi.fn(),
-    submitRename: vi.fn(),
+    createWorktreeForProject: vi.fn(),
   }),
 }));
 

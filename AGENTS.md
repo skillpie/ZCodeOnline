@@ -37,6 +37,7 @@
 | 桌面端打包并重装本机（macOS）            | `./install_desktop.sh`（`--skip-build` 只重装）                                          |
 | 桌面端打包并安装本机（Windows）          | `.\install_desktop.ps1`（`-SkipBuild` 只安装）                                           |
 | Web 隧道部署                             | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库） |
+| 桌面版两端构建并发布                     | `./deploy_desktop.sh`（正式身份构建 mac-arm64 + win-x64 并上传，`--mac` / `--win` 单端） |
 | 宿主 daemon 重建并重启（网页会话 Agent） | `./install_cli.sh`（`--skip-build` 只重启，`--no-restart` 只构建）                       |
 
 - 每次成功 `git commit` 后，husky `post-commit` 钩子后台自动执行 `./deploy_web.sh` 部署 Web 隧道，日志在 `~/.zcode/logs/web-tunnel-deploy.log`；rebase/merge/cherry-pick 的自动提交不触发，锁目录防并发。提交触及 daemon 运行时路径（`apps/zcode-cli`、server-cli 依赖闭包覆盖的 `packages/*`，排除纯前端包）时，Web 部署完成后自动追加 `./deploy_web.sh --release` 发布发行包（默认 darwin-arm64 + linux-x64，win32-x64 需手动），日志在 `~/.zcode/logs/web-tunnel-release.log`。

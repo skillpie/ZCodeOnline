@@ -15,6 +15,7 @@ import {
   CopyIcon,
   Ellipsis,
   Folder,
+  FolderGit2,
   FolderOpen,
   House,
   InfoIcon,
@@ -22,6 +23,8 @@ import {
   LoaderCircle,
   RefreshCwIcon,
   MessageCirclePlus,
+  SquarePenIcon,
+  TrashIcon,
   XIcon,
 } from "lucide-react";
 import type { useSortable } from "@dnd-kit/sortable";
@@ -51,9 +54,11 @@ import {
   buildWorkspaceSessionKey,
   formatRemoteWorkspaceDisplayLabel,
 } from "@/lib/remoteWorkspaceHistory.js";
+import { GitWorktreeRenameDialog } from "@/git-branch-switcher/GitWorktreeRenameDialog.js";
 import { TaskList } from "@/TaskList.js";
 import { selectWorkspaceZCodeState, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
+import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 import { ReconnectingRemoteWorkspaceLogTooltip } from "@/WorkspaceSidebar/ReconnectingRemoteWorkspaceLogTooltip.js";
 import { cn } from "@/components/lib/utils.js";
@@ -210,6 +215,10 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     tab.remoteTarget,
   );
   const confirmDialog = useConfirmDialog();
+  const tabStoreApi = useTabStoreApi();
+  const [worktreeRenameDialogOpen, setWorktreeRenameDialogOpen] = useState(false);
+  const [worktreeRenameBranchName, setWorktreeRenameBranchName] = useState("");
+  const [worktreeDeletePending, setWorktreeDeletePending] = useState(false);
   const baseServices = useBaseWorkspaceServices();
   const zcodeTaskService = services.zcodeTaskService;
   const taskItemsRef = useRef(taskItems);
@@ -223,6 +232,8 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     return taskItemsRef.current.find((task) => task.taskId === taskId) ?? null;
   }, []);
   const isHomeWorkspace = isHomeWorkspacePath(tab.workspacePath);
+  // git worktree 工作区（路径位于某仓库 `.worktrees/` 下）：用 worktree 图标与普通项目区分。
+  const isWorktreeWorkspace = tab.workspacePath.replace(/\\/g, "/").includes("/.worktrees/");
   const readOnlyReason =
     tab.availability === "unavailable-local-directory"
       ? intl.formatMessage({ id: "workspaceSidebar.unavailableLocalDirectory" })
@@ -319,13 +330,11 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
 
   const handleSelectTask = useCallback(
     (taskId: string) => {
-      // 合并列表里的 worktree 会话行：按任务自身的 workspacePath 导航——Shell 会打开/
-      // 激活对应 worktree 标签页并原地恢复会话（cwd 正确）；主树任务维持原行为。
-      const taskWorkspacePath =
-        taskItems.find((task) => task.taskId === taskId)?.workspacePath ?? tab.workspacePath;
-      onSelectTask(taskWorkspacePath, taskId, tab.workspaceIdentity);
+      // 性能优化：上层 handleSelectTask 已经会按 workspacePath 激活 tab。
+      // 这里重复 activate 会额外触发一轮 tab store 更新，把整列 workspace 行都带着重渲染一次。
+      onSelectTask(tab.workspacePath, taskId, tab.workspaceIdentity);
     },
-    [onSelectTask, tab.workspaceIdentity, tab.workspacePath, taskItems],
+    [onSelectTask, tab.workspaceIdentity, tab.workspacePath],
   );
 
   const handleActionMouseDown = useCallback((event: MouseEvent<HTMLElement>) => {
@@ -339,6 +348,193 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     // 当成“打开 workspace”重新 addTab，表现为删不掉。菜单层统一截断 click，保留菜单选择与键盘语义。
     event.stopPropagation();
   }, []);
+
+  /** worktree 工作区的分支名：listWorktrees 里与自身路径匹配的检出分支。 */
+  const resolveWorktreeBranchName = useCallback(async (): Promise<string | null> => {
+    const worktrees = await services.gitService.listWorktrees({
+      workspacePath: tab.workspacePath,
+    });
+    const entry = worktrees.worktrees.find(
+      (worktree) => worktree.path.replace(/\\/g, "/") === tab.workspacePath.replace(/\\/g, "/"),
+    );
+    return entry?.branchName ?? null;
+  }, [services, tab.workspacePath]);
+
+  const handleDeleteWorktreeProject = useCallback(async () => {
+    if (
+      hasRunningWorkspaceChat({
+        workspaceState: workspaceZCodeStateRef.current,
+        taskItems: taskItemsRef.current,
+      })
+    ) {
+      const confirmed = await confirmDialog({
+        title: intl.formatMessage({ id: "workspaceSidebar.removeRunningWorkspace.title" }),
+        description: intl.formatMessage({
+          id: "workspaceSidebar.removeRunningWorkspace.description",
+        }),
+        confirmLabel: intl.formatMessage({ id: "workspaceSidebar.removeRunningWorkspace.confirm" }),
+        cancelLabel: intl.formatMessage({ id: "common.cancel" }),
+        confirmVariant: "destructive",
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const confirmed = await confirmDialog({
+      title: intl.formatMessage({ id: "workspaceSidebar.worktreeDeleteConfirm.title" }),
+      description: intl.formatMessage(
+        { id: "workspaceSidebar.worktreeDeleteConfirm.description" },
+        { path: tab.workspacePath },
+      ),
+      confirmLabel: intl.formatMessage({ id: "workspaceSidebar.worktreeDeleteConfirm.confirm" }),
+      cancelLabel: intl.formatMessage({ id: "common.cancel" }),
+      confirmVariant: "destructive",
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    setWorktreeDeletePending(true);
+
+    try {
+      // 先取分支名（目录还在时 listWorktrees 才能定位），再删目录，最后删分支。
+      const branchName = await resolveWorktreeBranchName();
+      const removed = await services.gitService.removeWorktree({
+        workspacePath: tab.workspacePath,
+        worktreePath: tab.workspacePath,
+      });
+      if (!removed.ok) {
+        const issue = removed.issues[0];
+        logger.warn("[WorkspaceSidebarItem] 删除 worktree 被阻塞", {
+          workspacePath: tab.workspacePath,
+          issues: removed.issues.map((item) => item.code),
+        });
+        toast(
+          issue?.detail?.trim() ||
+            issue?.message.trim() ||
+            intl.formatMessage({ id: "git.worktree.error.dirty" }),
+        );
+        return;
+      }
+
+      // 副本分支是创建 worktree 时自动生成的，随 worktree 一起删除，避免污染分支列表。
+      if (branchName) {
+        const mainTreePath = tab.workspacePath.split("/.worktrees/")[0] ?? tab.workspacePath;
+        let branchResult = await services.gitService.deleteBranch({
+          workspacePath: mainTreePath,
+          branchName,
+        });
+        if (!branchResult.ok && branchResult.issues[0]?.code === "branch-not-fully-merged") {
+          const forceConfirmed = await confirmDialog({
+            title: intl.formatMessage({ id: "git.branchSwitcher.deleteConfirm.forceTitle" }),
+            description: intl.formatMessage(
+              { id: "git.branchSwitcher.deleteConfirm.forceDescription" },
+              { branchName },
+            ),
+            confirmLabel: intl.formatMessage({
+              id: "git.branchSwitcher.deleteConfirm.forceConfirm",
+            }),
+            cancelLabel: intl.formatMessage({ id: "common.cancel" }),
+            confirmVariant: "destructive",
+          });
+          if (forceConfirmed) {
+            branchResult = await services.gitService.deleteBranch({
+              workspacePath: mainTreePath,
+              branchName,
+              force: true,
+            });
+          }
+        }
+        if (!branchResult.ok) {
+          logger.warn("[WorkspaceSidebarItem] worktree 分支删除失败（目录已删除）", {
+            workspacePath: tab.workspacePath,
+            branchName,
+            issues: branchResult.issues.map((item) => item.code),
+          });
+        }
+      }
+
+      logger.info("[WorkspaceSidebarItem] 删除 worktree 项目成功", {
+        workspacePath: tab.workspacePath,
+      });
+      toast(intl.formatMessage({ id: "git.worktree.toast.deleted" }, { path: tab.workspacePath }));
+      closeTab(tab.id);
+      releaseWorkspaceRuntimeAfterProjectRemoval({
+        tab: {
+          workspacePath: tab.workspacePath,
+          workspaceIdentity: tab.workspaceIdentity,
+        },
+        zcodeTaskService,
+      });
+      invalidateTaskQueryCacheByScopes([
+        {
+          workspacePath: tab.workspacePath,
+          ...(tab.workspaceIdentity ? { workspaceIdentity: tab.workspaceIdentity } : {}),
+        },
+      ]);
+    } catch (error) {
+      logger.warn("[WorkspaceSidebarItem] 删除 worktree 项目失败", {
+        workspacePath: tab.workspacePath,
+        error,
+      });
+    } finally {
+      setWorktreeDeletePending(false);
+    }
+  }, [
+    closeTab,
+    confirmDialog,
+    intl,
+    releaseWorkspaceRuntimeAfterProjectRemoval,
+    resolveWorktreeBranchName,
+    services,
+    tab,
+    zcodeTaskService,
+  ]);
+
+  const handleSubmitWorktreeRename = useCallback(async () => {
+    const newBranchName = worktreeRenameBranchName.trim();
+    if (newBranchName.length === 0) {
+      return;
+    }
+
+    setWorktreeDeletePending(true);
+
+    try {
+      const result = await services.gitService.renameWorktree({
+        workspacePath: tab.workspacePath,
+        worktreePath: tab.workspacePath,
+        newBranchName,
+      });
+      if (!result.ok || !result.worktree) {
+        const issue = result.issues[0];
+        logger.warn("[WorkspaceSidebarItem] 重命名 worktree 被阻塞", {
+          workspacePath: tab.workspacePath,
+          newBranchName,
+          issues: result.issues.map((item) => item.code),
+        });
+        toast(
+          issue?.detail?.trim() ||
+            issue?.message.trim() ||
+            intl.formatMessage({ id: "git.worktree.error.notFound" }),
+        );
+        return;
+      }
+
+      const newPath = result.worktree.path;
+      toast(intl.formatMessage({ id: "git.worktree.toast.renamed" }, { path: newPath }));
+      setWorktreeRenameDialogOpen(false);
+      // 目录移动后迁移指向旧路径的标签页，避免点击落在不存在的目录上。
+      tabStoreApi.getState().migrateWorkspaceTabPath(tab.workspacePath, newPath);
+    } catch (error) {
+      logger.warn("[WorkspaceSidebarItem] 重命名 worktree 失败", {
+        workspacePath: tab.workspacePath,
+        error,
+      });
+    } finally {
+      setWorktreeDeletePending(false);
+    }
+  }, [services, tab, tabStoreApi, worktreeRenameBranchName]);
 
   const handleCreateThreadClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -725,6 +921,11 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     // workspace 行之前在 hover/展开时会把目录图标切成箭头，
     // 视觉上会多出一层“树形展开控件”的暗示；当前交互只需要保留项目图标本身，
     // 这样能减少噪音，也避免用户把它理解成独立的箭头开关。
+    // git worktree 工作区固定用 FolderGit2，与分支切换器的 worktree 行图标一致。
+    if (isWorktreeWorkspace) {
+      return <FolderGit2 className="h-4 w-4 text-foreground-subtle" />;
+    }
+
     if (isExpanded && !isDisconnectedRemoteWorkspace) {
       return isRemoteWorkspace ? (
         <Cloud className="h-4 w-4 text-foreground-subtle" />
@@ -936,22 +1137,59 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                             onOpenMcpSync={() => setRemoteMcpSyncOpen(true)}
                             onOpenPluginSync={() => setRemotePluginSyncOpen(true)}
                           />
-                          <DropdownMenuItem
-                            data-testid={testId(TID_WORKSPACE_CLOSE, tab.workspacePath)}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                            }}
-                            onSelect={(event) => {
-                              event.preventDefault();
-                              void handleRemoveWorkspace();
-                            }}
-                          >
-                            <XIcon className="h-3.5 w-3.5" />
-                            {intl.formatMessage({
-                              id: "workspaceSidebar.remove",
-                            })}
-                          </DropdownMenuItem>
+                          {isWorktreeWorkspace ? (
+                            <DropdownMenuItem
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                              }}
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                setWorktreeRenameDialogOpen(true);
+                              }}
+                            >
+                              <SquarePenIcon className="h-3.5 w-3.5" />
+                              {intl.formatMessage({
+                                id: "workspaceSidebar.worktreeRename",
+                              })}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {isWorktreeWorkspace ? (
+                            <DropdownMenuItem
+                              data-testid={testId(TID_WORKSPACE_CLOSE, tab.workspacePath)}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                              }}
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                void handleDeleteWorktreeProject();
+                              }}
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                              {intl.formatMessage({
+                                id: "workspaceSidebar.worktreeDelete",
+                              })}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {!isWorktreeWorkspace ? (
+                            <DropdownMenuItem
+                              data-testid={testId(TID_WORKSPACE_CLOSE, tab.workspacePath)}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                              }}
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                void handleRemoveWorkspace();
+                              }}
+                            >
+                              <XIcon className="h-3.5 w-3.5" />
+                              {intl.formatMessage({
+                                id: "workspaceSidebar.remove",
+                              })}
+                            </DropdownMenuItem>
+                          ) : null}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : null}
@@ -1143,6 +1381,25 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
           />
         </CollapsibleContent>
       </Collapsible>
+      {isWorktreeWorkspace ? (
+        <GitWorktreeRenameDialog
+          open={worktreeRenameDialogOpen}
+          branchName={worktreeRenameBranchName}
+          mutationPending={worktreeDeletePending}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setWorktreeRenameDialogOpen(false);
+            }
+          }}
+          onBranchNameChange={setWorktreeRenameBranchName}
+          onCancel={() => {
+            setWorktreeRenameDialogOpen(false);
+          }}
+          onSubmit={() => {
+            void handleSubmitWorktreeRename();
+          }}
+        />
+      ) : null}
       <RemoteSyncDialogs
         canSyncSkills={showRemoteSkillSyncAction}
         canSyncMcp={showRemoteSkillSyncAction}

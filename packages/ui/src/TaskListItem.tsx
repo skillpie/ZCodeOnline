@@ -4,14 +4,12 @@ import {
   Archive,
   Clock,
   CloudUpload,
-  FolderGit2,
   ListTree,
   LoaderIcon,
   Moon,
   Pin,
   Smartphone,
 } from "lucide-react";
-import { isWorktreeOwnedTaskPath, worktreeDirNameOf } from "@/lib/worktreeTaskScope.js";
 import { isCronTask, isOffPeakTask, type ZCodeTaskMeta } from "@zcode/shared";
 import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@zcode/shared";
 import { Badge } from "@/components/ui/badge.js";
@@ -385,9 +383,6 @@ export const MemoTaskItem = memo(function TaskListItem({
   });
   const taskTitleWithChanges = formatTaskTitleWithChanges(taskTitle, taskChangeSummary, intl);
   const workspaceLabel = getPathLeaf(task.workspacePath);
-  // worktree 会话：任务运行在主工作区 `.worktrees/*` 的 worktree 目录里（列表合并展示）。
-  const isWorktreeTask = isWorktreeOwnedTaskPath(task.workspacePath, workspacePath);
-  const worktreeDirName = isWorktreeTask ? worktreeDirNameOf(task.workspacePath) : null;
   const taskItemKey = `${buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity)}:${task.taskId}`;
   // 工作流运行行：标题下的第二条通道，
   // 与前置 16px 槽（error > unread > spinner）互不占位。只在会话带 run 摘要时挂组件。
@@ -715,24 +710,6 @@ export const MemoTaskItem = memo(function TaskListItem({
                     <Smartphone className="size-3.5" />
                   </span>
                 </ControlHintTooltip>
-              ) : null}
-              {worktreeDirName ? (
-                <span
-                  className="flex shrink-0 items-center"
-                  title={intl.formatMessage(
-                    { id: "taskList.worktreeTooltip" },
-                    { name: worktreeDirName },
-                  )}
-                >
-                  <FolderGit2
-                    data-worktree-task-icon="true"
-                    aria-label={intl.formatMessage(
-                      { id: "taskList.worktreeTooltip" },
-                      { name: worktreeDirName },
-                    )}
-                    className="size-3.5 shrink-0 text-foreground-subtle"
-                  />
-                </span>
               ) : null}
               <TaskTitleOverflowText
                 className="text-ui-base text-foreground"

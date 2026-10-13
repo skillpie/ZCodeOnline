@@ -1,22 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import type {
-  GitLocalBranchListResult,
-  GitWorktreeListResult,
-  GitWorktreeMutationIssue,
-  GitWorktreeMutationResult,
-  GitWorktreeRecord,
-} from "@zcode/shared";
+import { useCallback, useState } from "react";
 import { toast } from "@/components/ui/toast.js";
-import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
-import { mainWorkspacePathOf } from "@/lib/worktreeTaskScope.js";
-import { refreshWorktreeScopes } from "@/hooks/useWorkspaceWorktreeScopes.js";
+import { buildWorktreeProjectName } from "@/lib/worktreeProjectName.js";
 import { logger } from "@/logger.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
-import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import type { GitWorktreeMutationIssue } from "@zcode/shared";
 
 /** worktree 变更 issue code → toast 文案 id；与分支 issue 同码的沿用分支文案。 */
 function resolveGitWorktreeIssueMessageId(issue: GitWorktreeMutationIssue): string | null {
@@ -48,95 +39,22 @@ function resolveGitWorktreeIssueMessageId(issue: GitWorktreeMutationIssue): stri
 
 interface UseGitWorktreeActionsOptions {
   workspacePath: string;
-  /** 下拉弹层展开态；展开时与分支列表同一节奏重拉 worktree 投影。 */
-  open: boolean;
-  /** 本地分支投影（随弹层展开刷新），用于并行副本命名的撞车检测。 */
-  branchesResult: GitLocalBranchListResult | null;
-}
-
-/** 并行副本的固定分支名前缀：`feat-` + 时间戳。 */
-/**
- * 并行副本的默认分支名：`{源分支名}-{MMddHHmm}`；与现有分支撞车时降级为秒级
- * `{...}-{MMddHHmmss}`，仍撞车则追加序号。所有 worktree 都以并行副本语义创建
- * （git 不允许同一分支检出两个 worktree），名字携带来源分支，树形分组据此挂在来源分支下。
- */
-export function buildWorktreeBranchSuggestion(
-  sourceBranchName: string,
-  existingBranchNames: ReadonlySet<string>,
-  now: Date,
-): string {
-  const base = sourceBranchName.trim() || "worktree";
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const minuteName = `${base}-${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(
-    now.getHours(),
-  )}${pad(now.getMinutes())}`;
-  const secondName = `${minuteName}${pad(now.getSeconds())}`;
-  if (!existingBranchNames.has(minuteName)) {
-    return minuteName;
-  }
-  if (!existingBranchNames.has(secondName)) {
-    return secondName;
-  }
-
-  let index = 2;
-  while (existingBranchNames.has(`${secondName}-${index}`)) {
-    index += 1;
-  }
-  return `${secondName}-${index}`;
 }
 
 /**
- * 分支切换器的 worktree 动作：列表投影、检出为 worktree、打开、移除。
- * git 本身是唯一事实（worktree 元数据），这里只维护投影缓存，不持久化、不广播；
- * 列表随下拉展开重新拉取，终端里的增删会在下一次展开时回灌。
+ * 分支切换器 footer 的「新建 Worktree」：在主树 `.worktrees/` 下创建
+ * `{工程名}-{4位随机数}` 分支与目录，并作为独立项目打开。
+ * worktree 在模型上是独立项目，不属于分支维度；分支切换器只保留这一个创建入口。
  */
-export function useGitWorktreeActions({
-  workspacePath,
-  open,
-  branchesResult,
-}: UseGitWorktreeActionsOptions) {
+export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOptions) {
   const { gitService } = useServices();
   const { intl } = useZCodeIntl();
   const tabStoreApi = useTabStoreApi();
-  const requestConfirmation = useConfirmDialog();
-  const [worktreesResult, setWorktreesResult] = useState<GitWorktreeListResult | null>(null);
   const [worktreePending, setWorktreePending] = useState(false);
-  const [renameTarget, setRenameTarget] = useState<GitWorktreeRecord | null>(null);
-  const [renameBranchName, setRenameBranchName] = useState("");
-
-  const loadWorktrees = useCallback(async () => {
-    // worktree 分组是附属能力：读取失败静默降级为不展示，不与分支列表共用失败 toast。
-    try {
-      const nextResult = await gitService.listWorktrees({ workspacePath });
-      setWorktreesResult(nextResult);
-    } catch (error: unknown) {
-      const message = getErrorMessage(error);
-      logger.warn("[GitWorktreeActions] 读取 worktree 列表失败", {
-        workspacePath,
-        error: message,
-      });
-      setWorktreesResult(null);
-    }
-  }, [gitService, workspacePath]);
-
-  useEffect(() => {
-    setWorktreesResult(null);
-    setRenameTarget(null);
-    setRenameBranchName("");
-  }, [workspacePath]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    // 与分支列表同一节奏：每次展开都重新读取，git 是唯一事实，终端里的增删也能回灌。
-    void loadWorktrees();
-  }, [loadWorktrees, open]);
 
   const notifyWorktreeFailure = useCallback(
-    (result: GitWorktreeMutationResult) => {
-      const issue = result.issues[0];
+    (issues: GitWorktreeMutationIssue[], fallbackName: string) => {
+      const issue = issues[0];
       if (!issue) {
         toast(intl.formatMessage({ id: "git.branchSwitcher.error.unknown" }));
         return;
@@ -168,224 +86,38 @@ export function useGitWorktreeActions({
     [tabStoreApi],
   );
 
-  const submitAddWorktree = useCallback(
-    async (
-      params: { branchName?: string; newBranchName?: string; newBranchStartPoint?: string },
-      actionLabel: string,
-    ) => {
-      setWorktreePending(true);
-
-      try {
-        const result = await gitService.addWorktree({ workspacePath, ...params });
-        if (!result.ok || !result.worktree) {
-          logger.warn(`[GitWorktreeActions] ${actionLabel}被阻塞`, {
-            workspacePath,
-            ...params,
-            issues: result.issues.map((issue) => issue.code),
-          });
-          notifyWorktreeFailure(result);
-          return;
-        }
-
-        logger.info(`[GitWorktreeActions] ${actionLabel}成功`, {
-          workspacePath,
-          ...params,
-          worktreePath: result.worktree.path,
-        });
-        toast(
-          intl.formatMessage({ id: "git.worktree.toast.created" }, { path: result.worktree.path }),
-        );
-        refreshWorktreeScopes(mainWorkspacePathOf(workspacePath));
-        openWorktreeTab(result.worktree.path);
-      } catch (error: unknown) {
-        const message = getErrorMessage(error);
-        logger.warn(`[GitWorktreeActions] ${actionLabel}请求失败`, {
-          workspacePath,
-          ...params,
-          error: message,
-        });
-        toast(
-          intl.formatMessage({ id: "git.branchSwitcher.error.requestFailed" }, { error: message }),
-        );
-      } finally {
-        setWorktreePending(false);
-      }
-    },
-    [gitService, intl, notifyWorktreeFailure, openWorktreeTab, workspacePath],
-  );
-
-  const checkoutBranchAsWorktree = useCallback(
-    (branchName: string) => {
-      // 统一并行副本语义：git 不允许同一分支检出两个 worktree，因此每次点击都
-      // 基于 {branchName} 新建 {分支名}-{MMddHHmm} 分支并检出为独立 worktree，
-      // 既覆盖首次检出，也让重复点击 / 当前分支持续产出并行副本。
-      const existingBranchNames = new Set(
-        (branchesResult?.branches ?? []).map((branch) => branch.name),
-      );
-      const parallelBranchName = buildWorktreeBranchSuggestion(
-        branchName,
-        existingBranchNames,
-        new Date(),
-      );
-      return submitAddWorktree(
-        { newBranchName: parallelBranchName, newBranchStartPoint: branchName },
-        "新建并行副本",
-      );
-    },
-    [branchesResult, submitAddWorktree],
-  );
-
-  /** renderer 侧防护：目标 worktree 还有运行中任务时阻止破坏性操作，避免动到运行中会话的 cwd。 */
-  const hasRunningTaskIn = useCallback((worktreePath: string): boolean => {
-    // 任务缓存只覆盖 UI 已加载过的 workspace，属于尽力防护；Host 侧 git 校验仍会兜底。
-    return Object.values(useTaskQueryCacheStore.getState().taskMetaByEntityKey).some(
-      (item) => item.workspacePath === worktreePath && item.status === "running",
-    );
-  }, []);
-
-  const removeWorktree = useCallback(
-    async (worktree: GitWorktreeRecord) => {
-      if (worktree.isCurrentWorkspace) {
-        // 当前行不渲染移除入口，这里兜底防御：移除自己所在的 workspace 没有意义且危险。
-        return;
-      }
-
-      const confirmed = await requestConfirmation({
-        title: intl.formatMessage({ id: "git.worktree.removeConfirm.title" }),
-        description: intl.formatMessage(
-          { id: "git.worktree.removeConfirm.description" },
-          { path: worktree.path },
-        ),
-        confirmLabel: intl.formatMessage({ id: "git.worktree.removeConfirm.confirm" }),
-        confirmVariant: "destructive",
-      });
-      if (!confirmed) {
-        return;
-      }
-
-      if (hasRunningTaskIn(worktree.path)) {
-        toast(intl.formatMessage({ id: "git.worktree.toast.runningTaskBlocked" }));
-        return;
-      }
-
-      setWorktreePending(true);
-
-      try {
-        const result = await gitService.removeWorktree({
-          workspacePath,
-          worktreePath: worktree.path,
-        });
-        if (!result.ok) {
-          logger.warn("[GitWorktreeActions] 移除 worktree 被阻塞", {
-            workspacePath,
-            worktreePath: worktree.path,
-            issues: result.issues.map((issue) => issue.code),
-          });
-          notifyWorktreeFailure(result);
-          return;
-        }
-
-        logger.info("[GitWorktreeActions] 移除 worktree 成功", {
-          workspacePath,
-          worktreePath: worktree.path,
-        });
-        toast(intl.formatMessage({ id: "git.worktree.toast.removed" }, { path: worktree.path }));
-        refreshWorktreeScopes(mainWorkspacePathOf(workspacePath));
-        await loadWorktrees();
-      } catch (error: unknown) {
-        const message = getErrorMessage(error);
-        logger.warn("[GitWorktreeActions] 移除 worktree 请求失败", {
-          workspacePath,
-          worktreePath: worktree.path,
-          error: message,
-        });
-        toast(
-          intl.formatMessage({ id: "git.branchSwitcher.error.requestFailed" }, { error: message }),
-        );
-      } finally {
-        setWorktreePending(false);
-      }
-    },
-    [
-      gitService,
-      intl,
-      hasRunningTaskIn,
-      loadWorktrees,
-      notifyWorktreeFailure,
-      requestConfirmation,
-      workspacePath,
-    ],
-  );
-
-  const openRenameDialog = useCallback((worktree: GitWorktreeRecord) => {
-    // detached worktree 没有分支可改，行上已隐藏入口，这里兜底防御。
-    if (worktree.isCurrentWorkspace || !worktree.branchName) {
-      return;
-    }
-
-    setRenameTarget(worktree);
-    setRenameBranchName(worktree.branchName);
-  }, []);
-
-  const closeRenameDialog = useCallback(() => {
-    setRenameTarget(null);
-    setRenameBranchName("");
-  }, []);
-
-  const submitRename = useCallback(async () => {
-    const target = renameTarget;
-    if (!target) {
-      return;
-    }
-
-    const newBranchName = renameBranchName.trim();
-    if (newBranchName.length === 0) {
-      toast(intl.formatMessage({ id: "git.branchSwitcher.error.invalidBranchName" }));
-      return;
-    }
-    if (hasRunningTaskIn(target.path)) {
-      toast(intl.formatMessage({ id: "git.worktree.toast.runningTaskBlocked" }));
-      return;
-    }
-
+  const createWorktreeForProject = useCallback(async () => {
     setWorktreePending(true);
 
     try {
-      const result = await gitService.renameWorktree({
-        workspacePath,
-        worktreePath: target.path,
-        newBranchName,
-      });
+      // 命名对照已有分支撞名重摇；基于当前 HEAD 创建分支与目录。
+      const branches = await gitService.getLocalBranches({ workspacePath });
+      const existingBranchNames = new Set(branches.branches.map((branch) => branch.name));
+      const newBranchName = buildWorktreeProjectName(workspacePath, existingBranchNames);
+      const result = await gitService.addWorktree({ workspacePath, newBranchName });
       if (!result.ok || !result.worktree) {
-        logger.warn("[GitWorktreeActions] 重命名 worktree 被阻塞", {
+        logger.warn("[GitWorktreeActions] 创建 worktree 被阻塞", {
           workspacePath,
-          worktreePath: target.path,
           newBranchName,
           issues: result.issues.map((issue) => issue.code),
         });
-        notifyWorktreeFailure(result);
+        notifyWorktreeFailure(result.issues, newBranchName);
         return;
       }
 
-      const newPath = result.worktree.path;
-      logger.info("[GitWorktreeActions] 重命名 worktree 成功", {
+      logger.info("[GitWorktreeActions] 创建 worktree 成功", {
         workspacePath,
-        oldPath: target.path,
-        newPath,
         newBranchName,
+        worktreePath: result.worktree.path,
       });
-      toast(intl.formatMessage({ id: "git.worktree.toast.renamed" }, { path: newPath }));
-      refreshWorktreeScopes(mainWorkspacePathOf(workspacePath));
-      closeRenameDialog();
-      // 目录移动后，指向旧路径的已打开标签页要迁到新路径，否则点击会落在不存在的目录上。
-      tabStoreApi.getState().migrateWorkspaceTabPath(target.path, newPath);
-      await loadWorktrees();
+      toast(
+        intl.formatMessage({ id: "git.worktree.toast.created" }, { path: result.worktree.path }),
+      );
+      openWorktreeTab(result.worktree.path);
     } catch (error: unknown) {
       const message = getErrorMessage(error);
-      logger.warn("[GitWorktreeActions] 重命名 worktree 请求失败", {
+      logger.warn("[GitWorktreeActions] 创建 worktree 请求失败", {
         workspacePath,
-        worktreePath: target.path,
-        newBranchName,
         error: message,
       });
       toast(
@@ -394,30 +126,10 @@ export function useGitWorktreeActions({
     } finally {
       setWorktreePending(false);
     }
-  }, [
-    gitService,
-    hasRunningTaskIn,
-    intl,
-    loadWorktrees,
-    notifyWorktreeFailure,
-    renameBranchName,
-    renameTarget,
-    tabStoreApi,
-    workspacePath,
-  ]);
+  }, [gitService, intl, notifyWorktreeFailure, openWorktreeTab, workspacePath]);
 
   return {
-    worktreesResult,
     worktreePending,
-    loadWorktrees,
-    openWorktreeTab,
-    checkoutBranchAsWorktree,
-    removeWorktree,
-    renameTarget,
-    renameBranchName,
-    setRenameBranchName,
-    openRenameDialog,
-    closeRenameDialog,
-    submitRename,
+    createWorktreeForProject,
   };
 }

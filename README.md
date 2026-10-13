@@ -117,6 +117,7 @@ sudo xattr -rd com.apple.quarantine /Applications/ZCodeOnline.app
 
 ```bash
 ./deploy_web.sh    # 构建 Web 与 relay，rsync 上传并重启服务；--web / --relay / --ng / --check / --release 为细粒度入口
+./deploy_desktop.sh  # 构建并发布桌面安装包两端（mac-arm64 + win-x64，--mac / --win 单端）
 ```
 
 服务器与站点信息从 `apps/zcode-relay/deploy/deploy.env` 读取，该文件与 nginx conf、systemd unit 均含部署侧信息，**不入库**，需在部署机自行准备；缺失时脚本报错退出。
