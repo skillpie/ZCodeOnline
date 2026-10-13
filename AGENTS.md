@@ -43,6 +43,8 @@
 
 - 提交不触发自动部署：Web 隧道部署、CLI 发行包发布（`./deploy_cli.sh`，默认 darwin-arm64 + linux-x64，win32-x64 传参 `./deploy_cli.sh win32-x64` 指定）均需手动执行。
 - 部署脚本只上传静态 Web / relay / 发行包，不重建本机宿主 daemon；改动 `apps/zcode-cli` 或 `packages/zcode-server-cli` 后必须手动执行 `./install_cli.sh` 重建并重启，否则 zcode.skillpie.cn 的网页会话仍运行旧 Agent 产物。daemon 有运行中任务时先 `./install_cli.sh --no-restart` 只构建，任务结束后再 `./install_cli.sh --skip-build` 重启。
+- 桌面版安装包自包含 Agent 运行时：`packages/desktop/scripts/prepare-agent-node-bundle.mjs` 把 `zcode.cjs` 打进安装包 `bundled-agents/`，由 Electron 内置 Node（`ELECTRON_RUN_AS_NODE`）执行，`packages/desktop/src/main/desktopRuntimeEnv.ts` 的 `resolveBundledZCodeAgentBinaryPath` 打包态只从 `process.resourcesPath` 解析入口、不查 PATH——用户只装桌面版不需要 CLI，不要让桌面版依赖外部安装的 `zcode`。
+- CLI 发行包与桌面安装包受众互不覆盖：`./deploy_cli.sh` 的用户经 `catalog.json` 空闲自动更新，`./deploy_desktop.sh` 的用户需重新下载安装包；同一修复同时影响两端时必须各发一版，只发一端则另一端停留在旧版。
 - 测试使用 Node 内置 `node:test`（如 `pnpm --filter @zcode/relay test` 即 `tsx --test test/*.test.ts`），入口以目标包当前 `package.json` 和实际测试文件为准，不假定统一的单测或 E2E 命令。
 - `pnpm architecture:context` 的 `<module-id>` 取自 `architecture-policy.yaml`（rpc、shared、provider、provider-node、services、session、storage、client、server、zcode-server-cli、ui、web、desktop、formal-proof、zcode-cli、zcode-relay）。
 
