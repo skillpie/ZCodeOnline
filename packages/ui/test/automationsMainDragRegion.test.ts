@@ -20,10 +20,13 @@ describe("workspace main view drag region", () => {
     expect(frameSource).toContain("isDesktop ? (");
     expect(layoutSource).toContain("min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]");
 
-    // 5 处 = 手机远控 shell（WebRemoteControlMobileShell.chatContent：automations / plugin-store /
-    // skill-market 三处）+ 主布局（automations / plugin-store 两处）。两个 return 分支互斥，
-    // 各自只在对应 shell 渲染一次，不存在重复渲染。
-    expect(layoutSource.match(/<AutomationsMainBreadcrumbFrame/gu)?.length).toBe(5);
+    // 6 处 = 手机远控 shell（WebRemoteControlMobileShell.chatContent：automations / plugin-store /
+    // skill-market 三处）+ 主布局（automations / plugin-store / skill-market 三处）。两个 return
+    // 分支互斥，各自只在对应 shell 渲染一次，不存在重复渲染。主布局的 skill-market 分支在
+    // 合入官方 v3.15.1 时曾被覆盖丢失（桌面点击技能市场落入 chat 兜底），用 SkillMarketEmbeddedView
+    // 双出现断言防止再次合并回归。
+    expect(layoutSource.match(/<AutomationsMainBreadcrumbFrame/gu)?.length).toBe(6);
+    expect(layoutSource.match(/<SkillMarketEmbeddedView/gu)?.length).toBe(2);
     expect(frameSource.match(/data-testid="automations-main-drag-region"/gu)?.length).toBe(1);
   });
 

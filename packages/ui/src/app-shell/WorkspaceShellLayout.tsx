@@ -2537,6 +2537,31 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                               </div>
                             </AutomationsMainBreadcrumbFrame>
                           </main>
+                        ) : workspaceMainView === "skill-market" ? (
+                          // 修复原因：合入官方 v3.15.1 时桌面 shell 主区被官方布局整体替换，
+                          // 条件链只迁回了 automations/plugin-store，skill-market 分支只在手机远控壳
+                          // （WebRemoteControlMobileShell chatContent）保留。桌面端点击侧边栏
+                          // 「技能市场」后主视图已是 skill-market 却无匹配分支，落入兜底渲染会话页。
+                          // 按合并前（ff321ac7）桌面主区分支原样补回，与手机壳 2054 行分支同构。
+                          <main className="flex h-full min-h-0 flex-1 flex-col bg-background">
+                            <AutomationsMainBreadcrumbFrame
+                              isDesktop={Boolean(isDesktop)}
+                              sectionLabel={intl.formatMessage({
+                                id: "workspace.openSkillMarket",
+                              })}
+                              ariaLabel={intl.formatMessage({
+                                id: "settings.breadcrumbLabel",
+                              })}
+                            >
+                              <div className="min-h-0 flex-1">
+                                <SkillMarketEmbeddedView
+                                  isDesktop={Boolean(isDesktop)}
+                                  initialPath={skillMarketInitialPath ?? undefined}
+                                  loadSsoJwtToken={loadSkillMarketSsoJwt}
+                                />
+                              </div>
+                            </AutomationsMainBreadcrumbFrame>
+                          </main>
                         ) : (
                           <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                             {renderChatFindDialog()}

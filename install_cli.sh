@@ -11,6 +11,8 @@
 #   ./install_cli.sh --skip-build    # 跳过构建，直接重启（复用现有 dist 产物）
 #   ./install_cli.sh --no-restart    # 只构建不重启（daemon 有运行中任务时先构建，稍后自行重启）
 #
+# Windows 用 .\install_cli.ps1（-SkipBuild / -NoRestart 与此处同义）。
+#
 # 注意：重启会中断 daemon 上运行中的网页会话任务（含 zcode status 里 runningTaskCount 未完成的）。
 set -euo pipefail
 
