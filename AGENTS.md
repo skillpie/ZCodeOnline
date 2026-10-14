@@ -29,7 +29,6 @@
 | 桌面开发                                 | `pnpm dev:desktop`（`ZCODE_ENV=production`）                                                             |
 | 桌面测试环境                             | `pnpm dev:desktop:test`（`ZCODE_ENV=test`）；隔离数据目录用 `mise run dev`                               |
 | Web 开发                                 | `pnpm dev:web`                                                                                           |
-| 提交前检查                               | `pnpm verify:pre-push`（Lint 与架构检查）                                                                |
 | 架构检查                                 | `pnpm architecture:check --changed`                                                                      |
 | 模块阅读包                               | `pnpm architecture:context <module-id>`                                                                  |
 | 未使用依赖与导出                         | `pnpm knip`                                                                                              |

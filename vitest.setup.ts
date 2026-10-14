@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 process.env.GIT_CONFIG_COUNT = "2";
 
-// Bugfix: 从 ZCode 桌面应用内启动的 shell（应用内 Agent / pre-push 钩子）会继承一批
+// Bugfix: 从 ZCode 桌面应用内启动的 shell（应用内 Agent 等子进程）会继承一批
 // ZCODE_* 运行时变量（ZCODE_ENV、ZCODE_DYNAMIC_WORKFLOW_MODE、ZCODE_CUA_BUNDLED_HELPER_APP_PATH、
 // ZCODE_SERVER_ROOT 等）。它们命中源码里的显式 override / 已安装应用探测分支，使单测结果
 // 随启动环境漂移（例如 ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn 让远端裁决用例拿到 override）。
@@ -38,7 +38,7 @@ process.env.ZCODE_TEST_CLIENT_CONFIG_PLATFORM =
   process.env.ZCODE_TEST_CLIENT_CONFIG_PLATFORM ?? "darwin-aarch64";
 // Bugfix: 桌面端会把自定义 dataBaseDir 通过环境变量注入到 host/git 子进程。
 // 很多服务层单测只通过覆盖 HOME 来隔离临时目录；若保留该变量，路径解析会继续优先命中真实 dataBaseDir，
-// 从而导致“终端本地跑通过，但应用内 git push 触发 pre-push 时大量用例误写到同一目录”。
+// 从而导致“终端本地跑通过，但应用内启动的测试进程把用例误写到同一目录”。
 // 这里在测试入口统一清理，保证单测默认只受各自显式设置的 HOME / setDataBaseDir 控制。
 delete process.env.ZCODE_DATA_BASE_DIR;
 

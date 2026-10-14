@@ -11,7 +11,7 @@
 - `mise run dev` 使用独立的数据根目录，避免与正式安装包共享账号凭据、设置和任务索引。
 - 常用 Web、桌面生产环境、远控调试和校验命令都有稳定别名。
 - 不改变现有 pnpm scripts 的真实执行逻辑，mise 只做版本和入口编排。
-- mise 是可选开发入口，Git pre-push 不要求安装 mise；推送使用当前环境中的 Node / pnpm，详见 [Pre-push Hook](testing/pre-push-hook.md#开发环境与版本管理工具)。
+- mise 是可选开发入口；不安装 mise 时直接使用当前环境中的 Node / pnpm 即可。
 
 ## 约定
 
