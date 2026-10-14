@@ -79,7 +79,6 @@ interface GitActionMenuProps {
   commitMessageConversationContext?: GitCommitMessageConversationContext | null;
   onRefreshGit: () => void;
   className?: string;
-  triggerIconOnly?: boolean;
   triggerLayout?: "header" | "status-row";
   /**
    * 2026-10-14 统一「同步」按钮后的拉取兜底：主动作不可用（仓库干净且同步中/已落后）
@@ -885,7 +884,6 @@ export function GitActionMenu({
   commitMessageConversationContext = null,
   onRefreshGit,
   className,
-  triggerIconOnly = false,
   triggerLayout = "header",
   pullFallback,
 }: GitActionMenuProps) {
@@ -1397,29 +1395,21 @@ export function GitActionMenu({
 
   return (
     <>
-      {/* 触发器文案与图标固定为「同步 / RefreshCw」（2026-10-14 按用户决策统一提交/推送与拉取入口），
+      {/* 触发器图标固定为 RefreshCw（2026-10-14 按用户决策统一提交/推送与拉取入口），
           点击与 ⇧⌘S 共用 resolveGitSyncDispatch 裁决；hover 提示展示当前生效的 gitSync 键位，
-          未分配键位时不渲染角标。 */}
+          未分配键位时不渲染角标。头部形态与「审查」等入口统一为无边框 ghost 纯图标
+          （2026-10-14 按用户决策去掉文案，中文标签保留在 aria-label 与 tooltip）；
+          status-row 形态保留文案供窄行布局复用。 */}
       <ControlHintTooltip
         title={intl.formatMessage({ id: "git.actionMenu.sync" })}
         shortcut={syncShortcutLabel}
         side="bottom"
       >
         <div
-          onClick={
-            isStatusRowTrigger && !triggerIconOnly ? handleStatusRowContainerClick : undefined
-          }
+          onClick={isStatusRowTrigger ? handleStatusRowContainerClick : undefined}
           className={cn(
-            // macOS/Windows 小窗口下，顶部 Git 主按钮的中文文案会和分支入口、窗口控制区挤在同一行。
-            // 在 header 容器变窄时只隐藏主按钮文字，保留图标入口，避免丢失核心 Git 操作。
-            // transition-all 会把 scrollbar-color 等非合成属性也启动动画，
-            // 进而触发整页 UpdateLayoutTree；Git 入口只需要颜色反馈，不动画尺寸和滚动条属性。
-            // 与「拉取」等头部按钮统一为无边框 ghost 形态：不带 border/bg-input，
-            // 悬停反馈由内层 ghost Button 自身提供。
-            "flex h-7 items-center overflow-hidden rounded-lg @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:justify-center",
-            triggerIconOnly && "w-7 justify-center",
-            isStatusRowTrigger &&
-              "h-8 w-full justify-start rounded-lg border-0 bg-transparent hover:border-transparent hover:bg-hover @max-[560px]/workspace-header:w-full @max-[560px]/workspace-header:justify-start",
+            "flex items-center overflow-hidden rounded-lg",
+            isStatusRowTrigger && "h-8 w-full justify-start",
             className,
           )}
         >
@@ -1427,16 +1417,14 @@ export function GitActionMenu({
             data-testid={TID_GIT_ACTION_TRIGGER}
             type="button"
             variant="ghost"
-            size="default"
+            size={isStatusRowTrigger ? "default" : "icon-md"}
             disabled={syncDisabled}
             aria-label={intl.formatMessage({ id: "git.actionMenu.sync" })}
             className={cn(
-              "h-7 rounded-lg border-0 gap-1 px-1.5 @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0 @max-[560px]/workspace-header:[&>span]:hidden",
-              triggerIconOnly && "w-7 px-0 [&>span]:hidden",
               isStatusRowTrigger &&
-                "h-8 min-w-0 w-full justify-start gap-2 px-2 text-left text-ui-base hover:bg-transparent hover:text-foreground @max-[560px]/workspace-header:w-auto @max-[560px]/workspace-header:[&>span]:inline",
+                "h-8 min-w-0 w-full justify-start gap-2 px-2 text-left text-ui-base hover:bg-transparent hover:text-foreground",
             )}
-            onClick={isStatusRowTrigger && !triggerIconOnly ? undefined : () => handleSyncAction()}
+            onClick={isStatusRowTrigger ? undefined : () => handleSyncAction()}
           >
             {/* 动作进行中（弹窗 mutation/生成或拉取兜底）直接替换左侧图标为 spinner，
                 避免在紧凑头部里额外追加 loading 图标把按钮挤宽。 */}
@@ -1445,10 +1433,11 @@ export function GitActionMenu({
             ) : (
               <RefreshCwIcon className="size-4 text-foreground" />
             )}
-            {/* 头部形态与分支切换器同档（text-ui-sm）；状态面板行保持 text-ui-base。 */}
-            <span className={cn(isStatusRowTrigger ? "min-w-0 truncate" : "text-ui-sm")}>
-              {intl.formatMessage({ id: "git.actionMenu.sync" })}
-            </span>
+            {isStatusRowTrigger ? (
+              <span className="min-w-0 truncate">
+                {intl.formatMessage({ id: "git.actionMenu.sync" })}
+              </span>
+            ) : null}
           </Button>
         </div>
       </ControlHintTooltip>
