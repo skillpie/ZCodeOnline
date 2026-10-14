@@ -1426,13 +1426,16 @@ export function GitActionMenu({
             )}
             onClick={isStatusRowTrigger ? undefined : () => handleSyncAction()}
           >
-            {/* 动作进行中（弹窗 mutation/生成或拉取兜底）直接替换左侧图标为 spinner，
-                避免在紧凑头部里额外追加 loading 图标把按钮挤宽。 */}
-            {triggerPending || pullPending ? (
-              <LoaderIcon className="size-4 animate-spin text-foreground-subtle" />
-            ) : (
-              <RefreshCwIcon className="size-4 text-foreground" />
-            )}
+            {/* 动作进行中（弹窗 mutation/生成或拉取兜底）不替换图标（2026-10-14 按用户
+                决策去掉菊花替换方案），改为让触发器图标自身旋转表达 loading，既不挤宽
+                按钮也不丢失动作语义。 */}
+            <RefreshCwIcon
+              aria-hidden
+              className={cn(
+                "size-4 text-foreground",
+                (triggerPending || pullPending) && "animate-spin",
+              )}
+            />
             {isStatusRowTrigger ? (
               <span className="min-w-0 truncate">
                 {intl.formatMessage({ id: "git.actionMenu.sync" })}
