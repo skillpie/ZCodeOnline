@@ -23,7 +23,6 @@ import {
   LoaderCircle,
   RefreshCwIcon,
   MessageCirclePlus,
-  SquarePenIcon,
   TrashIcon,
   XIcon,
 } from "lucide-react";
@@ -54,11 +53,9 @@ import {
   buildWorkspaceSessionKey,
   formatRemoteWorkspaceDisplayLabel,
 } from "@/lib/remoteWorkspaceHistory.js";
-import { GitWorktreeRenameDialog } from "@/git-branch-switcher/GitWorktreeRenameDialog.js";
 import { TaskList } from "@/TaskList.js";
 import { selectWorkspaceZCodeState, useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
-import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 import { ReconnectingRemoteWorkspaceLogTooltip } from "@/WorkspaceSidebar/ReconnectingRemoteWorkspaceLogTooltip.js";
 import { cn } from "@/components/lib/utils.js";
@@ -215,10 +212,6 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     tab.remoteTarget,
   );
   const confirmDialog = useConfirmDialog();
-  const tabStoreApi = useTabStoreApi();
-  const [worktreeRenameDialogOpen, setWorktreeRenameDialogOpen] = useState(false);
-  const [worktreeRenameBranchName, setWorktreeRenameBranchName] = useState("");
-  const [worktreeDeletePending, setWorktreeDeletePending] = useState(false);
   const baseServices = useBaseWorkspaceServices();
   const zcodeTaskService = services.zcodeTaskService;
   const taskItemsRef = useRef(taskItems);
@@ -407,8 +400,6 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       return;
     }
 
-    setWorktreeDeletePending(true);
-
     try {
       // 先取分支名（目录还在时 listWorktrees 才能定位），再删目录，最后删分支。
       const branchName = await resolveWorktreeBranchName();
@@ -514,8 +505,6 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
         error,
       });
       toast(intl.formatMessage({ id: "git.branchSwitcher.error.requestFailed" }));
-    } finally {
-      setWorktreeDeletePending(false);
     }
   }, [
     closeTab,
@@ -528,50 +517,6 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     worktreeMainTreePath,
     zcodeTaskService,
   ]);
-
-  const handleSubmitWorktreeRename = useCallback(async () => {
-    const newBranchName = worktreeRenameBranchName.trim();
-    if (newBranchName.length === 0) {
-      return;
-    }
-
-    setWorktreeDeletePending(true);
-
-    try {
-      const result = await services.gitService.renameWorktree({
-        workspacePath: tab.workspacePath,
-        worktreePath: tab.workspacePath,
-        newBranchName,
-      });
-      if (!result.ok || !result.worktree) {
-        const issue = result.issues[0];
-        logger.warn("[WorkspaceSidebarItem] 重命名 worktree 被阻塞", {
-          workspacePath: tab.workspacePath,
-          newBranchName,
-          issues: result.issues.map((item) => item.code),
-        });
-        toast(
-          issue?.detail?.trim() ||
-            issue?.message.trim() ||
-            intl.formatMessage({ id: "git.worktree.error.notFound" }),
-        );
-        return;
-      }
-
-      const newPath = result.worktree.path;
-      toast(intl.formatMessage({ id: "git.worktree.toast.renamed" }, { path: newPath }));
-      setWorktreeRenameDialogOpen(false);
-      // 目录移动后迁移指向旧路径的标签页，避免点击落在不存在的目录上。
-      tabStoreApi.getState().migrateWorkspaceTabPath(tab.workspacePath, newPath);
-    } catch (error) {
-      logger.warn("[WorkspaceSidebarItem] 重命名 worktree 失败", {
-        workspacePath: tab.workspacePath,
-        error,
-      });
-    } finally {
-      setWorktreeDeletePending(false);
-    }
-  }, [services, tab, tabStoreApi, worktreeRenameBranchName]);
 
   const handleCreateThreadClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -1176,23 +1121,6 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                           />
                           {isWorktreeWorkspace ? (
                             <DropdownMenuItem
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                              }}
-                              onSelect={(event) => {
-                                event.preventDefault();
-                                setWorktreeRenameDialogOpen(true);
-                              }}
-                            >
-                              <SquarePenIcon className="h-3.5 w-3.5" />
-                              {intl.formatMessage({
-                                id: "workspaceSidebar.worktreeRename",
-                              })}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {isWorktreeWorkspace ? (
-                            <DropdownMenuItem
                               data-testid={testId(TID_WORKSPACE_CLOSE, tab.workspacePath)}
                               onMouseDown={(event) => {
                                 event.preventDefault();
@@ -1205,7 +1133,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                             >
                               <TrashIcon className="h-3.5 w-3.5" />
                               {intl.formatMessage({
-                                id: "workspaceSidebar.worktreeDelete",
+                                id: "workspaceSidebar.remove",
                               })}
                             </DropdownMenuItem>
                           ) : null}
@@ -1418,25 +1346,6 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
           />
         </CollapsibleContent>
       </Collapsible>
-      {isWorktreeWorkspace ? (
-        <GitWorktreeRenameDialog
-          open={worktreeRenameDialogOpen}
-          branchName={worktreeRenameBranchName}
-          mutationPending={worktreeDeletePending}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              setWorktreeRenameDialogOpen(false);
-            }
-          }}
-          onBranchNameChange={setWorktreeRenameBranchName}
-          onCancel={() => {
-            setWorktreeRenameDialogOpen(false);
-          }}
-          onSubmit={() => {
-            void handleSubmitWorktreeRename();
-          }}
-        />
-      ) : null}
       <RemoteSyncDialogs
         canSyncSkills={showRemoteSkillSyncAction}
         canSyncMcp={showRemoteSkillSyncAction}

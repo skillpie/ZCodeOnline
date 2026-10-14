@@ -1458,13 +1458,6 @@ const zhCN: Record<string, string> = {
     "展开或收起分支 {branchName} 的 {count} 个 worktree",
   "git.worktree.current": "当前",
   "git.worktree.renameAction.ariaLabel": "重命名 worktree {name}",
-  "git.worktree.renameDialog.title": "重命名 Worktree",
-  "git.worktree.renameDialog.description":
-    "将把分支重命名，并把目录移动到主树 .worktrees/ 下的对应目录；提交历史与未提交更改不受影响。",
-  "git.worktree.renameDialog.nameLabel": "新分支名",
-  "git.worktree.renameDialog.placeholder": "例如 feature/my-experiment",
-  "git.worktree.renameDialog.confirm": "重命名",
-  "git.worktree.toast.renamed": "Worktree 已重命名：{path}",
   "git.worktree.error.detached": "该 worktree 处于 detached HEAD 状态，无法重命名。",
   "git.worktree.removeAction.ariaLabel": "移除 worktree {name}",
   "git.worktree.removeConfirm.title": "移除 Worktree",
@@ -1809,8 +1802,6 @@ const zhCN: Record<string, string> = {
   "workspaceSidebar.searchArchivedTasksPlaceholder": "搜索归档任务...",
   "workspaceSidebar.closeTaskSearch": "关闭任务搜索",
   "workspaceSidebar.remove": "移除",
-  "workspaceSidebar.worktreeRename": "重命名",
-  "workspaceSidebar.worktreeDelete": "删除",
   "workspaceSidebar.worktreeDeleteConfirm.title": "删除 Worktree",
   "workspaceSidebar.worktreeDeleteConfirm.description":
     "将删除目录 {path}、对应的 worktree 分支（如有未合并提交会再次确认），并从项目列表移除该工作区。",

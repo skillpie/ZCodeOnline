@@ -1580,13 +1580,6 @@ const enUS: Record<string, string> = {
     "Expand or collapse {count} worktrees of branch {branchName}",
   "git.worktree.current": "Current",
   "git.worktree.renameAction.ariaLabel": "Rename worktree {name}",
-  "git.worktree.renameDialog.title": "Rename worktree",
-  "git.worktree.renameDialog.description":
-    "Renames the branch and moves the directory under the main tree's .worktrees/. Commits and uncommitted changes are untouched.",
-  "git.worktree.renameDialog.nameLabel": "New branch name",
-  "git.worktree.renameDialog.placeholder": "e.g. feature/my-experiment",
-  "git.worktree.renameDialog.confirm": "Rename",
-  "git.worktree.toast.renamed": "Worktree renamed: {path}",
   "git.worktree.error.detached": "This worktree is in detached HEAD state and cannot be renamed.",
   "git.worktree.removeAction.ariaLabel": "Remove worktree {name}",
   "git.worktree.removeConfirm.title": "Remove worktree",
@@ -1943,8 +1936,6 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.searchArchivedTasksPlaceholder": "Search archived tasks...",
   "workspaceSidebar.closeTaskSearch": "Close task search",
   "workspaceSidebar.remove": "Remove",
-  "workspaceSidebar.worktreeRename": "Rename",
-  "workspaceSidebar.worktreeDelete": "Delete",
   "workspaceSidebar.worktreeDeleteConfirm.title": "Delete worktree",
   "workspaceSidebar.worktreeDeleteConfirm.description":
     "This deletes the directory {path} and its worktree branch (unmerged commits will need a second confirmation), and removes the workspace from the project list.",
