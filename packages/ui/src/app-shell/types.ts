@@ -277,6 +277,8 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   handleOpenTerminalTab: () => void;
   handleToggleGit: () => void;
   handleOpenGitReview: (sourceId?: GitChangeSourceId) => void;
+  /** 头部审查按钮专用：按 未暂存→已暂存→已提交 优先级切到第一个非空 Tab（2026-10-14 用户决策）。 */
+  handleOpenGitReviewByPriority: () => void;
   handleToggleSidePane: () => void;
   handleOpenBrowserUrl: (url: string) => void;
   handleOpenCodeViewer: (source: CodeViewerSource) => void;

@@ -8,6 +8,7 @@ import { getVisibleTaskMetas, useZCodeSessionStore } from "@/store/zcodeSessionS
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
 import { useAppPanels } from "@/hooks/useAppPanels.js";
 import { useGitAutoRefresh } from "@/hooks/useGitAutoRefresh.js";
+import { resolveGitReviewSourceIdByPriority } from "@/hooks/gitReviewSourcePriority.js";
 import { useGitRepository } from "@/hooks/useGitRepository.js";
 import { useAppKeyboard } from "@/hooks/useAppKeyboard.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
@@ -527,6 +528,18 @@ export function App({
     },
     [handleOpenGit, workspaceReadOnlyReason],
   );
+  // 2026-10-14 用户决策：头部审查按钮按 暂存→提交→推送 优先级切到第一个非空 Tab。
+  // 与 handleOpenGitReview 分开定义：状态面板「更改」行的无参调用保持既有选中语义不变。
+  const handleOpenGitReviewByPriority = useCallback(() => {
+    if (workspaceReadOnlyReason) {
+      return;
+    }
+    const preferredSourceId = resolveGitReviewSourceIdByPriority(gitState.datasets);
+    if (preferredSourceId) {
+      setGitSelectedSourceId(preferredSourceId);
+    }
+    handleOpenGit();
+  }, [gitState.datasets, handleOpenGit, workspaceReadOnlyReason]);
   const isSidePaneOpen = !isSidePaneCollapsed;
   useEffect(() => {
     const handleCloseActiveContextRequest = (event: Event) => {
@@ -1348,6 +1361,7 @@ export function App({
           handleOpenCommandCenter={handleOpenQuickPick}
           handleRefreshGit={handleRefreshGit}
           handleOpenGitReview={handleOpenGitReview}
+          handleOpenGitReviewByPriority={handleOpenGitReviewByPriority}
           handleBrowserUrlChange={handleBrowserUrlChange}
           handleBrowserPageMetadataChange={handleBrowserPageMetadataChange}
           handleToggleSidebar={handleToggleSidebar}

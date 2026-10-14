@@ -10,9 +10,9 @@
  * IGitService）归本组件持有，经 pullFallback 注入 GitActionMenu 转发；组件不持有
  * Git 状态：summary / 变更摘要全部由 shell 投影下发，变更由 onRefreshGit 驱动刷新。
  * 「更改」入口已于 2026-09-26 按用户决策移除（Git 审阅改由其他入口进入）；2026-10-14
- * 按用户决策以纯图标「审查」按钮形态回归（FileDiffIcon，无 +N -N 统计），展示条件与
- * 同步按钮的主动作同源（isDirty || canPushGitBranch），点击经壳层注入的
- * onOpenGitReview 打开右侧面板审查 tab。
+ * 按用户决策以「审查」按钮形态回归（FileDiffIcon + 文案，无 +N -N 统计；头部变窄时
+ * 按容器查询收起文字），展示条件与同步按钮的主动作同源（isDirty || canPushGitBranch），
+ * 点击经壳层注入的 onOpenGitReview 打开右侧面板审查 tab。
  * 键盘快捷键：单命令 gitSync（默认 ⇧⌘S）的监听归 GitActionMenu 所有，可用性与
  * 「同步」按钮展示规则同源，键位可在设置-键盘快捷键改绑。
  */
@@ -118,9 +118,10 @@ export function WorkspaceHeaderGitTools({
           onTrigger: handlePull,
         }}
       />
-      {/* 2026-10-14 按用户决策新增审查快捷入口（2026-09-26 移除的「更改」入口以纯图标形态
-          回归，不再携带 +N -N 统计）：工作区有未暂存/已暂存/已提交未推送内容时展示，
-          点击打开右侧面板审查 tab；条件与同步按钮的主动作同源（isDirty || canPushGitBranch）。 */}
+      {/* 2026-10-14 按用户决策新增审查快捷入口（2026-09-26 移除的「更改」入口回归，
+          不再携带 +N -N 统计）：工作区有未暂存/已暂存/已提交未推送内容时展示，
+          点击打开右侧面板审查 tab；条件与同步按钮的主动作同源（isDirty || canPushGitBranch）。
+          图标 + 文案形态与「同步」按钮同档；头部变窄时按同一容器查询收起文字只留图标。 */}
       {reviewVisible ? (
         <ControlHintTooltip title={reviewLabel} side="bottom">
           <Button
@@ -129,10 +130,13 @@ export function WorkspaceHeaderGitTools({
             size="default"
             disabled={!onOpenGitReview}
             aria-label={reviewLabel}
-            className="h-7 w-7 justify-center rounded-lg px-0 [app-region:no-drag]"
+            className="h-7 w-fit justify-center gap-1 rounded-lg px-1.5 [app-region:no-drag] @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0 @max-[560px]/workspace-header:[&>span]:hidden"
             onClick={() => onOpenGitReview?.()}
           >
             <FileDiffIcon className="size-4 shrink-0 text-foreground" aria-hidden />
+            <span className="min-w-0 whitespace-nowrap text-ui-sm text-foreground">
+              {reviewLabel}
+            </span>
           </Button>
         </ControlHintTooltip>
       ) : null}

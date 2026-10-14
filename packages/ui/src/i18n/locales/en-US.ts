@@ -1328,9 +1328,9 @@ const enUS: Record<string, string> = {
   "git.head.detached": "Detached HEAD",
   "git.summary.aheadBehind": "Ahead {ahead} / Behind {behind}",
   "git.summary.scopeWorkspace": "Current workspace subtree",
-  "git.source.unstaged": "Unstaged",
-  "git.source.staged": "Staged",
-  "git.source.branch": "Committed",
+  "git.source.unstaged": "Stage",
+  "git.source.staged": "Commit",
+  "git.source.branch": "Push",
   "git.source.workspaceScope": "Only the current workspace scope is shown by default.",
   "git.section.staged": "Staged",
   "git.section.unstaged": "Unstaged",
@@ -1372,7 +1372,7 @@ const enUS: Record<string, string> = {
   "sidePane.time.hoursAgo": "{count}h ago",
   "sidePane.time.daysAgo": "{count}d ago",
   "git.action.refresh": "Refresh",
-  "git.review.aiReview": "AI review",
+  "git.review.aiReview": "Review",
   "git.review.aiReview.prompt.unstaged":
     "Please review the current workspace's unstaged code changes (including untracked files). Point out issues with correctness, security, and maintainability, and give concrete improvement suggestions.",
   "git.review.aiReview.prompt.staged":

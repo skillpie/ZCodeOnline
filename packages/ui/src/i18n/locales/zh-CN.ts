@@ -1235,9 +1235,9 @@ const zhCN: Record<string, string> = {
   "git.head.detached": "游离 HEAD",
   "git.summary.aheadBehind": "领先 {ahead} / 落后 {behind}",
   "git.summary.scopeWorkspace": "当前 workspace 子树",
-  "git.source.unstaged": "未暂存",
-  "git.source.staged": "已暂存",
-  "git.source.branch": "已提交",
+  "git.source.unstaged": "暂存",
+  "git.source.staged": "提交",
+  "git.source.branch": "推送",
   "git.source.workspaceScope": "默认只展示当前 workspace 作用域内的改动。",
   "git.section.staged": "已暂存",
   "git.section.unstaged": "未暂存",
@@ -1276,7 +1276,7 @@ const zhCN: Record<string, string> = {
   "sidePane.time.hoursAgo": "{count} 小时前",
   "sidePane.time.daysAgo": "{count} 天前",
   "git.action.refresh": "刷新",
-  "git.review.aiReview": "AI 评审",
+  "git.review.aiReview": "评审",
   "git.review.aiReview.prompt.unstaged":
     "请评审当前工作区未暂存的代码变更（含未跟踪文件），从正确性、安全性、可维护性角度指出问题，并给出具体的改进建议。",
   "git.review.aiReview.prompt.staged":
