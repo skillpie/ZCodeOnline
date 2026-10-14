@@ -27,7 +27,7 @@
     "./request-security": "./src/request-security-edition/index.ts"
   },
   "scripts": {
-    "test": "tsx --test test/*.test.ts",
+    "test": "cd ../.. && vitest run packages/shared/test",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix"
   },

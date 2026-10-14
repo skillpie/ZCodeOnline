@@ -1434,8 +1434,7 @@ const enUS: Record<string, string> = {
   "git.commit.placeholder":
     "Enter a commit message (UI placeholder only, no real git commit will run yet)",
   "git.actionMenu.trigger.ariaLabel": "Commit or push",
-  "git.actionMenu.push": "Push",
-  "git.pull.action": "Pull",
+  "git.actionMenu.sync": "Sync",
   "git.blame.notCommitted": "Not committed yet",
   "git.pull.toast.success": "Remote updates pulled",
   "git.pull.toast.error": "Pull failed: {error}",
@@ -1453,6 +1452,7 @@ const enUS: Record<string, string> = {
   "git.actionMenu.commitDialog.includeUnstaged": "Include unstaged changes",
   "git.actionMenu.commitDialog.action.commit": "Commit",
   "git.actionMenu.commitDialog.action.commitAndPush": "Commit and push",
+  "git.actionMenu.commitDialog.action.push": "Push",
   "git.actionMenu.commitDialog.confirm": "Commit",
   "git.actionMenu.commitDialog.identityMissing":
     "No Git commit identity is available yet. Configure user.name and user.email first.",
@@ -1566,6 +1566,12 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.deleteConfirm.forceDescription":
     "Branch {branchName} contains unmerged commits. After a force delete they become unreachable from this branch.",
   "git.branchSwitcher.deleteConfirm.forceConfirm": "Force delete",
+  "git.branchSwitcher.deleteConfirm.worktreeOccupiedTitle": "Remove worktree and delete branch",
+  "git.branchSwitcher.deleteConfirm.worktreeOccupiedDescription":
+    "Branch {branchName} is checked out in worktree {path}. The worktree directory will be removed before deleting the branch; uncommitted changes in it will be lost.",
+  "git.branchSwitcher.deleteConfirm.worktreeOccupiedConfirm": "Remove and delete",
+  "git.branchSwitcher.error.deleteBlockedByMainWorktree":
+    "Branch {branchName} is checked out in the main working tree. Switch the main working tree to another branch before deleting it.",
   "git.branchSwitcher.toast.deleteSuccess": "Branch deleted: {branchName}",
   "git.branchSwitcher.error.branchIsCurrent": "The currently checked out branch cannot be deleted.",
   "git.branchSwitcher.error.branchNotFullyMerged":
@@ -2584,8 +2590,7 @@ const enUS: Record<string, string> = {
   "settings.shortcuts.command.openModelMenu": "Open Model Menu",
   "settings.shortcuts.command.cycleSessionMode": "Cycle Session Mode",
   "settings.shortcuts.command.cycleThoughtLevel": "Cycle Thought Level",
-  "settings.shortcuts.command.gitCommit": "Commit (Git)",
-  "settings.shortcuts.command.gitPull": "Pull (Git)",
+  "settings.shortcuts.command.gitSync": "Sync (Git)",
   "settings.shortcuts.command.findInTask": "Find in Task",
   "settings.shortcuts.command.openCommandCenter": "Open Command Center",
   "settings.shortcuts.command.openSettings": "Open Settings",

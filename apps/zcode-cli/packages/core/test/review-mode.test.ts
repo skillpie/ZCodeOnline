@@ -1,7 +1,7 @@
 // 评审模式（composer 评审开关）注入的单元覆盖。
 // 核心不变量：reviewMode 开启 ⇒ 用户输入后追加 review_mode 系统提醒（裸文本，
 // 投影层负责包 <system-reminder> 标签）；关闭 ⇒ 行为与原来完全一致。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { buildRuntimeUserEntriesFromTurn } from "../src/runtime/helpers/conversation.js";
 import {

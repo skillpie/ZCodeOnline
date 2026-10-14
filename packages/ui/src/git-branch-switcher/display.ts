@@ -4,6 +4,8 @@ import type {
   GitBranchMutationResult,
   GitFileChange,
   GitHeadRefType,
+  GitLocalBranch,
+  GitWorktreeMutationIssue,
 } from "@zcode/shared";
 
 interface GitDirtySectionLike {
@@ -110,6 +112,73 @@ export function resolveGitBranchIssueMessageId(
     default:
       return null;
   }
+}
+
+/** worktree 变更 issue code → toast 文案 id；与分支 issue 同码的沿用分支文案。 */
+export function resolveGitWorktreeIssueMessageId(issue: GitWorktreeMutationIssue): string | null {
+  switch (issue.code) {
+    case "invalid-branch-name":
+      return "git.branchSwitcher.error.invalidBranchName";
+    case "branch-already-exists":
+      return "git.branchSwitcher.error.branchAlreadyExists";
+    case "branch-not-found":
+      return "git.branchSwitcher.error.targetBranchNotFound";
+    case "branch-in-other-worktree":
+      return "git.branchSwitcher.error.branchInOtherWorktree";
+    case "operation-in-progress":
+      return "git.branchSwitcher.error.operationInProgress";
+    case "invalid-worktree-name":
+      return "git.worktree.error.invalidName";
+    case "worktree-name-conflict":
+      return "git.worktree.error.nameConflict";
+    case "worktree-dirty":
+      return "git.worktree.error.dirty";
+    case "worktree-not-found":
+      return "git.worktree.error.notFound";
+    case "worktree-detached":
+      return "git.worktree.error.detached";
+    default:
+      return null;
+  }
+}
+
+/** worktree 路径归一：仅统一分隔符；同一 git 输出的盘符大小写一致，不做大小写折叠。 */
+function normalizeWorktreePathForCompare(path: string): string {
+  return path.trim().replace(/\\/g, "/");
+}
+
+export type GitBranchDeleteWorktreeOccupancy =
+  | { kind: "not-occupied" }
+  | { kind: "main-worktree" }
+  | { kind: "linked-worktree"; worktreePath: string };
+
+/**
+ * 解析「删除分支被 branch-in-other-worktree 阻塞」时的占用来源。
+ * getLocalBranches 的 worktreePath 指向检出该分支的工作树（主树或 linked worktree），
+ * mainTreeRoot 用于区分二者：只有 linked worktree 可以走“移除后重删”的恢复路径。
+ */
+export function resolveGitBranchDeleteWorktreeOccupancy(options: {
+  branchName: string;
+  mainTreeRoot: string | null;
+  branches: ReadonlyArray<Pick<GitLocalBranch, "name" | "worktreePath">>;
+}): GitBranchDeleteWorktreeOccupancy {
+  const branchName = options.branchName.trim();
+  const worktreePath = options.branches.find((branch) => branch.name === branchName)?.worktreePath;
+  const normalizedWorktreePath = worktreePath?.trim() ?? "";
+  if (normalizedWorktreePath.length === 0) {
+    return { kind: "not-occupied" };
+  }
+
+  const mainTreeRoot = options.mainTreeRoot?.trim() ?? "";
+  if (
+    mainTreeRoot.length > 0 &&
+    normalizeWorktreePathForCompare(mainTreeRoot) ===
+      normalizeWorktreePathForCompare(normalizedWorktreePath)
+  ) {
+    return { kind: "main-worktree" };
+  }
+
+  return { kind: "linked-worktree", worktreePath: normalizedWorktreePath };
 }
 
 export function resolveGitBranchSuccessMessageId(

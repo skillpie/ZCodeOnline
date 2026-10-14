@@ -1,6 +1,6 @@
 // specs/subagent-result-digest.md §4 验收场景的单元覆盖。
 // 核心不变量：摘要失败 ⇒ 输出不含 digest，行为与无摘要完全一致；content 恒为全文。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import type {
   AgentCompletedOutput,

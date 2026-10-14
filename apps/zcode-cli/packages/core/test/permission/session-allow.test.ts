@@ -1,7 +1,7 @@
 // DBExecute「本会话内始终允许」的判定验收：alwaysAsk 工具的会话免确认链路
 // （弹窗 allowSession 选项 → grantSessionPermission → checkAlwaysAsk 命中
 // sessionRules 放行），以及阻断分支仍然压过会话规则的边界。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import {
   PermissionService,

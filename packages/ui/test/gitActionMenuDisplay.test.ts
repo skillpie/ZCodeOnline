@@ -7,6 +7,7 @@ import {
   canUseGitActionMenu,
   resolveDefaultCommitDialogActionId,
   resolveGitActionMenuPrimaryAction,
+  resolveGitSyncDispatch,
   type GitCommitDialogActionId,
 } from "../src/git-action-menu/display.js";
 
@@ -194,5 +195,22 @@ describe("canRenderGitActionMenu", () => {
         pushEnabled: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("resolveGitSyncDispatch（2026-10-14 统一「同步」按钮）", () => {
+  it("本地有待提交/待推送时主动作优先，即使拉取兜底也可用", () => {
+    expect(resolveGitSyncDispatch({ primaryActionId: "commit", pullAvailable: true })).toBe(
+      "commit",
+    );
+    expect(resolveGitSyncDispatch({ primaryActionId: "push", pullAvailable: true })).toBe("push");
+  });
+
+  it("主动作不可用（干净且同步中/已落后）且拉取可用时改派快进拉取", () => {
+    expect(resolveGitSyncDispatch({ primaryActionId: null, pullAvailable: true })).toBe("pull");
+  });
+
+  it("两侧都不可用（detached HEAD 且无上游）时返回 null，按钮置灰", () => {
+    expect(resolveGitSyncDispatch({ primaryActionId: null, pullAvailable: false })).toBeNull();
   });
 });

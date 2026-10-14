@@ -149,9 +149,10 @@ describe("GitActionMenu commit message flow", () => {
     const source = readGitActionMenuSource();
 
     // 辅助下拉菜单移除后触发器收敛为单一主按钮：data-testid 走 TID_GIT_ACTION_TRIGGER，
-    // 点击直接经 handlePrimaryAction 裁决进提交/推送弹窗，不再有任何 DropdownMenu 间接层。
+    // 点击直接经 handleSyncAction 裁决（2026-10-14 起统一「同步」按钮：主动作进提交/推送
+    // 弹窗、干净仓库改派拉取兜底），不再有任何 DropdownMenu 间接层。
     expect(source).toContain("data-testid={TID_GIT_ACTION_TRIGGER}");
-    expect(source).toContain("() => handlePrimaryAction()");
+    expect(source).toContain("() => handleSyncAction()");
     expect(source).not.toContain("DropdownMenu");
     expect(source).not.toContain("git.actionMenu.menuTitle");
     expect(source).not.toContain("git.actionMenu.createBranch");

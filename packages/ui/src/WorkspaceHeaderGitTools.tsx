@@ -1,24 +1,23 @@
 /**
- * 工作区头部 Git 工具组（提交 / 拉取 / 分支选择），渲染在右上角分享按钮左侧。
+ * 工作区头部 Git 工具组（分支选择 / 同步），渲染在右上角分享按钮左侧。
  *
  * 自 v4 状态面板的「Git 工具」分区迁入（specs/workspace-header-git-tools.md）。展示规则：
- * 分支切换器是常驻入口；「提交」在脏仓库或已提交未推送时展示；工作区干净且无待推送时
- * 同一位置换成「拉取」，避免一排不可用的置灰按钮占着头部。「更改」入口已于 2026-09-26
- * 按用户决策移除（Git 审阅改由其他入口进入），props 链上的 review sourceId / onOpenGitReview
- * 一并清理。组件不持有 Git 状态：summary / 变更摘要全部由 shell 投影下发，
- * 变更由 onRefreshGit 驱动刷新；提交与分支弹层的交互状态归 GitActionMenu /
- * GitBranchSwitcher 内部所有，这里只提供触发器。拉取是本组件唯一的即时动作：
- * 走 IGitService.pull（快进式），结果用 toast 反馈，不弹确认框。分支弹窗另提供
- * 对话动作（2026-09-27）：非当前分支「合并」、当前分支「拉取」，均把提示词发进
- * 当前工作区主对话由 AI 执行（弹窗内拉取可由 AI 处理分叉，与头部快进式直拉
- * 语义不同、互不替代），发送能力由主 pane SessionPane 注册，
- * 链路见 specs/workspace-header-git-tools.md。
- * 键盘快捷键（2026-09-29）：gitPull（默认 ⇧⌘U）由本组件的
- * useShortcutCommandListener 消费，gitCommit（默认 ⇧⌘P）归 GitActionMenu；
- * 两者可用性与按钮展示规则同源，键位可在设置-键盘快捷键改绑。
+ * 分支切换器是常驻入口；「同步」按钮（2026-10-14 按用户决策由互斥占槽的「提交/推送」
+ * 「拉取」两入口合并）在 Git 仓库内常驻，点击与 ⇧⌘S 共用 resolveGitSyncDispatch 裁决——
+ * 脏仓库或已提交未推送时打开提交/推送弹窗（弹层交互状态归 GitActionMenu），干净且有
+ * 上游时改派快进拉取（--ff-only，结果用 toast 反馈、不弹确认框；分叉即报错，与分支
+ * 弹窗内由 AI 处理分叉的「拉取」语义不同、互不替代）。拉取链路（pending 门控、toast、
+ * IGitService）归本组件持有，经 pullFallback 注入 GitActionMenu 转发；组件不持有
+ * Git 状态：summary / 变更摘要全部由 shell 投影下发，变更由 onRefreshGit 驱动刷新。
+ * 「更改」入口已于 2026-09-26 按用户决策移除（Git 审阅改由其他入口进入）；2026-10-14
+ * 按用户决策以纯图标「审查」按钮形态回归（FileDiffIcon，无 +N -N 统计），展示条件与
+ * 同步按钮的主动作同源（isDirty || canPushGitBranch），点击经壳层注入的
+ * onOpenGitReview 打开右侧面板审查 tab。
+ * 键盘快捷键：单命令 gitSync（默认 ⇧⌘S）的监听归 GitActionMenu 所有，可用性与
+ * 「同步」按钮展示规则同源，键位可在设置-键盘快捷键改绑。
  */
 import { useCallback, useState } from "react";
-import { CloudDownloadIcon, LoaderIcon } from "lucide-react";
+import { FileDiffIcon } from "lucide-react";
 import type { GitRepositorySummary, ZCodeTaskChangeSummary } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
@@ -29,8 +28,6 @@ import { canPushGitBranch } from "@/git-action-menu/display.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
-import { useShortcutCommandListener } from "@/shortcuts/useShortcutCommandListener.js";
-import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 
 interface WorkspaceHeaderGitToolsProps {
   workspaceAbsPath: string;
@@ -39,6 +36,11 @@ interface WorkspaceHeaderGitToolsProps {
   gitDirtyFileCount: number;
   activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
   onRefreshGit: () => void;
+  /**
+   * 打开右侧面板审查 tab（GitPane），由壳层注入 handleOpenGitReview；
+   * 缺省时按钮置灰（沿用 2026-09-26 移除前「更改」入口的失败语义）。
+   */
+  onOpenGitReview?: () => void;
 }
 
 export function WorkspaceHeaderGitTools({
@@ -48,6 +50,7 @@ export function WorkspaceHeaderGitTools({
   gitDirtyFileCount,
   activeTaskChangeSummary = null,
   onRefreshGit,
+  onOpenGitReview,
 }: WorkspaceHeaderGitToolsProps) {
   const { intl } = useZCodeIntl();
   const { gitService } = useServices();
@@ -72,27 +75,22 @@ export function WorkspaceHeaderGitTools({
         setPullPending(false);
       });
   }, [gitService, intl, onRefreshGit, pullPending, workspaceAbsPath]);
-  // ⌘⇧U（gitPull）与「拉取」按钮同路径（复用 handlePull 的 pending 门控与 toast 反馈）；
-  // 可用性跟按钮展示规则同源：槽位被提交入口占用、无上游或非 Git 仓库时不响应。
-  // 「提交」监听（gitCommit）归 GitActionMenu 所有——提交/拉取互斥占同一槽位，
-  // 两个监听不会同时处于可用态。
-  const showCommitEntry = gitSummary.isDirty || canPushGitBranch(gitSummary);
-  // pull 需要上游分支；detached HEAD / 无上游时 canPushGitBranch 分支已接管该槽位。
-  const showPullEntry = !showCommitEntry && Boolean(gitSummary.trackingBranchName);
-  useShortcutCommandListener("gitPull", showPullEntry, handlePull);
-  const pullShortcutLabel = useShortcutCommandLabel("gitPull");
-  // 钩子必须全部位于上面的条件返回之前；gitSummary 就绪与否只影响 JSX，不影响钩子数量。
+  // 2026-10-14 统一「同步」按钮后的裁决输入：本地有待提交/待推送时主动作（提交/推送
+  // 弹窗）优先；仓库干净且有上游时改派快进拉取。detached HEAD / 无上游时拉取不可用，
+  // 无上游的新分支已由 canPushGitBranch 划入主动作（首次推送建上游）。
+  const primaryActionAvailable = gitSummary.isDirty || canPushGitBranch(gitSummary);
+  const pullAvailable = !primaryActionAvailable && Boolean(gitSummary.trackingBranchName);
+  // 钩子必须全部位于条件返回之前；gitSummary 就绪与否只影响 JSX，不影响钩子数量。
   if (!gitSummary.isGitAvailable || !gitSummary.isRepository) {
     return null;
   }
-  // 「提交」在脏仓库或已提交未推送（canPushGitBranch：领先上游 / 尚无上游的新分支）
-  // 时展示——后者点击时 GitActionMenu 的主动作裁决会直接进推送弹窗。不在（干净且同步中）
-  // 时，同一位置换成「拉取」，提供快速同步远程的入口；分支切换器保持常驻。
-  const pullLabel = intl.formatMessage({ id: "git.pull.action" });
+  // 审查入口的展示条件：未暂存/已暂存（isDirty）或已提交未推送（canPushGitBranch）。
+  const reviewVisible = primaryActionAvailable;
+  const reviewLabel = intl.formatMessage({ id: "sidePane.review" });
 
   return (
     <div className="flex shrink-0 items-center gap-0.5">
-      {/* 2026-09-26 按用户决策调整排序：分支切换器在最左（常驻项），「提交/拉取」移到其右。 */}
+      {/* 2026-09-26 按用户决策调整排序：分支切换器在最左（常驻项），Git 操作入口在其右。 */}
       <GitBranchSwitcher
         workspacePath={workspaceAbsPath}
         workspaceIdentity={workspaceIdentity}
@@ -108,36 +106,33 @@ export function WorkspaceHeaderGitTools({
         branchListClassName="max-h-56"
         showFooterActions
       />
-      {showCommitEntry ? (
-        <GitActionMenu
-          workspacePath={workspaceAbsPath}
-          workspaceIdentity={workspaceIdentity}
-          gitSummary={gitSummary}
-          activeTaskChangeSummary={activeTaskChangeSummary}
-          onRefreshGit={onRefreshGit}
-        />
-      ) : null}
-      {showPullEntry ? (
-        <ControlHintTooltip title={pullLabel} shortcut={pullShortcutLabel} side="bottom">
+      <GitActionMenu
+        workspacePath={workspaceAbsPath}
+        workspaceIdentity={workspaceIdentity}
+        gitSummary={gitSummary}
+        activeTaskChangeSummary={activeTaskChangeSummary}
+        onRefreshGit={onRefreshGit}
+        pullFallback={{
+          available: pullAvailable,
+          pending: pullPending,
+          onTrigger: handlePull,
+        }}
+      />
+      {/* 2026-10-14 按用户决策新增审查快捷入口（2026-09-26 移除的「更改」入口以纯图标形态
+          回归，不再携带 +N -N 统计）：工作区有未暂存/已暂存/已提交未推送内容时展示，
+          点击打开右侧面板审查 tab；条件与同步按钮的主动作同源（isDirty || canPushGitBranch）。 */}
+      {reviewVisible ? (
+        <ControlHintTooltip title={reviewLabel} side="bottom">
           <Button
             type="button"
             variant="ghost"
             size="default"
-            disabled={pullPending}
-            data-testid="workspace-header-git-pull"
-            aria-label={pullLabel}
-            className="h-7 w-fit gap-1 rounded-lg px-1.5 [app-region:no-drag]"
-            onClick={handlePull}
+            disabled={!onOpenGitReview}
+            aria-label={reviewLabel}
+            className="h-7 w-7 justify-center rounded-lg px-0 [app-region:no-drag]"
+            onClick={() => onOpenGitReview?.()}
           >
-            {/* 2026-10-13 按用户决策：拉取与推送入口统一云朵形态（CloudDownload / CloudUpload）。 */}
-            {pullPending ? (
-              <LoaderIcon className="size-4 shrink-0 animate-spin text-foreground" aria-hidden />
-            ) : (
-              <CloudDownloadIcon className="size-4 shrink-0 text-foreground" aria-hidden />
-            )}
-            <span className="min-w-0 whitespace-nowrap text-ui-sm text-foreground">
-              {pullLabel}
-            </span>
+            <FileDiffIcon className="size-4 shrink-0 text-foreground" aria-hidden />
           </Button>
         </ControlHintTooltip>
       ) : null}

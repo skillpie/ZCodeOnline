@@ -44,6 +44,7 @@ import {
   DEFAULT_COMMIT_DIALOG_ACTION_ID,
   resolveDefaultCommitDialogActionId,
   resolveGitActionMenuPrimaryAction,
+  resolveGitSyncDispatch,
   type GitCommitDialogActionId,
 } from "@/git-action-menu/display.js";
 import {
@@ -66,6 +67,7 @@ import {
   GitBranchIcon,
   GitCommitIcon,
   LoaderIcon,
+  RefreshCwIcon,
   SparklesIcon,
 } from "lucide-react";
 
@@ -79,6 +81,12 @@ interface GitActionMenuProps {
   className?: string;
   triggerIconOnly?: boolean;
   triggerLayout?: "header" | "status-row";
+  /**
+   * 2026-10-14 统一「同步」按钮后的拉取兜底：主动作不可用（仓库干净且同步中/已落后）
+   * 时，触发器与 ⇧⌘S 改派快进拉取（--ff-only）。拉取的 pending 门控、toast 与
+   * gitService 归宿主（WorkspaceHeaderGitTools）所有，这里只做裁决与转发。
+   */
+  pullFallback?: { available: boolean; pending: boolean; onTrigger: () => void };
 }
 
 type GitCommitPreviewFile = ReturnType<typeof buildGitBranchCommitPreviewFiles>[number];
@@ -266,7 +274,7 @@ function GitCommitDialog({
         id: "push" as const,
         icon: <CloudUploadIcon className="size-4" />,
         label: intl.formatMessage({
-          id: "git.actionMenu.push",
+          id: "git.actionMenu.commitDialog.action.push",
         }),
         disabled: pushOnlyDisabled,
         loading: false,
@@ -879,6 +887,7 @@ export function GitActionMenu({
   className,
   triggerIconOnly = false,
   triggerLayout = "header",
+  pullFallback,
 }: GitActionMenuProps) {
   const { gitService } = useServices();
   const { intl, locale } = useZCodeIntl();
@@ -917,9 +926,15 @@ export function GitActionMenu({
     [actionAvailable, commitEnabled, pushEnabled],
   );
   const primaryActionDisabled = !actionAvailable || triggerPending || primaryActionId === null;
+  // 统一「同步」按钮（2026-10-14）：主动作（提交/推送）优先，仓库干净时回落拉取兜底；
+  // 拉取进行中整体置灰换 spinner，避免拉取中途再改派提交/推送或重复触发拉取。
+  const pullPending = pullFallback?.pending === true;
+  const pullAvailable = pullFallback?.available === true && !pullPending;
+  const syncDispatch = resolveGitSyncDispatch({ primaryActionId, pullAvailable });
+  const syncDisabled = !actionAvailable || triggerPending || pullPending || syncDispatch === null;
   const isStatusRowTrigger = triggerLayout === "status-row";
   // tooltip 角标展示当前生效键位；未分配（显式空覆盖）时 label 为空串、角标不渲染。
-  const commitShortcutLabel = useShortcutCommandLabel("gitCommit");
+  const syncShortcutLabel = useShortcutCommandLabel("gitSync");
 
   useEffect(() => {
     // 顶部 commit 入口改成“始终展示、异常时置灰”后，
@@ -1353,26 +1368,41 @@ export function GitActionMenu({
     [openCommitDialog, openPushDialog, primaryActionId, primaryActionDisabled],
   );
 
-  // ⌘⇧P（gitCommit）与提交按钮共用主动作裁决（已提交未推送时进推送弹窗），
-  // telemetry 按真实触发渠道上报。弹窗已打开时置为不可用：快捷键的职责是
-  // 打开弹窗，重复按键不应静默重置用户正在编辑的提交消息。
+  // ⇧⌘S（gitSync）与「同步」按钮共用同一裁决（resolveGitSyncDispatch）：本地有
+  // 待提交/待推送时打开提交或推送弹窗（telemetry 按真实触发渠道上报），干净仓库
+  // 改派拉取兜底（telemetry 不变，拉取链路归宿主）。弹窗已打开时置为不可用：
+  // 快捷键的职责是打开弹窗，重复按键不应静默重置用户正在编辑的提交消息。
+  const handleSyncAction = useCallback(
+    (trigger: UserActionTrigger = "button") => {
+      if (syncDisabled) {
+        return;
+      }
+      if (syncDispatch === "pull") {
+        pullFallback?.onTrigger();
+        return;
+      }
+      handlePrimaryAction(trigger);
+    },
+    [handlePrimaryAction, pullFallback, syncDisabled, syncDispatch],
+  );
   useShortcutCommandListener(
-    "gitCommit",
-    !primaryActionDisabled && !commitDialogOpen && !pushDialogOpen,
-    useCallback(() => handlePrimaryAction("shortcut"), [handlePrimaryAction]),
+    "gitSync",
+    !syncDisabled && !commitDialogOpen && !pushDialogOpen,
+    useCallback(() => handleSyncAction("shortcut"), [handleSyncAction]),
   );
 
   const handleStatusRowContainerClick = useCallback(() => {
-    handlePrimaryAction();
-  }, [handlePrimaryAction]);
+    handleSyncAction();
+  }, [handleSyncAction]);
 
   return (
     <>
-      {/* 触发器文案与图标固定为「推送」（2026-10-13 按用户决策），hover 提示展示当前生效的
-          gitCommit 键位（与头部「拉取」按钮的 tooltip 角标同一形态）；未分配键位时不渲染角标。 */}
+      {/* 触发器文案与图标固定为「同步 / RefreshCw」（2026-10-14 按用户决策统一提交/推送与拉取入口），
+          点击与 ⇧⌘S 共用 resolveGitSyncDispatch 裁决；hover 提示展示当前生效的 gitSync 键位，
+          未分配键位时不渲染角标。 */}
       <ControlHintTooltip
-        title={intl.formatMessage({ id: "git.actionMenu.push" })}
-        shortcut={commitShortcutLabel}
+        title={intl.formatMessage({ id: "git.actionMenu.sync" })}
+        shortcut={syncShortcutLabel}
         side="bottom"
       >
         <div
@@ -1398,29 +1428,26 @@ export function GitActionMenu({
             type="button"
             variant="ghost"
             size="default"
-            disabled={primaryActionDisabled}
-            aria-label={intl.formatMessage({ id: "git.actionMenu.push" })}
+            disabled={syncDisabled}
+            aria-label={intl.formatMessage({ id: "git.actionMenu.sync" })}
             className={cn(
               "h-7 rounded-lg border-0 gap-1 px-1.5 @max-[560px]/workspace-header:w-7 @max-[560px]/workspace-header:px-0 @max-[560px]/workspace-header:[&>span]:hidden",
               triggerIconOnly && "w-7 px-0 [&>span]:hidden",
               isStatusRowTrigger &&
                 "h-8 min-w-0 w-full justify-start gap-2 px-2 text-left text-ui-base hover:bg-transparent hover:text-foreground @max-[560px]/workspace-header:w-auto @max-[560px]/workspace-header:[&>span]:inline",
             )}
-            onClick={
-              isStatusRowTrigger && !triggerIconOnly ? undefined : () => handlePrimaryAction()
-            }
+            onClick={isStatusRowTrigger && !triggerIconOnly ? undefined : () => handleSyncAction()}
           >
-            {/* 主按钮进入 pending 时直接替换左侧动作图标，避免在紧凑头部里额外追加 loading 图标把按钮挤宽。
-                2026-10-13 按用户决策：图标与文案统一为「推送 / CloudUpload」，不再随主动作切换；
-                主动作裁决只决定点击后打开提交弹窗还是推送弹窗。 */}
-            {triggerPending ? (
+            {/* 动作进行中（弹窗 mutation/生成或拉取兜底）直接替换左侧图标为 spinner，
+                避免在紧凑头部里额外追加 loading 图标把按钮挤宽。 */}
+            {triggerPending || pullPending ? (
               <LoaderIcon className="size-4 animate-spin text-foreground-subtle" />
             ) : (
-              <CloudUploadIcon className="size-4 text-foreground" />
+              <RefreshCwIcon className="size-4 text-foreground" />
             )}
-            {/* 头部形态与「拉取」/分支切换器同档（text-ui-sm）；状态面板行保持 text-ui-base。 */}
+            {/* 头部形态与分支切换器同档（text-ui-sm）；状态面板行保持 text-ui-base。 */}
             <span className={cn(isStatusRowTrigger ? "min-w-0 truncate" : "text-ui-sm")}>
-              {intl.formatMessage({ id: "git.actionMenu.push" })}
+              {intl.formatMessage({ id: "git.actionMenu.sync" })}
             </span>
           </Button>
         </div>

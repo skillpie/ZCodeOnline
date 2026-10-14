@@ -66,6 +66,21 @@ export function canPushGitBranch(
   return !summary.trackingBranchName || summary.ahead > 0;
 }
 
+export type GitSyncDispatchId = GitActionMenuPrimaryActionId | "pull";
+
+export function resolveGitSyncDispatch(options: {
+  primaryActionId: GitActionMenuPrimaryActionId | null;
+  pullAvailable: boolean;
+}): GitSyncDispatchId | null {
+  // 2026-10-14 统一「同步」按钮后的单一裁决口：本地有待提交/待推送时主动作优先——
+  // 有未提交更改时自动拉取不安全，快进拉取（--ff-only）只在干净仓库可用；否则回落拉取。
+  if (options.primaryActionId !== null) {
+    return options.primaryActionId;
+  }
+
+  return options.pullAvailable ? "pull" : null;
+}
+
 export function canConfirmGitPush(options: {
   hasError: boolean;
   mutationPending: boolean;

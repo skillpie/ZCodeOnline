@@ -46,7 +46,7 @@
     "postinstall": "node scripts/node-pty-rebuild.mjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "test": "tsx --test test/*.test.ts"
+    "test": "cd ../.. && vitest run packages/desktop/test"
   },
   "dependencies": {
     "@arms/rum-electron": "^0.0.3",

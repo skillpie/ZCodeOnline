@@ -38,6 +38,7 @@ export function WorkspaceHeaderActionSection({
   gitDirtyFileCount = 0,
   activeTaskChangeSummary,
   onRefreshGit,
+  onOpenGitReview,
 }: WorkspaceHeaderActionSectionProps) {
   return (
     <div
@@ -57,7 +58,7 @@ export function WorkspaceHeaderActionSection({
           onSelectedEditorChange={onSelectedEditorChange}
         />
       ) : null}
-      {/* Git 常驻工具组（更改 / 分支 / 提交）位于分享按钮左侧；远程移动端头部过窄，
+      {/* Git 常驻工具组（同步 / 审查 / 分支）位于分享按钮左侧；远程移动端头部过窄，
           与终端入口同规则整体隐藏，非 Git 工作区由组件自身返回 null。 */}
       {!simplifyForNarrowRemote && gitSummary && onRefreshGit ? (
         <WorkspaceHeaderGitTools
@@ -67,6 +68,7 @@ export function WorkspaceHeaderActionSection({
           gitDirtyFileCount={gitDirtyFileCount}
           activeTaskChangeSummary={activeTaskChangeSummary}
           onRefreshGit={onRefreshGit}
+          onOpenGitReview={onOpenGitReview}
         />
       ) : null}
       {/* 分享发布接口依赖登录态；未登录时隐藏入口，避免用户打开后只能得到鉴权失败。 */}

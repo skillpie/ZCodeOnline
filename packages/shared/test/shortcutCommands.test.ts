@@ -97,9 +97,12 @@ describe("shortcutCommands 命令表", () => {
     expect(getDefaultShortcutBindings("openSettings")).toEqual(["CmdOrCtrl+,"]);
   });
 
-  it("openCommandCenter 只保留 ⌘K；⇧⌘P 已让位给 gitCommit（2026-09-29 用户决策）", () => {
+  it("openCommandCenter 只保留 ⌘K（⇧⌘P 已于 2026-09-29 让位空出）", () => {
     expect(getDefaultShortcutBindings("openCommandCenter")).toEqual(["CmdOrCtrl+k"]);
-    expect(getDefaultShortcutBindings("gitCommit")).toEqual(["CmdOrCtrl+Shift+p"]);
+  });
+
+  it("gitSync 单命令统一头部 Git 快捷键 ⇧⌘S（2026-10-14 用户决策）", () => {
+    expect(getDefaultShortcutBindings("gitSync")).toEqual(["CmdOrCtrl+Shift+s"]);
   });
 
   it("未知命令返回空数组", () => {

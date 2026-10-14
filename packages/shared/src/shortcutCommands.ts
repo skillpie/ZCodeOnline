@@ -28,8 +28,7 @@ export type ShortcutCommandId =
   | "openModelMenu"
   | "cycleSessionMode"
   | "cycleThoughtLevel"
-  | "gitCommit"
-  | "gitPull"
+  | "gitSync"
   | "newTask"
   | "openWorkspace"
   | "closeActiveContext"
@@ -62,7 +61,7 @@ export interface ShortcutCommandEntry {
  */
 export const SHORTCUT_COMMANDS: readonly ShortcutCommandEntry[] = [
   {
-    // 2026-09-29 按用户决策移除第二默认键 ⇧⌘P（让位给 gitCommit），⌘K 保留。
+    // 2026-09-29 按用户决策移除第二默认键 ⇧⌘P，⌘K 保留。
     id: "openCommandCenter",
     channel: "window",
     defaultBindings: ["CmdOrCtrl+k"],
@@ -83,12 +82,12 @@ export const SHORTCUT_COMMANDS: readonly ShortcutCommandEntry[] = [
   { id: "openModelMenu", channel: "window", defaultBindings: ["Ctrl+m"] },
   { id: "cycleSessionMode", channel: "window", defaultBindings: ["Ctrl+Shift+m"] },
   { id: "cycleThoughtLevel", channel: "window", defaultBindings: ["Ctrl+t"] },
-  // 头部 Git 工具（2026-09-29 新增）：由 WorkspaceHeaderGitTools / GitActionMenu 的
-  // 组件级监听消费（可用性与头部入口同源），App 处理器表不持有这两个命令；
-  // 键位匹配仍走命令表 + 生效表。默认键位占用原 openCommandCenter 的 ⇧⌘P
-  // 与 toggleInterfaceMode 的 ⇧⌘U，后者同日改绑 ⌘U。
-  { id: "gitCommit", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+p"] },
-  { id: "gitPull", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+u"] },
+  // 头部 Git 工具：由 WorkspaceHeaderGitTools / GitActionMenu 的组件级监听消费
+  // （可用性与头部入口同源），App 处理器表不持有该命令；键位匹配仍走命令表 + 生效表。
+  // 2026-10-14 按用户决策把 gitCommit（⇧⌘P）/ gitPull（⇧⌘U）合并为单命令 gitSync：
+  // 提交/推送与拉取互斥占同一头部槽位，两侧监听不会同时可用，一个键位分时承载即可。
+  // ⇧⌘P 原为 openCommandCenter 第二默认键、⇧⌘U 原为 toggleInterfaceMode，均早已让位。
+  { id: "gitSync", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+s"] },
   { id: "newTask", channel: "menu", defaultBindings: ["CmdOrCtrl+n"] },
   { id: "openWorkspace", channel: "menu", defaultBindings: ["CmdOrCtrl+o"] },
   { id: "closeActiveContext", channel: "menu", defaultBindings: ["CmdOrCtrl+w"] },
@@ -104,7 +103,7 @@ export const SHORTCUT_COMMANDS: readonly ShortcutCommandEntry[] = [
     scope: "composer",
     defaultBindings: ["Shift+Enter"],
   },
-  // 2026-09-29 按用户决策由 ⇧⌘U 改绑 ⌘U，让位给 gitPull。
+  // 2026-09-29 按用户决策由 ⇧⌘U 改绑 ⌘U。
   { id: "toggleInterfaceMode", channel: "window", defaultBindings: ["CmdOrCtrl+u"] },
   { id: "openOnboarding", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+o"] },
 ];

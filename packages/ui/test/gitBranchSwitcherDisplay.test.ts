@@ -6,6 +6,7 @@ import {
   getGitBranchCommitTotals,
   isGitBranchCommitAssistIssue,
   matchesGitBranchSearch,
+  resolveGitBranchDeleteWorktreeOccupancy,
   resolveGitBranchIssueMessageId,
   resolveGitBranchSuccessMessageId,
   resolveGitBranchTriggerLabel,
@@ -221,5 +222,73 @@ describe("branch switch commit assist helpers", () => {
     expect(buildGitBranchAutoCommitMessage("  ")).toBe(
       "chore: checkpoint before switching branches",
     );
+  });
+});
+
+describe("resolveGitBranchDeleteWorktreeOccupancy", () => {
+  const branches = [
+    { name: "main", worktreePath: "/repo" },
+    { name: "feat/765160", worktreePath: "/repo/.worktrees/765160" },
+    { name: "feat/free", worktreePath: null },
+  ];
+
+  it("resolves a linked-worktree occupant with its path", () => {
+    expect(
+      resolveGitBranchDeleteWorktreeOccupancy({
+        branchName: "feat/765160",
+        mainTreeRoot: "/repo",
+        branches,
+      }),
+    ).toEqual({ kind: "linked-worktree", worktreePath: "/repo/.worktrees/765160" });
+  });
+
+  it("resolves a main-tree occupant by comparing against mainTreeRoot", () => {
+    expect(
+      resolveGitBranchDeleteWorktreeOccupancy({
+        branchName: "main",
+        mainTreeRoot: "/repo",
+        branches,
+      }),
+    ).toEqual({ kind: "main-worktree" });
+  });
+
+  it("normalizes backslash separators when comparing the main tree root", () => {
+    expect(
+      resolveGitBranchDeleteWorktreeOccupancy({
+        branchName: "main",
+        mainTreeRoot: "C:\\repo",
+        branches: [{ name: "main", worktreePath: "C:/repo" }],
+      }),
+    ).toEqual({ kind: "main-worktree" });
+  });
+
+  it("reports not-occupied when the branch has no worktree path", () => {
+    expect(
+      resolveGitBranchDeleteWorktreeOccupancy({
+        branchName: "feat/free",
+        mainTreeRoot: "/repo",
+        branches,
+      }),
+    ).toEqual({ kind: "not-occupied" });
+  });
+
+  it("reports not-occupied when the branch disappeared from the list", () => {
+    expect(
+      resolveGitBranchDeleteWorktreeOccupancy({
+        branchName: "feat/gone",
+        mainTreeRoot: "/repo",
+        branches,
+      }),
+    ).toEqual({ kind: "not-occupied" });
+  });
+
+  it("treats a missing mainTreeRoot as linked worktree occupancy", () => {
+    expect(
+      resolveGitBranchDeleteWorktreeOccupancy({
+        branchName: "feat/765160",
+        mainTreeRoot: null,
+        branches,
+      }),
+    ).toEqual({ kind: "linked-worktree", worktreePath: "/repo/.worktrees/765160" });
   });
 });

@@ -62,6 +62,7 @@ export function WorkspaceHeader({
   isBrowserOpen,
   supportsEmbeddedBrowser,
   onRefreshGit,
+  onOpenGitReview,
   onToggleTerminal,
   onToggleBrowser,
   onToggleSidePane,
@@ -114,6 +115,8 @@ export function WorkspaceHeader({
   isBrowserOpen: boolean;
   supportsEmbeddedBrowser?: boolean;
   onRefreshGit: () => void;
+  /** 打开右侧面板审查 tab；缺省时头部审查按钮置灰。 */
+  onOpenGitReview?: () => void;
   onToggleTerminal: () => void;
   onToggleBrowser: () => void;
   onToggleSidePane: () => void;
@@ -243,6 +246,7 @@ export function WorkspaceHeader({
           gitDirtyFileCount={gitDirtyFileCount}
           activeTaskChangeSummary={activeTaskChangeSummary}
           onRefreshGit={onRefreshGit}
+          onOpenGitReview={onOpenGitReview}
         />
       </div>
     </header>

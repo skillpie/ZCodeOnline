@@ -84,9 +84,11 @@ export interface WorkspaceHeaderActionSectionProps {
   hideHelpMenu?: boolean;
   showWindowControls?: boolean;
   useWindowsCaptionSpacing?: boolean;
-  /** 头部 Git 工具组（更改 / 分支 / 提交）的宿主投影与回调；非 Git 工作区由组件自身隐藏。 */
+  /** 头部 Git 工具组（同步 / 审查 / 分支）的宿主投影与回调；非 Git 工作区由组件自身隐藏。 */
   gitSummary?: GitRepositorySummary | null;
   gitDirtyFileCount?: number;
   activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
   onRefreshGit?: () => void;
+  /** 打开右侧面板审查 tab（GitPane）；缺省时头部审查按钮置灰。 */
+  onOpenGitReview?: () => void;
 }

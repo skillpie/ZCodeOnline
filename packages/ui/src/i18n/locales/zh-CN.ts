@@ -1329,8 +1329,7 @@ const zhCN: Record<string, string> = {
   "git.commit.ready": "前端校验已通过，后续接入 service 后即可真正提交。",
   "git.commit.placeholder": "输入 commit message（当前为 UI 占位，不会真正执行 git commit）",
   "git.actionMenu.trigger.ariaLabel": "提交或推送",
-  "git.actionMenu.push": "推送",
-  "git.pull.action": "拉取",
+  "git.actionMenu.sync": "同步",
   "git.blame.notCommitted": "未提交",
   "git.pull.toast.success": "已拉取远程更新",
   "git.pull.toast.error": "拉取失败：{error}",
@@ -1347,6 +1346,7 @@ const zhCN: Record<string, string> = {
   "git.actionMenu.commitDialog.includeUnstaged": "包含未暂存的更改",
   "git.actionMenu.commitDialog.action.commit": "提交",
   "git.actionMenu.commitDialog.action.commitAndPush": "提交并推送",
+  "git.actionMenu.commitDialog.action.push": "推送",
   "git.actionMenu.commitDialog.confirm": "提交",
   "git.actionMenu.commitDialog.identityMissing":
     "当前没有可用的 Git 提交身份，请先配置 user.name 和 user.email。",
@@ -1445,6 +1445,12 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.deleteConfirm.forceDescription":
     "分支 {branchName} 含有未合并的提交，强制删除后这些提交将无法从该分支访问。",
   "git.branchSwitcher.deleteConfirm.forceConfirm": "强制删除",
+  "git.branchSwitcher.deleteConfirm.worktreeOccupiedTitle": "移除 Worktree 并删除分支",
+  "git.branchSwitcher.deleteConfirm.worktreeOccupiedDescription":
+    "分支 {branchName} 被 worktree {path} 检出。将先移除该 worktree 目录再删除分支；目录内未提交的更改会一并丢失。",
+  "git.branchSwitcher.deleteConfirm.worktreeOccupiedConfirm": "移除并删除",
+  "git.branchSwitcher.error.deleteBlockedByMainWorktree":
+    "分支 {branchName} 被主工作区检出，请先把主工作区切换到其他分支，再删除该分支。",
   "git.branchSwitcher.toast.deleteSuccess": "已删除分支 {branchName}",
   "git.branchSwitcher.error.branchIsCurrent": "不能删除当前检出的分支。",
   "git.branchSwitcher.error.branchNotFullyMerged": "分支含有未合并的提交，已阻止删除。",
@@ -2429,8 +2435,7 @@ const zhCN: Record<string, string> = {
   "settings.shortcuts.command.openModelMenu": "打开模型菜单",
   "settings.shortcuts.command.cycleSessionMode": "切换会话模式",
   "settings.shortcuts.command.cycleThoughtLevel": "切换思考深度",
-  "settings.shortcuts.command.gitCommit": "提交（Git）",
-  "settings.shortcuts.command.gitPull": "拉取（Git）",
+  "settings.shortcuts.command.gitSync": "同步（Git）",
   "settings.shortcuts.command.findInTask": "任务内查找",
   "settings.shortcuts.command.openCommandCenter": "打开命令中心",
   "settings.shortcuts.command.openSettings": "打开设置",

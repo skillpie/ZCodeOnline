@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { toast } from "@/components/ui/toast.js";
+import { resolveGitWorktreeIssueMessageId } from "@/git-branch-switcher/display.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
@@ -8,34 +9,6 @@ import { logger } from "@/logger.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { GitWorktreeMutationIssue } from "@zcode/shared";
-
-/** worktree 变更 issue code → toast 文案 id；与分支 issue 同码的沿用分支文案。 */
-function resolveGitWorktreeIssueMessageId(issue: GitWorktreeMutationIssue): string | null {
-  switch (issue.code) {
-    case "invalid-branch-name":
-      return "git.branchSwitcher.error.invalidBranchName";
-    case "branch-already-exists":
-      return "git.branchSwitcher.error.branchAlreadyExists";
-    case "branch-not-found":
-      return "git.branchSwitcher.error.targetBranchNotFound";
-    case "branch-in-other-worktree":
-      return "git.branchSwitcher.error.branchInOtherWorktree";
-    case "operation-in-progress":
-      return "git.branchSwitcher.error.operationInProgress";
-    case "invalid-worktree-name":
-      return "git.worktree.error.invalidName";
-    case "worktree-name-conflict":
-      return "git.worktree.error.nameConflict";
-    case "worktree-dirty":
-      return "git.worktree.error.dirty";
-    case "worktree-not-found":
-      return "git.worktree.error.notFound";
-    case "worktree-detached":
-      return "git.worktree.error.detached";
-    default:
-      return null;
-  }
-}
 
 interface UseGitWorktreeActionsOptions {
   workspacePath: string;

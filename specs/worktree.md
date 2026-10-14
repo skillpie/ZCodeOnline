@@ -38,6 +38,7 @@
     上的分支本就会被 git 拒绝。
   - 老版本 git（< 2.23）不认识 `%(worktreepath)` atom：服务层识别 `unknown field name` 后
     去掉该字段重试，`worktreePath` 全部为 `null`，UI 退回无标注行为，不报错。
+
 - worktree 目录统一落在**主树根**的 `.worktrees/<目录名>`；当前 workspace 本身已是 linked
   worktree 时同样锚定主树根（从 `git worktree list` 第一条解析），保证同一仓库的 worktree 聚在一处。
 - 首次创建 worktree 时**幂等地**向主树 `.git/info/exclude` 追加一行 `.worktrees/`（repo 本地

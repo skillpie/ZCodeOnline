@@ -1,6 +1,6 @@
 // specs/data-source.md §7 的工具侧验收：DB 工具缺省目标源优先取会话级绑定，
 // 显式入参最优先，无绑定时保持全局 activeId fallback（§6 行为不变）。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";

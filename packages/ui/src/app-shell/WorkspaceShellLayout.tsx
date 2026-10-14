@@ -1922,6 +1922,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                   isBrowserOpen={isBrowserOpen}
                   supportsEmbeddedBrowser={supportsEmbeddedBrowser}
                   onRefreshGit={handleRefreshGit}
+                  onOpenGitReview={handleOpenGitReview}
                   draftDropTargetController={
                     activeTaskId === null ? draftHeaderDropTargetController : undefined
                   }
@@ -2370,6 +2371,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                             isBrowserOpen={isBrowserOpen}
                             supportsEmbeddedBrowser={supportsEmbeddedBrowser}
                             onRefreshGit={handleRefreshGit}
+                            onOpenGitReview={handleOpenGitReview}
                             draftDropTargetController={
                               activeTaskId === null ? draftHeaderDropTargetController : undefined
                             }

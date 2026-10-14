@@ -78,8 +78,10 @@ describe("desktop E2E container presets", () => {
       "utf-8",
     ).replaceAll("\r\n", "\n");
 
-    expect(dockerPlan).toContain(
-      "| Spec | 迁移状态 |\n| --- | --- |\n<!-- conversation-session-verified-table-end -->",
+    // 表格骨架断言不绑定分隔线的连字符长度：格式化工具会把 `| --- | --- |` 重排成
+    // 列宽对齐（如 `| ---- | -------- |`），与「admission 命令可写入空表」的结构语义无关。
+    expect(dockerPlan).toMatch(
+      /\| Spec \| 迁移状态 \|\n[-\s|]+\n<!-- conversation-session-verified-table-end -->/,
     );
 
     const spec = "./test/e2e/conversation-session/example.test.ts";

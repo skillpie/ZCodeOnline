@@ -11,7 +11,7 @@
 **桌面**: Electron 41.0.3 | electron-builder ^26.8.1
 **前端**: React 19.2.7（根 `pnpm.overrides` 锁定）| Zustand ^5.0.12 | Tailwind CSS ^4.2.2 | Vite | SWR | Radix UI / shadcn
 **服务端**: Hono | ws | node-pty
-**测试**: Node 内置 `node:test` + `tsx --test`（入口见各包 `package.json` 的 `test` 脚本）
+**测试**: Vitest（根 `vitest.config.ts`，入口 `pnpm test:unit`）；少数自洽包仍用 `node:test`（zcode-relay、zcode-cli 的 cli/tui 包）
 **质量工具**: oxlint | oxfmt | knip | architecture-check
 
 ## 命令与仓库结构
@@ -20,33 +20,33 @@
 
 以下命令从仓库根目录执行：
 
-| 用途                                     | 命令                                                                                     |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| 初始化                                   | `pnpm bootstrap`                                                                         |
-| 类型检查                                 | `pnpm typecheck`                                                                         |
-| Lint                                     | `pnpm lint` / `pnpm lint:fix`                                                            |
-| 格式化                                   | `pnpm fmt` / `pnpm fmt:check`                                                            |
-| 桌面开发                                 | `pnpm dev:desktop`（`ZCODE_ENV=production`）                                             |
-| 桌面测试环境                             | `pnpm dev:desktop:test`（`ZCODE_ENV=test`）；隔离数据目录用 `mise run dev`               |
-| Web 开发                                 | `pnpm dev:web`                                                                           |
-| 提交前检查                               | `pnpm verify:pre-push`（Lint 与架构检查）                                                |
-| 架构检查                                 | `pnpm architecture:check --changed`                                                      |
-| 模块阅读包                               | `pnpm architecture:context <module-id>`                                                  |
-| 未使用依赖与导出                         | `pnpm knip`                                                                              |
-| 导出引用查询                             | `pnpm dep:refs --list-exports <file>`                                                    |
-| 桌面端打包并重装本机（macOS）            | `./install_desktop.sh`（`--skip-build` 只重装）                                          |
-| 桌面端打包并安装本机（Windows）          | `.\install_desktop.ps1`（`-SkipBuild` 只安装）                                           |
-| Web 隧道部署                             | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库） |
+| 用途                                     | 命令                                                                                                     |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 初始化                                   | `pnpm bootstrap`                                                                                         |
+| 类型检查                                 | `pnpm typecheck`                                                                                         |
+| Lint                                     | `pnpm lint` / `pnpm lint:fix`                                                                            |
+| 格式化                                   | `pnpm fmt` / `pnpm fmt:check`                                                                            |
+| 桌面开发                                 | `pnpm dev:desktop`（`ZCODE_ENV=production`）                                                             |
+| 桌面测试环境                             | `pnpm dev:desktop:test`（`ZCODE_ENV=test`）；隔离数据目录用 `mise run dev`                               |
+| Web 开发                                 | `pnpm dev:web`                                                                                           |
+| 提交前检查                               | `pnpm verify:pre-push`（Lint 与架构检查）                                                                |
+| 架构检查                                 | `pnpm architecture:check --changed`                                                                      |
+| 模块阅读包                               | `pnpm architecture:context <module-id>`                                                                  |
+| 未使用依赖与导出                         | `pnpm knip`                                                                                              |
+| 导出引用查询                             | `pnpm dep:refs --list-exports <file>`                                                                    |
+| 桌面端打包并重装本机（macOS）            | `./install_desktop.sh`（`--skip-build` 只重装）                                                          |
+| 桌面端打包并安装本机（Windows）          | `.\install_desktop.ps1`（`-SkipBuild` 只安装）                                                           |
+| Web 隧道部署                             | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库）                 |
 | 终端用户 CLI 发行包发布                  | `./deploy_cli.sh`（server-cli 归档 + catalog + 安装脚本；平台默认 darwin-arm64 + linux-x64，可传参覆盖） |
-| 桌面版两端构建并发布                     | `./deploy_desktop.sh`（正式身份构建 mac-arm64 + win-x64 并上传，`--mac` / `--win` 单端） |
-| 宿主 daemon 重建并重启（网页会话 Agent） | `./install_cli.sh`（`--skip-build` 只重启，`--no-restart` 只构建）                       |
-| 宿主 daemon 重建并重启（Windows）        | `.\install_cli.ps1`（`-SkipBuild` 只重启，`-NoRestart` 只构建）                         |
+| 桌面版两端构建并发布                     | `./deploy_desktop.sh`（正式身份构建 mac-arm64 + win-x64 并上传，`--mac` / `--win` 单端）                 |
+| 宿主 daemon 重建并重启（网页会话 Agent） | `./install_cli.sh`（`--skip-build` 只重启，`--no-restart` 只构建）                                       |
+| 宿主 daemon 重建并重启（Windows）        | `.\install_cli.ps1`（`-SkipBuild` 只重启，`-NoRestart` 只构建）                                          |
 
 - 提交不触发自动部署：Web 隧道部署、CLI 发行包发布（`./deploy_cli.sh`，默认 darwin-arm64 + linux-x64，win32-x64 传参 `./deploy_cli.sh win32-x64` 指定）均需手动执行。
 - 部署脚本只上传静态 Web / relay / 发行包，不重建本机宿主 daemon；改动 `apps/zcode-cli` 或 `packages/zcode-server-cli` 后必须手动执行 `./install_cli.sh` 重建并重启，否则 zcode.skillpie.cn 的网页会话仍运行旧 Agent 产物。daemon 有运行中任务时先 `./install_cli.sh --no-restart` 只构建，任务结束后再 `./install_cli.sh --skip-build` 重启。
 - 桌面版安装包自包含 Agent 运行时：`packages/desktop/scripts/prepare-agent-node-bundle.mjs` 把 `zcode.cjs` 打进安装包 `bundled-agents/`，由 Electron 内置 Node（`ELECTRON_RUN_AS_NODE`）执行，`packages/desktop/src/main/desktopRuntimeEnv.ts` 的 `resolveBundledZCodeAgentBinaryPath` 打包态只从 `process.resourcesPath` 解析入口、不查 PATH——用户只装桌面版不需要 CLI，不要让桌面版依赖外部安装的 `zcode`。
 - CLI 发行包与桌面安装包受众互不覆盖：`./deploy_cli.sh` 的用户经 `catalog.json` 空闲自动更新，`./deploy_desktop.sh` 的用户需重新下载安装包；同一修复同时影响两端时必须各发一版，只发一端则另一端停留在旧版。
-- 测试使用 Node 内置 `node:test`（如 `pnpm --filter @zcode/relay test` 即 `tsx --test test/*.test.ts`），入口以目标包当前 `package.json` 和实际测试文件为准，不假定统一的单测或 E2E 命令。
+- 测试统一跑 Vitest：`pnpm test:unit`（全量，走根 `vitest.config.ts`）或 `pnpm test:unit <文件路径>` 定向；packages 下的包级 `pnpm --filter <pkg> test` 也已统一走根配置（脚本 `cd ../.. && vitest run packages/<pkg>/test`）。仍为 `node:test` 的自洽例外：`apps/zcode-relay`、zcode-cli 的 cli/tui 包、plugin-creator-plugin。`apps/zcode-cli/packages/core` 的 `test` 目录（本地用例）与 `tests` 目录（官方用例）都由其包级脚本执行；core 官方 `tests/` 存在 12 个合并带入的存量失败，未修。
 - `pnpm architecture:context` 的 `<module-id>` 取自 `architecture-policy.yaml`（rpc、shared、provider、provider-node、services、session、storage、client、server、zcode-server-cli、ui、web、desktop、formal-proof、zcode-cli、zcode-relay）。
 
 仓库结构：

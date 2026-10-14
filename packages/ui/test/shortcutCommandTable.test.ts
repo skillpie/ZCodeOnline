@@ -60,11 +60,10 @@ test("no default binding hits reserved or occupied conflicts", () => {
   }
 });
 
-test("git tool commands bind to the 2026-09-29 defaults", () => {
-  // 头部「提交 / 拉取」按钮的快捷键；⇧⌘P 原为 openCommandCenter 第二默认键，
-  // ⇧⌘U 原为 toggleInterfaceMode，均让位（用户决策）。
-  assert.deepEqual(getDefaultShortcutBindings("gitCommit"), ["CmdOrCtrl+Shift+p"]);
-  assert.deepEqual(getDefaultShortcutBindings("gitPull"), ["CmdOrCtrl+Shift+u"]);
+test("git tool command binds to the 2026-10-14 unified default", () => {
+  // 头部「提交 / 拉取」互斥占同一槽位，2026-10-14 起共用单命令 gitSync（⇧⌘S）；
+  // ⇧⌘P / ⇧⌘U 分别原为 openCommandCenter / toggleInterfaceMode 的键位，均早已让位。
+  assert.deepEqual(getDefaultShortcutBindings("gitSync"), ["CmdOrCtrl+Shift+s"]);
   assert.deepEqual(getDefaultShortcutBindings("openCommandCenter"), ["CmdOrCtrl+k"]);
   assert.deepEqual(getDefaultShortcutBindings("toggleInterfaceMode"), ["CmdOrCtrl+u"]);
 });

@@ -305,7 +305,7 @@ describe("快捷键生效表 resolve", () => {
     const effective = resolveEffectiveShortcutBindings();
     expect(effective.toggleSidebar).toEqual(["CmdOrCtrl+b"]);
     expect(effective.openCommandCenter).toEqual(["CmdOrCtrl+k"]);
-    expect(effective.gitCommit).toEqual(["CmdOrCtrl+Shift+p"]);
+    expect(effective.gitSync).toEqual(["CmdOrCtrl+Shift+s"]);
   });
 
   it("覆盖为整组替换（双默认绑定同时失效）", () => {
@@ -449,11 +449,11 @@ describe("快捷键冲突检测（拒绝 + 标红）", () => {
       ownerCommandId: "newTask",
       binding: "CmdOrCtrl+n",
     });
-    // ⇧⌘P 现归 gitCommit（2026-09-29 用户键位重分配），占用者为其头部 Git 工具命令。
-    expect(checkShortcutBindingConflict("toggleSidebar", "CmdOrCtrl+Shift+p")).toEqual({
+    // ⇧⌘S 现归 gitSync（2026-10-14 用户键位统一），占用者为其头部 Git 工具命令。
+    expect(checkShortcutBindingConflict("toggleSidebar", "CmdOrCtrl+Shift+s")).toEqual({
       kind: "occupied",
-      ownerCommandId: "gitCommit",
-      binding: "CmdOrCtrl+Shift+p",
+      ownerCommandId: "gitSync",
+      binding: "CmdOrCtrl+Shift+s",
     });
   });
 
@@ -522,7 +522,7 @@ describe("按键搜索的物理等价比较 isSamePhysicalBinding", () => {
 });
 
 describe("拆行多绑定构建器（spec §8：一个命令多组键，行级操作）", () => {
-  // openCommandCenter 默认单键 ⌘K（⇧⌘P 已让位给 gitCommit）
+  // openCommandCenter 默认单键 ⌘K（⇧⌘P 已于 2026-09-29 让位空出）
   it("追加：默认键 + 已有覆盖全部保留，新键排尾", () => {
     const next = buildShortcutOverridesAfterAppend(undefined, "openCommandCenter", "CmdOrCtrl+g");
     expect(next.openCommandCenter).toEqual(["CmdOrCtrl+k", "CmdOrCtrl+g"]);
@@ -543,7 +543,7 @@ describe("拆行多绑定构建器（spec §8：一个命令多组键，行级�
   });
 
   it("删除：移除指定条，删空落显式 []（未分配），不影响其他命令", () => {
-    // openCommandCenter 现为单默认键 ⌘K（⇧⌘P 已让位给 gitCommit）：
+    // openCommandCenter 现为单默认键 ⌘K（⇧⌘P 已于 2026-09-29 让位空出）：
     // 删除唯一默认条 = 落显式未分配。
     const next = buildShortcutOverridesWithoutBindingAt(undefined, "openCommandCenter", 0);
     expect(next.openCommandCenter).toEqual([]);
@@ -583,7 +583,7 @@ describe("快捷键二次确认抢绑", () => {
   });
 
   it("被抢命令只剩单默认绑定时被抢即清空为未分配", () => {
-    // 抢 openCommandCenter 的唯一默认 CmdOrCtrl+k（⇧⌘P 已让位给 gitCommit）
+    // 抢 openCommandCenter 的唯一默认 CmdOrCtrl+k（⇧⌘P 已让位空出）
     const next = buildShortcutOverridesAfterSteal(undefined, "toggleTerminal", "CmdOrCtrl+k");
     expect(next.toggleTerminal).toEqual(["CmdOrCtrl+k"]);
     expect(next.openCommandCenter).toEqual([]);

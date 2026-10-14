@@ -1,6 +1,6 @@
 // DBExport scope=csv 的纯函数验收：RFC 4180 序列化与 where 片段安全校验。
 // 不连真实数据库——SQL 拼接在 driver.selectTableRows 内部，网络行为由既有 driver 覆盖。
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { toCsv } from "../../src/tool/handlers/db/db-export.js";
 import { assertSafeWhereCondition } from "../../src/tool/handlers/db/driver.js";
