@@ -5251,6 +5251,7 @@ const enUS: Record<string, string> = {
   "chat.contextUsage.breakdown.mcpTools": "MCP tools",
   "chat.contextUsage.compress": "Compress",
   "chat.contextUsage.compressDescription": "Send {command} to compress the current context",
+  "chat.contextUsage.compressRunning": "Compacting context…",
   "tokenDebug.open": "Open token debug",
   "tokenDebug.column.tps": "TPS (tokens/s)",
   "tokenDebug.tpsDescription":

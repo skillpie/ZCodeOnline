@@ -9,17 +9,21 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  TID_CHAT_CONTEXT_USAGE_COMPACT,
   TID_CHAT_CONTEXT_USAGE_TRIGGER,
   type CodingPlanResetType,
   type ZCodeContextUsageBreakdownItem,
   type ZCodeProvider,
 } from "@zcode/shared";
+import { FoldVerticalIcon } from "lucide-react";
 import {
   Context,
   ContextContentBody,
   ContextContent,
   ContextTrigger,
 } from "@/components/ai-elements/context.js";
+import { Button } from "@/components/ui/button.js";
+import { Spinner } from "@/components/ui/spinner.js";
 import { cn } from "@/components/lib/utils.js";
 import { Progress } from "@/components/ui/progress.js";
 import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
@@ -247,9 +251,12 @@ export function ChatContextUsage({
   codingPlanUsageRemaining,
   startPlanBalance,
   taskUsage,
-  selectedProvider: _selectedProvider,
+  selectedProvider,
   intl,
   locale,
+  onSendCompressionCommand,
+  compressionDisabled = false,
+  compactRunning = false,
 }: {
   codingPlanUsageRemaining?: ChatCodingPlanUsageRemainingConfig;
   startPlanBalance?: ChatStartPlanBalanceConfig;
@@ -264,6 +271,8 @@ export function ChatContextUsage({
   locale: string;
   onSendCompressionCommand?: (command: string) => void;
   compressionDisabled?: boolean;
+  /** snapshot.control.activeWorks 存在 compact 时为 true；驱动按钮的运行态与防重复点击。 */
+  compactRunning?: boolean;
 }) {
   const isWorkspaceVisible = useOptionalTabStore(
     (state) => !state.tabs.some((tab) => tab.id === state.activeTabId && isSettingsTab(tab)),
@@ -309,6 +318,18 @@ export function ChatContextUsage({
       setContextOpen(false);
     }
   }, []);
+  const compressLabel = intl.formatMessage({ id: "chat.contextUsage.compress" });
+  const handleCompressClick = useCallback(() => {
+    if (!onSendCompressionCommand || compactRunning) {
+      return;
+    }
+    // 压缩是异步维护命令：ACK 只代表入队/受理，压缩完成后的最新容量由
+    // CLI 的 usage snapshot 推送回流，面板下次渲染（含保持展开时）自动更新。
+    runContextPanelActionWithClose({
+      action: () => onSendCompressionCommand(getContextCompressionCommand(selectedProvider)),
+      close: () => setContextOpen(false),
+    });
+  }, [compactRunning, onSendCompressionCommand, selectedProvider]);
   const renderableTaskUsage = getRenderableTaskUsage(taskUsage);
   const codingPlanUsageRemainingWithClose = useMemo<
     ChatCodingPlanUsageRemainingConfig | undefined
@@ -928,10 +949,41 @@ export function ChatContextUsage({
           工具栏上下文 hover 只需要一块紧凑信息面板，摘要和明细统一放在 body 里。 */}
           {renderableTaskUsage && compactTokenUsageLabel ? (
             <div className="space-y-2">
-              <div className="flex min-w-0 mb-3 items-center gap-3">
+              <div className="flex min-w-0 mb-3 items-center gap-1">
                 <span className="shrink-0 text-ui-base font-medium text-foreground">
                   {intl.formatMessage({ id: "chat.contextUsage.title" })}
                 </span>
+                {onSendCompressionCommand ? (
+                  <ControlHintTooltip
+                    title={
+                      compactRunning
+                        ? intl.formatMessage({ id: "chat.contextUsage.compressRunning" })
+                        : intl.formatMessage(
+                            { id: "chat.contextUsage.compressDescription" },
+                            {
+                              command: getContextCompressionCommand(selectedProvider),
+                            },
+                          )
+                    }
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0 text-foreground-subtle hover:text-foreground"
+                      aria-label={compressLabel}
+                      data-testid={TID_CHAT_CONTEXT_USAGE_COMPACT}
+                      disabled={compressionDisabled || compactRunning}
+                      onClick={handleCompressClick}
+                    >
+                      {compactRunning ? (
+                        <Spinner className="size-3.5" />
+                      ) : (
+                        <FoldVerticalIcon className="size-3.5" />
+                      )}
+                    </Button>
+                  </ControlHintTooltip>
+                ) : null}
                 <span className="ml-auto shrink-0 text-right font-mono text-ui-sm text-foreground-subtle">
                   {compactTokenUsageLabel}
                 </span>

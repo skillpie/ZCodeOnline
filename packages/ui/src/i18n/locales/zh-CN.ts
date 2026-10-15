@@ -4918,6 +4918,7 @@ const zhCN: Record<string, string> = {
   "chat.contextUsage.breakdown.mcpTools": "MCP 工具",
   "chat.contextUsage.compress": "压缩",
   "chat.contextUsage.compressDescription": "发送 {command} 压缩当前上下文",
+  "chat.contextUsage.compressRunning": "正在压缩上下文…",
   "tokenDebug.open": "打开 Token 调试",
   "tokenDebug.column.tps": "TPS (tokens/s)",
   "tokenDebug.tpsDescription": "Output tokens ÷ 首个输出 token 到请求结束的秒数",

@@ -327,7 +327,9 @@ output_text `annotations` 属于 F08 的 provider/transport 兼容输入，不�
 transport 代表路径固定为：
 
 - stream summary 成功：由 `conversation-session-v4-compact.test.ts` 证明 `/compact` 到 success marker
-  的桌面正式链路；
+  的桌面正式链路；同一 spec 第二条 case 覆盖 context 容量面板「压缩」按钮入口（与 slash 共用
+  dispatchSlashCommand("compact") 链路），并断言压缩完成后 usage snapshot 回流、contextWindow
+  下降；该入口 case 待下一次 replay admission 计入 artifact 证据；
 - stream 在提交 content block 前失败、随后 non-stream fallback 成功：由
   `conversation-session-compact-stream-fallback.test.ts` 证明桌面到 provider 的两段请求顺序；
 - OpenAI Responses non-stream JSON 缺字段兼容：由

@@ -420,6 +420,8 @@ export interface V4ComposerToolbarProps {
     sourceModel: ModelSelectionSource | null,
   ) => Promise<void> | void;
   onSendCompressionCommand?: (command: string) => void;
+  /** snapshot.control.activeWorks 存在 compact 时为 true；context 面板压缩按钮的运行态。 */
+  compactRunning?: boolean;
 }
 
 /** 模型 / 思考深度 / context usage 簇（渲染在发送键左侧，与旧 UI 同位）。 */
@@ -447,6 +449,7 @@ function V4ComposerModelControlsImpl({
   onSelectModel,
   onSelectThought,
   onSendCompressionCommand,
+  compactRunning = false,
   onRecoverCustomModelSelection,
 }: V4ComposerToolbarProps) {
   const { intl, locale } = useZCodeIntl();
@@ -1096,6 +1099,7 @@ function V4ComposerModelControlsImpl({
           locale={locale}
           onSendCompressionCommand={onSendCompressionCommand}
           compressionDisabled={disabled || recoveryPending}
+          compactRunning={compactRunning}
         />
       ) : null}
       {/* 加速轮的模型由本次卡决定，选型菜单此时不可用，所以指示器优先于选型加载态。 */}

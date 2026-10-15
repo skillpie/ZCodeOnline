@@ -85,6 +85,38 @@
           "text": "<analysis>V4 manual compact e2e summarized the existing session without tools.</analysis>\n\n<summary>Conversation so far: the user asked the assistant to reply with V4_COMPACT_SEED_OK for the initial verification turn, and the assistant did. No files or tools were required.</summary>"
         }
       }
+    },
+    {
+      "id": "v4-compact-button-success",
+      "description": "context 面板「压缩」按钮触发的第二次手动 compact summary 响应。",
+      "metadata": {
+        "kind": "main",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "按钮入口复用同一 compact 命令链路；首次 compact 后原始 seed prompt 已被摘要替换，请求体只含摘要中的种子回复 token。低 token 计数让压缩后的 contextWindow 回落可断言。"
+      },
+      "maxMatches": 1,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "bodyIncludes": [
+          "CRITICAL: Respond with TEXT ONLY",
+          "V4_COMPACT_SEED_OK",
+          "\"stream\":true"
+        ],
+        "bodyExcludes": ["Generate a concise title", "E2E_V4_COMPACT_SEED"]
+      },
+      "response": {
+        "statusCode": 200,
+        "statusMessage": "OK",
+        "delayMs": 300,
+        "text": {
+          "id": "v4-compact-button-success",
+          "inputTokens": 24,
+          "outputTokens": 16,
+          "text": "<analysis>V4 context panel compact button e2e summarized the already compacted session.</analysis>\n\n<summary>Conversation so far: the user asked the assistant to reply with V4_COMPACT_SEED_OK, then compacted the session twice via the manual entry points. No files or tools were required.</summary>"
+        }
+      }
     }
   ]
 }

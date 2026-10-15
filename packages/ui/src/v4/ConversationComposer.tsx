@@ -2202,6 +2202,9 @@ function ConversationComposerImpl({
   // 避免每个 token 批次都重建 Tooltip/Select 子树。
   const composerUsage = snapshot?.usage ?? null;
   const composerPhase = snapshot?.control.phase ?? null;
+  // context 面板压缩按钮的运行态：compact 作为 assistant work 出现在 activeWorks。
+  const composerCompactRunning =
+    snapshot?.control.activeWorks.some((work) => work.kind === "compact") ?? false;
   const handleSelectModelTrace = useCallback(
     (nextProvider: string, nextModel: string, sourceModel: ModelSelectionSource | null) =>
       runUserAction({
@@ -2248,6 +2251,7 @@ function ConversationComposerImpl({
             onSwitchMode={onSwitchMode}
             onRecoverCustomModelSelection={onRecoverCustomModelSelection}
             onSendCompressionCommand={onSendCompressionCommand}
+            compactRunning={composerCompactRunning}
           />
         </span>
         {showStopControl ? (
@@ -2300,6 +2304,7 @@ function ConversationComposerImpl({
     [
       canSend,
       activeConfigPicker,
+      composerCompactRunning,
       composerPhase,
       composerUsage,
       disabled,
