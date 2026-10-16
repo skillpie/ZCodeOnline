@@ -56,7 +56,7 @@ export function WorkspaceHeader({
 
   isDesktop,
   simplifyForNarrowRemote = false,
-  isMobileTouchViewport = false,
+  isMobileCompactViewport = false,
   isSidebarVisible,
   isTerminalOpen,
   isSidePaneOpen,
@@ -109,8 +109,8 @@ export function WorkspaceHeader({
   windowsWindowControlsRightPaddingPx?: number;
   isDesktop?: boolean;
   simplifyForNarrowRemote?: boolean;
-  /** 移动端触屏视口：透传给右侧操作区隐藏分享与帮助入口。 */
-  isMobileTouchViewport?: boolean;
+  /** 窄视口（≤767px）：透传给右侧操作区隐藏分享与帮助入口。 */
+  isMobileCompactViewport?: boolean;
   isSidebarVisible: boolean;
   isTerminalOpen: boolean;
   isSidePaneOpen: boolean;
@@ -242,7 +242,7 @@ export function WorkspaceHeader({
           toggleSidePaneShortcutLabel={toggleSidePaneShortcutLabel}
           simplifyForNarrowRemote={simplifyForNarrowRemote}
           hideHelpMenu={false}
-          isMobileTouchViewport={isMobileTouchViewport}
+          isMobileCompactViewport={isMobileCompactViewport}
           showWindowControls={usesInlineWindowControls}
           // 面板操作按钮沿用 macOS 紧凑样式，Windows/Linux 窗控跟随最右侧 Header。
           onSelectedEditorChange={setSelectedEditor}

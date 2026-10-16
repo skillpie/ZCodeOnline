@@ -82,8 +82,8 @@ export interface WorkspaceHeaderActionSectionProps {
   onSelectedEditorChange?: (editor: EditorInfo | null) => void;
   simplifyForNarrowRemote?: boolean;
   hideHelpMenu?: boolean;
-  /** 移动端触屏视口（≤767px 且 hover: none + pointer: coarse）：分享与帮助属全局次要入口，为空间整体隐藏。 */
-  isMobileTouchViewport?: boolean;
+  /** 窄视口（≤767px）：分享与帮助属全局次要入口，为空间整体隐藏；手机与桌面窄窗口统一生效。 */
+  isMobileCompactViewport?: boolean;
   showWindowControls?: boolean;
   useWindowsCaptionSpacing?: boolean;
   /** 头部 Git 工具组（同步 / 审查 / 分支）的宿主投影与回调；非 Git 工作区由组件自身隐藏。 */

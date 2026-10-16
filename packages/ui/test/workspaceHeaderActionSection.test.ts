@@ -265,9 +265,9 @@ describe("WorkspaceHeaderActionSection", () => {
     expect(html).toContain("sidePane.expand");
   });
 
-  // 2026-10-16 用户反馈：移动端网页右上角分享/帮助按钮挤占头部空间，触屏视口下整体隐藏。
+  // 2026-10-16 用户反馈：窄视口（≤767px，含手机与压窄的桌面窗口）右上分享/帮助按钮挤占头部空间，整体隐藏。
   // 与远控窄屏（simplifyForNarrowRemote）不同：终端与侧栏开关是移动端核心入口，必须保留。
-  it("hides share and help menus on mobile touch viewports but keeps terminal and side pane toggles", async () => {
+  it("hides share and help menus on mobile compact viewports but keeps terminal and side pane toggles", async () => {
     const { WorkspaceHeaderActionSection } =
       await import("@/WorkspaceHeaderSections/WorkspaceHeaderActionSection.js");
 
@@ -281,7 +281,7 @@ describe("WorkspaceHeaderActionSection", () => {
         onToggleSidePane: vi.fn(),
         isDesktop: true,
         user: { id: "user-1" },
-        isMobileTouchViewport: true,
+        isMobileCompactViewport: true,
       }),
     );
 

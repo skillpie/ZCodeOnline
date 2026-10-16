@@ -43,7 +43,7 @@ import { SkillMarketEmbeddedView } from "@/SkillMarketEmbeddedView.js";
 import { shouldRenderWorkspaceHeader } from "@/app-shell/workspaceHeaderVisibility.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import { shouldCollapseSidebarAfterConversationActivate } from "@/lib/workspaceSidebarMobilePolicy.js";
-import { useIsMobileTextInputViewport } from "@/lib/mobileTextInput.js";
+import { useIsMobileCompactViewport } from "@/lib/mobileTextInput.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
 import { AUTOMATIONS_TOAST_ANCHOR_ID, AutomationsSection } from "@/settings/AutomationsSection.js";
@@ -536,9 +536,10 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   const workspaceSessionActionDisabled =
     Boolean(workspaceReadOnlyReason) || reloadSessionDisabled || reloadSessionPending;
   const simplifyHeaderForNarrowRemote = isWebRemoteControlShell && isWebRemoteControlMobileViewport;
-  // 移动端触屏视口（≤767px 且 hover: none + pointer: coarse）：头部右上分享/帮助按钮为空间整体隐藏。
-  // 桌面端窄窗口有鼠标 hover，不满足触屏条件，入口保留。
-  const isMobileTouchViewport = useIsMobileTextInputViewport();
+  // 窄视口（≤767px，与远控窄屏 simplifyForNarrowRemote 同阈值）：头部右上分享/帮助按钮为空间整体隐藏。
+  // 修复：此前用触屏条件（hover: none + pointer: coarse）判断，桌面窄窗口有鼠标永远不命中，
+  // 导致压窄窗口模拟移动端时按钮仍显示；改用纯宽度后手机与窄窗口统一收敛。
+  const isMobileCompactViewport = useIsMobileCompactViewport();
   // 修复原因：文件树打开时任务列表整屏滑出，侧栏里的 New Task 入口也随之不可见。
   // 顶部浮层需要临时露出 New Task，关闭文件树后继续沿用侧栏收起态规则。
   const showTopOverlayNewTaskButton = !isSidebarVisible || isSidebarFileTreeOpen;
@@ -2415,7 +2416,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                             }
                             isDesktop={isDesktop}
                             simplifyForNarrowRemote={simplifyHeaderForNarrowRemote}
-                            isMobileTouchViewport={isMobileTouchViewport}
+                            isMobileCompactViewport={isMobileCompactViewport}
                             isSidebarVisible={isSidebarVisible}
                             isTerminalOpen={isTerminalOpen}
                             isSidePaneOpen={isSidePaneOpen}
