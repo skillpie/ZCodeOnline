@@ -43,6 +43,7 @@ import { SkillMarketEmbeddedView } from "@/SkillMarketEmbeddedView.js";
 import { shouldRenderWorkspaceHeader } from "@/app-shell/workspaceHeaderVisibility.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import { shouldCollapseSidebarAfterConversationActivate } from "@/lib/workspaceSidebarMobilePolicy.js";
+import { useIsMobileTextInputViewport } from "@/lib/mobileTextInput.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
 import { AUTOMATIONS_TOAST_ANCHOR_ID, AutomationsSection } from "@/settings/AutomationsSection.js";
@@ -535,6 +536,9 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   const workspaceSessionActionDisabled =
     Boolean(workspaceReadOnlyReason) || reloadSessionDisabled || reloadSessionPending;
   const simplifyHeaderForNarrowRemote = isWebRemoteControlShell && isWebRemoteControlMobileViewport;
+  // 修复：普通移动端网页（非远控 shell）顶部浮层同样空间不足，左上角任务前进/后退与主操作拥挤重叠。
+  // 用触屏窄视口判断（≤767px 且无 hover、粗指针），桌面端窄窗口有鼠标 hover 不受影响。
+  const isMobileTouchViewport = useIsMobileTextInputViewport();
   // 修复原因：文件树打开时任务列表整屏滑出，侧栏里的 New Task 入口也随之不可见。
   // 顶部浮层需要临时露出 New Task，关闭文件树后继续沿用侧栏收起态规则。
   const showTopOverlayNewTaskButton = !isSidebarVisible || isSidebarFileTreeOpen;
@@ -2714,7 +2718,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
               onCreateTask={handleCreateTaskInChat}
               onGoBack={primaryNavigationBack}
               onGoForward={handleTaskNavForward}
-              hideTaskNavigationButtons={simplifyHeaderForNarrowRemote}
+              hideTaskNavigationButtons={simplifyHeaderForNarrowRemote || isMobileTouchViewport}
             />
           </ScopedErrorBoundary>
 
