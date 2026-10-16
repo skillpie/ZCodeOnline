@@ -32,6 +32,7 @@ export function WorkspaceHeaderActionSection({
   onSelectedEditorChange,
   simplifyForNarrowRemote = false,
   hideHelpMenu = false,
+  isMobileTouchViewport = false,
   showWindowControls = false,
   useWindowsCaptionSpacing = false,
   gitSummary,
@@ -71,8 +72,10 @@ export function WorkspaceHeaderActionSection({
           onOpenGitReview={onOpenGitReview}
         />
       ) : null}
-      {/* 分享发布接口依赖登录态；未登录时隐藏入口，避免用户打开后只能得到鉴权失败。 */}
-      {activeTaskId &&
+      {/* 分享发布接口依赖登录态；未登录时隐藏入口，避免用户打开后只能得到鉴权失败。
+          移动端触屏视口右上空间不足，分享与帮助一起隐藏（2026-10-16 用户反馈）。 */}
+      {!isMobileTouchViewport &&
+      activeTaskId &&
       user &&
       isDesktop !== false &&
       !isWebRemoteControl &&
@@ -84,7 +87,9 @@ export function WorkspaceHeaderActionSection({
       ) : null}
       {!simplifyForNarrowRemote ? (
         <>
-          {!hideHelpMenu ? <WorkspaceHelpMenuButton isDesktop={Boolean(isDesktop)} /> : null}
+          {!hideHelpMenu && !isMobileTouchViewport ? (
+            <WorkspaceHelpMenuButton isDesktop={Boolean(isDesktop)} />
+          ) : null}
           {/* 浏览器快捷入口在终端按钮左侧；Web/移动端不支持内嵌浏览器，随终端入口同规则整体隐藏。*/}
           {supportsEmbeddedBrowser ? (
             <WorkspaceBrowserToggleButton

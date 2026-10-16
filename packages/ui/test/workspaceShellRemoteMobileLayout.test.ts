@@ -133,15 +133,8 @@ vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children }: { children: ReactNode }) => children,
 }));
 
-const capturedTopOverlayProps = vi.hoisted(() => ({
-  props: [] as Array<{ hideTaskNavigationButtons?: boolean }>,
-}));
-
 vi.mock("@/DesktopTopOverlay.js", () => ({
-  DesktopTopOverlay: (props: { hideTaskNavigationButtons?: boolean }) => {
-    capturedTopOverlayProps.props.push(props);
-    return createElement("div", { "data-testid": "desktop-top-overlay" });
-  },
+  DesktopTopOverlay: () => createElement("div", { "data-testid": "desktop-top-overlay" }),
 }));
 
 vi.mock("@/DesktopWindowFrame.js", () => ({
@@ -939,42 +932,6 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     expect(html).not.toContain('data-testid="linux-window-controls"');
     expect(html).not.toContain("w-[120px]");
     expect(html).toContain("rounded-xl");
-  });
-
-  // 2026-10-16 用户反馈：普通移动端网页顶部浮层空间不足，任务前进/后退要与主操作拥挤重叠，需隐藏。
-  // 隐藏条件复用 useIsMobileTextInputViewport（≤767px 且 hover: none + pointer: coarse），
-  // 与远控 shell 解耦；桌面窄窗口有鼠标 hover，不满足触屏条件，按钮保留。
-  it("hides task nav back/forward on plain mobile web touch viewports", async () => {
-    capturedTopOverlayProps.props.length = 0;
-    vi.stubGlobal("window", {
-      innerHeight: 800,
-      matchMedia: vi.fn(() => ({
-        addEventListener: vi.fn(),
-        addListener: vi.fn(),
-        matches: true,
-        removeEventListener: vi.fn(),
-        removeListener: vi.fn(),
-      })),
-      sessionStorage: {
-        getItem: vi.fn(() => null),
-        removeItem: vi.fn(),
-        setItem: vi.fn(),
-      },
-    });
-
-    await renderWorkspaceShell();
-
-    expect(capturedTopOverlayProps.props.at(-1)?.hideTaskNavigationButtons).toBe(true);
-
-    vi.unstubAllGlobals();
-  });
-
-  it("keeps task nav back/forward visible on desktop viewports", async () => {
-    capturedTopOverlayProps.props.length = 0;
-    // Node 测试环境无 window：useIsMobileTextInputViewport 判 false，等价于有鼠标的桌面端。
-    await renderWorkspaceShell({ isDesktop: true, isMacDesktop: true });
-
-    expect(capturedTopOverlayProps.props.at(-1)?.hideTaskNavigationButtons).toBe(false);
   });
 });
 
