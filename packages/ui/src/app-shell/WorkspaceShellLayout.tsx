@@ -540,6 +540,10 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
   // 修复：此前用触屏条件（hover: none + pointer: coarse）判断，桌面窄窗口有鼠标永远不命中，
   // 导致压窄窗口模拟移动端时按钮仍显示；改用纯宽度后手机与窄窗口统一收敛。
   const isMobileCompactViewport = useIsMobileCompactViewport();
+  // 移动端技能市场是嵌入式整页 webview，左上角浮层的任务前进/后退与 New Task
+  // 与其自带导航拥挤重叠（2026-10-16 用户反馈），窄视口下进入技能市场时整体隐藏；
+  // 侧栏折叠与更新按钮保留。桌面端不受影响。
+  const isMobileSkillMarketView = isMobileCompactViewport && workspaceMainView === "skill-market";
   // 修复原因：文件树打开时任务列表整屏滑出，侧栏里的 New Task 入口也随之不可见。
   // 顶部浮层需要临时露出 New Task，关闭文件树后继续沿用侧栏收起态规则。
   const showTopOverlayNewTaskButton = !isSidebarVisible || isSidebarFileTreeOpen;
@@ -2713,14 +2717,14 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
               canTaskNavForward={canTaskNavForward}
               canGoBack={canGoBack}
               canGoForward={canGoForward}
-              showNewTaskButton={showTopOverlayNewTaskButton}
+              showNewTaskButton={showTopOverlayNewTaskButton && !isMobileSkillMarketView}
               appLogoUrl={appLogoUrl}
               platform={platform}
               onToggleSidebar={handleToggleSidebar}
               onCreateTask={handleCreateTaskInChat}
               onGoBack={primaryNavigationBack}
               onGoForward={handleTaskNavForward}
-              hideTaskNavigationButtons={simplifyHeaderForNarrowRemote}
+              hideTaskNavigationButtons={simplifyHeaderForNarrowRemote || isMobileSkillMarketView}
             />
           </ScopedErrorBoundary>
 

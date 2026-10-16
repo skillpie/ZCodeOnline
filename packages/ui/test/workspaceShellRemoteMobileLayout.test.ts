@@ -133,8 +133,21 @@ vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children }: { children: ReactNode }) => children,
 }));
 
+const capturedTopOverlayProps = vi.hoisted(() => ({
+  props: [] as Array<{
+    hideTaskNavigationButtons?: boolean;
+    showNewTaskButton?: boolean;
+  }>,
+}));
+
 vi.mock("@/DesktopTopOverlay.js", () => ({
-  DesktopTopOverlay: () => createElement("div", { "data-testid": "desktop-top-overlay" }),
+  DesktopTopOverlay: (props: {
+    hideTaskNavigationButtons?: boolean;
+    showNewTaskButton?: boolean;
+  }) => {
+    capturedTopOverlayProps.props.push(props);
+    return createElement("div", { "data-testid": "desktop-top-overlay" });
+  },
 }));
 
 vi.mock("@/DesktopWindowFrame.js", () => ({
@@ -932,6 +945,50 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     expect(html).not.toContain('data-testid="linux-window-controls"');
     expect(html).not.toContain("w-[120px]");
     expect(html).toContain("rounded-xl");
+  });
+
+  // 2026-10-16 用户反馈：移动端进入技能市场（嵌入式整页 webview）时，左上角浮层的
+  // 任务前进/后退与 New Task 与其自带导航拥挤重叠，需整体隐藏；桌面端不受影响。
+  // isSidebarVisible:false 让 New Task 在常规规则下必然显示，隔离出技能市场条件的独立作用。
+  it("hides task nav and new task buttons on mobile skill market view", async () => {
+    capturedTopOverlayProps.props.length = 0;
+    vi.stubGlobal("window", {
+      innerHeight: 800,
+      matchMedia: vi.fn(() => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        matches: true,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+      sessionStorage: {
+        getItem: vi.fn(() => null),
+        removeItem: vi.fn(),
+        setItem: vi.fn(),
+      },
+    });
+
+    await renderWorkspaceShell({
+      isSidebarVisible: false,
+      workspaceMainView: "skill-market",
+    });
+
+    expect(capturedTopOverlayProps.props.at(-1)?.hideTaskNavigationButtons).toBe(true);
+    expect(capturedTopOverlayProps.props.at(-1)?.showNewTaskButton).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps task nav and new task buttons on desktop skill market view", async () => {
+    capturedTopOverlayProps.props.length = 0;
+    // Node 测试环境无 window：窄视口条件判 false，等价于桌面端。
+    await renderWorkspaceShell({
+      isSidebarVisible: false,
+      workspaceMainView: "skill-market",
+    });
+
+    expect(capturedTopOverlayProps.props.at(-1)?.hideTaskNavigationButtons).toBe(false);
+    expect(capturedTopOverlayProps.props.at(-1)?.showNewTaskButton).toBe(true);
   });
 });
 
