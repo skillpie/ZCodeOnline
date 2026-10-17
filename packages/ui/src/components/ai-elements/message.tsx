@@ -103,6 +103,7 @@ import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditor
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { useWorkspaceFileDownload } from "@/hooks/useWorkspaceFileDownload.js";
 import { shouldDownloadDirectlyOnFileLinkClick } from "@/lib/workspaceFileDownload.js";
+import { rewriteBareFilePathsToMarkdownLinks } from "@/lib/assistantFilePathLinks.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type { Theme } from "@/useTheme.js";
@@ -1375,14 +1376,23 @@ export const MessageResponse = memo(
           : rawMarkdown,
       [rawMarkdown, renderStreaming, renderZCodeFileCitations],
     );
+    // 裸绝对路径自动转文件链接：仅在交互面（能打开预览/处理文件链接）改写，
+    // 分享只读时间线等静态面保持原文，避免出现不可交互的伪链接样式。
+    const pathLinkedMarkdown = useMemo(
+      () =>
+        onOpenFileLink || onOpenCodeViewer
+          ? rewriteBareFilePathsToMarkdownLinks(projectedCitationMarkdown)
+          : projectedCitationMarkdown,
+      [projectedCitationMarkdown, onOpenFileLink, onOpenCodeViewer],
+    );
     const targetMarkdown = useMemo(
       () =>
         rewriteMarkdownArtifactImageSources(
           normalizeMessageSingleDollarMath(
-            normalizeConsecutiveMarkdownImageBlocks(projectedCitationMarkdown),
+            normalizeConsecutiveMarkdownImageBlocks(pathLinkedMarkdown),
           ),
         ),
-      [projectedCitationMarkdown],
+      [pathLinkedMarkdown],
     );
     const streamdownMode = resolveMessageStreamdownMode(renderStreaming);
     const messageRemarkPlugins = useMemo<PluggableList>(

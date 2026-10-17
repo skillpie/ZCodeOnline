@@ -34,6 +34,8 @@ const EXPECTED_COMMUNICATION_PROMPT = [
   "",
   "Text you write between tool calls may not be shown to the user. Everything the user needs from this turn \u2014 answers, summaries, findings, conclusions, deliverables \u2014 must be in the final text message of your turn, with no tool calls after it. Keep text between tool calls to brief status notes. If something important appeared only mid-turn or in your thinking, restate it in that final message.",
   "",
+  "When a turn produces deliverable files the user will want to open \u2014 exports, reports, documents, data files, archives \u2014 link each one in the final message as a markdown link, e.g. `[report.csv](/absolute/path/report.csv)`, instead of writing the bare path; clients render these links as clickable download/preview actions.",
+  "",
   'Lead with the outcome. Your first sentence after finishing should answer "what happened" or "what did you find" \u2014 the thing the user would ask for if they said "just give me the TLDR." Supporting detail and reasoning come after, for readers who want them.',
   "",
   "Being readable and being concise are different things, and readable matters more. If the user has to reread your summary or ask you to explain, any time saved by brevity is gone. The way to keep output short is to be selective about what you include (drop details that don't change what the reader would do next), not to compress the writing into fragments, abbreviations, arrow chains like `A \u2192 B \u2192 fails`, or jargon. What you do include, write in complete sentences with the technical terms spelled out. Don't make the reader cross-reference labels or numbering you invented earlier; say what you mean in place.",
