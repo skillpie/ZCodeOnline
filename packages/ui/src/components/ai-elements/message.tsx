@@ -15,7 +15,13 @@ import { createMathPlugin } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
 import type { EditorInfo, FileStat, OpenInEditorOptions } from "@zcode/shared";
 import type { UIMessage } from "ai";
-import { ChevronLeftIcon, ChevronRightIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CopyIcon,
+  Download,
+  ExternalLinkIcon,
+} from "lucide-react";
 import remarkCjkFriendlyGfmStrikethrough from "remark-cjk-friendly-gfm-strikethrough";
 import type {
   ComponentProps,
@@ -95,6 +101,7 @@ import { useOptionalPlatform, usePlatform } from "@/hooks/usePlatform.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
+import { useWorkspaceFileDownload } from "@/hooks/useWorkspaceFileDownload.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type { Theme } from "@/useTheme.js";
@@ -1118,6 +1125,10 @@ function MessageFileLink({ className, fileIconSrc, fileLink, onOpen }: MessageFi
   const platform = usePlatform();
   const services = useOptionalServices();
   const fileActions = useFileContextActions();
+  // 与 handleOpenInEditor 同源：上下文 services 已按当前 workspace（含远程）作用域解析。
+  const { downloadFile, isDownloading } = useWorkspaceFileDownload({
+    fileService: services?.fileService ?? null,
+  });
   const openInEditorContext = useWorkspaceOpenInEditorTarget({
     workspacePath: fileLink.workspacePath,
     workspaceIdentity: fileLink.workspaceIdentity,
@@ -1234,6 +1245,15 @@ function MessageFileLink({ className, fileIconSrc, fileLink, onOpen }: MessageFi
           </ContextMenuItem>
         )}
         <ContextMenuSeparator />
+        {services && fileLink.pathKind !== "directory" ? (
+          <ContextMenuItem
+            disabled={isDownloading}
+            onSelect={() => void downloadFile({ path: fileLink.path })}
+          >
+            <Download className="size-4" />
+            {intl.formatMessage({ id: "workspaceFile.download" })}
+          </ContextMenuItem>
+        ) : null}
         <ContextMenuItem
           onSelect={() => void fileActions.copyAbsolutePath({ path: fileLink.path })}
         >

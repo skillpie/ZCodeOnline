@@ -308,6 +308,25 @@ export interface SaveFileResult {
   success: boolean;
 }
 
+/**
+ * 清洗 saveFile 的建议文件名：取 basename、去控制字符与前导点、限长 120。
+ * 与桌面 desktopSaveFile.ts 的 basename + slice(0, 120) 及
+ * pluginUiDownloadFile.ts 的 sanitizePluginUiDownloadFileName 规则保持同一量级；
+ * Web 实现没有宿主侧兜底，必须在入口处自行完成同等清洗。
+ */
+export function sanitizeSuggestedFileName(name: string): string {
+  const base = name.trim().split(/[\\/]/).pop() ?? "";
+  // 逐字符替换控制字符（含 \0），避免安全正则本身触发 lint 的 no-control-regex 警告
+  // （同 officeFilePreview.ts 的既有做法），防止下载属性被注入换行等不可见字符。
+  let withoutControlChars = "";
+  for (const character of base) {
+    const codePoint = character.codePointAt(0);
+    withoutControlChars +=
+      codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f) ? "_" : character;
+  }
+  return withoutControlChars.replace(/^\.+/, "").trim().slice(0, 120);
+}
+
 export interface PrintPageToPdfResult {
   success: boolean;
   /** PDF 字节；success 时存在 */
@@ -680,7 +699,11 @@ export interface IPlatformService {
   /** 打开系统多文件选择框，返回选中的文件路径；取消时返回空数组 */
   selectFiles?(): Promise<string[]>;
 
-  /** 使用宿主原生另存为对话框写入文件；普通 Web 端不实现 */
+  /**
+   * 把一份字节/一个 URL 保存到用户本机。桌面用系统另存为对话框写入；
+   * Web 以浏览器下载实现（data → Blob + `<a download>`，sourceUrl → 浏览器导航），
+   * success 但无 path 即"浏览器已开始下载"。UI 用 `platform?.saveFile` 探测能力。
+   */
   saveFile?(payload: SaveFileRequest): Promise<SaveFileResult>;
 
   /**

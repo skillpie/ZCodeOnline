@@ -14,6 +14,7 @@ import {
 import type { EditorInfo } from "@zcode/shared";
 import {
   ChevronRightIcon,
+  Download,
   Ellipsis,
   EyeIcon,
   ExternalLinkIcon,
@@ -28,6 +29,7 @@ import { cn } from "@/components/lib/utils.js";
 import type { FileBinaryPreview, FileMediaPreview, FileTextSlice } from "@zcode/shared";
 import { TID_PREVIEW_PANE } from "@zcode/shared";
 import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import { useWorkspaceFileDownload } from "@/hooks/useWorkspaceFileDownload.js";
 import { usePptxFileWatch } from "@/hooks/usePptxFileWatch.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { usePdfViewerLabels, usePptxViewerLabels } from "@/hooks/usePreviewViewerLabels.js";
@@ -525,6 +527,7 @@ export function PreviewPane({
     source?.workspaceRemoteSessionId,
     source?.workspaceIdentity,
   );
+  const { downloadFile, isDownloading } = useWorkspaceFileDownload({ fileService });
   const [filePreview, setFilePreview] = useState<FileTextSlice | null>(null);
   const [fileTooLarge, setFileTooLarge] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(false);
@@ -1723,6 +1726,23 @@ export function PreviewPane({
               <LocateFixed className="size-3.5" />
             </Button>
           ) : null}
+          {/* 下载按钮：远程会话把文件取回本地的主入口；窄视口（<768px，与移动端紧凑头部同断点）
+              隐藏避免头部拥挤，手机端走「更多」菜单里的同名项。 */}
+          {source.path && !isEditingFile ? (
+            <Button
+              type="button"
+              size="icon-md"
+              variant="ghost"
+              className="hidden shrink-0 text-foreground-subtle hover:text-foreground md:inline-flex disabled:text-foreground-subtlest"
+              data-testid="preview-pane-download-file"
+              title={intl.formatMessage({ id: "workspaceFile.download" })}
+              aria-label={intl.formatMessage({ id: "workspaceFile.download" })}
+              disabled={isDownloading}
+              onClick={() => void downloadFile({ path: source.path! })}
+            >
+              <Download className="size-3.5" />
+            </Button>
+          ) : null}
           {/* 图片和 patch 这类预览没有任何显示选项，继续渲染触发器会打开空菜单，所以只在存在菜单项时显示更多按钮。*/}
           {!isEditingFile && (hasMoreMenu || source.path) ? (
             <DropdownMenu>
@@ -1805,6 +1825,13 @@ export function PreviewPane({
                 {source.path ? (
                   <>
                     {hasMoreMenu ? <DropdownMenuSeparator /> : null}
+                    <DropdownMenuItem
+                      disabled={isDownloading}
+                      onSelect={() => void downloadFile({ path: source.path! })}
+                    >
+                      <Download className="size-4" />
+                      {intl.formatMessage({ id: "workspaceFile.download" })}
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => void fileActions.copyAbsolutePath({ path: source.path! })}
                     >

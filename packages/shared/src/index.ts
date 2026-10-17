@@ -143,6 +143,7 @@ export {
   DesktopCommandIds,
   buildLocalMediaPreviewUrl,
   createOpenInEditorRemoteTarget,
+  sanitizeSuggestedFileName,
 } from "./platform.js";
 export type {
   ArmsCustomEventPayload,

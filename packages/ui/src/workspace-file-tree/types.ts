@@ -35,6 +35,7 @@ export interface WorkspaceFileTreeContextMenuLabels {
   deleteFailed: string;
   deleteFile: string;
   deleteFolder: string;
+  download: string;
   open: string;
   openInBrowser: string;
   openFailed: string;

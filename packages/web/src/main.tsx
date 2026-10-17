@@ -27,6 +27,7 @@ import {
   resolveWebRemoteControlRelayWsUrl,
 } from "@zcode/shared";
 import { WebCallbackPage } from "./auth/WebCallbackPage.js";
+import { createWebSaveFile } from "./webSaveFile.js";
 import { WebLoggedInWaitingPage } from "./auth/WebLoggedInWaitingPage.js";
 import { WebLoginPage } from "./auth/WebLoginPage.js";
 import { createWebAuthService } from "./auth/webAuthService.js";
@@ -832,6 +833,8 @@ function createWebPlatform(options?: {
     openInFileManager: () =>
       Promise.resolve({ success: false, error: "Not supported in web mode" }),
     openExternalFile: () => Promise.resolve({ success: false, error: "Not supported in web mode" }),
+    // Web 端以浏览器下载实现另存为；远程 workspace 的文件字节由 UI 先读进内存再交给这里。
+    saveFile: createWebSaveFile(),
     registerOAuthState: (_payload) => {},
     onOAuthCallback: () => () => {},
     onPaymentCallback: () => () => {},

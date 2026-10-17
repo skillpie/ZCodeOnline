@@ -33,6 +33,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import { useWorkspaceFileDownload } from "@/hooks/useWorkspaceFileDownload.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
   TID_WORKSPACE_FILE_TREE_PANEL,
@@ -132,6 +133,7 @@ export function WorkspaceFileTree({
     workspaceRemoteSessionId,
     workspaceIdentity,
   );
+  const { downloadFile } = useWorkspaceFileDownload({ fileService });
   const confirmDialog = useConfirmDialog();
   const { installedEditors } = useInstalledFileTreeEditors();
   const isRemoteWorkspaceFileTree = Boolean(workspaceRemoteSessionId || workspaceIdentity);
@@ -262,6 +264,7 @@ export function WorkspaceFileTree({
       copyRelativePath: intl.formatMessage({
         id: "fileActions.copyRelativePath",
       }),
+      download: intl.formatMessage({ id: "workspaceFile.download" }),
       open: intl.formatMessage({ id: "common.open" }),
       openInBrowser: intl.formatMessage({
         id: "workspaceFileTree.openInBrowser",
@@ -554,6 +557,12 @@ export function WorkspaceFileTree({
   // 重命名只对树态行开放：搜索结果是平铺索引行，提交后无法回写树节点；
   // Git deleted 虚拟行由 RowView 内的 isDeletedFile 再行禁用。
   const canStartRename = useCallback(() => !hasFileSearchQuery, [hasFileSearchQuery]);
+  const handleRowDownloadFile = useCallback(
+    (row: WorkspaceFileTreeRow) => {
+      void downloadFile({ path: row.path });
+    },
+    [downloadFile],
+  );
   const handleRenameStart = useCallback((row: WorkspaceFileTreeRow) => {
     setSelectedPath(row.path);
     setRenamingPath(row.path);
@@ -866,6 +875,7 @@ export function WorkspaceFileTree({
             rows={visibleRows}
             virtualItems={virtualItems}
             listRef={handleListRef}
+            onDownloadFile={handleRowDownloadFile}
             stickyFolderCount={stickyFolderItems.length}
             totalSize={rowVirtualizer.getTotalSize()}
             emptyTitle={intl.formatMessage({

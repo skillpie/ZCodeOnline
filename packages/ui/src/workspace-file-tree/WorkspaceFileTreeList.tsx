@@ -70,6 +70,7 @@ export function WorkspaceFileTreeList({
   onRenameStart,
   onRenameSubmit,
   onDeleteStart,
+  onDownloadFile,
   onSelect,
   onToggleDirectory,
   onOpenPreview,
@@ -98,6 +99,7 @@ export function WorkspaceFileTreeList({
   onRenameStart: (row: WorkspaceFileTreeRow) => void;
   onRenameSubmit: (row: WorkspaceFileTreeRow, nextName: string) => void;
   onDeleteStart: (row: WorkspaceFileTreeRow) => void;
+  onDownloadFile?: (row: WorkspaceFileTreeRow) => void;
   onSelect: (path: string) => void;
   onToggleDirectory: (row: WorkspaceFileTreeRow) => void;
   onOpenPreview: (row: WorkspaceFileTreeRow) => void;
@@ -148,6 +150,7 @@ export function WorkspaceFileTreeList({
       onRenameStart={onRenameStart}
       onRenameSubmit={onRenameSubmit}
       onDeleteStart={onDeleteStart}
+      onDownloadFile={onDownloadFile}
       workspacePath={workspacePath}
       workspaceIdentity={workspaceIdentity}
       style={style}
