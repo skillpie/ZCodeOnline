@@ -5,8 +5,31 @@ import {
   isWorkspaceFileTooLargeError,
   readWorkspaceFileBytes,
   saveBytesToLocal,
+  shouldDownloadDirectlyOnFileLinkClick,
   WORKSPACE_FILE_DOWNLOAD_CHUNK_BYTES,
 } from "@/lib/workspaceFileDownload.js";
+
+describe("shouldDownloadDirectlyOnFileLinkClick", () => {
+  it("matches data-delivery and office-document extensions case-insensitively", () => {
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/export.csv")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/导出.CSV")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/data.parquet")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/bundle.tar.gz")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/报表.xlsx")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/legacy.XLS")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/manual.docx")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/deck.pptx")).toBe(true);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/spec.pdf")).toBe(true);
+  });
+
+  it("keeps text/web types and non-file paths on the open-preview path", () => {
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/notes.md")).toBe(false);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/index.html")).toBe(false);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/app.ts")).toBe(false);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/no-extension")).toBe(false);
+    expect(shouldDownloadDirectlyOnFileLinkClick("/tmp/.csv.d")).toBe(false);
+  });
+});
 
 function makeRangeSource(content: Uint8Array) {
   return (offset: number, length: number) =>

@@ -50,6 +50,54 @@ export function isWorkspaceFileTooLargeError(error: unknown): error is Workspace
   );
 }
 
+/**
+ * 点击直接下载的扩展名：数据交付类（csv/parquet/压缩包等）与常用办公文档
+ * （xls/xlsx/doc/docx/ppt/pptx/pdf 等）——它们多数是 Agent 的交付物，"拿到文件"
+ * 的价值高于"先看一眼"，所以消息里的文件链接点击时直接触发下载而不是打开预览；
+ * 预览退路保留在右键菜单的"打开"。纯文本/网页类（md/html）仍走预览。
+ */
+const DOWNLOAD_ON_CLICK_EXTENSIONS: ReadonlySet<string> = new Set([
+  // 数据交付
+  ".csv",
+  ".tsv",
+  ".jsonl",
+  ".ndjson",
+  ".parquet",
+  ".sqlite",
+  ".db",
+  // 压缩包
+  ".zip",
+  ".gz",
+  ".tgz",
+  ".tar",
+  ".7z",
+  ".rar",
+  ".xz",
+  // 办公文档
+  ".xls",
+  ".xlsx",
+  ".xlsb",
+  ".xlsm",
+  ".doc",
+  ".docx",
+  ".ppt",
+  ".pptx",
+  ".pdf",
+  ".rtf",
+  ".odt",
+  ".ods",
+  ".odp",
+]);
+
+export function shouldDownloadDirectlyOnFileLinkClick(path: string): boolean {
+  const normalized = path.trim().toLowerCase();
+  const dotIndex = normalized.lastIndexOf(".");
+  if (dotIndex < 0) {
+    return false;
+  }
+  return DOWNLOAD_ON_CLICK_EXTENSIONS.has(normalized.slice(dotIndex));
+}
+
 /** stat 的最小结构面（FileStat）；独立声明避免本模块依赖 services 包。 */
 export interface WorkspaceFileDownloadStat {
   type: "file" | "directory";

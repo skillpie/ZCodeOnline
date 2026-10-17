@@ -102,6 +102,7 @@ import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { useWorkspaceOpenInEditorTarget } from "@/hooks/useWorkspaceOpenInEditorTarget.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { useWorkspaceFileDownload } from "@/hooks/useWorkspaceFileDownload.js";
+import { shouldDownloadDirectlyOnFileLinkClick } from "@/lib/workspaceFileDownload.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
 import type { Theme } from "@/useTheme.js";
@@ -1213,6 +1214,20 @@ function MessageFileLink({ className, fileIconSrc, fileLink, onOpen }: MessageFi
       });
   };
 
+  // 数据交付类扩展名（csv/zip 等）：点击直接下载而不是打开预览。
+  // 下载能力缺失（无 services）或目录链接时回落到原有打开行为；右键"打开"始终是预览退路。
+  const handleLinkOpen = () => {
+    if (
+      services &&
+      fileLink.pathKind !== "directory" &&
+      shouldDownloadDirectlyOnFileLinkClick(fileLink.path)
+    ) {
+      void downloadFile({ path: fileLink.path });
+      return;
+    }
+    onOpen();
+  };
+
   return (
     <ContextMenu onOpenChange={(open) => open && void loadEditors()}>
       <ContextMenuTrigger asChild>
@@ -1220,7 +1235,7 @@ function MessageFileLink({ className, fileIconSrc, fileLink, onOpen }: MessageFi
           className={className}
           fileIconSrc={fileIconSrc}
           fileLink={fileLink}
-          onOpen={onOpen}
+          onOpen={handleLinkOpen}
         >
           {fileLink.label}
         </MessageFileLinkButton>
@@ -1228,7 +1243,7 @@ function MessageFileLink({ className, fileIconSrc, fileLink, onOpen }: MessageFi
       <ContextMenuContent className="w-52">
         <ContextMenuItem onSelect={onOpen}>
           {intl.formatMessage({ id: "common.open" })}
-        </ContextMenuItem>
+        </ContextMenuItem>{" "}
         <ContextMenuSeparator />
         {selectedEditor ? (
           sortedEditors.map((editor) => (

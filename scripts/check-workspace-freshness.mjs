@@ -6,7 +6,8 @@
 // 558 行、主线已收敛到 128 行），z-code 集成分支曾落后自己的远端 29 个提交，都曾在
 // 旧基线上开工。任何会话开始前先跑本脚本（zcode-cua 仓库用它的 python 等价物）。
 //
-// 主线远端是 skillpie（github.com/skillpie/ZCodeOnline，gitee 的 origin 已弃用并删除）。
+// 主线远端托管在 github.com/skillpie/ZCodeOnline；本地远端名为 github
+// （gitee 的 origin 已弃用并删除）。
 //
 // 判定规则：
 //   1) 落后自己的远端跟踪分支（任何数量）→ 失败：先 git merge --ff-only <upstream>。
@@ -20,7 +21,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
-const MAINLINE_REMOTE = "skillpie";
+const MAINLINE_REMOTE = "github";
 const args = process.argv.slice(2);
 const maxBehindMainIndex = args.indexOf("--max-behind-main");
 const maxBehindMain = maxBehindMainIndex >= 0 ? Number(args[maxBehindMainIndex + 1]) : 50;
