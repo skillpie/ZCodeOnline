@@ -2,7 +2,7 @@
 import type { EditorInfo, OpenInEditorRemoteTarget } from "@zcode/shared";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, ChevronRight, Download, LoaderCircle } from "lucide-react";
+import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
 import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -464,7 +464,6 @@ export function WorkspaceFileTreeRowView({
           {/* 下载只对真实存在的文件开放：目录要打包是另一个功能，git deleted 虚拟行没有字节可下。 */}
           {onDownloadFile && !isDirectory && !isDeletedFile ? (
             <ContextMenuItem onSelect={() => onDownloadFile(row)}>
-              <Download className="size-4" />
               {contextMenuLabels.download}
             </ContextMenuItem>
           ) : null}
