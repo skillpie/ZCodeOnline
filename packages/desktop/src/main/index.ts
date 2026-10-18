@@ -133,9 +133,9 @@ import { clampDesktopZoomLevel, resolveDesktopZoomLevelFromFactor } from "./desk
 import {
   getDesktopMenuLabel as getDesktopMenuLabelByLocale,
   rebuildApplicationMenu,
-  resolveSystemApplicationLocale,
   updateZCodeStdioTapDevMenuState,
 } from "./desktopApplicationMenu.js";
+import { resolveSystemApplicationLocale } from "./desktopSystemLocale.js";
 import { applyAppIcon } from "./desktopWindowChrome.js";
 import { resolveWindowsAppUserModelIdForFlavor } from "../../scripts/desktop-product-identity.mjs";
 import type { DesktopWindowSize } from "./desktopWindowSize.js";

@@ -3,6 +3,7 @@ import type { ErrorInfo, ReactNode } from "react";
 import type { Locale } from "@zcode/shared";
 import { DEFAULT_LOCALE } from "@zcode/shared";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
+import { readStoredLocalePreference } from "@/i18n/localePreferenceStorage.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import enUS from "@/i18n/locales/en-US.js";
 import { logger } from "@/logger.js";
@@ -40,8 +41,6 @@ interface ScopedErrorBoundaryProps {
   onCaughtReactError?: (error: Error, errorInfo: ErrorInfo, scope: string) => void;
 }
 
-const LOCALE_PREFERENCE_KEY = "zcode-locale-preference";
-
 function normalizeError(error: unknown): Error {
   if (error instanceof Error) {
     return error;
@@ -63,17 +62,9 @@ function serializeErrorForLog(error: Error): {
 }
 
 function resolveBoundaryLocale(): Locale {
-  if (typeof localStorage !== "undefined" && typeof localStorage.getItem === "function") {
-    try {
-      const storedPreference = localStorage.getItem(LOCALE_PREFERENCE_KEY);
-      if (storedPreference === "zh-CN" || storedPreference === "en-US") {
-        return storedPreference;
-      }
-    } catch {
-      // 在 Node 测试环境里，可能出现“localStorage 对象存在但能力不完整/不可读”的场景
-      // （例如只有占位对象或读取阶段直接抛错）。错误边界若不兜底会在 fallback 渲染期再次崩溃，
-      // 用户就会看到白屏。这里吞掉存储层异常，继续回退到 navigator / 默认语言。
-    }
+  const storedPreference = readStoredLocalePreference();
+  if (storedPreference === "zh-CN" || storedPreference === "en-US") {
+    return storedPreference;
   }
 
   if (typeof navigator !== "undefined") {

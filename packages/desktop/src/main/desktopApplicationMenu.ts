@@ -31,13 +31,6 @@ export function getDesktopMenuLabel(
   return getDesktopMenuMessage(locale, id);
 }
 
-export function resolveSystemApplicationLocale(): Locale {
-  // macOS 系统语言为中文时，Electron app.getLocale() 仍可能返回 en-US；
-  // 优先读取系统首选语言列表，避免 System default 被误解析成英文。
-  const systemLocale = app.getPreferredSystemLanguages?.()[0] ?? app.getLocale();
-  return systemLocale.toLowerCase().startsWith("zh") ? "zh-CN" : "en-US";
-}
-
 export function updateZCodeStdioTapDevMenuState() {
   const menu = Menu.getApplicationMenu();
   const item = menu?.getMenuItemById(HELP_TOGGLE_ZCODE_STDIO_TAP_MENU_ID);

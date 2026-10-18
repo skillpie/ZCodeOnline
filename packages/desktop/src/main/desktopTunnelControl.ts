@@ -20,6 +20,7 @@ import {
   resolveServerLayout,
   ControlRequestError,
 } from "@zcode/server-cli/control";
+import { resolveSystemApplicationLocale } from "./desktopSystemLocale.js";
 
 const CONTROL_TIMEOUT_MS = 10_000;
 
@@ -145,7 +146,9 @@ const REDEEM_TIMEOUT_MS = 10_000;
  * 还原端到端 PSK（maskedPsk ⊕ SHA-256(code)），renderer 拿到即可发起隧道握手。
  */
 async function redeemAssistCodeViaRelay(code: string): Promise<RedeemAssistCodeResult> {
-  const zh = /^zh\b/i.test(globalThis.navigator?.language ?? "en");
+  // 错误文案语言取 main 进程权威系统语言；Node 侧 navigator.language 不可靠
+  // （macOS 中文系统下可能返回 en-US），与 GetSystemLocale / 菜单同口径。
+  const zh = resolveSystemApplicationLocale() === "zh-CN";
   const t = (zhText: string, enText: string) => (zh ? zhText : enText);
   let response: Response;
   try {

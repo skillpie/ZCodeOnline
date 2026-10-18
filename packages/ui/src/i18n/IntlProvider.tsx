@@ -11,11 +11,11 @@ import type { ReactNode } from "react";
 import type { Locale, LocalePreference } from "@zcode/shared";
 import { DEFAULT_LOCALE } from "@zcode/shared";
 import type { BroadcastMessage, IBroadcastService, ISettingService } from "@zcode/services";
+import { readNavigatorLanguage } from "@/lib/browserEnvironment.js";
 import {
-  readNavigatorLanguage,
-  readSafeLocalStorage,
-  writeSafeLocalStorage,
-} from "@/lib/browserEnvironment.js";
+  readStoredLocalePreference,
+  writeStoredLocalePreference,
+} from "./localePreferenceStorage.js";
 import zhCN from "./locales/zh-CN.js";
 import enUS from "./locales/en-US.js";
 
@@ -30,7 +30,6 @@ export interface IntlInstance {
   formatMessage(descriptor: { id: string }, values?: Record<string, string | number>): string;
 }
 
-const LOCALE_PREFERENCE_KEY = "zcode-locale-preference";
 const STATE_LOCALE_CHANNEL = "state:locale";
 
 interface LocaleBroadcastPayload {
@@ -174,20 +173,8 @@ export function ZCodeIntlProvider({
     return resolveNavigatorSystemLocale();
   }, [resolveHostSystemLocale, resolveNavigatorSystemLocale]);
 
-  const readStoredPreference = useCallback((): LocalePreference | null => {
-    const raw = readSafeLocalStorage(LOCALE_PREFERENCE_KEY);
-    if (isLocalePreference(raw)) {
-      return raw;
-    }
-    return null;
-  }, []);
-
-  const persistLocalePreference = useCallback((preference: LocalePreference) => {
-    writeSafeLocalStorage(LOCALE_PREFERENCE_KEY, preference);
-  }, []);
-
   const [localePreference, setLocalePreferenceState] = useState<LocalePreference>(
-    () => initialLocale ?? readStoredPreference() ?? "system",
+    () => initialLocale ?? readStoredLocalePreference() ?? "system",
   );
   const [systemLocale, setSystemLocale] = useState<Locale>(() => resolveNavigatorSystemLocale());
   const enqueueLocalePreferenceUpdate = useCallback(
@@ -221,7 +208,7 @@ export function ZCodeIntlProvider({
         return;
       }
       const nextPreference = resolveLocalePreferenceFromSettings({
-        storedPreference: readStoredPreference(),
+        storedPreference: readStoredLocalePreference(),
         settingsLocale: settings.locale,
         settingsLocalePreference: settings.localePreference,
         preferSettingServiceLocale,
@@ -234,7 +221,7 @@ export function ZCodeIntlProvider({
         // en-US/system 偏好。远控入口必须以桌面 setting.json 为准，否则会出现桌面中文、手机英文。
         setLocalePreferenceState(nextPreference);
         if (preferSettingServiceLocale) {
-          persistLocalePreference(nextPreference);
+          writeStoredLocalePreference(nextPreference);
         }
         if (nextPreference === "system") {
           const resolvedLocale = await resolveSystemLocale();
@@ -255,9 +242,7 @@ export function ZCodeIntlProvider({
       disposed = true;
     };
   }, [
-    persistLocalePreference,
     preferSettingServiceLocale,
-    readStoredPreference,
     enqueueLocalePreferenceUpdate,
     resolveSystemLocale,
     settingService,
@@ -272,7 +257,7 @@ export function ZCodeIntlProvider({
       const operationSeq = localePreferenceOperationSeqRef.current + 1;
       localePreferenceOperationSeqRef.current = operationSeq;
       setLocalePreferenceState(newPreference);
-      persistLocalePreference(newPreference);
+      writeStoredLocalePreference(newPreference);
       void (async () => {
         const resolvedLocale =
           newPreference === "system" ? await resolveSystemLocale() : newPreference;
@@ -309,7 +294,7 @@ export function ZCodeIntlProvider({
         enqueueLocalePreferenceUpdate(operationSeq, resolvedLocale, newPreference);
       })();
     },
-    [broadcastService, enqueueLocalePreferenceUpdate, persistLocalePreference, resolveSystemLocale],
+    [broadcastService, enqueueLocalePreferenceUpdate, resolveSystemLocale],
   );
 
   useEffect(() => {
@@ -337,7 +322,7 @@ export function ZCodeIntlProvider({
         // 结构化广播需要同时携带用户偏好和解析语言，避免 system 被其他窗口降级成固定语言。
         localePreferenceOperationSeqRef.current += 1;
         setLocalePreferenceState(payload.preference);
-        persistLocalePreference(payload.preference);
+        writeStoredLocalePreference(payload.preference);
         setSystemLocale(payload.resolvedLocale);
       } finally {
         applyingBroadcastRef.current = false;
@@ -345,7 +330,7 @@ export function ZCodeIntlProvider({
     });
 
     return () => subscription.dispose();
-  }, [broadcastService, persistLocalePreference]);
+  }, [broadcastService]);
 
   const setLocale = useCallback(
     (newLocale: Locale) => {

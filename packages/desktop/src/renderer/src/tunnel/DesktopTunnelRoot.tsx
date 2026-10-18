@@ -5,7 +5,11 @@
 // 整窗呈现远端机器的 ZCode（会话/workspace 均为远端事实）。
 // 「切回本机」= 清存储码 + location.reload()，回到本地 MessagePort 启动流（main.tsx）。
 // 码失效（已被对方刷新）不自动重载：给出明确反馈，由用户点击「切回本机」。
-// 门禁阶段未挂 ZCodeIntlProvider，与 Web TunnelGateScreen 一样用 navigator.language 内联双语。
+// 门禁阶段未挂 ZCodeIntlProvider，用内联双语；语言判定与主界面同口径：显式偏好
+// （URL locale flag / localStorage）优先，system 或无偏好时用 main 进程权威系统语言
+// （resolveSystemLocale ← GetSystemLocale ← resolveSystemApplicationLocale）。
+// renderer 的 navigator.language 在 macOS 中文系统下可能返回 en-US（见
+// desktopSystemLocale.ts 注释），只作权威解析返回前的临时回退。
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   assertRedeemResult,
@@ -19,6 +23,7 @@ import type { connectViaProtocol } from "@zcode/client";
 import { DEFAULT_TUNNEL_RELAY_URL, TUNNEL_CONSTANTS } from "@zcode/shared";
 import type { IPlatformService, Locale } from "@zcode/shared";
 import { Root, ZCodeIntlProvider } from "@zcode/ui";
+import { resolveExplicitStoredLocale } from "@zcode/ui/locale-preference";
 import { clearStoredAssistCode, loadStoredAssistCode } from "@zcode/ui/assist-machine-store";
 
 type DesktopTunnelServices = ReturnType<typeof connectViaProtocol>;
@@ -33,21 +38,21 @@ interface GateState {
   error: string | null;
 }
 
-const zh = (): boolean => /^zh\b/i.test(navigator.language);
-
 /** 门禁遮罩：连接中/重连中为不可关闭的进度态；失败/失效给出显式出口按钮。 */
 function TunnelGateCard({
   phase,
   error,
+  locale,
   onReconnect,
   onReturnToLocal,
 }: {
   phase: Exclude<GatePhase, "connected">;
   error: string | null;
+  locale: Locale;
   onReconnect: () => void;
   onReturnToLocal: () => void;
 }) {
-  const t = (zhText: string, enText: string) => (zh() ? zhText : enText);
+  const t = (zhText: string, enText: string) => (locale === "zh-CN" ? zhText : enText);
   const busy = phase === "connecting" || phase === "reconnecting";
   const title =
     phase === "invalid"
@@ -125,6 +130,36 @@ export function DesktopTunnelRoot({
   // 连接代际：旧连接的迟到 onClose 不得影响新连接的状态。
   const activeConnRef = useRef(0);
 
+  // 门禁语言：首帧取显式偏好，缺省先用 navigator.language 兜底，再等 main 进程的
+  // 权威系统语言覆盖（macOS 中文系统下 renderer navigator.language 可能是 en-US）。
+  const [gateLocale, setGateLocale] = useState<Locale>(
+    () =>
+      resolveExplicitStoredLocale(initialLocale) ??
+      (/^zh\b/i.test(navigator.language) ? "zh-CN" : "en-US"),
+  );
+  const gateLocaleRef = useRef(gateLocale);
+  gateLocaleRef.current = gateLocale;
+
+  useEffect(() => {
+    // 显式偏好已定语言，无需系统解析；门禁阶段没有切语言入口，读一次即可。
+    if (resolveExplicitStoredLocale(initialLocale) !== null) {
+      return;
+    }
+    let disposed = false;
+    void Promise.resolve(resolveSystemLocale?.())
+      .then((resolved) => {
+        if (!disposed && (resolved === "zh-CN" || resolved === "en-US")) {
+          setGateLocale(resolved);
+        }
+      })
+      .catch(() => {
+        // 权威解析失败时保留 navigator 回退值；语言解析不得阻塞门禁连接流程。
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [initialLocale, resolveSystemLocale]);
+
   const patchGate = useCallback((patch: Partial<GateState>) => {
     setGate((current) => ({ ...current, ...patch }));
   }, []);
@@ -148,9 +183,10 @@ export function DesktopTunnelRoot({
       onGiveUp: () =>
         patchGate({
           phase: "failed",
-          error: zh()
-            ? "自动重连未成功，请点击「重新连接」。"
-            : "Automatic reconnection failed. Click Reconnect to try again.",
+          error:
+            gateLocaleRef.current === "zh-CN"
+              ? "自动重连未成功，请点击「重新连接」。"
+              : "Automatic reconnection failed. Click Reconnect to try again.",
         }),
     });
   }
@@ -280,6 +316,7 @@ export function DesktopTunnelRoot({
         <TunnelGateCard
           phase={gate.phase}
           error={gate.error}
+          locale={gateLocale}
           onReconnect={handleReconnect}
           onReturnToLocal={returnToLocal}
         />

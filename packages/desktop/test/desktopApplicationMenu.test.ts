@@ -179,8 +179,7 @@ describe("desktopApplicationMenu endpoint submenu", () => {
   it("system default 优先按 macOS 首选系统语言解析", async () => {
     envMock.locale = "en-US";
     envMock.preferredSystemLanguages = ["zh-Hans-CN", "en-CN"];
-    const { resolveSystemApplicationLocale } =
-      await import("../src/main/desktopApplicationMenu.js");
+    const { resolveSystemApplicationLocale } = await import("../src/main/desktopSystemLocale.js");
 
     expect(resolveSystemApplicationLocale()).toBe("zh-CN");
   });
