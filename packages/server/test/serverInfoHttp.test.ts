@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ServiceCollection } from "@zcode/services";
 import { SERVER_REMOTE_PROTOCOL_VERSION } from "@zcode/shared";
-import { createHttpServer } from "../src/http.js";
+import { createHttpServer, resolveServerWorkspaces } from "../src/http.js";
 
 describe("server info HTTP endpoint", () => {
   const servers: Array<{ close(callback?: (err?: Error) => void): void }> = [];
@@ -131,5 +131,36 @@ describe("server info HTTP endpoint", () => {
 
     const apiFallback = await fetch(`${baseUrl}/api/missing`);
     expect(apiFallback.status).toBe(404);
+  });
+});
+
+describe("resolveServerWorkspaces root fallback guard", () => {
+  const previousEnv = process.env.ZCODE_SERVER_WORKSPACE;
+
+  afterEach(() => {
+    if (previousEnv === undefined) {
+      delete process.env.ZCODE_SERVER_WORKSPACE;
+    } else {
+      process.env.ZCODE_SERVER_WORKSPACE = previousEnv;
+    }
+  });
+
+  it("advertises nothing when unconfigured and cwd is the filesystem root", () => {
+    // launchd/systemd 未配置 WorkingDirectory 时 cwd 是根目录（服务管理器缺省值），
+    // 下发 "/" 会让网页会话被注入 "/" 项目并经共享 setting.json 污染桌面端。
+    delete process.env.ZCODE_SERVER_WORKSPACE;
+    expect(resolveServerWorkspaces({}, "/")).toEqual([]);
+  });
+
+  it("keeps the cwd fallback for regular directories", () => {
+    delete process.env.ZCODE_SERVER_WORKSPACE;
+    expect(resolveServerWorkspaces({}, "/srv/zcode/project")).toEqual([
+      { path: "/srv/zcode/project", label: "project" },
+    ]);
+  });
+
+  it("honors an explicit root workspace selection", () => {
+    process.env.ZCODE_SERVER_WORKSPACE = "/";
+    expect(resolveServerWorkspaces({}, "/srv/elsewhere")).toEqual([{ path: "/", label: "/" }]);
   });
 });

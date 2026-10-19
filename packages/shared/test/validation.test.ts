@@ -430,6 +430,34 @@ describe("hostResponseMessageSchema", () => {
     });
   });
 
+  it("strips root-path workspace residue from sessions and recents", () => {
+    // 宿主 daemon cwd 回退曾把 "/" 项目写进共享 setting.json；解析入口统一丢弃历史残留。
+    const parsed = appSettingsSchema.parse({
+      recentProjects: ["/", "/tmp/demo"],
+      lastWorkspaceSession: [
+        { kind: "local", workspacePath: "/" },
+        { kind: "local", workspacePath: "/tmp/demo", workspacePurpose: "project" },
+      ],
+    });
+
+    expect(parsed.recentProjects).toEqual(["/tmp/demo"]);
+    expect(parsed.lastWorkspaceSession).toEqual([
+      { kind: "local", workspacePath: "/tmp/demo", workspacePurpose: "project" },
+    ]);
+  });
+
+  it("keeps non-root sessions untouched while stripping root residue", () => {
+    const parsed = appSettingsSchema.parse({
+      lastWorkspaceSession: [
+        { kind: "local", workspacePath: "/tmp/demo", workspacePurpose: "conversation" },
+      ],
+    });
+
+    expect(parsed.lastWorkspaceSession).toEqual([
+      { kind: "local", workspacePath: "/tmp/demo", workspacePurpose: "conversation" },
+    ]);
+  });
+
   it("rejects unsafe persisted WSL users in settings and patches", () => {
     const remoteSession = {
       kind: "remote",

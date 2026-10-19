@@ -460,6 +460,46 @@ function migrateLegacyWorkspaceSession(value: unknown): unknown {
   return migrated;
 }
 
+// Bugfix（2026-10）：launchd/systemd 未配置 WorkingDirectory 时宿主 daemon 的 cwd 是
+// 文件系统根，server-info 曾把它当初始工作区下发给网页会话；web 端注入 "/" 项目后经
+// 桌面与 daemon 共享的 setting.json 持久化，桌面端每次启动又恢复出来，用户删除后被
+// 下次注入复活。源头已在 packages/zcode-server-cli 的 server-info 侧拒用根目录回退，
+// 这里在 settings 唯一解析入口清理历史残留：已落盘的 "/" 条目在任意端（桌面 main、
+// renderer、daemon、web RPC）首次读取时即被丢弃，随下次写回消失，恢复链路无需各自补丁。
+// 只清 kind=local；remote 条目来自用户显式配置的连接目标，不走该回退路径。
+function stripRootPathWorkspaceResidue(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+  const raw = value as {
+    recentProjects?: unknown;
+    lastWorkspaceSession?: unknown;
+  };
+  const migrated: Record<string, unknown> = { ...raw };
+
+  if (Array.isArray(raw.recentProjects)) {
+    const filtered = raw.recentProjects.filter((path) => path !== "/");
+    if (filtered.length !== raw.recentProjects.length) {
+      migrated.recentProjects = filtered;
+    }
+  }
+
+  if (Array.isArray(raw.lastWorkspaceSession)) {
+    const filtered = raw.lastWorkspaceSession.filter((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return true;
+      }
+      const rawEntry = entry as Record<string, unknown>;
+      return !(rawEntry.kind === "local" && rawEntry.workspacePath === "/");
+    });
+    if (filtered.length !== raw.lastWorkspaceSession.length) {
+      migrated.lastWorkspaceSession = filtered;
+    }
+  }
+
+  return migrated;
+}
+
 const appSettingsObjectSchema = z.object({
   recentProjects: z.array(z.string()).default([]),
   locale: localeSchema.default("zh-CN"),
@@ -533,7 +573,9 @@ export const appSettingsSchema = z.preprocess(
           migrateCloseToTrayOnWindowsDefault(
             migrateLegacyLocalePreference(
               sanitizeZCodeEndpointOrigin(
-                migrateLegacyWorkspaceSession(migrateLegacyBuiltinAgentCliProviders(value)),
+                migrateLegacyWorkspaceSession(
+                  stripRootPathWorkspaceResidue(migrateLegacyBuiltinAgentCliProviders(value)),
+                ),
               ),
             ),
           ),

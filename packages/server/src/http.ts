@@ -1,7 +1,7 @@
 /* eslint-disable max-lines -- HTTP、WebSocket 与静态资源路由集中注册，保持同一鉴权顺序。 */
 import { randomUUID } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
-import { basename, extname, relative, resolve, sep } from "node:path";
+import { basename, extname, parse, relative, resolve, sep } from "node:path";
 import { hostname } from "node:os";
 import { Hono, type Context } from "hono";
 import { serve } from "@hono/node-server";
@@ -165,15 +165,28 @@ function resolveServerId(options: HttpServerOptions): string {
   );
 }
 
-function resolveServerWorkspaces(options: HttpServerOptions): ServerRemoteWorkspaceInfo[] {
+/**
+ * 与 packages/zcode-server-cli 的 resolveCoreServerWorkspaces 语义一致：ZCODE_SERVER_WORKSPACE
+ * 优先，未设置回退进程 cwd。例外同样一致——未显式配置且 cwd 解析为文件系统根时不下发
+ * workspaces：launchd/systemd 未配置 WorkingDirectory 时服务进程 cwd 就是根目录，这是服务
+ * 管理器缺省值而非用户选择；曾导致每个网页会话被注入 "/" 项目并经共享 setting.json 持久化。
+ */
+export function resolveServerWorkspaces(
+  options: HttpServerOptions,
+  cwd: string = process.cwd(),
+): ServerRemoteWorkspaceInfo[] {
   if (options.workspaces) {
     return options.workspaces;
   }
-  const workspacePath = readTrimmedEnv("ZCODE_SERVER_WORKSPACE") || process.cwd();
+  const configured = readTrimmedEnv("ZCODE_SERVER_WORKSPACE");
+  const resolved = resolve(configured || cwd);
+  if (!configured && parse(resolved).root === resolved) {
+    return [];
+  }
   return [
     {
-      path: workspacePath,
-      label: basename(workspacePath) || workspacePath,
+      path: resolved,
+      label: basename(resolved) || resolved,
     },
   ];
 }

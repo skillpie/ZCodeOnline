@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
-import { basename, resolve } from "node:path";
+import { basename, parse, resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
@@ -61,13 +61,21 @@ async function closeWebSocketServer(wss: WebSocketServer): Promise<void> {
  * Core 的初始工作区解析（specs/web-tunnel.md §5.7）：ZCODE_SERVER_WORKSPACE 指向项目目录，
  * 未设置时回退进程 cwd——与 packages/server 的语义一致。浏览器经隧道 bootstrap 帧据此
  * 注入 initialWorkspace；多工作区注册留后续。
+ *
+ * 例外：未显式配置且 cwd 解析为文件系统根时不下发 workspaces。launchd/systemd 未配置
+ * WorkingDirectory 时服务进程 cwd 就是根目录，这是服务管理器缺省值而非用户选择；曾导致
+ * 每个网页会话都被注入 "/" 项目并经桌面与 daemon 共享的 setting.json 持久化，删除后被
+ * 下次注入复活。浏览器端对空列表按“host 未上报 workspace”处理，走会话恢复。
  */
 export function resolveCoreServerWorkspaces(
   env: Record<string, string | undefined>,
   cwd: string,
 ): ServerRemoteWorkspaceInfo[] {
-  const workspacePath = env.ZCODE_SERVER_WORKSPACE?.trim() || cwd;
-  const resolved = resolve(workspacePath);
+  const configured = env.ZCODE_SERVER_WORKSPACE?.trim();
+  const resolved = resolve(configured || cwd);
+  if (!configured && parse(resolved).root === resolved) {
+    return [];
+  }
   return [{ path: resolved, label: basename(resolved) || resolved }];
 }
 
