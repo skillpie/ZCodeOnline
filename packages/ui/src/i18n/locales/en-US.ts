@@ -1558,6 +1558,7 @@ const enUS: Record<string, string> = {
   "git.branchSwitcher.error.unknown": "Switching branches failed. Please try again.",
   "git.branchSwitcher.error.requestFailed": "Branch operation failed: {error}",
   "git.branchSwitcher.deleteAction.ariaLabel": "Delete branch {branchName}",
+  "git.branchSwitcher.createWorktreeAction.ariaLabel": "New worktree from branch {branchName}",
   "git.branchSwitcher.deleteConfirm.title": "Delete branch",
   "git.branchSwitcher.deleteConfirm.description":
     "This deletes branch {branchName}. Merged commits are safe and remain visible in the git graph.",

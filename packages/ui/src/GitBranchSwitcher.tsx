@@ -97,11 +97,19 @@ export function GitBranchSwitcher({
     headRefType: gitSummary.headRefType,
     onRefreshGit,
   });
-  const { worktreePending, createWorktreeForProject } = useGitWorktreeActions({ workspacePath });
+  const { worktreePending, createWorktreeForProject, createWorktreeForBranch } =
+    useGitWorktreeActions({ workspacePath });
   const handleCreateWorktreeClick = useCallback(() => {
     setOpen(false);
     void createWorktreeForProject();
   }, [createWorktreeForProject, setOpen]);
+  const handleBranchCreateWorktree = useCallback(
+    (branchName: string) => {
+      setOpen(false);
+      void createWorktreeForBranch(branchName);
+    },
+    [createWorktreeForBranch, setOpen],
+  );
 
   const isVisible = gitSummary.isGitAvailable && gitSummary.isRepository;
   const displayedCurrentBranchName = branchesResult?.currentBranchName ?? gitSummary.branchName;
@@ -286,7 +294,7 @@ export function GitBranchSwitcher({
                     branch={branch}
                     isCurrent={branch.name === displayedCurrentBranchName}
                     currentDirtyLabel={currentBranchDirtyLabel}
-                    mutationPending={mutationPending}
+                    mutationPending={mutationPending || worktreePending}
                     onSwitch={switchBranch}
                     enableConversationAction={enableConversationActions}
                     conversationPromptScope={conversationPromptScope}
@@ -294,13 +302,17 @@ export function GitBranchSwitcher({
                       setOpen(false);
                     }}
                     onDeleteBranch={handleDeleteBranch}
+                    onCreateWorktree={handleBranchCreateWorktree}
+                    createWorktreePending={worktreePending}
                   />
                 ))}
               </CommandList>
             </Command>
             {showFooterActions ? (
               <GitBranchPopoverFooter
-                disabled={mutationPending}
+                // footer 的契约是「任一 git 变更（分支 / worktree）进行中时禁用」，
+                // 行尾新建 worktree 也算 worktree 变更，一并纳入。
+                disabled={mutationPending || worktreePending}
                 onCreateBranchClick={() => {
                   setOpen(false);
                   setCreateDialogOpen(true);

@@ -1437,6 +1437,7 @@ const zhCN: Record<string, string> = {
   "git.branchSwitcher.error.unknown": "切换分支失败，请稍后重试。",
   "git.branchSwitcher.error.requestFailed": "分支操作失败：{error}",
   "git.branchSwitcher.deleteAction.ariaLabel": "删除分支 {branchName}",
+  "git.branchSwitcher.createWorktreeAction.ariaLabel": "用分支 {branchName} 新建 Worktree",
   "git.branchSwitcher.deleteConfirm.title": "删除分支",
   "git.branchSwitcher.deleteConfirm.description":
     "将删除分支 {branchName}。已合并的提交不会丢失，仍可在 Git 图谱中查看。",
