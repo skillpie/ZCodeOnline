@@ -7,6 +7,7 @@ import type { GitLocalBranch, GitWorktreeMutationResult } from "@zcode/shared";
 
 const mocks = vi.hoisted(() => ({
   addWorktree: vi.fn(),
+  getLocalBranches: vi.fn(),
   addTab: vi.fn(),
   startDraft: vi.fn(),
   toast: vi.fn(),
@@ -52,7 +53,9 @@ vi.mock("@/lib/pickerFocus.js", () => ({
 }));
 
 vi.mock("@/hooks/useServices.js", () => ({
-  useServices: () => ({ gitService: { addWorktree: mocks.addWorktree } }),
+  useServices: () => ({
+    gitService: { addWorktree: mocks.addWorktree, getLocalBranches: mocks.getLocalBranches },
+  }),
 }));
 
 vi.mock("@/store/TabStoreProvider.js", () => ({
@@ -177,41 +180,50 @@ describe("GitBranchListRow 新建 Worktree 动作", () => {
   });
 });
 
-describe("useGitWorktreeActions.createWorktreeForBranch", () => {
+describe("useGitWorktreeActions", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  async function renderHarness(): Promise<(branchName: string) => Promise<void>> {
+  async function renderWorktreeActionsHarness(): Promise<{
+    createWorktreeForBranch: (branchName: string) => Promise<void>;
+    createWorktreeForProject: () => Promise<void>;
+  }> {
     const { useGitWorktreeActions } =
       await import("@/git-branch-switcher/useGitWorktreeActions.js");
-    let capturedCreate: ((branchName: string) => Promise<void>) | null = null;
+    let captured: {
+      createWorktreeForBranch: (branchName: string) => Promise<void>;
+      createWorktreeForProject: () => Promise<void>;
+    } | null = null;
 
     function Harness() {
-      const { createWorktreeForBranch } = useGitWorktreeActions({ workspacePath: "/repo" });
+      const actions = useGitWorktreeActions({ workspacePath: "/repo" });
       useEffect(() => {
-        capturedCreate = createWorktreeForBranch;
+        captured = {
+          createWorktreeForBranch: actions.createWorktreeForBranch,
+          createWorktreeForProject: actions.createWorktreeForProject,
+        };
       });
       return null;
     }
 
     render(createElement(Harness));
     // testing-library 的 render 自带 act，effect 已执行完毕。
-    if (!capturedCreate) {
-      throw new Error("createWorktreeForBranch 未被捕获");
+    if (!captured) {
+      throw new Error("useGitWorktreeActions 返回值未被捕获");
     }
-    return capturedCreate;
+    return captured;
   }
 
-  it("以既有分支请求 addWorktree，成功后 toast 并作为独立项目打开", async () => {
+  it("createWorktreeForBranch：以既有分支请求 addWorktree，成功后 toast 并作为独立项目打开", async () => {
     mocks.addWorktree.mockResolvedValue({
       ok: true,
       worktree: { path: "/repo/.worktrees/feature-todo", branchName: "feature/todo" },
       issues: [],
     } satisfies GitWorktreeMutationResult);
 
-    const createWorktreeForBranch = await renderHarness();
+    const { createWorktreeForBranch } = await renderWorktreeActionsHarness();
     await act(async () => {
       await createWorktreeForBranch("feature/todo");
     });
@@ -226,14 +238,14 @@ describe("useGitWorktreeActions.createWorktreeForBranch", () => {
     expect(mocks.startDraft).toHaveBeenCalledWith("/repo/.worktrees/feature-todo");
   });
 
-  it("创建被阻塞时不打开新项目，按 issue 码提示", async () => {
+  it("createWorktreeForBranch：创建被阻塞时不打开新项目，按 issue 码提示", async () => {
     mocks.addWorktree.mockResolvedValue({
       ok: false,
       worktree: null,
       issues: [{ code: "branch-in-other-worktree", message: "already checked out", detail: null }],
     } satisfies GitWorktreeMutationResult);
 
-    const createWorktreeForBranch = await renderHarness();
+    const { createWorktreeForBranch } = await renderWorktreeActionsHarness();
     await act(async () => {
       await createWorktreeForBranch("feature/todo");
     });
@@ -241,5 +253,37 @@ describe("useGitWorktreeActions.createWorktreeForBranch", () => {
     expect(mocks.addTab).not.toHaveBeenCalled();
     expect(mocks.startDraft).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith("git.branchSwitcher.error.branchInOtherWorktree");
+  });
+
+  it("createWorktreeForProject：只传 newBranchName（feat/{随机数}），目录名交给服务端按分支名派生", async () => {
+    mocks.getLocalBranches.mockResolvedValue({
+      headRefType: "branch",
+      currentBranchName: "main",
+      branches: [],
+      mainTreeRoot: "/repo",
+    });
+    mocks.addWorktree.mockResolvedValue({
+      ok: true,
+      worktree: { path: "/repo/.worktrees/feat-123456", branchName: "feat/123456" },
+      issues: [],
+    } satisfies GitWorktreeMutationResult);
+
+    const { createWorktreeForProject } = await renderWorktreeActionsHarness();
+    await act(async () => {
+      await createWorktreeForProject();
+    });
+
+    expect(mocks.addWorktree).toHaveBeenCalledTimes(1);
+    const request = mocks.addWorktree.mock.calls[0][0] as {
+      workspacePath: string;
+      newBranchName?: string;
+      directoryName?: string;
+    };
+    expect(request.workspacePath).toBe("/repo");
+    expect(request.newBranchName).toMatch(/^feat\/\d{6}$/);
+    // 目录名不显式指定：服务端按「目录名 = 净化分支名」派生为 feat-{同后缀}。
+    expect(request.directoryName).toBeUndefined();
+    expect(mocks.toast).toHaveBeenCalledWith("git.worktree.toast.created");
+    expect(mocks.addTab).toHaveBeenCalledWith("/repo/.worktrees/feat-123456");
   });
 });

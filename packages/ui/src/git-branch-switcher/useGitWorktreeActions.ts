@@ -4,7 +4,7 @@ import { resolveGitWorktreeIssueMessageId } from "@/git-branch-switcher/display.
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
-import { buildWorktreeProjectName } from "@/lib/worktreeProjectName.js";
+import { buildWorktreeBranchName } from "@/lib/worktreeBranchName.js";
 import { logger } from "@/logger.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
@@ -15,8 +15,9 @@ interface UseGitWorktreeActionsOptions {
 }
 
 /**
- * 分支切换器 footer 的「新建 Worktree」：在主树 `.worktrees/` 下创建
- * 目录 `{工程名}-{6位随机数}` 与分支 `feat/{同6位随机数}`，并作为独立项目打开。
+ * 分支切换器 footer 的「新建 Worktree」：在主树 `.worktrees/` 下以分支
+ * `feat/{6位随机数}` 检出为独立 worktree，目录名由服务端按「目录名 = 净化分支名」
+ * 派生为 `feat-{同6位随机数}`，并作为独立项目打开。
  * worktree 在模型上是独立项目，不属于分支维度；分支切换器只保留这一个创建入口。
  * 「新建 Worktree」之外的创建入口是分支行的行尾动作：把一个未被任何工作树
  * 检出的既有分支检出为新 worktree（见 createWorktreeForBranch）。
@@ -65,23 +66,21 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
   const settleAddWorktreeResult = useCallback(
     async (
       result: Awaited<ReturnType<typeof gitService.addWorktree>>,
-      context: { branchName: string; directoryName: string },
+      branchName: string,
     ): Promise<boolean> => {
       if (!result.ok || !result.worktree) {
         logger.warn("[GitWorktreeActions] 创建 worktree 被阻塞", {
           workspacePath,
-          branchName: context.branchName,
-          directoryName: context.directoryName,
+          branchName,
           issues: result.issues.map((issue) => issue.code),
         });
-        notifyWorktreeFailure(result.issues, context.branchName);
+        notifyWorktreeFailure(result.issues, branchName);
         return false;
       }
 
       logger.info("[GitWorktreeActions] 创建 worktree 成功", {
         workspacePath,
-        branchName: context.branchName,
-        directoryName: context.directoryName,
+        branchName,
         worktreePath: result.worktree.path,
       });
       toast(
@@ -97,19 +96,16 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
     setWorktreePending(true);
 
     try {
-      // 分支名撞已有分支时重摇；目录名与分支名共用同一个 6 位随机后缀。
+      // 分支名撞已有分支时重摇；目录名不显式传，由服务端按「目录名 = 净化分支名」
+      // 从 feat/{后缀} 派生为 feat-{同后缀}，与「以既有分支建 worktree」共用同一命名规则。
       const branches = await gitService.getLocalBranches({ workspacePath });
       const existingBranchNames = new Set(branches.branches.map((branch) => branch.name));
-      const plan = buildWorktreeProjectName(workspacePath, existingBranchNames);
+      const branchName = buildWorktreeBranchName(existingBranchNames);
       const result = await gitService.addWorktree({
         workspacePath,
-        newBranchName: plan.branchName,
-        directoryName: plan.directoryName,
+        newBranchName: branchName,
       });
-      await settleAddWorktreeResult(result, {
-        branchName: plan.branchName,
-        directoryName: plan.directoryName,
-      });
+      await settleAddWorktreeResult(result, branchName);
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       logger.warn("[GitWorktreeActions] 创建 worktree 请求失败", {
@@ -133,10 +129,7 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
         // 检出既有分支模式不传 directoryName，由服务端按「目录名 = 净化分支名」约定派生，
         // 与 worktree 重命名的命名规则保持一致。
         const result = await gitService.addWorktree({ workspacePath, branchName });
-        await settleAddWorktreeResult(result, {
-          branchName,
-          directoryName: branchName,
-        });
+        await settleAddWorktreeResult(result, branchName);
       } catch (error: unknown) {
         const message = getErrorMessage(error);
         logger.warn("[GitWorktreeActions] 创建 worktree 请求失败", {
