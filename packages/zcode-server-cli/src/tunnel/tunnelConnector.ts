@@ -124,8 +124,31 @@ export class TunnelConnector {
     this.pendingPairingToken = null;
   }
 
+  /**
+   * 水合持久化机器码（specs/web-tunnel.md §5.9「跨重启稳定」）：从身份文件读到的
+   * initialAssist 只有 8 位协议码才直接沿用；16 位历史码不水合，交给 ensureAssistCode
+   * 的码长迁移轮换。幂等：activeAssist 已存在（含刷新后的新码）时不覆盖。
+   */
+  private async hydratePersistedAssist(): Promise<void> {
+    const initial = this.options.initialAssist;
+    if (!this.activeAssist && initial && initial.code.length === TUNNEL_ASSIST_CODE_LENGTH) {
+      const { code } = initial;
+      this.activeAssist = {
+        code,
+        codeHash: await hashTunnelSecret(code),
+        maskedPsk: await maskAssistPsk(this.options.psk, code),
+        expiresAt: Date.now() + TUNNEL_ASSIST_TTL_MS,
+      };
+    }
+  }
+
   /** 远程协助：取当前机器码（持久化，无则生成并登记）；宿主重连自动补登记。 */
   async ensureAssistCode(): Promise<{ code: string; expiresAt: number }> {
+    // 启动竞态修复（重启后码变根因）：runtime 启动链 enable → assist-code 几乎总在
+    // hostReady 之前到达（hostReady 要经一次 relay 往返）。持久化码若只在 hostReady
+    // 水合，这里会把存储码误判为「无码」而重新生成并回写——daemon 每次重启/更新
+    // 都轮换一次，持久化形同虚设。查询前必须先水合。
+    await this.hydratePersistedAssist();
     // 码长迁移：历史版本曾签发 16 位码，长度与当前协议不符时自动轮换为新码
     // （relay 端同 hostId 只保留一份邀请，旧码哈希随之作废，旧链接立即失效）。
     if (!this.activeAssist || this.activeAssist.code.length !== TUNNEL_ASSIST_CODE_LENGTH) {
@@ -277,15 +300,7 @@ export class TunnelConnector {
       }
       // 远程协助机器码随 hostReady 补登记（relay 重启后码不变 = 链接长期有效）。
       void (async () => {
-        if (!this.activeAssist && this.options.initialAssist) {
-          const { code } = this.options.initialAssist;
-          this.activeAssist = {
-            code,
-            codeHash: await hashTunnelSecret(code),
-            maskedPsk: await maskAssistPsk(this.options.psk, code),
-            expiresAt: Date.now() + TUNNEL_ASSIST_TTL_MS,
-          };
-        }
+        await this.hydratePersistedAssist();
         if (this.activeAssist) {
           this.sendControl({
             type: "assistRegister",

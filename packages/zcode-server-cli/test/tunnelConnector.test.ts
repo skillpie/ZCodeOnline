@@ -358,3 +358,173 @@ test("控制通道断线：沿用凭证自动重连", async () => {
   await waitForEvent("reconnecting");
   await waitForEvent("connected");
 });
+
+// 机器码持久化回归（重启后码变根因）：hostReady 要经一次 relay 往返，启动链的
+// assist-code 查询几乎总先到达。假 relay 延迟发放 hostReady，精确复现该时序。
+interface DeferredAssistRelay {
+  url: string;
+  sendHostReady(): void;
+  assistRegisters(): Array<{ assistCodeHash: string }>;
+  close(): Promise<void>;
+}
+
+async function createDeferredAssistRelay(): Promise<DeferredAssistRelay> {
+  const server: Server = createServer();
+  const wss = new WebSocketServer({ noServer: true });
+  const registers: Array<{ assistCodeHash: string }> = [];
+  let hostSocket: WsSocket | null = null;
+  let hostReadySent = false;
+  server.on("upgrade", (request, socket, head) => {
+    const { pathname } = new URL(request.url ?? "/", "http://localhost");
+    if (pathname !== "/ws/host") {
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      hostSocket = ws;
+      ws.on("message", (data) => {
+        const frame = JSON.parse(String(data)) as Record<string, unknown>;
+        if (frame.type === "hostHello" && hostReadySent) {
+          ws.send(
+            JSON.stringify({
+              type: "hostReady",
+              issuedHostCredential: `cred-${randomUUID()}`,
+              serverTime: Date.now(),
+            }),
+          );
+        }
+        if (frame.type === "assistRegister") {
+          registers.push({ assistCodeHash: String(frame.assistCodeHash) });
+        }
+      });
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address() as AddressInfo;
+  return {
+    url: `ws://127.0.0.1:${address.port}`,
+    sendHostReady() {
+      hostReadySent = true;
+      hostSocket?.send(
+        JSON.stringify({
+          type: "hostReady",
+          issuedHostCredential: `cred-${randomUUID()}`,
+          serverTime: Date.now(),
+        }),
+      );
+    },
+    assistRegisters: () => registers,
+    async close() {
+      for (const client of wss.clients) client.terminate();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    },
+  };
+}
+
+function waitForAssistRegister(
+  target: DeferredAssistRelay,
+  codeHash: string,
+  timeoutMs = 5_000,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      if (target.assistRegisters().some((register) => register.assistCodeHash === codeHash)) {
+        clearInterval(timer);
+        resolve();
+      } else if (Date.now() - startedAt > timeoutMs) {
+        clearInterval(timer);
+        reject(new Error(`assistRegister with hash ${codeHash} not received`));
+      }
+    }, 10);
+  });
+}
+
+test("重启竞态回归：hostReady 前查询机器码必须沿用持久化码", async () => {
+  const deferredRelay = await createDeferredAssistRelay();
+  const persistedCode = "12345678";
+  const rotations: Array<{ code: string }> = [];
+  const persistedConnector = new TunnelConnector({
+    relayUrl: deferredRelay.url,
+    hostId: HOST_ID,
+    hostCredential: "",
+    displayName: "persisted",
+    psk,
+    loopbackWsUrl: business.url,
+    initialAssist: { code: persistedCode },
+    onAssistChange: (assist) => rotations.push({ code: assist.code }),
+    onEvent: (event) => events.push(event),
+  });
+  try {
+    persistedConnector.start();
+    // hostReady 尚未发放：模拟启动链 assist-code 抢在 relay 往返之前到达。
+    const invitation = await persistedConnector.ensureAssistCode();
+    assert.equal(invitation.code, persistedCode, "必须沿用持久化码，不得重新生成");
+    assert.equal(rotations.length, 0, "沿用持久化码不得触发回写");
+
+    deferredRelay.sendHostReady();
+    await waitForAssistRegister(deferredRelay, await hashTunnelSecret(persistedCode));
+  } finally {
+    persistedConnector.stop();
+    await deferredRelay.close();
+  }
+});
+
+test("16 位历史码迁移：ensure 轮换为 8 位并回写持久化", async () => {
+  const deferredRelay = await createDeferredAssistRelay();
+  const legacyCode = "1234567890123456";
+  const rotations: Array<{ code: string }> = [];
+  const legacyConnector = new TunnelConnector({
+    relayUrl: deferredRelay.url,
+    hostId: HOST_ID,
+    hostCredential: "",
+    displayName: "legacy",
+    psk,
+    loopbackWsUrl: business.url,
+    initialAssist: { code: legacyCode },
+    onAssistChange: (assist) => rotations.push({ code: assist.code }),
+    onEvent: (event) => events.push(event),
+  });
+  try {
+    legacyConnector.start();
+    const invitation = await legacyConnector.ensureAssistCode();
+    assert.equal(invitation.code.length, 8, "历史码必须迁移为 8 位协议码");
+    assert.notEqual(invitation.code, legacyCode);
+    assert.equal(rotations.length, 1, "迁移轮换必须回写持久化");
+    assert.equal(rotations[0]!.code, invitation.code);
+  } finally {
+    legacyConnector.stop();
+    await deferredRelay.close();
+  }
+});
+
+test("刷新语义：regenerateAssistCode 轮换新码并回写持久化", async () => {
+  const deferredRelay = await createDeferredAssistRelay();
+  const persistedCode = "87654321";
+  const rotations: Array<{ code: string }> = [];
+  const refreshConnector = new TunnelConnector({
+    relayUrl: deferredRelay.url,
+    hostId: HOST_ID,
+    hostCredential: "",
+    displayName: "refresh",
+    psk,
+    loopbackWsUrl: business.url,
+    initialAssist: { code: persistedCode },
+    onAssistChange: (assist) => rotations.push({ code: assist.code }),
+    onEvent: (event) => events.push(event),
+  });
+  try {
+    refreshConnector.start();
+    const current = await refreshConnector.ensureAssistCode();
+    assert.equal(current.code, persistedCode);
+    // 界面「刷新远程码」按钮 = 显式轮换：生成新码并回写，旧码立即失效。
+    const refreshed = await refreshConnector.regenerateAssistCode();
+    assert.notEqual(refreshed.code, persistedCode);
+    assert.equal(refreshed.code.length, 8);
+    assert.equal(rotations.length, 1);
+    assert.equal(rotations[0]!.code, refreshed.code);
+  } finally {
+    refreshConnector.stop();
+    await deferredRelay.close();
+  }
+});
