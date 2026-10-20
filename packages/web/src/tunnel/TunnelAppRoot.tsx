@@ -346,6 +346,10 @@ export function TunnelAppRoot({
               }
             : {})}
         >
+          {/* 挂起态登录态未知且 OAuth 服务是快速拒绝 stub：抑制登录入口（启动守卫/手动入口）。
+            否则启动守卫会用 stub 数据把"未连接"误判成"未配置账号"，整页替换成
+            带「没有可用的登录提供方」警告的欢迎页，盖住设计本意的草稿主界面。
+            连接成功后 Root 按 key 重挂载，用真实服务重新判定。 */}
           <Root
             services={activeServices}
             platform={platform}
@@ -354,6 +358,7 @@ export function TunnelAppRoot({
             preferDirectoryBrowser
             supportsEmbeddedBrowser={false}
             allowRemoteWorkspace={false}
+            suppressLoginEntry={services === null}
             loadZcodeSsoJwtToken={async () => getAccessToken()}
             {...(hostWorkspace
               ? {

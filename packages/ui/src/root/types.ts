@@ -95,6 +95,11 @@ export interface RootProps {
   suppressJwtInvalidReload?: boolean;
   /** 隧道/远程会话：抑制账号引导门（WelcomeScreen）——模型凭据在被控机器上，浏览器侧登录无意义。 */
   suppressAccountOnboarding?: boolean;
+  /**
+   * 服务面未就绪（如 Web 隧道挂起态）时抑制登录入口：此时登录态未知、OAuth 服务不可用，
+   * 启动守卫与手动入口都不得打开 WelcomeScreen。连接就绪后 Root 重挂载，用真实数据重新判定。
+   */
+  suppressLoginEntry?: boolean;
 }
 
 export interface WorkspaceSettingsLayerProps {

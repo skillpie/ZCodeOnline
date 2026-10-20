@@ -9,7 +9,7 @@ describe("useProviderAvailabilityLoginEntryGuard", () => {
     const { result } = renderHook(() =>
       useProviderAvailabilityLoginEntryGuard({
         user: null,
-        isRestoringOAuthSession: false,
+        isStartupCheckDeferred: false,
         providerFamilyDomain: "zai",
         modelSelectionView: null,
         modelSelectionError: new Error("registry unavailable"),
@@ -40,7 +40,7 @@ describe("useProviderAvailabilityLoginEntryGuard", () => {
       (props: { hydrated: boolean }) =>
         useProviderAvailabilityLoginEntryGuard({
           user: null,
-          isRestoringOAuthSession: false,
+          isStartupCheckDeferred: false,
           providerFamilyDomain: "zai",
           modelSelectionView: props.hydrated ? view : null,
           refreshProviderState,
@@ -57,5 +57,65 @@ describe("useProviderAvailabilityLoginEntryGuard", () => {
 
     await waitFor(() => expect(setLoginEntryOpen).toHaveBeenCalledWith(false));
     expect(refreshProviderState).not.toHaveBeenCalled();
+  });
+
+  it("启动输入未落定时延后检查，落定后只执行一次", async () => {
+    const setLoginEntryOpen = vi.fn();
+    const view = {
+      revision: 1,
+      providers: [
+        {
+          providerId: "registry-provider",
+          config: { kind: "api" as const },
+          models: [{ modelId: "registry-model", config: {} }],
+        },
+      ],
+    };
+    const { rerender } = renderHook(
+      (props: { deferred: boolean }) =>
+        useProviderAvailabilityLoginEntryGuard({
+          user: null,
+          isStartupCheckDeferred: props.deferred,
+          providerFamilyDomain: "zai",
+          modelSelectionView: view,
+          refreshProviderState: vi.fn(async () => {}),
+          readModelSelectionView: async () => view,
+          setLoginEntryOpen,
+        }),
+      { initialProps: { deferred: true } },
+    );
+
+    await Promise.resolve();
+    expect(setLoginEntryOpen).not.toHaveBeenCalled();
+
+    rerender({ deferred: false });
+
+    await waitFor(() => expect(setLoginEntryOpen).toHaveBeenCalledTimes(1));
+    expect(setLoginEntryOpen).toHaveBeenCalledWith(false);
+
+    // 检查是一次性判定：后续输入变化（如 user 落定）不得重复开关登录入口。
+    rerender({ deferred: false });
+    await Promise.resolve();
+    expect(setLoginEntryOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("enabled=false 时立即结束启动等待且不执行检查", async () => {
+    const setLoginEntryOpen = vi.fn();
+    const { result } = renderHook(() =>
+      useProviderAvailabilityLoginEntryGuard({
+        enabled: false,
+        user: null,
+        isStartupCheckDeferred: false,
+        providerFamilyDomain: "zai",
+        modelSelectionView: null,
+        refreshProviderState: vi.fn(async () => {}),
+        readModelSelectionView: vi.fn(),
+        setLoginEntryOpen,
+      }),
+    );
+
+    expect(result.current.startupCheckCompleted).toBe(true);
+    await Promise.resolve();
+    expect(setLoginEntryOpen).not.toHaveBeenCalled();
   });
 });

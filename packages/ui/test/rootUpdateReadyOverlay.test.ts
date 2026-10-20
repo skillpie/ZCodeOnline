@@ -164,6 +164,7 @@ vi.mock("@/lib/rootStartupGate.js", () => ({
   }: {
     isWebRemoteControlRoot: boolean;
   }) => !isWebRemoteControlRoot,
+  shouldDeferProviderAvailabilityStartupCheck: () => false,
   shouldResolveProviderStartupState: ({
     isWebRemoteControlRoot,
     providerStartupSyncPending,

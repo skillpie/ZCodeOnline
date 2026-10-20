@@ -37,6 +37,7 @@ import { countAllUnreadTasks } from "@/lib/unreadTaskCount.js";
 import {
   isProviderStartupSyncPending,
   shouldEnableProviderAvailabilityLoginEntryGuard,
+  shouldDeferProviderAvailabilityStartupCheck,
   shouldResolveProviderStartupState,
   shouldBlockRootRender,
   shouldShowRootStartupLoading,
@@ -298,6 +299,7 @@ function RootInner({
   initialWebRemoteControlWorkspaceList,
   webRemoteControlTerminalTransportState,
   initialWorkspaceLoadingFallback,
+  suppressLoginEntry,
 }: RootProps) {
   useEffect(() => {
     setRequestSecurityReporter(platform);
@@ -351,6 +353,7 @@ function RootInner({
     settings: appSettings,
     refresh: refreshAppSettings,
     update: updateAppSettings,
+    loading: appSettingsLoading,
   } = useSettings();
   // docs/dynamic-workflow/launch.md「The user's choice」：设置里的动态工作流选择变化后，通知本窗口
   // 的 Host 重发 CLI 策略（并转发给远程 Host），再重读灰度快照。
@@ -606,12 +609,17 @@ function RootInner({
   const providerAvailabilityLoginEntryGuardEnabled =
     shouldEnableProviderAvailabilityLoginEntryGuard({
       isWebRemoteControlRoot,
+      suppressLoginEntry,
     });
   const { startupCheckCompleted: providerAvailabilityStartupCheckCompleted } =
     useProviderAvailabilityLoginEntryGuard({
       enabled: providerAvailabilityLoginEntryGuardEnabled,
       user,
-      isRestoringOAuthSession: isResolvingStartupAuthState || providerStartupSyncPending,
+      isStartupCheckDeferred: shouldDeferProviderAvailabilityStartupCheck({
+        isResolvingStartupAuthState,
+        providerStartupSyncPending,
+        appSettingsLoading,
+      }),
       providerFamilyDomain: appSettings?.providerFamilyDomain,
       modelSelectionView: rootModelSelectionView,
       modelSelectionError:
@@ -1088,17 +1096,21 @@ function RootInner({
   }, [isSettingsTabActive, workspaceShellPath]);
 
   useEffect(() => {
-    if (!loginEntryRequest) {
+    // 服务面未就绪（suppressLoginEntry）时 OAuth 全部快速拒绝，打开登录入口只会得到
+    // 一个所有按钮都无效的欢迎页；连接成功后 Root 重挂载，由真实服务重新判定登录入口。
+    if (!loginEntryRequest || suppressLoginEntry) {
       return;
     }
     // 登录入口已从模态弹窗收敛为 WelcomeScreen。
     // provider 连接请求仍要先退出首次启动引导语义，避免连接完成后误创建默认 workspace。
     setWelcomeScreenOpenReason("provider-request");
-  }, [loginEntryRequest]);
+  }, [loginEntryRequest, suppressLoginEntry]);
 
   const handleOpenLoginEntry = () => {
     setWelcomeScreenOpenReason("manual-login");
   };
+  // 手动登录入口与启动守卫共用同一条抑制规则：挂起态不开放，避免侧栏出现点了没反应的登录项。
+  const loginEntryOpenable = !user && !suppressLoginEntry;
   const handleWelcomeScreenComplete = useCallback(
     async (reason: LoginCompleteReason) => {
       await refreshAppSettings();
@@ -1189,7 +1201,7 @@ function RootInner({
     onCreateTask: handleCreateTask,
     onOpenWorkspace: handleOpenWorkspace,
     allowOpenWorkspace,
-    onLogin: !user ? handleOpenLoginEntry : undefined,
+    onLogin: loginEntryOpenable ? handleOpenLoginEntry : undefined,
     onLogout: user ? handleLogout : undefined,
     user,
   };
@@ -1295,7 +1307,7 @@ function RootInner({
             allowRemoteWorkspace={allowRemoteWorkspace}
             handleBackFromSettings={handleBackFromSettings}
             handleLogout={user ? handleLogout : undefined}
-            onLogin={!user ? handleOpenLoginEntry : undefined}
+            onLogin={loginEntryOpenable ? handleOpenLoginEntry : undefined}
             user={user}
             reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}
             remoteWorkspaceErrorByWorkspaceKey={remoteWorkspaceErrorByWorkspaceKey}

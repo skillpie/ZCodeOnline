@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isProviderStartupSyncPending,
+  shouldDeferProviderAvailabilityStartupCheck,
   shouldEnableProviderAvailabilityLoginEntryGuard,
   shouldResolveProviderStartupState,
   shouldBlockRootRender,
@@ -86,6 +87,54 @@ describe("Root startup gate", () => {
         isWebRemoteControlRoot: true,
       }),
     ).toBe(false);
+  });
+
+  it("服务面未就绪（挂起态）时禁用登录入口守卫", () => {
+    // Bugfix: Web 隧道挂起态下 OAuth 服务是快速拒绝 stub、settings 是桩默认值，
+    // 守卫若照常运行会把"未连接"误判成"未配置账号"，整页替换成登录欢迎页。
+    expect(
+      shouldEnableProviderAvailabilityLoginEntryGuard({
+        isWebRemoteControlRoot: false,
+        suppressLoginEntry: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("服务面就绪的普通 Root 继续运行登录入口守卫", () => {
+    expect(
+      shouldEnableProviderAvailabilityLoginEntryGuard({
+        isWebRemoteControlRoot: false,
+        suppressLoginEntry: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("启动输入未全部落定前延后登录入口检查", () => {
+    const base = {
+      isResolvingStartupAuthState: false,
+      providerStartupSyncPending: false,
+      appSettingsLoading: false,
+    };
+    expect(shouldDeferProviderAvailabilityStartupCheck(base)).toBe(false);
+    expect(
+      shouldDeferProviderAvailabilityStartupCheck({
+        ...base,
+        isResolvingStartupAuthState: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldDeferProviderAvailabilityStartupCheck({
+        ...base,
+        providerStartupSyncPending: true,
+      }),
+    ).toBe(true);
+    // settings 未加载时 providerFamilyDomain 不可信，必须等快照落定再判定。
+    expect(
+      shouldDeferProviderAvailabilityStartupCheck({
+        ...base,
+        appSettingsLoading: true,
+      }),
+    ).toBe(true);
   });
 
   it("Web 远控 Root 不把 provider 启动态作为 workspace 注入门禁", () => {

@@ -13,7 +13,7 @@ export interface ProviderAvailabilityLoginEntryGuardResult {
 export function useProviderAvailabilityLoginEntryGuard({
   enabled = true,
   user,
-  isRestoringOAuthSession,
+  isStartupCheckDeferred,
   providerFamilyDomain,
   modelSelectionView,
   modelSelectionError,
@@ -23,7 +23,8 @@ export function useProviderAvailabilityLoginEntryGuard({
 }: {
   enabled?: boolean;
   user: UserInfo | null;
-  isRestoringOAuthSession: boolean;
+  /** 启动输入（OAuth 恢复、provider 同步、settings 快照）未落定时延后一次性检查。 */
+  isStartupCheckDeferred: boolean;
   providerFamilyDomain: string | null | undefined;
   modelSelectionView: ModelSelectionView | null;
   modelSelectionError?: Error;
@@ -102,7 +103,7 @@ export function useProviderAvailabilityLoginEntryGuard({
 
     if (
       startupCheckCompletedRef.current ||
-      isRestoringOAuthSession ||
+      isStartupCheckDeferred ||
       !providerAvailabilityHydrated
     ) {
       return;
@@ -116,7 +117,7 @@ export function useProviderAvailabilityLoginEntryGuard({
     });
   }, [
     enabled,
-    isRestoringOAuthSession,
+    isStartupCheckDeferred,
     modelSelectionError,
     providerAvailabilityHydrated,
     syncLoginEntryWithProviderAvailability,
