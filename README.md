@@ -15,6 +15,7 @@ ZCodeOnline 是基于 ZCode 的 AI 编程工作台升级版：一套源码，覆
 
 ## 更新
 
+- 2026-10-20：合入官方 v3.16.2 更新。
 - 2026-10-13：合入官方 v3.15.1 更新。
 - 2026-9-23：合入官方 v3.14.3 更新。
 
@@ -67,7 +68,26 @@ zcode --help             # 查看 CLI 或 Web 参数
 
 Web 模式默认监听 `127.0.0.1` 并自动打开浏览器；局域网访问用 `--host 0.0.0.0`，监听非本机地址时默认启用令牌认证，可用 `--token` / `--no-token` 覆盖。
 
-直接开发 TUI 或 Agent 源码时使用 `pnpm --filter @zcode/cli dev`；验证统一的 `zcode` 命令需先按下方打包章节构建并解压发行包。
+直接启动通用 Web 服务的 HTTP 入口时，通过 `ZCODE_SERVER_AUTH_TOKEN` 配置 API／WebSocket 认证；通过程序接口创建服务时，使用 `authToken` 选项。
+
+构建方式见下方打包章节。`pnpm build:zcode` 只生成发行包，不会替换 `PATH` 中已有的 `zcode`。如果命令仍指向旧安装或其他源码目录，macOS / Linux 可用 `command -v zcode` 检查，Windows 可用 `where.exe zcode` 检查。
+
+### CLI 源码开发
+
+CLI 的模型配置、非交互调用、工具与扩展、批量评测和轨迹记录见 [CLI 使用指南](apps/zcode-cli/docs/usage/README.md)。
+
+直接开发 TUI 或 Agent 时，运行源码入口：
+
+```bash
+pnpm --filter @zcode/cli dev --help
+pnpm --filter @zcode/cli dev
+
+# 构建 CLI 及其 workspace 依赖
+pnpm --filter @zcode/cli... build
+node apps/zcode-cli/packages/cli/dist/zcode.cjs --help
+```
+
+这个入口直接运行 Agent CLI，不经过发行包的 `--web` 分流。开发 Web 用 `pnpm dev:web`；验证统一的 `zcode` 命令，用下方解压后的 `bin/zcode.mjs`。
 
 ### UI Plugin 开发
 

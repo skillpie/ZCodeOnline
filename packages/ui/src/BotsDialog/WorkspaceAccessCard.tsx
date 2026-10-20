@@ -23,7 +23,8 @@ export function WorkspaceAccessCard({
 }: {
   bot: BotConfig;
   workspaceRefs: BotWorkspaceRef[];
-  currentWorkspace: BotWorkspaceRef;
+  // 合并恢复：官方回退到 workspaceRefs[0]，用户 fork 以当前 workspace 为选中目标。
+  currentWorkspace?: { id: string } | null;
   loading: boolean;
   onPatchAllowedWorkspaces: (allowedWorkspaces: string[]) => Promise<void>;
   onToggleWorkspaceAccess: (workspaceId: string, checked: boolean) => Promise<void>;
@@ -53,13 +54,28 @@ export function WorkspaceAccessCard({
           <Select
             value={allAllowed ? "all" : "selected"}
             onValueChange={(value) => {
-              void onPatchAllowedWorkspaces(
-                value === "all" ? [ALL_BOT_WORKSPACES] : [currentWorkspace.id],
-              );
+              // 用户语义：非 all 时选中当前 workspace；无当前 workspace 时回退官方的
+              // workspaceRefs[0]，refs 未加载则不产生选择结果。
+              const nextAllowed = value === "all"
+                ? [ALL_BOT_WORKSPACES]
+                : currentWorkspace
+                  ? [currentWorkspace.id]
+                  : workspaceRefs[0]
+                    ? [workspaceRefs[0].id]
+                    : null;
+              if (!nextAllowed) {
+                return;
+              }
+              void onPatchAllowedWorkspaces(nextAllowed);
             }}
-            disabled={loading}
+            // 保留官方的空列表守卫；refs 未加载时禁止切换，避免把空列表当成选择结果。
+            disabled={loading || workspaceRefs.length === 0}
           >
-            <SelectTrigger size="lg" className="w-48 justify-between">
+            <SelectTrigger
+              data-testid="bots-project-access-trigger"
+              size="lg"
+              className="w-48 justify-between"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

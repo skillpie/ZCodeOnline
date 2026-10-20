@@ -77,6 +77,7 @@ export function getBotProviderRegionTagLabelId(provider: BotProviderEntryId): st
   }
 }
 
+// 用户 fork（main）：Bots 工作区作用域身份 key，与 workspaceIdentity 全局约定一致。
 export function buildCurrentWorkspaceId(workspacePath: string, workspaceIdentity?: string): string {
   return workspaceIdentity?.trim() || workspacePath;
 }

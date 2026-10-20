@@ -21,14 +21,39 @@
 
 ## Boundary Decisions
 
-| Boundary         | Decision                                                                     | Includes                                      | Excludes / prunes                                                       | Source                |
-| ---------------- | ---------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------- | --------------------- |
-| app 冷启动       | 恢复 workspace tab，但不恢复可见 session owner                               | 本地、SSH/WSL/Docker tab                      | 不删除历史 session                                                      | user                  |
-| workspace 级入口 | 每次显式打开/激活 workspace 都进入草稿                                       | 文件夹选择、workspace 行、系统 focus          | 显式 session/task 导航                                                  | user                  |
-| renderer reload  | 保留当前 session 的 pane 恢复                                                | 同一 renderer 刷新、输出中续流                | app 进程冷启动                                                          | existing M3 contract  |
-| 首次执行         | 首次发送或必须依附 session 的命令才创建/绑定 session                         | draft promotion                               | 启动/打开时隐藏创建正式 session                                         | conversation protocol |
-| 多端             | workspace 入口语义一致；delivery profile 不变                                | desktop continuous、web remote replayable     | relay/main 持有 session 状态                                            | architecture          |
-| 远程连接完成     | ready 前保留当前右侧；ready 后激活远程 tab 并立即切换该 workspace 的草稿归属 | SSH/WSL/Docker/Server 首次连接与断连 tab 复用 | 提前激活 `remote-waiting` tab；等 pinned/timeline 刷新后才 `startDraft` | user                  |
+### 默认本地项目失效（2026-09-15）
+
+启动恢复选中的本地项目目录不存在、不是目录或不可访问时，默认进入「任务」的无项目草稿，
+不将不可用项目设为活动工作区。失效项目入口及历史任务保留；不删除项目、不创建正式 session。
+草稿沿用 `fileService.ensureConversationWorkspace()` 返回的 app-owned cwd，归属为
+`projectId=null`、`activeTaskId=null`。
+
+恢复选择仍由 `restorePersistedRemoteWorkspaceSessions` 一次计算并提交给 TabStore：
+
+```text
+Main 检查默认本地目录 → unavailableWorkspacePath
+Host 解析无项目 cwd → Renderer 计算恢复列表与活动索引
+  → 首帧激活无项目工作区 → 现有 primary draft / composer
+  → active-first 后补失效入口，保持用户当前选择
+```
+
+同时覆盖新版 `lastActiveWorkspace` 和旧版列表恢复，列表顺序不影响兜底选择。
+无项目目录解析失败时保留原有错误/只读恢复能力，不把失效目录冒充可发送草稿。
+有效本地目录及显式历史任务导航维持既有语义；远程同路径不使用本地不可用标记。
+本次只改变桌面启动导航，不改 Host/CLI 状态归属、持久化 schema，也不改手机 shared-host
+attachment 和 `web-remote-replayable` 恢复边界。
+
+验证：恢复函数单测覆盖新版/旧版、顺序、active-first 补齐和用户新选择；Desktop E2E
+完整重启后断言无项目草稿可输入，失效目录仍不存在，刷新后仍可输入。
+
+| Boundary         | Decision                                             | Includes                                  | Excludes / prunes               | Source                |
+| ---------------- | ---------------------------------------------------- | ----------------------------------------- | ------------------------------- | --------------------- |
+| app 冷启动       | 恢复 workspace tab，但不恢复可见 session owner       | 本地、SSH/WSL/Docker tab                  | 不删除历史 session              | user                  |
+| workspace 级入口 | 每次显式打开/激活 workspace 都进入草稿               | 文件夹选择、workspace 行、系统 focus      | 显式 session/task 导航          | user                  |
+| renderer reload  | 保留当前 session 的 pane 恢复                        | 同一 renderer 刷新、输出中续流            | app 进程冷启动                  | existing M3 contract  |
+| 首次执行         | 首次发送或必须依附 session 的命令才创建/绑定 session | draft promotion                           | 启动/打开时隐藏创建正式 session | conversation protocol |
+| 多端             | workspace 入口语义一致；delivery profile 不变        | desktop continuous、web remote replayable | relay/main 持有 session 状态    | architecture          |
+| 远程连接完成     | ready 前保留当前右侧；ready 后激活远程 tab 并立即切换该 workspace 的草稿归属 | SSH/WSL/Docker/Server 首次连接与断连 tab 复用 | 提前激活 `remote-waiting` tab；等 pinned/timeline 刷新后才 `startDraft` | user |
 
 ## Domain Scope And State Owners
 

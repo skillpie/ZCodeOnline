@@ -1,8 +1,8 @@
 # Web Remote v3 Static Deployment Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> 已归档：部署部分被 [Relay V2 收口任务](../../issues/web-remote-control-relay-v2/07-contract-v1-removal-and-docs.md) 取代。旧步骤及已迁走的基础设施引用已移除，不能作为当前发布操作手册。
 
-**Goal:** Add an isolated `/remote/v3` static deployment path for new mobile Web remote-control resources while keeping the existing `/remote` v2 deployment untouched.
+历史设计的目标是将手机静态资源按路径隔离，防止新资源覆盖旧版本 App。当前 V2 以 OSS 版本目录实现该隔离，参见 [Remote v4 静态部署](../../web-remote-control/remote-v4-static-deployment.md)。
 
 **Architecture:** Keep v2 and v3 as separate build and publish chains that share the same Vite source app but use different `base` paths, Dockerfiles, nginx configs, image names, and k8s deployment files. Add one pure route helper so the Web app recognizes the QR remote-control route from the build base, with a dev fallback for the existing localhost `/remote` flow.
 

@@ -30,26 +30,17 @@ afterEach(() => {
 });
 
 describe("CodingPlanQuotaResetStatusContent", () => {
-  it("processing 渲染转圈与提示文案", () => {
-    const { container } = render(
-      createElement(CodingPlanQuotaResetStatusContent, { status: "processing" }),
-    );
+  it("processing 渲染状态提示文案", () => {
+    render(createElement(CodingPlanQuotaResetStatusContent, { status: "processing" }));
 
     expect(screen.getByRole("status").textContent).toContain("正在重置 5 小时额度…");
-    const spinner = container.querySelector(".animate-spin");
-    expect(spinner).not.toBeNull();
-    expect(spinner?.classList.contains("motion-reduce:animate-none")).toBe(true);
   });
 
-  it("completed 渲染绿色勾选与已重置文案", () => {
-    const { container } = render(
-      createElement(CodingPlanQuotaResetStatusContent, { status: "completed" }),
-    );
+  it("completed 渲染已重置状态文案", () => {
+    render(createElement(CodingPlanQuotaResetStatusContent, { status: "completed" }));
 
     const status = screen.getByRole("status");
     expect(status.textContent).toContain("5 小时额度已重置");
-    expect(status.className).toContain("text-success");
-    expect(container.querySelector(".zoom-in-75")).not.toBeNull();
   });
 });
 

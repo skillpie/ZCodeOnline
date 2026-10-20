@@ -98,7 +98,6 @@ describe("refreshWorkspacePluginCapabilitiesAfterRemoteSync", () => {
       workspaceIdentity,
       reason: "sidebar-remote-plugin-sync",
       zcodeAgentService: {} as never,
-      zcodeSessionService: { closeSession: vi.fn(async () => {}) } as never,
       skillsService: { list: vi.fn() } as never,
       commandsService: commandsService as never,
       mcpSyncService: {

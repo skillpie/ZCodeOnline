@@ -93,11 +93,7 @@ vi.mock("@/components/ui/tooltip.js", () => ({
     ),
 }));
 
-import {
-  ConfigSelect,
-  isHighPermissionModeValue,
-  resolveModeOptionIcon,
-} from "@/chat-input-toolbar/display.js";
+import { ConfigSelect, isHighPermissionModeValue } from "@/chat-input-toolbar/display.js";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 
 beforeEach(() => {
@@ -115,7 +111,7 @@ describe("ConfigSelect mode options", () => {
     ["zh-CN", "自主模式", "在有风险时询问"],
     ["en-US", "Autonomous mode", "Ask when there’s risk"],
   ] as const)(
-    "Guarded 在 %s 下使用浅蓝色和 Edit 图标，不复用 YOLO 警示样式",
+    "Guarded 在 %s 下使用本地化自主模式文案并保持普通权限",
     (locale, label, description) => {
       const html = renderConfigSelect(locale, {
         provider: "glm",
@@ -134,11 +130,8 @@ describe("ConfigSelect mode options", () => {
       expect(html).toContain(label);
       expect(html).toContain(description);
       expect(html).toContain('data-value="guarded"');
-      expect(resolveModeOptionIcon("guarded")).toBe(resolveModeOptionIcon("edit"));
-      expect(html.match(/lucide-shield-check/g)).toHaveLength(2);
-      expect(html).toContain("text-icon-blue hover:text-icon-blue aria-expanded:text-icon-blue");
+
       expect(html).not.toContain("text-warning");
-      expect(html).not.toContain("lucide-shield-alert");
     },
   );
 
@@ -277,7 +270,6 @@ describe("ConfigSelect mode options", () => {
     expect(html).toContain("自动编辑");
     expect(html).not.toContain("需要授权 / Build");
     expect(html).toContain("改文件前先问我。");
-    expect(html).toContain("pr-8");
   });
 
   it("mode trigger 使用当前文案而不是 SelectValue 自动回填", () => {

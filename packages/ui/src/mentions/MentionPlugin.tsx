@@ -6,8 +6,6 @@ import { createPortal } from "react-dom";
 import { PaletteIcon, StoreIcon, WandSparkles } from "lucide-react";
 import {
   $createTextNode,
-  $getSelection,
-  $isRangeSelection,
   BLUR_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
   COMMAND_PRIORITY_LOW,
@@ -63,6 +61,7 @@ import {
   type ActivePromptInputTokenSnapshot,
 } from "./activePromptInputToken.js";
 import { getCurrentTextNodeSelection } from "./mentionHelpers.js";
+import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 
 interface MentionPluginProps {
   container?: HTMLElement | null;
@@ -154,6 +153,9 @@ export function MentionPlugin({
 }: MentionPluginProps & { provider: ZCodeProvider }) {
   const [editor] = useLexicalComposerContext();
   const { intl } = useZCodeIntl();
+  const draftProjectId = useZCodeSessionStore(
+    (state) => state.getWorkspaceState(workspacePath, workspaceIdentity).draftProjectId,
+  );
   const [activeTrigger, setActiveTrigger] = useState<ActivePromptInputTrigger | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const dismissedSignatureRef = useRef<string | null>(null);
@@ -213,6 +215,7 @@ export function MentionPlugin({
     intl.formatMessage({ id: "chat.mention.files.empty" }),
     intl.formatMessage({ id: "chat.mention.files.title" }),
     fileDefaultPreviewLimit,
+    { sessionId, projectId: draftProjectId },
   );
   const whiteboardResult = useWhiteboardMentionProvider(
     workspacePath,
@@ -245,6 +248,16 @@ export function MentionPlugin({
   );
 
   const panelGroups = useMemo<MentionResultGroup<MentionItem>[]>(() => {
+    if (activeTrigger?.trigger === "#" && sessionsResult.groups?.length) {
+      return buildVisibleMentionGroups(
+        sessionsResult.groups.map((group) => ({
+          ...group,
+          emptyText: sessionsResult.emptyText,
+          loading: sessionsResult.loading,
+          errorText: sessionsResult.error?.message ?? null,
+        })),
+      );
+    }
     const groupsById = {
       files: {
         id: "files",
@@ -321,6 +334,7 @@ export function MentionPlugin({
     sessionsResult.emptyText,
     sessionsResult.error,
     sessionsResult.items,
+    sessionsResult.groups,
     sessionsResult.loading,
     sessionsResult.title,
     whiteboardResult.emptyText,
@@ -345,6 +359,7 @@ export function MentionPlugin({
       panelGroups.map((group) => ({
         id: group.id,
         title: group.title,
+        showHeader: activeTrigger?.trigger === "#",
         options: group.items.map<MentionPanelOption>((item) => ({
           id: item.id,
           label: item.displayLabel ?? item.label,
@@ -408,7 +423,7 @@ export function MentionPlugin({
         errorText: group.errorText,
         emptyText: group.emptyText,
       })),
-    [intl, panelGroups, workspacePath],
+    [intl, panelGroups, workspacePath, activeTrigger?.trigger],
   );
 
   useEffect(() => {

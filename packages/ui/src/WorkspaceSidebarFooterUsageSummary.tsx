@@ -1,3 +1,4 @@
+import { SidebarNativeTooltip } from "@/ControlHintTooltip.js";
 /* eslint-disable max-lines -- footer 套餐徽标、用量入口与 entitlement 探测共用同一份
    provider 选择与 family 过滤上下文，拆文件会让 zai/bigmodel 对称性难以追踪。 */
 import { useEffect, useMemo } from "react";
@@ -5,8 +6,8 @@ import {
   BUILTIN_MODEL_PROVIDER_IDS,
   normalizeProviderFamilyDomain,
   resolveModelProviderFamilyIdByProviderId,
-  TID_SIDEBAR_CODING_PLAN_USAGE_BUTTON,
 } from "@zcode/shared";
+import { TID_SIDEBAR_CODING_PLAN_USAGE_BUTTON } from "@zcode/shared/test-ids";
 import { BarChart3Icon } from "lucide-react";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu.js";
 import {
@@ -452,11 +453,13 @@ export function WorkspaceSidebarFooterPlanBadge({
   }
 
   return (
-    <span
-      className="min-w-0 max-w-20 shrink truncate rounded-full border border-border bg-surface px-1 py-px text-ui-xs font-medium leading-normal text-foreground-subtle"
-      title={label}
-    >
-      {label}
-    </span>
+    <SidebarNativeTooltip>
+      <span
+        className="min-w-0 max-w-20 shrink truncate rounded-full border border-border bg-surface px-1 py-px text-ui-xs font-medium leading-normal text-foreground-subtle"
+        title={label}
+      >
+        {label}
+      </span>
+    </SidebarNativeTooltip>
   );
 }

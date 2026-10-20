@@ -106,11 +106,11 @@ import { partitionWorkspaceTabsByPurpose } from "@/lib/workspacePurpose.js";
 import {
   areAllGroupedTaskGroupsExpanded,
   pruneCollapsedGroupedTaskGroupIds,
-} from "@/workspace-grouped-tasks/shared.js";
+} from "@/project-sidebar/grouped/shared.js";
 import {
   persistGroupedTaskCollapsedGroupIds,
   readGroupedTaskCollapsedGroupIds,
-} from "@/lib/groupedTaskExpansionPreference.js";
+} from "@/project-sidebar/grouped-expansion.js";
 import type { Theme } from "@/useTheme.js";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
@@ -122,7 +122,7 @@ import { SidebarBottomActivity } from "@/sidebar-activity/SidebarBottomActivity.
 import { WorkspacePinnedTasksSection } from "@/WorkspacePinnedTasksSection.js";
 import { WorkspaceTimelineTasksSection } from "@/WorkspaceTimelineTasksSection.js";
 import { WorkspaceGroupedTasksSection } from "@/WorkspaceGroupedTasksSection.js";
-import { StickyGroupHeaderSlot } from "@/workspace-grouped-tasks/sticky-group-header-slot.js";
+import { StickyGroupHeaderSlot } from "@/project-sidebar/grouped/sticky-group-header-slot.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { useWebRemoteControlFeatureEnabled } from "@/WebRemoteControlFeatureProvider.js";
 import {
@@ -228,6 +228,9 @@ function resolveSidebarTaskViewMode(params: {
 
 export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   workspacePath,
+  // 官方 sync 由 Shell 直传活动 workspace 的 identity；与下方 tab store 派生值同源，
+  // prop 缺省（旧调用方）时回退 tab store 派生，避免远程 workspace 按路径误匹配。
+  workspaceIdentity: workspaceIdentityProp,
   workspaceRemoteSessionId,
   activePreviewPath,
   onSelectTask,
@@ -276,6 +279,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   onWebRemoteTaskSwitchingChange,
 }: {
   workspacePath: string;
+  workspaceIdentity?: string;
   workspaceRemoteSessionId?: string;
   activePreviewPath?: string | null;
   onSelectTask: (
@@ -356,7 +360,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const { openCodingPlanUpgrade } = useCodingPlanUpgradeDialog();
   const webRemoteControlFeatureEnabled = useWebRemoteControlFeatureEnabled();
   const bumpTaskListVersion = useZCodeSessionStore((state) => state.bumpTaskListVersion);
-  const workspaceIdentity = useTabStore((state) => {
+  const workspaceIdentityFromTabStore = useTabStore((state) => {
     if (!state.activeTabId) {
       return undefined;
     }
@@ -368,6 +372,8 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
 
     return activeTab.workspaceIdentity;
   });
+  // Shell 直传的 identity 是活动 workspace 的单一事实源；仅当旧调用方未传时才回退 tab store 派生。
+  const workspaceIdentity = workspaceIdentityProp ?? workspaceIdentityFromTabStore;
   const workspaceReadOnly = useTabStore((state) =>
     isWorkspaceReadOnly(state, workspacePath, workspaceIdentity),
   );

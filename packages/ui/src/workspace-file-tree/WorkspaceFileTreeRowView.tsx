@@ -1,9 +1,10 @@
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 /* eslint-disable max-lines -- 文件树行集中维护拖拽、打开方式、Git 状态与上下文菜单交互。 */
 import type { EditorInfo, OpenInEditorRemoteTarget } from "@zcode/shared";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
-import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared";
+import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import {
   ContextMenu,
@@ -16,7 +17,6 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu.js";
 import { toast } from "@/components/ui/toast.js";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";

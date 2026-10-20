@@ -64,3 +64,5 @@ export type { DiffHunk, GitDiff } from "./write.js";
 // 数据源三工具（DBQuery/DBSchema/DBExecute）：名字常量被 core 的 builtInTools 注册读走；
 // spec 见仓库 specs/data-source.md。
 export * from "./db.js";
+export * from "./tool-search.js";
+export * from "./deferred-tool-call.js";

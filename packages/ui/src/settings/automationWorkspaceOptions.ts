@@ -2,6 +2,8 @@ import { resolveWorkspaceKey, type RemoteTarget, type WorkspacePurpose } from "@
 import { isWorkspaceTab, isWorkspaceTabReadOnly, type WindowTabState } from "@/store/tabStore.js";
 
 export interface AutomationWorkspaceOption {
+  projectId?: string | null;
+  hostId?: string;
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;
@@ -11,9 +13,14 @@ export interface AutomationWorkspaceOption {
 }
 
 export function resolveAutomationWorkspaceSelectionKey(
-  workspace: Pick<AutomationWorkspaceOption, "workspacePath" | "workspaceIdentity">,
+  workspace: Pick<
+    AutomationWorkspaceOption,
+    "workspacePath" | "workspaceIdentity" | "projectId" | "hostId"
+  >,
 ): string {
-  return resolveWorkspaceKey(workspace);
+  return workspace.projectId
+    ? JSON.stringify([workspace.hostId ?? "local", workspace.projectId])
+    : resolveWorkspaceKey(workspace);
 }
 
 export function findAutomationWorkspaceOptionByKey(
@@ -30,7 +37,10 @@ export function findAutomationWorkspaceOptionByKey(
 export function reconcileAutomationWorkspaceSelectionKey(
   options: readonly AutomationWorkspaceOption[],
   currentWorkspaceKey: string | null,
-  preferredWorkspace?: Pick<AutomationWorkspaceOption, "workspacePath" | "workspaceIdentity">,
+  preferredWorkspace?: Pick<
+    AutomationWorkspaceOption,
+    "workspacePath" | "workspaceIdentity" | "projectId" | "hostId"
+  >,
 ): string | null {
   const current = findAutomationWorkspaceOptionByKey(options, currentWorkspaceKey);
   if (current) return resolveAutomationWorkspaceSelectionKey(current);
@@ -49,6 +59,8 @@ function workspaceLabelFromPath(path: string): string {
   return path.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? path;
 }
 
+// 用户扩展：从窗口 tab 构建纯项目候选；官方 sync 改为项目制选择键后仍保留该构建入口，
+// 供 workflow 保存控件等按 tab 列表取候选的调用方使用。
 /**
  * 构建纯项目候选，供不允许“无项目会话”的边界使用。
  * 定时任务表单额外展示的单一“无项目会话”目标由 useAutomationProjectOptions 显式归并；

@@ -59,6 +59,7 @@ describe("canRestartAutomation", () => {
     expect(automationEditViewSource).not.toContain("runNowDisabled");
   });
 
+
   it("管理操作失败映射为产品文案，不直接展示 RPC 原文", () => {
     expect(getAutomationActionErrorToastId("create")).toBe("automations.error.create");
     expect(getAutomationActionErrorToastId("update")).toBe("automations.error.update");

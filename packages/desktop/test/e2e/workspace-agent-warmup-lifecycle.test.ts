@@ -17,7 +17,7 @@ import {
   pickWorkspacePaths,
   selectTaskOrganizeMode,
   waitForActiveWorkspacePath,
-  waitForRestoredWorkspaceItems,
+  waitForRestoredProjects,
 } from "./helpers/workspace-agent-warmup.js";
 
 describe("workspace Agent 预热生命周期", () => {
@@ -26,7 +26,7 @@ describe("workspace Agent 预热生命周期", () => {
     await clearAppData();
   });
 
-  it("TSL31: renderer reload 复用原 3 个 PID，显式打开名单外 workspace 后只增加第 4 个", async function () {
+  it("TSL31: renderer reload 复用原 Agent PID，显式打开其他 workspace 后只增加 1 个", async function () {
     this.timeout(120_000);
     const workspacePaths = getPassiveAgentStartupWorkspacePaths(
       dirname(DEFAULT_WORKSPACE),
@@ -45,7 +45,7 @@ describe("workspace Agent 预热生命周期", () => {
 
     await waitForWorkspaceApp(activeWorkspacePath, 30_000);
     await waitForActiveWorkspacePath(activeWorkspacePath);
-    await waitForRestoredWorkspaceItems(workspacePaths);
+    await waitForRestoredProjects(workspacePaths);
 
     await openResourceManager();
     await switchToElectronRendererTarget(isResourceManagerUrl);
@@ -59,7 +59,7 @@ describe("workspace Agent 预热生命周期", () => {
     // renderer reload 应只给存活 Host 重新挂 MessagePort，不能重跑 InitLocal 或复制 Agent。
     await browser.execute(() => window.location.reload());
     await waitForActiveWorkspacePath(activeWorkspacePath);
-    await waitForRestoredWorkspaceItems(workspacePaths);
+    await waitForRestoredProjects(workspacePaths);
 
     await switchToElectronRendererTarget(isResourceManagerUrl);
     await waitForResourceManagerReady();

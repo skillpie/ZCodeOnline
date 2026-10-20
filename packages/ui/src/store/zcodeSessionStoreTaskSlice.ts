@@ -861,10 +861,12 @@ export function createTaskSlice(set: SetFn) {
               current.taskUnreadByTaskId;
             const { [taskId]: _removedTaskMeta, ...restOptimisticTaskListByTaskId } =
               current.optimisticTaskListByTaskId;
+            // 用户扩展：删除 task 时同步回收 grouped 草稿提升事务留下的本地定位。
             const {
               [taskId]: _removedPromotedGroupedDraftTask,
               ...restPromotedGroupedDraftTaskByTaskId
             } = current.promotedGroupedDraftTaskByTaskId;
+
             const shouldCloseDeletedTask = current.activeTaskId === taskId;
 
             // 删除左侧当前正在查看的任务时，之前只更新了任务列表数据，

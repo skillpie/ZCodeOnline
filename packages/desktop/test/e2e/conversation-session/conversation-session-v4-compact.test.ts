@@ -10,7 +10,7 @@ import {
   TID_CHAT_CONTEXT_USAGE_TRIGGER,
   TID_V4_COMPOSER_INPUT,
   TID_V4_MODEL_CONFIG,
-} from "@zcode/shared";
+} from "@zcode/shared/test-ids";
 import assert from "node:assert/strict";
 import { clearAppData, setInputValueByTestIdDom } from "../helpers/desktop-app.js";
 import {

@@ -14,13 +14,6 @@ import zhCN from "../src/i18n/locales/zh-CN.js";
 
 describe("BotsDialog config", () => {
   it("keeps reply granularity labels localized", () => {
-    expect(BOT_REPLY_GRANULARITIES.map((item) => item.id)).toEqual([
-      "assistant_changes",
-      "assistant_toolcalls_changes",
-      "summary_changes",
-      "streaming_card",
-    ]);
-
     for (const granularity of BOT_REPLY_GRANULARITIES) {
       expect(enUS[granularity.labelId]).toBeTruthy();
       expect(zhCN[granularity.labelId]).toBeTruthy();
@@ -95,6 +88,7 @@ describe("BotsDialog config", () => {
     expect(enUS["login.oauth.regionTag.bigmodel"]).toBe("CN");
     expect(zhCN["login.oauth.regionTag.bigmodel"]).toBe("中国");
   });
+
 
   it("resolves remote-control bot entry to the first existing provider bot", () => {
     const bots: BotConfig[] = [

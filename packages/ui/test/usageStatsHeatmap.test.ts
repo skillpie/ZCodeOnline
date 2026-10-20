@@ -4,7 +4,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AppUsageHeatmapCell, AppUsageHeatmapWeek } from "@zcode/shared";
-import zhCN from "@/i18n/locales/zh-CN.js";
 import { UsageHeatmap } from "@/settings/usage-stats/UsageHeatmap.js";
 
 vi.mock("@/ControlHintTooltip.js", () => ({
@@ -104,7 +103,6 @@ describe("UsageHeatmap", () => {
       }),
     );
 
-    expect(html).toContain("rounded-xl");
     expect(html).toContain("data-usage-heatmap-month-label");
     expect(html).toContain("Daily");
     expect(html).toContain("Weekly");
@@ -116,7 +114,6 @@ describe("UsageHeatmap", () => {
     expect((html.match(/0 tokens · 0 messages/g) ?? []).length).toBe(334);
     expect(html).toContain("background-color:var(--color-usage-heatmap-0)");
     expect(html).toContain("background-color:var(--color-usage-heatmap-4)");
-    expect(html).not.toContain("var(--color-brand)");
   });
 
   it("shows only the latest 12 month labels while preserving leading grid spans", () => {

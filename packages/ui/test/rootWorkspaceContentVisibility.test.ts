@@ -3,6 +3,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppProps } from "@/app-shell/types.js";
 
+vi.mock("@/project-sidebar/index.js", () => ({
+  ProjectDirectoryProvider: ({ children }: { children: unknown }) => children,
+}));
+
 const appRenderProps = vi.hoisted(() => [] as AppProps[]);
 
 vi.mock("@/App.js", () => ({
@@ -57,7 +61,7 @@ function renderRootWorkspaceContent(
         user: null,
         reconnectingRemoteWorkspaceKeys: [],
         remoteWorkspaceErrorByWorkspaceKey: {},
-        reconnectingRemoteWorkspaceLogsByWorkspaceKey: {},
+
         allowOpenWorkspace: true,
       }),
     ),

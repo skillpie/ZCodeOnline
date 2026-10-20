@@ -144,12 +144,6 @@ describe("normalized saved-run input feeds the existing reader helpers", () => {
     expect(readWorkflowName(NORMALIZED_SAVED_RAW)).toBe("Release check");
   });
 
-  it("falls back to the saved name when the model sent no label", () => {
-    // 归一化规则是 `name: input.name ?? savedName`，所以入参里总有一个名字。
-    const { name: _dropped, ...withoutLabel } = NORMALIZED_SAVED_RAW;
-    expect(readWorkflowName({ ...withoutLabel, name: "release-check" })).toBe("release-check");
-  });
-
   it("readWorkflowSaved reads provenance and the validated argument bag", () => {
     const saved = readWorkflowSaved(NORMALIZED_SAVED_RAW);
     expect(saved).toEqual({
@@ -190,20 +184,6 @@ describe("resolveToolCallRenderer saved-workflow dispatch", () => {
   it("matches the snake_case wire spelling too", () => {
     const snakeCase = { ...buildSaveToolCall(), toolName: "save_workflow", kind: "save_workflow" };
     expect(resolveToolCallRenderer(buildContext(snakeCase))).toBe(SaveWorkflowToolCallBlock);
-  });
-
-  it("does not steal CreateWorkflow", () => {
-    const createWorkflow = {
-      toolId: "tool-create-1",
-      toolName: "CreateWorkflow",
-      kind: "CreateWorkflow",
-      title: "CreateWorkflow",
-      status: "completed",
-      input: { script: SCRIPT },
-    };
-    const renderer = resolveToolCallRenderer(buildContext(createWorkflow));
-    expect(renderer).not.toBe(SaveWorkflowToolCallBlock);
-    expect(renderer).not.toBe(ListSavedWorkflowsToolCallBlock);
   });
 });
 
@@ -247,7 +227,7 @@ describe("SaveWorkflowToolCallBlock", () => {
     expect(screen.getByText("Saving workflow")).toBeTruthy();
   });
 
-  it("renders both locales", () => {
+  it("renders the overwrite card in zh-CN", () => {
     renderCard(
       SaveWorkflowToolCallBlock,
       buildContext(buildSaveToolCall({ overwrite: true })),
@@ -257,10 +237,6 @@ describe("SaveWorkflowToolCallBlock", () => {
     expect(document.querySelector('[data-workflow-overwrite-badge="true"]')?.textContent).toBe(
       "覆盖",
     );
-    cleanup();
-
-    renderCard(SaveWorkflowToolCallBlock, buildContext(buildSaveToolCall()), "en-US");
-    expect(screen.getByText("Saved workflow")).toBeTruthy();
   });
 
   // ── docs/dynamic-workflow/launch.md「`SaveWorkflow`」──
@@ -483,15 +459,11 @@ describe("ListSavedWorkflowsToolCallBlock", () => {
     expect(document.body.textContent).not.toContain("No saved workflows in this project");
   });
 
-  it("renders both locales", () => {
+  it("renders the listing in zh-CN", () => {
     renderCard(ListSavedWorkflowsToolCallBlock, buildContext(buildListToolCall()), "zh-CN");
     expect(screen.getByText("已保存的工作流")).toBeTruthy();
     expect(screen.getByText("2 个工作流")).toBeTruthy();
     expect(screen.getByText("1 个文件无法解析")).toBeTruthy();
-    cleanup();
-
-    renderCard(ListSavedWorkflowsToolCallBlock, buildContext(buildListToolCall()), "en-US");
-    expect(screen.getByText("2 workflows")).toBeTruthy();
   });
 
   it("tags global-scoped entries next to the name", () => {

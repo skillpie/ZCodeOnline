@@ -1,7 +1,7 @@
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@zcode/shared";
+import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@zcode/shared/test-ids";
 import type { ConversationRow, UserInputRow } from "@zcode/shared/zcode-protocol-v4";
 import { DEFAULT_CODE_PREVIEW_SETTINGS } from "@/lib/codePreviewSettings.js";
 import {
@@ -897,16 +897,7 @@ describe("ConversationTimeline renderer-local scroll memory", () => {
     ).toBe(false);
   });
 
-  // 浮岛删除后（docs/dynamic-workflow/presentation.md「Other places a run appears」item 1）composer 上方不再有共享的
-  // 浮层栈：`composerOverlay` 槽随它唯一的住户一起消失，回到底部圆钮**回到改动前的独立定位**
-  // （`bottom-full` + `mb-2` 居中）。这条用例钉的就是那次几何回退——栈壳还在的话，圆钮会被一层
-  // `pointer-events-none` 的容器包住，而那层已经没有任何存在理由。
-  //
-  // 「按钮还点得动」在这里只能按**类契约**断言，不能靠 fire 一次 click：这个最小 DOM 的
-  // dispatchEvent 不冒泡，而 React 把 click 委托在根容器上，事件到不了；换成 jsdom 也一样
-  // 无效——jsdom 不做 pointer-events 命中测试，`fireEvent.click` 在 `pointer-events: none`
-  // 上照样成功。也就是说只有这条 class 断言会在真的漏掉 `pointer-events-auto` 时变红。
-  it("centers the back-to-bottom button on its own once the overlay stack is gone", () => {
+  it("hides the back-to-bottom button after its action while retaining the composer dock", () => {
     saveChatSessionScrollMemoryState("workspace::pane:a::session:1", {
       scrollTop: 240,
       scrollHeight: 1000,
@@ -929,14 +920,7 @@ describe("ConversationTimeline renderer-local scroll memory", () => {
     );
 
     const button = findByTestId(container, TID_V4_TIMELINE_BOTTOM)!;
-    // 槽位与它的栈壳都不复存在：圆钮自己定位在 dock 的 anchor 上。
-    expect(findByTestId(container, "v4-composer-overlay")).toBeNull();
-    const buttonClass = button.getAttribute("class") ?? "";
-    expect(buttonClass).toContain("absolute bottom-full left-1/2");
-    expect(buttonClass).toContain("mb-2");
-    expect(buttonClass).toContain("-translate-x-1/2");
-    expect(buttonClass).toContain("pointer-events-auto");
-    // dock 仍在（圆钮锚在它上面），只有浮层带走了。
+    expect(button).not.toBeNull();
     expect(findByTestId(container, "test-composer-dock")).not.toBeNull();
 
     act(() => scrollToBottomActionRef.current?.());

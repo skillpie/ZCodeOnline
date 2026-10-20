@@ -425,8 +425,6 @@ describe("RemoteSkillSyncDialog", () => {
 
     expect(html).toContain("Sync Skills to remote target");
     expect(html).toContain('data-tooltip-title="Skill data and environment availability"');
-    expect(html).toContain("not all dependent data and system environment capabilities");
-    expect(html).toContain("install it or add the dependencies on the remote server");
     expect(html).toContain('aria-label="Skill data and environment availability"');
   });
 

@@ -58,6 +58,7 @@ describe("AutomationInstructionsTextarea", () => {
     expect(textarea.classList).not.toContain("sm:max-h-none");
   });
 
+
   it("grows through seven lines, then scrolls, and shrinks after content is deleted", () => {
     const originalScrollHeight = Object.getOwnPropertyDescriptor(
       HTMLTextAreaElement.prototype,

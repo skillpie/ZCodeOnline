@@ -1,3 +1,4 @@
+import { ToolCallBlock } from "@/ToolCallBlocks.js";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -115,6 +116,7 @@ function renderChangesGroup(options: {
       ZCodeIntlProvider,
       { initialLocale: "en-US" },
       createElement(ChangesGroupToolCallBlock, {
+        nestedToolRenderer: ToolCallBlock,
         toolCallNode: {
           toolCall: {
             toolId: "changes:1",
@@ -178,7 +180,7 @@ describe("ChangesGroupToolCallBlock", () => {
     expect(summary).toContain("relative inline-flex min-w-0 items-center gap-2 overflow-hidden");
   });
 
-  it("keeps initial diff animation enabled for expanded child edits", () => {
+  it("keeps child diff counts visible while expanded", () => {
     const html = renderChangesGroup({ running: true, forceOpen: true });
     const content = html.slice(html.indexOf('data-slot="collapsible-content"'));
 

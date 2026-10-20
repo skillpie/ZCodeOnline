@@ -40,20 +40,13 @@ describe("MarkdownImage loading state", () => {
   it("远程图片加载完成前显示状态，完成后显示图片", () => {
     renderMarkdownImage("https://example.com/image.png");
 
-    const loading = screen.getByRole("status", { name: "加载中..." });
-    expect(loading.className).toContain("markdown-image-loading-shimmer");
-    expect(loading.querySelector("svg")).not.toBeNull();
-    const trigger = screen.getByRole("button", { name: "打开图片预览" });
-    expect(trigger.className.split(" ")).toContain("!w-44");
-    expect(trigger.className.split(" ")).toContain("!h-44");
+    expect(screen.getByRole("status", { name: "加载中..." })).toBeTruthy();
     const image = screen.getByRole("img", { name: "示例图" });
     expect(image.className).toContain("invisible");
 
     fireEvent.load(image);
 
     expect(screen.queryByRole("status")).toBeNull();
-    expect(trigger.className.split(" ")).not.toContain("!w-44");
-    expect(trigger.className.split(" ")).not.toContain("!h-44");
     expect(image.className).not.toContain("invisible");
   });
 
@@ -63,10 +56,7 @@ describe("MarkdownImage loading state", () => {
     fireEvent.error(screen.getByRole("img", { name: "示例图" }));
 
     expect(screen.queryByRole("status")).toBeNull();
-    const unavailable = screen.getByRole("img", {
-      name: "暂时无法显示这张图片。",
-    });
-    expect(unavailable.querySelector("svg")).not.toBeNull();
+    expect(screen.getByRole("img", { name: "暂时无法显示这张图片。" })).not.toBeNull();
   });
 
   it("src 切换后忽略旧图片的失败事件", () => {

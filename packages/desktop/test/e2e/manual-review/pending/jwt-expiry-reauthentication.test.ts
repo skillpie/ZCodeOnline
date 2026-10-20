@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { TID_OAUTH_LOGIN_BUTTON, testId, ZAI_PROVIDER_ID } from "@zcode/shared";
-import { clearAppData, getE2EAppDataPaths, waitForTestIdByDom } from "../../helpers/desktop-app.js";
+import { ZAI_PROVIDER_ID } from "@zcode/shared";
+import { TID_OAUTH_LOGIN_BUTTON, testId } from "@zcode/shared/test-ids";
+import {
+  clearAppData,
+  getE2EAppDataPaths,
+  waitForTestIdByDom,
+} from "../../helpers/desktop-app.js";
 
 const EXPIRED_SESSION_CREDENTIAL_KEYS = [
   "oauth:active_provider",

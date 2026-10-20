@@ -10,6 +10,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import type {
+  RendererTelemetryEventPayload,
   PluginSyncCandidate,
   PluginSyncImportResult,
   PluginSyncRemoteStatus,
@@ -20,6 +21,9 @@ import type {
   ZCodePluginUserConfigOption,
   ZCodePluginsOverviewResult,
 } from "@zcode/shared";
+import { collectTelemetryRendererContext } from "@zcode/shared";
+import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
+import { usePlatform } from "@/hooks/usePlatform.js";
 import type { IPluginSyncService, IZCodeAgentService } from "@zcode/services";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
@@ -757,6 +761,7 @@ async function syncPortablePluginOptions(
 
 export async function syncSelectedRemotePlugins(params: {
   localPluginSyncService: IPluginSyncService;
+  reportTelemetryEvent?: (event: RendererTelemetryEventPayload) => void | Promise<void>;
   onItemProgress?: (event: RemotePluginSyncProgressEvent) => void;
   remotePluginSyncService: IPluginSyncService;
   remoteWorkspaceIdentity?: string;
@@ -767,6 +772,44 @@ export async function syncSelectedRemotePlugins(params: {
   stopControl?: RemotePluginSyncStopControl;
 }): Promise<RemotePluginSyncRunResult> {
   const results: RemotePluginSyncRunResult["results"] = [];
+  // 每项从实际执行起计时；只记录目标端最终结果，不上传归档、配置或路径。
+  const reportResult = (
+    row: RemotePluginSyncRow,
+    item: RemotePluginSyncResultItem,
+    startedAt: number,
+  ) => {
+    if (!params.reportTelemetryEvent) return;
+    try {
+      void Promise.resolve(
+        params.reportTelemetryEvent({
+          elementName: "plugin_lifecycle",
+          eventRegion: "app",
+          eventType: "result",
+          context: collectTelemetryRendererContext(),
+          eventExtraDetail: {
+            schema_version: "1",
+            action: "sync",
+            trigger: "sync",
+            scope: "user",
+            plugin_id: row.candidate.pluginId,
+            marketplace: row.candidate.marketplace,
+            workspace_kind: "remote",
+            result:
+              item.status === "synced"
+                ? "success"
+                : item.status === "skipped"
+                  ? "noop"
+                  : item.status === "stopped"
+                    ? "cancelled"
+                    : "failure",
+            duration_ms: String(Math.max(0, Date.now() - startedAt)),
+          },
+        }),
+      ).catch(() => {});
+    } catch {
+      /* 观测失败不影响远端同步结果。 */
+    }
+  };
   for (const row of params.rows) {
     emitRemotePluginSyncProgress(params, row, "queued", "Queued plugin sync");
   }
@@ -775,6 +818,7 @@ export async function syncSelectedRemotePlugins(params: {
     if (row.candidate.kind !== "inline") {
       continue;
     }
+    const startedAt = Date.now();
     try {
       throwIfRemotePluginSyncStopped(params, row);
       const inlineCandidate = row.candidate.inlineCandidate;
@@ -808,6 +852,7 @@ export async function syncSelectedRemotePlugins(params: {
         await syncPortablePluginOptions(params, row);
       }
       results.push(item);
+      reportResult(row, item, startedAt);
       emitRemotePluginSyncProgress(params, row, item.status, `inline plugin ${item.status}`, item);
     } catch (error) {
       const item = isRemotePluginSyncStoppedError(error)
@@ -820,6 +865,7 @@ export async function syncSelectedRemotePlugins(params: {
             error: error instanceof Error ? error.message : String(error),
           };
       results.push(item);
+      reportResult(row, item, startedAt);
       emitRemotePluginSyncProgress(params, row, item.status, item.error ?? item.status, item);
     }
   }
@@ -830,16 +876,17 @@ export async function syncSelectedRemotePlugins(params: {
     if (row.candidate.kind !== "marketplace") {
       continue;
     }
-    results.push(
-      await syncMarketplaceRemotePlugin(
-        {
-          ...params,
-          preparedMarketplaceSources,
-          selectedMarketplacePluginNames,
-        },
-        row,
-      ),
+    const startedAt = Date.now();
+    const item = await syncMarketplaceRemotePlugin(
+      {
+        ...params,
+        preparedMarketplaceSources,
+        selectedMarketplacePluginNames,
+      },
+      row,
     );
+    results.push(item);
+    reportResult(row, item, startedAt);
   }
   return { results };
 }
@@ -1518,6 +1565,7 @@ function RemotePluginSyncResultList({ result }: { result: RemotePluginSyncRunRes
 }
 
 export function RemotePluginSyncDialog(props: RemotePluginSyncDialogProps) {
+  const platform = usePlatform();
   const { intl } = useZCodeIntl();
   const {
     localPluginSyncService,
@@ -1750,6 +1798,19 @@ export function RemotePluginSyncDialog(props: RemotePluginSyncDialogProps) {
     try {
       const result = await syncSelectedRemotePlugins({
         localPluginSyncService,
+        reportTelemetryEvent: (event) =>
+          reportAppTelemetryEvent(
+            platform,
+            {
+              ...event,
+              eventExtraDetail: {
+                ...event.eventExtraDetail,
+                client_kind: "desktop",
+                remote_kind: remoteTarget.kind,
+              },
+            },
+            "RemotePluginSync",
+          ),
         onItemProgress: (event) => {
           if (syncAbortController.signal.aborted) {
             return;

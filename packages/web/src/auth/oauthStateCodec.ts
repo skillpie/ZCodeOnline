@@ -2,13 +2,21 @@ import { DEFAULT_ZCODE_ENDPOINT_ORIGIN } from "@zcode/shared";
 
 const PRODUCTION_WEB_REMOTE_ORIGIN = DEFAULT_ZCODE_ENDPOINT_ORIGIN;
 const WEB_REMOTE_PATHS = new Set(["/web-remote", "/web-remote/"]);
+const WEB_REMOTE_CALLBACK_PATHS = new Set(["/remote/v4", "/remote/v4/"]);
+// 测试入口也经过登录门禁，必须保留原路径与扫码参数；OAuth 回调仍只使用已登记的 v4。
+const WEB_REMOTE_APP_PATHS = new Set([
+  ...WEB_REMOTE_CALLBACK_PATHS,
+  "/remote/__test__",
+  "/remote/__test__/",
+]);
 const WEB_CALLBACK_PATHS = new Set([
   "/web-remote/callback",
+  ...WEB_REMOTE_CALLBACK_PATHS,
   "/cn/share/callback",
   "/share/callback",
 ]);
 const SHARE_PATH_PATTERN = /^\/(?:cn\/share|share)\/[A-Za-z0-9._~-]{1,512}$/u;
-const APP_RETURN_QUERY_ALLOWLIST = new Set(["remoteControlToken", "relayOrigin"]);
+const APP_RETURN_QUERY_ALLOWLIST = new Set(["app_version", "sid", "mid", "name"]);
 const PRIVATE_DEV_RETURN_TO_PATTERN =
   /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?(\/|$)/;
 
@@ -134,6 +142,15 @@ export interface ResolveSafeAppReturnToOptions {
   trustedOrigins?: readonly string[];
 }
 
+function pickAppReturnQuery(params: URLSearchParams): URLSearchParams {
+  const safeSearch = new URLSearchParams();
+  for (const key of APP_RETURN_QUERY_ALLOWLIST) {
+    const existing = params.get(key);
+    if (existing !== null) safeSearch.set(key, existing);
+  }
+  return safeSearch;
+}
+
 export function resolveSafeAppReturnTo(
   value?: string,
   options: ResolveSafeAppReturnToOptions = {},
@@ -146,26 +163,22 @@ export function resolveSafeAppReturnTo(
   if (url.username !== "" || url.password !== "") {
     return null;
   }
+  if (
+    !WEB_REMOTE_PATHS.has(url.pathname) &&
+    !WEB_REMOTE_APP_PATHS.has(url.pathname) &&
+    !SHARE_PATH_PATTERN.test(url.pathname)
+  ) {
+    return null;
+  }
 
   const currentOrigin = options.currentOrigin ?? getCurrentOrigin();
-  // 同源：share 路径维持既有语义返回站内路径；web-remote 路径放行并清洗查询串
-  // （只保留 remoteControlToken / relayOrigin 白名单键），供远控回跳携带最小凭证。
+  // 同源：share 路径维持既有语义返回站内路径；web-remote / remote v4 路径放行并清洗
+  // 查询串（只保留白名单键），供远控回跳携带最小凭证。
   if (url.origin === resolveAllowedAppReturnOrigin(currentOrigin) || url.origin === currentOrigin) {
     if (SHARE_PATH_PATTERN.test(url.pathname)) {
       return url.pathname;
     }
-    if (!WEB_REMOTE_PATHS.has(url.pathname)) {
-      return null;
-    }
-    const safeSearch = new URLSearchParams();
-    for (const key of APP_RETURN_QUERY_ALLOWLIST) {
-      const existing = url.searchParams.get(key);
-      if (existing !== null) {
-        safeSearch.set(key, existing);
-      }
-    }
-
-    const query = safeSearch.toString();
+    const query = pickAppReturnQuery(url.searchParams).toString();
     return `${url.pathname}${query ? `?${query}` : ""}`;
   }
 
@@ -179,6 +192,28 @@ export function resolveSafeAppReturnTo(
   return null;
 }
 
+/** 网关在 JS 执行前选版本；扫码参数必须进入授权回调，不能只留在 state 中。 */
+export function buildWebRemoteOAuthRedirectUri(
+  redirectUri: string,
+  appReturnTo: string,
+  options: ResolveSafeAppReturnToOptions = {},
+): string {
+  const callbackUrl = parseOptionalUrl(redirectUri);
+  const sourceUrl = parseOptionalUrl(appReturnTo);
+  if (
+    !callbackUrl ||
+    !WEB_REMOTE_CALLBACK_PATHS.has(callbackUrl.pathname) ||
+    !sourceUrl ||
+    !WEB_REMOTE_APP_PATHS.has(sourceUrl.pathname) ||
+    !resolveSafeAppReturnTo(appReturnTo, options)
+  ) {
+    return redirectUri;
+  }
+  callbackUrl.search = pickAppReturnQuery(sourceUrl.searchParams).toString();
+  callbackUrl.hash = "";
+  return callbackUrl.toString();
+}
+
 export function buildReturnToCallbackUrl(
   returnTo: string,
   params: { code?: string; error?: string; state: string },
@@ -188,7 +223,10 @@ export function buildReturnToCallbackUrl(
     return null;
   }
 
-  returnToUrl.search = "";
+  returnToUrl.search = WEB_REMOTE_CALLBACK_PATHS.has(returnToUrl.pathname)
+    ? pickAppReturnQuery(returnToUrl.searchParams).toString()
+    : "";
+  returnToUrl.hash = "";
   if (isNonEmptyString(params.code)) {
     returnToUrl.searchParams.set("code", params.code);
   }

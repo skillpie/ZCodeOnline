@@ -1,5 +1,6 @@
+import { hostname } from "node:os";
 import {
-  createLocalServices,
+  createServerHostServices,
   disposeServiceResourcesAndWait,
   materializeZCodeBuiltinProviderConfig,
   getAppConfigDir,
@@ -9,8 +10,9 @@ import {
 import { IZCodeAgentService } from "@zcode/services";
 import { ZCODE_VERSION } from "@zcode/shared";
 import { coreCommandSchema } from "../contracts.js";
-import { startAutomationScheduler, type AutomationSchedulerHandle } from "./automationScheduler.js";
+import { startAutomationScheduler } from "./automationScheduler.js";
 import { createCoreHttpServer } from "./http.js";
+import { createIngressToken } from "./ingressToken.js";
 import { installParentDisconnectHandler } from "./parentDisconnect.js";
 import { resolveCoreServerId } from "./serverIdentity.js";
 import { createTaskActivityTracker } from "./taskActivityTracker.js";
@@ -28,9 +30,13 @@ export async function runServerCore(generation: number): Promise<void> {
     if (shutdown) void shutdown("parent-disconnected");
     else parentDisconnected = true;
   });
+  const layout = resolveServerLayout(process.env.ZCODE_SERVER_ROOT?.trim());
   const topicResourcePeers = createTopicResourcePeers();
   const explicitZCodeBuiltinProviderConfigFilePath =
     process.env[ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV]?.trim();
+  // Built-in Config 物化到所属 Environment 配置根（~/.zcode/v2）而不是 release 自带的 runtime 目录：
+  // release 目录是不可变的，同一 releaseId 重装时 assertExistingReleaseMatches 会重算整棵树的
+  // 内容哈希，多出的物化文件会让校验失败。
   const zcodeBuiltinProviderConfigFilePath = explicitZCodeBuiltinProviderConfigFilePath
     ? explicitZCodeBuiltinProviderConfigFilePath
     : typeof __ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__ === "string"
@@ -44,19 +50,19 @@ export async function runServerCore(generation: number): Promise<void> {
       `当前构建未嵌入 ZCode Built-in Provider Config，且未设置 ${ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV}`,
     );
   }
-  // manual run 即时派发钩子：调度器实例在 services 装配后才创建，先到的 manual run
-  // 留在队列里由首轮 tick 的 claimManualRuns 兜底派发，不会丢失。
-  let automationSchedulerRef: AutomationSchedulerHandle | undefined;
-  const services = createLocalServices({
-    zcodeBuiltinProviderConfigFilePath,
-    serviceAuthorityMode: "standalone-server",
-    onAutomationManualRunRequested: (params) =>
-      automationSchedulerRef?.dispatchManualRun(params) ?? Promise.resolve(),
-    topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
-  });
+  const sourceServerId = (await resolveCoreServerId()) ?? hostname() ?? "zcode-server";
+  const { services, workspaceIdentityMapper, migrationFailedPathCount } =
+    await createServerHostServices({
+      sourceServerId,
+      zcodeBuiltinProviderConfigFilePath,
+      providerProvisioningTargetEnabled: true,
+      topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
+    });
   // 调度循环挂在 Core 进程内（grill 决策）：与桌面 scheduler 进程共享同一 tasks-index 库，
   // 靠 AutomationRepo.claimDue 的 BEGIN IMMEDIATE 原子认领互斥，桌面 app 与 daemon
   // 并存不会重复执行。misfire/退避/终态语义与桌面 scheduler 逐字对齐。
+  // 说明：createServerHostServices 不透传 onAutomationManualRunRequested 钩子，manual run
+  // 由调度循环的 claimManualRuns 兜底认领（≤20s 轮询，语义无损，仅非即时）。
   const automationScheduler = startAutomationScheduler({
     services,
     log: (level, message) => {
@@ -65,10 +71,13 @@ export async function runServerCore(generation: number): Promise<void> {
       );
     },
   });
-  automationSchedulerRef = automationScheduler;
   const taskActivityTracker = createTaskActivityTracker(services.getOptional(IZCodeAgentService));
+  const ingressToken = await createIngressToken(layout);
   const http = await createCoreHttpServer(services, {
-    serverId: await resolveCoreServerId(),
+    serverId: sourceServerId,
+    ingressToken,
+    migrationFailedPathCount,
+    workspaceIdentityMapper,
     topicResourcePeers,
   });
   // 隧道运行时归 Core 所有（specs/web-tunnel.md §3.2）：与 loopback server 同进程，
@@ -123,6 +132,9 @@ export async function runServerCore(generation: number): Promise<void> {
     host: http.host,
     port: http.port,
     version: ZCODE_VERSION,
+    ...(process.env.ZCODE_SERVER_RELEASE_ID?.trim()
+      ? { releaseId: process.env.ZCODE_SERVER_RELEASE_ID.trim() }
+      : {}),
     generation,
   });
   let shutdownStarted = false;
@@ -130,7 +142,11 @@ export async function runServerCore(generation: number): Promise<void> {
   const activitySubscription = taskActivityTracker.onDidChangeRunningTaskCount(
     (runningTaskCount) => {
       lastRunningTaskCount = runningTaskCount;
-      void send({ type: "task-activity", runningTaskCount });
+      void send({
+        type: "task-activity",
+        runningTasks: taskActivityTracker.readRunningTasks(),
+        runningTaskCount,
+      });
     },
   );
   let heartbeatInFlight: Promise<void> | undefined;
@@ -140,12 +156,26 @@ export async function runServerCore(generation: number): Promise<void> {
       .then((runningTaskCount) => {
         if (runningTaskCount !== lastRunningTaskCount) {
           lastRunningTaskCount = runningTaskCount;
-          void send({ type: "task-activity", runningTaskCount });
+          void send({
+            type: "task-activity",
+            runningTasks: taskActivityTracker.readRunningTasks(),
+            runningTaskCount,
+          });
         }
-        void send({ type: "heartbeat", at: Date.now(), runningTaskCount });
+        void send({
+          type: "heartbeat",
+          runningTasks: taskActivityTracker.readRunningTasks(),
+          at: Date.now(),
+          runningTaskCount,
+        });
       })
       .catch(() => {
-        void send({ type: "heartbeat", at: Date.now(), runningTaskCount: lastRunningTaskCount });
+        void send({
+          type: "heartbeat",
+          runningTasks: taskActivityTracker.readRunningTasks(),
+          at: Date.now(),
+          runningTaskCount: lastRunningTaskCount,
+        });
       })
       .finally(() => {
         heartbeatInFlight = undefined;

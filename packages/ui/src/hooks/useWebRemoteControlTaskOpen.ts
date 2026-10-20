@@ -71,7 +71,7 @@ export async function openWebRemoteControlTask({
         });
       };
       try {
-        // 修复原因：手机首页蓝点来自 desktop 推送快照，当前 Root 的 query cache
+        // 修复原因：手机端项目侧栏的未读来自 Host 的 task 行快照，当前 Root 的 query cache
         // 可能尚未水合。这里显式表达“用户已查看”，不能继续依赖桌面选择逻辑的 cache 命中。
         void switcher.markTaskRead(task).catch(logReadFailure);
       } catch (err) {
@@ -105,13 +105,18 @@ export async function openWebRemoteControlTask({
   try {
     await switcher.switchWorkspace(taskWorkspaceKey, {
       taskId: task.taskId,
+      ...(task.hostId ? { taskHostId: task.hostId } : {}),
       ...(mobileNavigationIntent ? { mobileNavigationIntent } : {}),
       ...(markTaskReadOnOpen && typeof task.unreadAt === "number"
         ? { markTaskReadExpectedUnreadAt: task.unreadAt }
         : {}),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // bridge requester 拒绝的是保留 reason 的普通对象；直接 String 会丢掉错误文本。
+    const message =
+      err && typeof err === "object" && "message" in err && typeof err.message === "string"
+        ? err.message
+        : String(err);
     logger.error("[useWebRemoteControlTaskOpen] 打开远程 task 失败", {
       error: message,
       taskId: task.taskId,
@@ -121,7 +126,7 @@ export async function openWebRemoteControlTask({
     onSwitchingChange?.(false);
     if (isDisconnectedRemoteWorkspaceBridgeError(message)) {
       // Bugfix: 手机端重连后 workspace list 可能还没同步到新的 remoteSessionId，
-      // 此时打开 task 会被 desktop main 拒绝创建 bridge。这里退回任务首页，
+      // 此时打开 task 会被 desktop main 拒绝创建 bridge。这里退回项目侧栏首页，
       // 让用户看到断开态和重连按钮，而不是停在聊天页错误提示里。
       onNavigateHome?.();
       return;
@@ -130,6 +135,8 @@ export async function openWebRemoteControlTask({
   }
 }
 
+// 用户 fork（main）的 hook 封装：为手机任务首页/任务索引维护 switching/error 局部状态；
+// 官方分支只保留无状态的 openWebRemoteControlTask，两者并存互不影响。
 export function useWebRemoteControlTaskOpen({
   activeTaskId,
   activeWorkspaceIdentity,

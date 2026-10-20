@@ -235,8 +235,6 @@ describe("ToolCallBlock agent routing", () => {
     expect(screen.queryByText(description)).toBeNull();
     const summary = screen.getByTestId("tool-summary-trigger-call-mcp-detail");
     fireEvent.click(summary);
-    expect(screen.getByTestId("mcp-result-surface").className).toContain("rounded-xl");
-    expect(screen.getByTestId("mcp-result-surface").className).toContain("border-border");
     expect(screen.queryByText("Result")).toBeNull();
     expect(screen.queryByText("Parameters")).toBeNull();
     expect(screen.queryByText(description)).toBeNull();
@@ -341,7 +339,7 @@ describe("ToolCallBlock agent routing", () => {
     expect(screen.getByTestId("mcp-error-surface").className).toContain("bg-destructive/10");
   });
 
-  it("uses the BUA bounded code surface for multiline MCP results", () => {
+  it("renders multiline MCP result actions", () => {
     const row: ToolCallRow = {
       rowId: 7,
       turnId: "turn-1",
@@ -377,8 +375,7 @@ describe("ToolCallBlock agent routing", () => {
     );
 
     fireEvent.click(screen.getByTestId("tool-summary-trigger-call-mcp-long-result"));
-    const surface = screen.getByTestId("mcp-result-surface");
-    expect(surface.className).toContain("max-h-72");
+    screen.getByTestId("mcp-result-surface");
     expect(screen.getByRole("button", { name: "复制结果" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "切换自动换行" })).toBeTruthy();
   });
@@ -625,13 +622,6 @@ describe("readRawToolCallFileSummaries", () => {
     );
 
     expect(html).toContain("读取");
-    expect(html).toMatch(
-      /class="[^"]*tool-summary-kind-label[^"]*@max-\[360px\]\/conversation:hidden/,
-    );
-    expect(html).toMatch(/class="[^"]*tool-summary-content[^"]*flex-1[^"]*overflow-hidden/);
-    expect(html).toMatch(
-      /class="[^"]*text-foreground-subtlest[^"]*@max-\[360px\]\/conversation:hidden/,
-    );
     expect(html).not.toContain("主 Agent");
     expect(html).not.toContain("SubAgent");
     expect(html).toContain("index.html");

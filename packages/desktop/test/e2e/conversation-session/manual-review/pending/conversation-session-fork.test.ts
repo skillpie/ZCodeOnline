@@ -2,8 +2,11 @@ import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { TID_CHAT_MESSAGE_FORK_BUTTON } from "@zcode/shared";
-import { clearAppData, clickTestIdByDom } from "../../../helpers/desktop-app.js";
+import { TID_CHAT_MESSAGE_FORK_BUTTON } from "@zcode/shared/test-ids";
+import {
+  clearAppData,
+  clickTestIdByDom,
+} from "../../../helpers/desktop-app.js";
 import { waitForUpstreamNetworkCapture } from "../../../helpers/upstream-capture.js";
 import {
   E2E_REPLY_TOKEN,

@@ -114,16 +114,13 @@ describe("WorkspaceHeader", () => {
     expect(html).toContain('data-summary-panel-toggle-prop="absent"');
   });
 
-  it("keeps the draft separator transparent while the side pane is open", async () => {
+  it("remote draft still mounts device context in the header", async () => {
     const html = await renderWorkspaceHeader({
       variant: "draft",
       activeTaskId: null,
-      activeTaskTitle: "New task",
-      isSidePaneOpen: true,
+      remoteTarget: { kind: "ssh", host: "dev", username: "me" },
     });
-
-    expect(html).not.toContain("border-border");
-    expect(html).toContain("border-transparent");
+    expect(html).toContain('data-testid="workspace-header-title"');
   });
 
   it.each([

@@ -137,7 +137,7 @@ describe("InstalledPluginDetailPanel update badge", () => {
         { initialLocale: "en-US" },
         createElement(InstalledPluginDetailPanel, {
           ...sharedPanelProps,
-          operationId: null,
+          activeOperations: [],
           plugin: basePlugin(),
           updateStatus: "update-available",
           latestVersion: "2.0.0",
@@ -163,7 +163,7 @@ describe("InstalledPluginDetailPanel update badge", () => {
         { initialLocale: "en-US" },
         createElement(InstalledPluginDetailPanel, {
           ...sharedPanelProps,
-          operationId: null,
+          activeOperations: [],
           plugin: basePlugin(),
           updateStatus: "none",
           uninstallable: true,
@@ -190,7 +190,7 @@ describe("InstalledPluginDetailPanel update badge", () => {
           { initialLocale: "en-US" },
           createElement(InstalledPluginDetailPanel, {
             ...sharedPanelProps,
-            operationId: null,
+            activeOperations: [],
             plugin: basePlugin(),
             updateStatus: "update-available",
             latestVersion: "2.0.0",

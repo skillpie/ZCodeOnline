@@ -15,14 +15,13 @@ import {
   setInputValueByTestIdDom,
 } from "../helpers/desktop-app.js";
 import { waitForUpstreamNetworkCapture } from "../helpers/upstream-capture.js";
-import { TID_PROMPT_SUGGESTION_OPTION, TID_V4_COMPOSER_INPUT, testId } from "@zcode/shared";
+import { TID_PROMPT_SUGGESTION_OPTION, TID_V4_COMPOSER_INPUT, testId } from "@zcode/shared/test-ids";
 import {
   clickV4SlashOption,
   getV4ComposerText,
   hasV4SlashPanel,
   prepareV4ConversationE2E,
   sendV4Prompt,
-  startNewV4Draft,
   waitForV4MentionOptionPrefix,
   waitForV4Pane,
   waitForV4TimelineContaining,
@@ -59,7 +58,7 @@ async function readPluginMentionPresentation(pluginId: string): Promise<{
       const input = document.querySelector<HTMLElement>(`[data-testid="${inputTestId}"]`);
       const mention = Array.from(
         input?.querySelectorAll<HTMLElement>("[data-mention-category='plugins']") ?? [],
-      ).find((element) => element.getAttribute("data-mention-id") === mentionId);
+        ).find((element) => element.getAttribute("data-mention-id") === mentionId);
       return {
         found: Boolean(mention),
         iconSrc:
@@ -85,15 +84,16 @@ async function focusV4Composer(): Promise<void> {
 }
 
 describe("PLG plugin 引用：@ 面板 plugins 分组与 plugin_reference reminder", () => {
+  beforeEach(async () => {
+    // Try now 使用全局新建语义；下一场景重新回到文件夹具所在项目。
+    await prepareV4ConversationE2E();
+  });
   after(async () => {
     await browser.electron.restoreAllMocks();
     await clearAppData();
   });
 
   it("@ 面板展示 plugins 分组候选，选中后插入 canonical plugin:// markdown", async () => {
-    await prepareV4ConversationE2E();
-    await startNewV4Draft();
-
     await setInputValueByTestIdDom(TID_V4_COMPOSER_INPUT, "@zcode-guide", {
       timeout: 15000,
       timeoutMsg: "v4 composer 输入框没有出现或不可输入",

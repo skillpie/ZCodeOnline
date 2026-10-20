@@ -188,6 +188,14 @@ Agent(SDK)                                    Helper
   根**——dev 残留在场时静默选中未签名包会让设置页恒「拉起失败」且伪装成权限问题
   （2026-09-22 ZCT-2102352739585175552）。dev 运行时额外兼容 `dev/` 根下装成稳定名的
   一键 bundle（2026-09-10 修复意图保留）。候选缺失 → 按拉起失败路径走安装引导。
+- darwin 拉起前必须先经安装器，与 SDK 首调路径同一语义：包内 Helper
+  （`resolveBundledCuaHelperAppPath`，打包态为 `Contents/Resources/cua-helper/…`）存在时，
+  先 `createCanonicalCuaHelperInstaller(...).ensureInstalled()`（签名 / Team / buildId 校验，
+  不匹配则同路径原子替换，保住 TCC 授权），再拉起**安装器返回的路径**；安装失败按拉起失败
+  降级（`idle:true` + warn 日志），**不得回退去拉已安装的旧副本**。只有包内 Helper 不存在
+  （dev 运行时）才按上一条枚举已安装候选。
+  反例（2026-09-29 真机，打包版 3.14.3）：设置页直接 `open` 已装的 3.14.1 Helper
+  （IPC v2），broker 拒绝新客户端（IPC v3），App 自带的新 Helper 永远装不上。
 - win32 删除 "only available on macOS" 短路（权限真值查询逻辑本身是平台无关的 broker
   方法调用）。
 
@@ -233,17 +241,18 @@ Agent(SDK)                                    Helper
 
 ## 六、验证矩阵
 
-| Case | 平台   | 初始状态                | 事件                        | 预期                                                                                                               |
-| ---- | ------ | ----------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| MC-1 | darwin | 冷启 app                | spawn env 解析              | 无 Helper IO（fake host 断言 start/checkHealth 未被调用），毫秒级                                                  |
-| MC-2 | darwin | 干净机器                | 首次 CUA 调用               | SDK 安装+拉起后调用成功（M7 回归）                                                                                 |
-| MC-3 | darwin | 授权流刚结束（host 在） | spawn                       | 仍恒注入稳定 socket；不探针、不等 1s                                                                               |
-| MC-4 | win32  | 冷启 app                | spawn env 解析              | 零等待、零 acquire；env 含 pipe 名 + recipe                                                                        |
-| MC-5 | win32  | 无 Helper               | 首次 CUA 调用               | SDK fork → warmup 窗内连上 → 调用成功                                                                              |
-| MC-6 | win32  | Helper 被 kill          | 下一次 CUA 调用             | 失败 retryable → ensure 再 fork（同名 pipe）→ 恢复                                                                 |
-| MC-7 | win32  | 双 Agent 并发首调       | 同时 ensure                 | pipe 单实例；第二 fork 失败无害；连同一 Helper                                                                     |
-| MC-8 | 两平台 | Helper 已重启/换代      | spawn env 与既有 Agent 凭据 | 传输路径恒定（同 socket/pipe），Helper 换代不换发凭据；darwin authority 按 spawn 铸造、各 agent 可不同，属既有语义 |
-| MC-9 | win32  | 未开对话                | 直接进设置页                | probe → Host fork → 权限真值；失败则 idle:true 降级                                                                |
+| Case | 平台 | 初始状态 | 事件 | 预期 |
+| --- | --- | --- | --- | --- |
+| MC-1 | darwin | 冷启 app | spawn env 解析 | 无 Helper IO（fake host 断言 start/checkHealth 未被调用），毫秒级 |
+| MC-2 | darwin | 干净机器 | 首次 CUA 调用 | SDK 安装+拉起后调用成功（M7 回归） |
+| MC-3 | darwin | 授权流刚结束（host 在） | spawn | 仍恒注入稳定 socket；不探针、不等 1s |
+| MC-4 | win32 | 冷启 app | spawn env 解析 | 零等待、零 acquire；env 含 pipe 名 + recipe |
+| MC-5 | win32 | 无 Helper | 首次 CUA 调用 | SDK fork → warmup 窗内连上 → 调用成功 |
+| MC-6 | win32 | Helper 被 kill | 下一次 CUA 调用 | 失败 retryable → ensure 再 fork（同名 pipe）→ 恢复 |
+| MC-7 | win32 | 双 Agent 并发首调 | 同时 ensure | pipe 单实例；第二 fork 失败无害；连同一 Helper |
+| MC-8 | 两平台 | Helper 已重启/换代 | spawn env 与既有 Agent 凭据 | 传输路径恒定（同 socket/pipe），Helper 换代不换发凭据；darwin authority 按 spawn 铸造、各 agent 可不同，属既有语义 |
+| MC-9 | win32 | 未开对话 | 直接进设置页 | probe → Host fork → 权限真值；失败则 idle:true 降级 |
+| MC-10 | darwin | 打包版，已装旧 buildId 的 Helper | 直接进设置页 | 先 ensureInstalled 替换为包内 Helper 再拉起；安装失败 idle:true 降级，不拉旧副本 |
 
 回归红线（沿隔离规范 §7，继续有效）：
 

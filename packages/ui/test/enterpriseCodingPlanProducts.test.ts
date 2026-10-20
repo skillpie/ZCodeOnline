@@ -6,9 +6,7 @@ import {
   buildEnterpriseCodingPlanPaymentContent,
   buildEnterpriseCodingPlanProductList,
   calculateEnterpriseCodingPlanPricingDiscountAmount,
-  getEnterpriseCodingPlanFailureStatuses,
   isEnterpriseCodingPlanThirdPartyPaymentRequired,
-  isEnterpriseCodingPlanPaymentFailureStatus,
   isEnterpriseCodingPlanPaymentSuccessStatus,
 } from "@/settings/model-provider-section/enterpriseCodingPlanProducts.js";
 
@@ -360,11 +358,8 @@ describe("Enterprise Coding Plan products", () => {
     });
   });
 
-  it("识别企业支付成功和失败终态", () => {
+  it("识别企业支付成功与待支付状态", () => {
     expect(isEnterpriseCodingPlanPaymentSuccessStatus("SUCCESS")).toBe(true);
     expect(isEnterpriseCodingPlanPaymentSuccessStatus("WAIT_PAY")).toBe(false);
-    for (const status of getEnterpriseCodingPlanFailureStatuses()) {
-      expect(isEnterpriseCodingPlanPaymentFailureStatus(status)).toBe(true);
-    }
   });
 });

@@ -421,9 +421,7 @@ describe("desktopStabilityTelemetry", () => {
 
   describe("shouldReportAnr", () => {
     it("does not report below 5s threshold", async () => {
-      const { shouldReportAnr, STABILITY_ANR_THRESHOLD_MS } =
-        await import("../src/main/desktopStabilityTelemetry.js");
-      expect(shouldReportAnr(STABILITY_ANR_THRESHOLD_MS - 100, false)).toBe(false);
+      const { shouldReportAnr } = await import("../src/main/desktopStabilityTelemetry.js");
       expect(shouldReportAnr(4_900, false)).toBe(false);
     });
 

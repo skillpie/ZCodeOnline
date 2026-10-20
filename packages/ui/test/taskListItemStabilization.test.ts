@@ -20,6 +20,15 @@ function createTask(overrides: Partial<ZCodeTaskMeta> = {}): ZCodeTaskMeta {
 }
 
 describe("stabilizeTaskListItems", () => {
+  it("连续空快照复用数组，首条任务出现和最后一条移除仍更新", () => {
+    const empty: ZCodeTaskMeta[] = [];
+    expect(stabilizeTaskListItems(empty, [])).toBe(empty);
+    const populated = [createTask()];
+    expect(stabilizeTaskListItems(empty, populated)).toBe(populated);
+    const removed = stabilizeTaskListItems(populated, []);
+    expect(removed).toEqual([]);
+    expect(stabilizeTaskListItems(removed, [])).toBe(removed);
+  });
   it("等价重建时复用整个旧数组和旧元素引用", () => {
     const previous = [createTask(), createTask({ taskId: "task-2" })];
     const next = [createTask(), createTask({ taskId: "task-2" })];

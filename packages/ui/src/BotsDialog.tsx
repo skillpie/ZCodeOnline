@@ -91,7 +91,9 @@ export function BotsDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspacePath: string;
+  // 用户 fork（main）：传入 workspace 后，Bot 的工作区访问卡与 refs 列表以当前 workspace 为准；
+  // 官方入口（web-remote-control/WebRemoteControlDialog）不传，保持全局行为。
+  workspacePath?: string;
   workspaceIdentity?: string;
   entryProvider?: BotProvider | null;
 }) {
@@ -130,19 +132,20 @@ export function BotsDialog({
   const autoBindCreatingBotIdsRef = useRef(new Set<string>());
   const handledEntryProviderRef = useRef<BotProvider | null>(null);
 
-  const currentWorkspaceId = useMemo(
-    () => buildCurrentWorkspaceId(workspacePath, workspaceIdentity),
+  // 用户 fork（main）：当前 workspace 作用域信息；未传 workspacePath 时为 null（官方全局模式）。
+  const currentWorkspace = useMemo(
+    () =>
+      workspacePath
+        ? {
+            id: buildCurrentWorkspaceId(workspacePath, workspaceIdentity),
+            label: workspacePath.split(/[\\/]/u).filter(Boolean).at(-1) ?? workspacePath,
+            workspacePath,
+            workspaceIdentity,
+          }
+        : null,
     [workspaceIdentity, workspacePath],
   );
-  const currentWorkspace = useMemo(
-    () => ({
-      id: currentWorkspaceId,
-      label: workspacePath.split(/[\\/]/u).filter(Boolean).at(-1) ?? workspacePath,
-      workspacePath,
-      workspaceIdentity,
-    }),
-    [currentWorkspaceId, workspaceIdentity, workspacePath],
-  );
+
   const selectedBot = config.bots.find((bot) => bot.id === selectedBotId) ?? null;
   const selectedBotState = botStates.find((state) => state.botId === selectedBotId) ?? null;
   const selectedBotName =
@@ -246,7 +249,7 @@ export function BotsDialog({
       const [nextConfig, nextStatus, nextWorkspaces, nextBotStates] = await Promise.all([
         botsService.getConfig(),
         botsService.getStatus(),
-        botsService.listWorkspaceRefs({ currentWorkspace }),
+        botsService.listWorkspaceRefs(currentWorkspace ? { currentWorkspace } : {}),
         botsService.getBotStates(),
       ]);
       setConfig(nextConfig);
@@ -984,6 +987,7 @@ export function BotsDialog({
     // Bugfix: 删除机器人之前没有二次确认，误触会直接移除凭据和绑定入口。
     // 这里复用项目统一 ConfirmDialog，让破坏性操作和其它设置页保持一致。
     const confirmed = await confirmDialog({
+      confirmVariant: "destructive",
       title: intl.formatMessage(
         { id: "bots.deleteConfirmTitle" },
         { name: formatBotDisplayName(selectedBot.name, fallbackBotName) },

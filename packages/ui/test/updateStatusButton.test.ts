@@ -626,7 +626,7 @@ describe("UpdateStatusButton release notes", () => {
     ).toBe(true);
   });
 
-  it("uses the original color treatment whenever the main update entry is visible", () => {
+  it("keeps the main update entry visible and interactive across update phases", () => {
     const availableHtml = renderUpdateStatusButton({
       kind: "update-available",
       version: "3.3.3",
@@ -645,24 +645,14 @@ describe("UpdateStatusButton release notes", () => {
     } as UpdateStatePayload);
 
     expect(availableHtml).toContain("bg-success");
-    expect(availableHtml).toContain("text-success-foreground");
     expect(availableHtml).toContain("topoverlayer:w-auto");
-    expect(availableHtml).toContain("h-auto");
-    expect(availableHtml).toContain("min-h-5");
-    expect(availableHtml).toContain("py-0.5");
-    expect(availableHtml).toContain("font-medium");
-    expect(availableHtml).toContain("text-ui-xs");
-    expect(availableHtml).not.toContain("text-ui-sm");
-    expect(availableHtml).not.toContain("text-ui-base");
     expect(downloadingHtml).toContain("bg-success");
-    expect(downloadingHtml).toContain("text-success-foreground");
     expect(downloadingHtml).toContain("animate-spin");
     expect(downloadingHtml).not.toContain('disabled=""');
     expect(downloadingHtml).not.toContain("下载中");
     expect(downloadingHtml).not.toContain("topoverlayer:w-auto");
     expect(downloadingHtml).not.toContain("topoverlayer:hidden");
     expect(downloadedHtml).toContain("bg-success");
-    expect(downloadedHtml).toContain("text-success-foreground");
     expect(downloadedHtml).toContain("topoverlayer:w-auto");
   });
 

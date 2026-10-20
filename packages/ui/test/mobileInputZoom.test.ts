@@ -60,8 +60,6 @@ describe("mobile text input zoom guard", () => {
   it("resolves Cmd/Ctrl+Enter as send-now for queue and queue for guide", () => {
     expect(resolveOppositeFollowupDelivery("queue")).toBe("startNow");
     expect(resolveOppositeFollowupDelivery("guide")).toBe("queue");
-    const composerSource = readSource("packages/ui/src/v4/ConversationComposer.tsx");
-    expect(composerSource).not.toContain('if (routingMode === "startNow")');
     expect(
       shouldSubmitLexicalModifiedEnter({
         ctrlKey: true,
@@ -190,7 +188,7 @@ describe("mobile text input zoom guard", () => {
     ).toBe(true);
   });
 
-  it("keeps desktop and non-remote input typography unchanged", () => {
+  it("desktop viewports and non-remote inputs do not enable the zoom guard", () => {
     expect(
       shouldAvoidIosInputFocusZoom({
         isMobileTextInputViewport: false,
@@ -203,14 +201,9 @@ describe("mobile text input zoom guard", () => {
         isWebRemoteControl: false,
       }),
     ).toBe(false);
-    expect(
-      resolveMobileInputTextSizeClassName({
-        avoidIosInputFocusZoom: false,
-      }),
-    ).toBe("text-ui-base leading-5");
   });
 
-  it("uses a fixed 16px token for mobile remote input even with a 12px UI preference", () => {
+  it("enables the zoom guard for mobile remote input", () => {
     expect(
       shouldAvoidIosInputFocusZoom({
         isMobileTextInputViewport: true,

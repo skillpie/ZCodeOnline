@@ -1,8 +1,8 @@
 # Web Remote Test Static Deployment Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> 已归档：部署部分被 [Relay V2 收口任务](../../issues/web-remote-control-relay-v2/07-contract-v1-removal-and-docs.md) 取代。旧步骤及已迁走的基础设施引用已移除，不能作为当前发布操作手册。
 
-**Goal:** Add an isolated `/remote/__test__` static deployment path for Web remote-control test assets while leaving `/remote`, `/remote/v3`, and the desktop default QR URL unchanged.
+历史设计的目标是将手机静态资源按路径隔离，防止新资源覆盖旧版本 App。当前 V2 以 OSS 版本目录实现该隔离，参见 [Remote v4 静态部署](../../web-remote-control/remote-v4-static-deployment.md)。
 
 **Architecture:** Keep test assets on a third parallel static deployment chain that shares the existing `packages/web` Vite SPA but uses its own Vite `base`, Dockerfile, nginx config, local smoke test, image name, and k8s deployment update script. The Web app already derives the QR route from `import.meta.env.BASE_URL`, so implementation only needs a route regression test and deployment artifacts. Desktop testing uses `ZCODE_WEB_REMOTE_CONTROL_URL=https://zcode.z.ai/remote/__test__`; no desktop default URL changes are part of this plan.
 

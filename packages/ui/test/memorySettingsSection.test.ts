@@ -10,12 +10,11 @@ import {
   TID_SETTINGS_MEMORY_FILE_ICON,
   TID_SETTINGS_MEMORY_FILE_NAME,
   TID_SETTINGS_MEMORY_FILE_UPDATED_AT,
-  TID_SETTINGS_MEMORY_SCOPE_ICON,
   TID_SETTINGS_MEMORY_SCOPE_TRIGGER,
   TID_SETTINGS_MEMORY_SEARCH_CLEAR,
   TID_SETTINGS_MEMORY_SEARCH_INPUT,
   testId,
-} from "@zcode/shared";
+} from "@zcode/shared/test-ids";
 
 vi.mock("@/i18n/IntlProvider.js", () => ({
   // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
@@ -160,7 +159,7 @@ afterEach(() => {
 });
 
 describe("MemorySettingsSection", () => {
-  it("开关位于 Workspace Scope 工具栏上方，关闭时不读取 catalog", () => {
+  it("关闭记忆时仅显示开关且不读取 catalog", () => {
     const memoryService = createService();
     renderSection(memoryService, false);
     expect(screen.getByRole("switch", { name: "settings.memory.workspaceMemory" })).toBeTruthy();
@@ -173,7 +172,6 @@ describe("MemorySettingsSection", () => {
     renderSection(createService(), true, ["Z Code", "Second"]);
     const scopeTrigger = await screen.findByTestId(TID_SETTINGS_MEMORY_SCOPE_TRIGGER);
     expect(scopeTrigger.textContent).toContain("Z Code");
-    expect(screen.getByTestId(TID_SETTINGS_MEMORY_SCOPE_ICON)).toBeTruthy();
     expect(screen.queryByText("User")).toBeNull();
     expect(screen.getByTestId(TID_SETTINGS_MEMORY_COUNT).textContent).toBe(
       "settings.memory.viewer.memoryCount.other:count=2",
@@ -255,7 +253,7 @@ describe("MemorySettingsSection", () => {
     );
   });
 
-  it("保留 loading、empty 与 error 反馈", async () => {
+  it("catalog 加载期间显示 loading，空结果显示 empty", async () => {
     let resolveCatalog: ((value: []) => void) | undefined;
     const memoryService = createService();
     vi.mocked(memoryService.listProjectMemories).mockImplementationOnce(

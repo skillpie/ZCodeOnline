@@ -70,6 +70,7 @@ export async function executeTools(
     id: tc.id,
     name: tc.name,
     input: tc.input,
+    modelCallWrapper: tc.modelCallWrapper,
   }));
   const traceContext = options?.traceContext ?? getCurrentTraceContext() ?? this.rootTraceContext;
   const events: SessionEvent[] = [];
@@ -87,6 +88,7 @@ export async function executeTools(
     traceContext,
     subagentModelOverride: options?.subagentModelOverride,
     model: options?.model,
+    toolSearch: options?.toolSearch,
   });
   let results: ToolExecutionResult[] = [];
 

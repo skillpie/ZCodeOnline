@@ -62,9 +62,6 @@ function createSettingService(): ISettingService {
     },
     async update() {},
     async updateDataBaseDir() {},
-    async ensureDefaultProject(path: string) {
-      return { path, created: false };
-    },
   };
 }
 

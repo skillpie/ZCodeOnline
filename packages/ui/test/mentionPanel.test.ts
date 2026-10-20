@@ -47,6 +47,18 @@ function makeOptions(count: number) {
 }
 
 describe("buildVirtualRows", () => {
+  it("keeps the project heading when # has only one matching group", () => {
+    const rows = buildVirtualRows([
+      {
+        id: "project-p",
+        title: "Project p",
+        options: makeOptions(1),
+        emptyText: "Empty",
+        showHeader: true,
+      },
+    ]);
+    expect(rows[0]).toEqual({ kind: "section_header", sectionId: "project-p", title: "Project p" });
+  });
   it("returns empty array for empty sections", () => {
     expect(buildVirtualRows([])).toEqual([]);
   });

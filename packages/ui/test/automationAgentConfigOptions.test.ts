@@ -132,34 +132,6 @@ describe("automation model/thought linkage", () => {
     ).toBe("Demo Provider/model-a");
   });
 
-  it("Registry View 已发布时使用其中的 Provider label", () => {
-    expect(
-      resolveAutomationModelTriggerLabel({
-        modelGroups: groups,
-        modelSelectionView: {
-          revision: 1,
-          providers: [
-            {
-              providerId: "demo",
-              providerName: "Registry Provider",
-              config: {
-                api: {
-                  type: "openai-chat-completions",
-                  baseUrl: "https://registry.example.com/v1",
-                },
-                access: { type: "api-key", apiKey: "test-key" },
-                models: ["model-a"],
-              },
-              models: [{ modelId: "model-a", config: {} }],
-            },
-          ],
-        },
-        modelValue: "demo/model-a",
-        fallbackLabel: "选择模型",
-      }),
-    ).toBe("Registry Provider/model-a");
-  });
-
   it("模型触发器继续遵循会话侧内置 family 的裁剪规则", () => {
     const providerId = BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan;
     const modelGroups: ModelSelectGroup[] = [

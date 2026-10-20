@@ -1,3 +1,4 @@
+import { TaskGroupRepository } from "#src/task-groups/index.js";
 import {
   isTasksStorageMigrated,
   isTasksStoragePrepared,
@@ -6,7 +7,7 @@ import {
 import { mkdir } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import {
   isRemoteWorkspaceIdentity,
   normalizeAgentProviderToZCodeAgent,
@@ -36,7 +37,8 @@ import type {
   ZCodeTaskGroupColor,
 } from "#src/session/zcodeTaskListTypes.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
-import { getTasksIndexDatabasePath } from "#src/paths.js";
+import { getTasksIndexDatabasePath, getZCodeDataRootDir } from "#src/paths.js";
+import { projectStorage, type ProjectMigrationContext } from "#src/project-storage/index.js";
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
 
 const require = createRequire(import.meta.url);
@@ -55,6 +57,16 @@ type DatabaseSyncInstance = InstanceType<typeof DatabaseSync>;
 type SQLInputValue = import("node:sqlite").SQLInputValue;
 
 interface TaskIndexRow {
+  // 官方 CLI facts 事实列（由 projectStorage.migrate 幂等补列）；主读取不使用，
+  // getCliFactsTaskRow / applyCliFacts 等官方事实端口依赖这些列。
+  cli_title?: string | null;
+  cli_title_source?: string | null;
+  cli_created_at?: number | null;
+  cli_updated_at?: number | null;
+  cli_last_outcome?: "completed" | "interrupted" | "error" | null;
+  cli_deleted?: number | null;
+  handoff_pending?: number;
+
   workspace_key: string;
   workspace_path: string;
   workspace_identity: string | null;
@@ -260,6 +272,79 @@ function rowToMeta(row: TaskIndexRow): ZCodeTaskMeta {
     offPeakTaskId: row.off_peak_task_id ?? undefined,
     unreadAt: row.unread_at ?? undefined,
     status: (row.task_status as ZCodeTaskMeta["status"]) ?? undefined,
+  };
+}
+
+/**
+ * 官方 CLI facts 展示基线读取（原官方版 readPresentation）：只读 meta_json 里的展示态，
+ * 标题/时间/状态由 rowToCliFactsMeta 以 cli_* 事实列覆盖。
+ */
+function readPresentation(row: TaskIndexRow): ZCodeTaskMeta {
+  const workspaceIdentity = resolveTaskIndexRowWorkspaceIdentity(row);
+  try {
+    const parsed = zcodeTaskMetaSchema.safeParse(JSON.parse(row.meta_json));
+    if (parsed.success) {
+      return {
+        ...(parsed.data as ZCodeTaskMeta),
+        // SQLite 使用这些字段查询并隔离实体，旧 meta_json 里的 identity
+        // 可能缺失或属于旧远端。读取时必须与行主键投影一致，sessions-index 才能
+        // 按 workspaceKey + taskId 附加 running activity。
+        taskId: row.task_id,
+        workspacePath: row.workspace_path,
+        workspaceIdentity,
+        // unread 是 tasks-index 产品壳状态；标量列必须覆盖可能来自其他 Host 的旧 meta_json。
+        unreadAt: row.unread_at ?? undefined,
+        // cron 身份以 meta_json 为准；cron_automation_id 列是索引投影，仅作兜底：
+        // 历史行 meta_json 里可能还没有该字段，回退读列，下次写入会自动回填进 meta_json。
+        cronAutomationId: parsed.data.cronAutomationId ?? row.cron_automation_id ?? undefined,
+        // off-peak 身份同款策略：meta_json 为准、列兜底——存量迁移只写列即可生效。
+        offPeakTaskId: parsed.data.offPeakTaskId ?? row.off_peak_task_id ?? undefined,
+        titleOverridden: row.title_overridden === 1,
+      };
+    }
+    logger.warn(
+      undefined,
+      `读取 task index meta_json 非法 taskId=${row.task_id}`,
+      parsed.error.flatten(),
+    );
+  } catch (error) {
+    logger.warn(undefined, `读取 task index meta_json 失败 taskId=${row.task_id}`, error);
+  }
+
+  return {
+    taskId: row.task_id,
+    traceId: `zcode-${row.task_id}`,
+    title: "",
+    titleOverridden: row.title_overridden === 1,
+    workspacePath: row.workspace_path,
+    workspaceIdentity,
+    createdAt: 0,
+    updatedAt: 0,
+    mode: row.mode as ZCodeTaskMeta["mode"],
+    model: row.model ?? undefined,
+    // 旧行 provider 列可能残留三方 CLI 值；meta 回退投影时统一归一为 glm。
+    provider: row.provider
+      ? normalizeAgentProviderToZCodeAgent(row.provider as ZCodeTaskMeta["provider"])
+      : undefined,
+    migrationSource: (row.migration_source as ZCodeTaskMeta["migrationSource"]) ?? undefined,
+    forkedFromTaskId: row.forked_from_task_id ?? undefined,
+    cronAutomationId: row.cron_automation_id ?? undefined,
+    offPeakTaskId: row.off_peak_task_id ?? undefined,
+    unreadAt: row.unread_at ?? undefined,
+  };
+}
+
+/** 官方 CLI facts 投影（原官方版 rowToMeta，因与用户版 rowToMeta 冲突改名）：标题/时间/状态以 cli_* 事实列为准。 */
+function rowToCliFactsMeta(row: TaskIndexRow): ZCodeTaskMeta {
+  const meta = readPresentation(row);
+  return {
+    ...meta,
+    title: row.title_overridden === 1 ? row.title : (row.cli_title ?? ""),
+    titleOverridden: row.title_overridden === 1 || row.cli_title_source === "custom",
+    createdAt: row.cli_created_at ?? 0,
+    updatedAt: row.cli_updated_at ?? 0,
+    status:
+      row.cli_last_outcome === "interrupted" ? "completed" : (row.cli_last_outcome ?? undefined),
   };
 }
 
@@ -533,13 +618,39 @@ function compareGroupTasks(
 
 export class TaskIndexRepo {
   constructor(
+    // 官方项目组织库迁移设置（settings/hostId 来自 Host 装配层）；startupDbPath 顺延为第 3 参。
+    private readonly migrationSettings?: ProjectMigrationContext["settings"],
+    private readonly storageHostId?: string,
     private readonly startupDbPath?: string,
     private readonly startupBusyTimeoutMs = 5000,
   ) {}
+  /** 启动迁移结果，供 main 提示；不参与任务事实或组织状态。 */
+  migrationBackupSkipped = false;
   private db: DatabaseSyncInstance | null = null;
   private dbPath: string | null = null;
   private initializePromise: Promise<void> | null = null;
   private readonly writeChains = new Map<string, Promise<void>>();
+
+  /** 官方 CLI 事实落库时同步登记 task-groups 组织态；仅本机 Host 写入，远程投影由控制端服务负责。 */
+  private admitTaskGroup(meta: ZCodeTaskMeta, archived: boolean, deleted: boolean) {
+    if (this.storageHostId && this.storageHostId !== "local") return;
+    // 本机只登记本机事实；远程成员由控制端服务验证远端投影后写入。
+    if (meta.workspaceIdentity?.trim()) return;
+    new TaskGroupRepository(this.getDatabase()).admit([
+      { ...meta, hostId: "local", archived, deleted },
+    ]);
+  }
+
+  /** Host 装配层共用迁移后的组织库；UI 只能通过 project/remote-projects 服务访问。 */
+  async getOrganizationDatabase() {
+    await this.ensureReady();
+    return this.getDatabase();
+  }
+
+  async getProjectRepository() {
+    await this.ensureReady();
+    return projectStorage.repository(this.getDatabase(), this.storageHostId);
+  }
 
   async ensureReady(): Promise<void> {
     const path = this.startupDbPath ?? getTasksIndexDatabasePath();
@@ -582,16 +693,32 @@ export class TaskIndexRepo {
       this.db.exec("PRAGMA journal_mode = WAL");
       this.db.exec("PRAGMA synchronous = NORMAL");
     }
-    // Worker 已完成该路径的原始准备，业务连接不再重复全表修复。
-    if (isTasksStoragePrepared(path, this.db)) return;
-    if (!isTasksStorageMigrated(path, this.db)) runTasksDatabaseMigrations(this.db);
-    this.backfillOffPeakTaskMarkers();
-    this.backfillOffPeakGroupMemberships();
-    // Bugfix: z-code-2 早期列表 task_id 是 wrapper id，真实 ZCode session id 在旧列
-    // acp_session_id。直接运行时映射会让 read/send/subscribe 到处变成双 ID 兜底；
-    // 初始化时把索引行迁到真实 session id，后续统一走新协议正常路径。
-    this.migrateLegacyAcpTaskIds();
-    this.cleanupDeletedTaskGroupingReferences();
+    // Worker 已完成该路径的原始准备，业务连接不再重复全表修复；同进程首个连接必走完整
+    // 路径，cli_*/项目组织库列已在那时由 projectStorage.migrate 幂等补齐。
+    if (!isTasksStoragePrepared(path, this.db)) {
+      let taskMigration: Awaited<ReturnType<typeof runTasksDatabaseMigrations>> | undefined;
+      if (!isTasksStorageMigrated(path, this.db)) {
+        taskMigration = await runTasksDatabaseMigrations(this.db);
+      }
+      // 官方 CLI facts 端口（applyCliFacts 等）与项目树依赖 cli_*/projects 列；
+      // prepareTasksIndexStorage 只做 tasks 迁移，业务方法前必须在此幂等补齐，
+      // 否则事实写入会命中缺失列。
+      const migration = await projectStorage.migrate(this.getDatabase(), {
+        settings: this.migrationSettings,
+        hostId: this.storageHostId,
+        backupDirectories: [join(getZCodeDataRootDir(), "backup")],
+        warn: (message, details) => createServiceLogger("project-migration").warn(message, details),
+      });
+      this.migrationBackupSkipped =
+        (taskMigration?.backupSkipped ?? false) || migration.backupSkipped;
+      this.backfillOffPeakTaskMarkers();
+      this.backfillOffPeakGroupMemberships();
+      // Bugfix: z-code-2 早期列表 task_id 是 wrapper id，真实 ZCode session id 在旧列
+      // acp_session_id。直接运行时映射会让 read/send/subscribe 到处变成双 ID 兜底；
+      // 初始化时把索引行迁到真实 session id，后续统一走新协议正常路径。
+      this.migrateLegacyAcpTaskIds();
+      this.cleanupDeletedTaskGroupingReferences();
+    }
   }
 
   private hasColumn(table: string, column: string): boolean {
@@ -1065,6 +1192,48 @@ export class TaskIndexRepo {
           title_overridden,
           searchable_text,
           meta_json
+        FROM tasks
+        WHERE workspace_key = ? AND task_id = ?`,
+      )
+      .get(workspaceKey(params), params.taskId) as TaskIndexRow | undefined;
+    return row ?? null;
+  }
+
+  /**
+   * 官方 CLI facts 行读取（原官方版 getTaskRow，因与用户版同名私有方法冲突改名）：
+   * 在用户版列的基础上多取 cli_* / handoff_pending 事实列，供官方事实端口判断预留行状态。
+   */
+  private getCliFactsTaskRow(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    taskId: string;
+  }): TaskIndexRow | null {
+    const row = this.getDatabase()
+      .prepare(
+        `SELECT
+          workspace_key,
+          workspace_path,
+          workspace_identity,
+          task_id,
+          title,
+          task_status,
+          provider,
+          mode,
+          model,
+          migration_source,
+          forked_from_task_id,
+          cron_automation_id,
+          off_peak_task_id,
+          created_at,
+          updated_at,
+          unread_at,
+          last_unread_at,
+          pinned,
+          archived,
+          deleted,
+          title_overridden,
+          searchable_text,
+          meta_json, cli_title, cli_title_source, cli_created_at, cli_updated_at, cli_last_outcome, cli_deleted, handoff_pending
         FROM tasks
         WHERE workspace_key = ? AND task_id = ?`,
       )
@@ -1625,6 +1794,287 @@ export class TaskIndexRepo {
     return rowToMeta(persisted);
   }
 
+  /**
+   * 官方 CLI 事实写入（原官方版 writeRecord，因与用户版同名私有方法冲突改名）：
+   * 只在预留行首次落 CLI 事实时调用，正文索引与未读 CAS marker 都不归它写；
+   * ON CONFLICT 时原样保留 searchable_text / unread_at，并同步项目身份与 task-groups 组织态。
+   */
+  private writeCliFactsRecord(record: TaskIndexWriteRecord): ZCodeTaskMeta {
+    const database = this.getDatabase();
+    const ownTransaction = !database.isTransaction;
+    if (ownTransaction) database.exec("BEGIN IMMEDIATE");
+    try {
+      const existing = this.getCliFactsTaskRow({
+        workspacePath: record.meta.workspacePath,
+        workspaceIdentity: record.meta.workspaceIdentity,
+        taskId: record.meta.taskId,
+      });
+      const searchableText = existing?.searchable_text ?? "";
+      this.getDatabase()
+        .prepare(
+          `INSERT INTO tasks (
+          workspace_key,
+          workspace_path,
+          workspace_identity,
+          task_id,
+          title,
+          task_status,
+          provider,
+          mode,
+          model,
+          migration_source,
+          forked_from_task_id,
+          cron_automation_id,
+          off_peak_task_id,
+          created_at,
+          updated_at,
+          unread_at,
+          last_unread_at,
+          pinned,
+          archived,
+          deleted,
+          title_overridden,
+          searchable_text,
+          meta_json
+        ) VALUES (
+          @workspace_key,
+          @workspace_path,
+          @workspace_identity,
+          @task_id,
+          @title,
+          @task_status,
+          @provider,
+          @mode,
+          @model,
+          @migration_source,
+          @forked_from_task_id,
+          @cron_automation_id,
+          @off_peak_task_id,
+          @created_at,
+          @updated_at,
+          @unread_at,
+          @last_unread_at,
+          @pinned,
+          @archived,
+          @deleted,
+          @title_overridden,
+          @searchable_text,
+          @meta_json
+        )
+        ON CONFLICT(workspace_key, task_id) DO UPDATE SET
+          workspace_path = excluded.workspace_path,
+          workspace_identity = excluded.workspace_identity,
+          title = excluded.title,
+          task_status = excluded.task_status,
+          provider = excluded.provider,
+          mode = excluded.mode,
+          model = excluded.model,
+          migration_source = excluded.migration_source,
+          forked_from_task_id = excluded.forked_from_task_id,
+          cron_automation_id = excluded.cron_automation_id,
+          off_peak_task_id = excluded.off_peak_task_id,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
+          unread_at = tasks.unread_at,
+          last_unread_at = MAX(tasks.last_unread_at, COALESCE(tasks.unread_at, 0)),
+          pinned = excluded.pinned,
+          archived = excluded.archived,
+          deleted = excluded.deleted,
+          title_overridden = excluded.title_overridden,
+          searchable_text = excluded.searchable_text,
+          meta_json = excluded.meta_json`,
+        )
+        .run({
+          workspace_key: workspaceKey(record.meta),
+          workspace_path: record.meta.workspacePath,
+          workspace_identity: record.meta.workspaceIdentity ?? null,
+          task_id: record.meta.taskId,
+          title: record.meta.title,
+          task_status: record.meta.status ?? null,
+          provider: record.meta.provider ?? null,
+          mode: record.meta.mode,
+          model: record.meta.model ?? null,
+          migration_source: record.meta.migrationSource ?? null,
+          forked_from_task_id: record.meta.forkedFromTaskId ?? null,
+          // cron automation 身份从 meta 投影到索引列（meta_json 里也保留一份，见 serializeMetaJson）。
+          cron_automation_id: record.meta.cronAutomationId ?? null,
+          // off-peak 身份（D48）同款投影。
+          off_peak_task_id: record.meta.offPeakTaskId ?? null,
+          created_at: record.meta.createdAt,
+          updated_at: record.meta.updatedAt,
+          unread_at: record.meta.unreadAt ?? null,
+          last_unread_at: record.meta.unreadAt ?? 0,
+          pinned: record.pinned ? 1 : 0,
+          archived: record.archived ? 1 : 0,
+          deleted: record.deleted ? 1 : 0,
+          title_overridden: record.titleOverridden ? 1 : 0,
+          searchable_text: searchableText,
+          meta_json: serializeMetaJson(record.meta),
+        });
+      projectStorage.admitTaskIdentity(database, record.meta, this.storageHostId);
+      if (record.titleOverridden)
+        database
+          .prepare(
+            "UPDATE tasks SET handoff_pending=handoff_pending | 2 WHERE workspace_key=? AND task_id=? AND cli_title_source IS NULL",
+          )
+          .run(workspaceKey(record.meta), record.meta.taskId);
+
+      const persisted = this.getCliFactsTaskRow(record.meta);
+      if (!persisted) {
+        throw new Error(`task index 写入后缺少 task: ${record.meta.taskId}`);
+      }
+      this.admitTaskGroup(
+        rowToCliFactsMeta(persisted),
+        persisted.archived === 1,
+        persisted.deleted === 1,
+      );
+      if (ownTransaction) database.exec("COMMIT");
+      return rowToCliFactsMeta(persisted);
+    } catch (error) {
+      if (ownTransaction && database.isTransaction) database.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  async listReconciliationRows(target: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): Promise<Array<{ meta: ZCodeTaskMeta; handoffPending: number }>> {
+    await this.ensureReady();
+    const rows = this.getDatabase()
+      .prepare("SELECT * FROM tasks WHERE workspace_key=?")
+      .all(workspaceKey(target)) as unknown as TaskIndexRow[];
+    return rows.map((row) => ({
+      meta: rowToCliFactsMeta(row),
+      handoffPending: row.handoff_pending ?? 0,
+    }));
+  }
+
+  /** CLI 确认 child 后移除旧版本误建的派生行，不修改会话正文或 CLI deleted。 */
+  async removeSubagentIndexRow(target: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    taskId: string;
+  }): Promise<void> {
+    await this.ensureReady();
+    return this.enqueueWrite(target, () => {
+      this.getDatabase()
+        .prepare("DELETE FROM tasks WHERE workspace_key=? AND task_id=?")
+        .run(workspaceKey(target), target.taskId);
+    });
+  }
+
+  async markCliOrphan(target: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    taskId: string;
+  }): Promise<void> {
+    await this.ensureReady();
+    return this.enqueueWrite(target, () => {
+      this.getDatabase()
+        .prepare(
+          "UPDATE tasks SET handoff_pending=handoff_pending | 4 WHERE workspace_key=? AND task_id=?",
+        )
+        .run(workspaceKey(target), target.taskId);
+    });
+  }
+
+  /** 仅 syncer 消费 CLI 明确删除，不以列表缺席推断删除。 */
+  async applyCliDeletion(target: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    taskId: string;
+  }): Promise<void> {
+    await this.ensureReady();
+    return this.enqueueWrite(target, () => {
+      const db = this.getDatabase();
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.prepare(
+          "UPDATE tasks SET cli_deleted=1,deleted=1,handoff_pending=handoff_pending & ~1 WHERE workspace_key=? AND task_id=?",
+        ).run(workspaceKey(target), target.taskId);
+        const row = this.getCliFactsTaskRow(target);
+        if (row) this.admitTaskGroup(rowToCliFactsMeta(row), row.archived === 1, true);
+        db.exec("COMMIT");
+      } catch (error) {
+        if (db.isTransaction) db.exec("ROLLBACK");
+        throw error;
+      }
+    });
+  }
+
+  /** 仅 syncer 调用：CLI 事实是唯一来源，组织态写者不得合成这些值。 */
+  async applyCliFacts(params: {
+    meta: ZCodeTaskMeta;
+    titleSource?: string;
+    lastOutcome?: "completed" | "interrupted" | "error";
+    deleted?: boolean;
+  }): Promise<ZCodeTaskMeta> {
+    await this.ensureReady();
+    return this.enqueueWrite(params.meta, () => {
+      const db = this.getDatabase();
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const existing = this.getCliFactsTaskRow(params.meta);
+        // 预留行尚无 CLI 事实。首条事实补齐 provider/展示基线，保留预留后发生的组织操作。
+        if (!existing || (existing.cli_created_at == null && existing.created_at === 0))
+          this.writeCliFactsRecord({
+            meta: {
+              ...params.meta,
+              ...(existing?.title_overridden === 1 ? { title: existing.title } : {}),
+            },
+            pinned: existing?.pinned === 1,
+            archived: existing?.archived === 1,
+            deleted: existing?.deleted === 1,
+            titleOverridden: existing?.title_overridden === 1,
+          });
+        const source = params.titleSource ?? "default";
+        db.prepare(`UPDATE tasks SET
+          cli_title=CASE WHEN cli_title_source='custom' AND ?<>'custom' THEN cli_title ELSE ? END,
+          cli_title_source=CASE WHEN cli_title_source='custom' AND ?<>'custom' THEN cli_title_source ELSE ? END,
+          cli_created_at=?,cli_updated_at=max(coalesce(cli_updated_at,0),?),
+          cli_last_outcome=coalesce(?,cli_last_outcome),cli_deleted=max(coalesce(cli_deleted,0),?),
+          title=CASE WHEN (handoff_pending & 2)<>0 THEN title WHEN cli_title_source='custom' AND ?<>'custom' THEN cli_title ELSE ? END,
+          title_overridden=CASE WHEN (handoff_pending & 2)<>0 THEN title_overridden WHEN ?='custom' OR cli_title_source='custom' THEN 1 ELSE 0 END,
+          updated_at=?,created_at=?,task_status=coalesce(?,task_status),deleted=max(deleted,?),
+          handoff_pending=(handoff_pending & ~4) & CASE WHEN ?=1 THEN ~1 ELSE -1 END & CASE WHEN ?=title AND ?='custom' THEN ~2 ELSE -1 END
+          WHERE workspace_key=? AND task_id=?`).run(
+          source,
+          params.meta.title,
+          source,
+          source,
+          params.meta.createdAt,
+          params.meta.updatedAt,
+          params.lastOutcome ?? null,
+          params.deleted ? 1 : 0,
+          source,
+          params.meta.title,
+          source,
+          params.meta.updatedAt,
+          params.meta.createdAt,
+          params.lastOutcome ?? null,
+          params.deleted ? 1 : 0,
+          params.deleted ? 1 : 0,
+          params.meta.title,
+          source,
+          workspaceKey(params.meta),
+          params.meta.taskId,
+        );
+        const persisted = this.getCliFactsTaskRow(params.meta)!;
+        this.admitTaskGroup(
+          rowToCliFactsMeta(persisted),
+          persisted.archived === 1,
+          persisted.deleted === 1,
+        );
+        db.exec("COMMIT");
+        return rowToCliFactsMeta(persisted);
+      } catch (error) {
+        if (db.isTransaction) db.exec("ROLLBACK");
+        throw error;
+      }
+    });
+  }
+
   async syncTaskMeta(params: {
     meta: ZCodeTaskMeta;
     pinned?: boolean;
@@ -1983,6 +2433,63 @@ export class TaskIndexRepo {
         return persistedMeta;
       } catch (error) {
         if (transactional) database.exec("ROLLBACK");
+        throw error;
+      }
+    });
+  }
+
+  /** 官方展示缓存写入端口；不接受 title/time/status/deleted，CLI 事实由 applyCliFacts 独立写入。 */
+  async updateTaskPresentation(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    taskId: string;
+    presentation: Partial<
+      Pick<
+        ZCodeTaskMeta,
+        | "mode"
+        | "model"
+        | "thoughtLevel"
+        | "lastError"
+        | "target"
+        | "migrationSource"
+        | "cronAutomationId"
+        | "offPeakTaskId"
+      >
+    >;
+    searchableText?: string;
+  }): Promise<ZCodeTaskMeta | null> {
+    await this.ensureReady();
+    return this.enqueueWrite(params, () => {
+      const db = this.getDatabase();
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const row = this.getCliFactsTaskRow(params);
+        if (!row) {
+          db.exec("COMMIT");
+          return null;
+        }
+        const meta = { ...rowToCliFactsMeta(row), ...params.presentation };
+        this.getDatabase()
+          .prepare(
+            `UPDATE tasks SET mode=?,model=?,migration_source=?,cron_automation_id=?,off_peak_task_id=?,meta_json=?,searchable_text=coalesce(?,searchable_text) WHERE workspace_key=? AND task_id=?`,
+          )
+          .run(
+            meta.mode,
+            meta.model ?? null,
+            meta.migrationSource ?? null,
+            meta.cronAutomationId ?? null,
+            meta.offPeakTaskId ?? null,
+            serializeMetaJson(meta),
+            params.searchableText ?? null,
+            workspaceKey(params),
+            params.taskId,
+          );
+        const result = rowToCliFactsMeta(this.getCliFactsTaskRow(params)!);
+        this.admitTaskGroup(result, row.archived === 1, row.deleted === 1);
+        db.exec("COMMIT");
+        return result;
+      } catch (error) {
+        if (db.isTransaction) db.exec("ROLLBACK");
         throw error;
       }
     });

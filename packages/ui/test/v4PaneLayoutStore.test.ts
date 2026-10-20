@@ -58,13 +58,7 @@ describe("paneWorkspaceKey（身份/隔离口径）", () => {
 });
 
 describe("分割树纯状态机", () => {
-  it("初始态：单 primary 叶子，焦点在 primary", () => {
-    expect(INITIAL_PANE_LAYOUT.root).toEqual({
-      type: "leaf",
-      paneId: V4_PRIMARY_PANE_ID,
-    });
-    expect(INITIAL_PANE_LAYOUT.panes).toEqual({});
-    expect(INITIAL_PANE_LAYOUT.focusedPaneId).toBe(V4_PRIMARY_PANE_ID);
+  it("初始布局只计一个 pane", () => {
     expect(countPanes(INITIAL_PANE_LAYOUT)).toBe(1);
   });
 

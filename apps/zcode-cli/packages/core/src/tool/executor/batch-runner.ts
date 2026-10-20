@@ -46,6 +46,7 @@ export async function executeToolBatch(
           traceContext: options?.traceContext,
           subagentModelOverride: options?.subagentModelOverride,
           model: options?.model,
+          toolSearch: options?.toolSearch,
         }),
       ),
     );
@@ -85,6 +86,7 @@ export async function* executeToolSchedule(
       traceContext: options?.traceContext,
       subagentModelOverride: options?.subagentModelOverride,
       model: options?.model,
+      toolSearch: options?.toolSearch,
       maxConcurrency,
     });
     allResults.push(...groupResults);

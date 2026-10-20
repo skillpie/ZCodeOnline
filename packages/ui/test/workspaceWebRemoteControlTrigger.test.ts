@@ -64,7 +64,7 @@ vi.mock("@/hooks/useWebRemoteControlStatus.js", () => ({
   useWebRemoteControlStatus: () => ({ status: "idle" }),
 }));
 
-vi.mock("@/WebRemoteControlDialog.js", () => ({
+vi.mock("@/web-remote-control/index.js", () => ({
   WebRemoteControlDialog: ({
     initialTaskId,
     remoteSessionId,

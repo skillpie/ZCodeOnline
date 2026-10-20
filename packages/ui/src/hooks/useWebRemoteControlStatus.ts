@@ -15,6 +15,10 @@ function isSameWebRemoteControlStatus(
     left.mobileViewState?.activeWorkspaceKey === right.mobileViewState?.activeWorkspaceKey &&
     left.mobileViewState?.activeTaskId === right.mobileViewState?.activeTaskId &&
     left.mobileViewState?.updatedAt === right.mobileViewState?.updatedAt &&
+    left.mobileTaskView?.taskId === right.mobileTaskView?.taskId &&
+    left.mobileTaskView?.workspacePath === right.mobileTaskView?.workspacePath &&
+    left.mobileTaskView?.workspaceIdentity === right.mobileTaskView?.workspaceIdentity &&
+    left.mobileTaskView?.remoteSessionId === right.mobileTaskView?.remoteSessionId &&
     left.mobileDeviceInfo?.updatedAt === right.mobileDeviceInfo?.updatedAt &&
     left.mobileDeviceInfo?.userAgent === right.mobileDeviceInfo?.userAgent &&
     left.mobileDeviceInfo?.viewport?.width === right.mobileDeviceInfo?.viewport?.width &&

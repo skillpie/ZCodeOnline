@@ -52,6 +52,7 @@ vi.mock("lucide-react", () => {
     CloudUpload: createIcon("cloud-upload"),
     Clock: createIcon("clock"),
     LoaderIcon: createIcon("loader"),
+    ListTree: createIcon("list-tree"),
     Pin: createIcon("pin"),
     Smartphone: createIcon("smartphone"),
   };
@@ -325,6 +326,93 @@ describe("TaskListItem hover action rendering", () => {
     delete (globalThis as { window?: unknown }).window;
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: unknown }).IS_REACT_ACT_ENVIRONMENT;
   });
+
+  it("opens pinned files on touch without selecting the task", async () => {
+    const { MemoTaskItem } = await import("@/TaskListItem.js");
+    const container = installMinimalDom(true);
+    const root = createRoot(container);
+    const onOpenFileTree = vi.fn(async () => {});
+    const onSelectTask = vi.fn();
+    act(() =>
+      root.render(
+        createElement(MemoTaskItem, {
+          intl: stableIntl,
+          isActive: false,
+          isArchiveConfirming: false,
+          isPinned: true,
+          onArchiveTask: vi.fn(),
+          onArchiveTaskInline: vi.fn(),
+          onCancelArchiveConfirm: vi.fn(),
+          onMarkTaskAsUnread: vi.fn(),
+          onSelectTask,
+          onStartRenameTask: vi.fn(),
+          onTogglePinTask: vi.fn(),
+          onOpenFileTree,
+          task: createTask(),
+          workspacePath: "/workspace",
+        }),
+      ),
+    );
+    const button = findByAttributeValue(container, "data-testid", "task-files-task-1");
+    expect(button).not.toBeNull();
+    const stopPropagation = vi.fn();
+    await act(async () => {
+      button?.dispatchEvent({
+        type: "click",
+        bubbles: true,
+        preventDefault: vi.fn(),
+        stopPropagation,
+      } as TestEvent);
+    });
+    expect(onOpenFileTree).toHaveBeenCalledOnce();
+    expect(stopPropagation).toHaveBeenCalled();
+    expect(onSelectTask).not.toHaveBeenCalled();
+    act(() => root.unmount());
+  });
+
+  it.each([false, true])(
+    "hoverEnabled=%s controls synthetic mouse and focus presentation",
+    async (hoverEnabled) => {
+      const { MemoTaskItem } = await import("@/TaskListItem.js");
+      const container = installMinimalDom(true);
+      const root = createRoot(container);
+      const onSelectTask = vi.fn();
+      act(() =>
+        root.render(
+          createElement(MemoTaskItem, {
+            intl: stableIntl,
+            isActive: false,
+            isArchiveConfirming: false,
+            isPinned: false,
+            hoverEnabled,
+            onArchiveTask: vi.fn(),
+            onArchiveTaskInline: vi.fn(),
+            onCancelArchiveConfirm: vi.fn(),
+            onMarkTaskAsUnread: vi.fn(),
+            onSelectTask,
+            onStartRenameTask: vi.fn(),
+            onTogglePinTask: vi.fn(),
+            task: createTask(),
+            workspacePath: "/workspace",
+          }),
+        ),
+      );
+      const row = findByAttribute(container, "data-task-item-key")!;
+      act(() => {
+        row.dispatchEvent({ type: "mouseover", bubbles: true, relatedTarget: null });
+        row.dispatchEvent({ type: "focusin", bubbles: true });
+      });
+      expect(
+        findByAttribute(container, "data-task-row-metadata")
+          ?.getAttribute("class")
+          ?.includes("hidden"),
+      ).toBe(hoverEnabled);
+      expect(row.getAttribute("class")?.includes("hover:bg-surface-hover")).toBe(hoverEnabled);
+      act(() => row.dispatchEvent({ type: "click", bubbles: true }));
+      expect(onSelectTask).toHaveBeenCalledOnce();
+      act(() => root.unmount());
+    },
+  );
 
   it("keeps idle rows free of per-row context menu and hover-only archive tooltip", async () => {
     const { MemoTaskItem } = await import("@/TaskListItem.js");

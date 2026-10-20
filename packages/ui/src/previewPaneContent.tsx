@@ -11,6 +11,7 @@ import type { CodeCommentLabels } from "@/components/ui/code-viewer.js";
 import { MarkdownPreviewContent } from "@/previewPaneMarkdownContent.js";
 import { CodeContent } from "@/previewPaneCodeContent.js";
 import { ImagePreviewContent, SvgPreviewContent } from "@/previewPaneImageContent.js";
+import type { WorkspaceFileDragPayload } from "@/lib/workspaceFileDrag.js";
 import { PreviewPaneMediaContent } from "@/previewPaneMediaContent.js";
 import { PdfPreviewContent } from "@/previewPanePdfContent.js";
 import { PptxPreviewContent } from "@/previewPanePptxContent.js";
@@ -34,6 +35,8 @@ interface PreviewPaneContentProps {
   loadingInitial: boolean;
   loadingImagePreview: boolean;
   imagePreview: FileMediaPreview | null;
+  imageFileReference?: WorkspaceFileDragPayload;
+  loadImageDownloadSource?: () => Promise<string>;
   mediaSource: MediaCodeViewerSource | null;
   loadingMediaPreview: boolean;
   mediaPreviewUrl: string | null;
@@ -95,6 +98,8 @@ export function PreviewPaneContent({
   loadingInitial,
   loadingImagePreview,
   imagePreview,
+  imageFileReference,
+  loadImageDownloadSource,
   mediaSource,
   loadingMediaPreview,
   mediaPreviewUrl,
@@ -221,7 +226,15 @@ export function PreviewPaneContent({
     }
 
     if (isSvgSource && svgViewMode === "preview") {
-      return <SvgPreviewContent title={source.title} svgContent={source.content} />;
+      return (
+        <SvgPreviewContent
+          title={source.title}
+          svgContent={source.content}
+          fileReference={imageFileReference}
+          sourcePath={source.path}
+          loadDownloadSource={loadImageDownloadSource}
+        />
+      );
     }
 
     return (
@@ -274,6 +287,7 @@ export function PreviewPaneContent({
         title={source.title}
         imageSource={`data:${imagePreview.mediaType};base64,${imagePreview.dataBase64}`}
         sourcePath={source.path}
+        fileReference={imageFileReference}
       />
     );
   }
@@ -458,7 +472,15 @@ export function PreviewPaneContent({
     isSvgFile &&
     svgViewMode === "preview"
   ) {
-    return <SvgPreviewContent title={source.title} svgContent={filePreview.content} />;
+    return (
+      <SvgPreviewContent
+        title={source.title}
+        svgContent={filePreview.content}
+        fileReference={imageFileReference}
+        sourcePath={source.path}
+        loadDownloadSource={loadImageDownloadSource}
+      />
+    );
   }
 
   return (

@@ -97,7 +97,9 @@ export async function prepareTasksIndexStorage(
   }
   markTasksStorageMigrated(path);
   const repos = [
-    new TaskIndexRepo(path, LOCK_WAIT_MS),
+    // 合并说明：TaskIndexRepo 构造函数随官方 sync 变为 4 参（迁移设置/hostId/显式 dbPath/忙超时），
+    // 用户的存储预备链路按旧语义传显式路径与忙超时。
+    new TaskIndexRepo(undefined, undefined, path, LOCK_WAIT_MS),
     new AutomationRepo(path, LOCK_WAIT_MS),
     new OffPeakTaskRepo(path, LOCK_WAIT_MS),
   ];

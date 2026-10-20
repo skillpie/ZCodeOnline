@@ -10,10 +10,11 @@ import {
   PlatformChannels,
   relayHttpOrigin,
   revealAssistPsk,
-  TunnelManagerPairing,
-  TunnelManagerStatus,
   type RedeemAssistCodeResult,
   type TunnelAssistCode,
+  // verbatimModuleSyntax 要求类型成员用 type-only 导入（官方 sync 收紧后的规则）。
+  type TunnelManagerPairing,
+  type TunnelManagerStatus,
 } from "@zcode/shared";
 import {
   requestControl,

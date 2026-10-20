@@ -1,5 +1,8 @@
-import { TID_TASK_ITEM, testId } from "@zcode/shared";
-import { clearAppData, getActiveWorkspacePath } from "../../../helpers/desktop-app.js";
+import { TID_TASK_ITEM, testId } from "@zcode/shared/test-ids";
+import {
+  clearAppData,
+  getActiveWorkspacePath,
+} from "../../../helpers/desktop-app.js";
 import { ensureUpstreamProviderForE2E } from "../../../helpers/upstream-provider.js";
 import {
   clickV4Stop,

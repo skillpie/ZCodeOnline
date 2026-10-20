@@ -4,8 +4,11 @@
 // active-loop、batch、rewind、cold start、remote/replayable 由 catalog 剪枝。
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TID_PREVIEW_PANE } from "@zcode/shared";
-import { clearAppData, DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
+import { TID_PREVIEW_PANE } from "@zcode/shared/test-ids";
+import {
+  clearAppData,
+  DEFAULT_WORKSPACE,
+} from "../../../helpers/desktop-app.js";
 import {
   findFirstUpstreamRequestIndex,
   getUpstreamRequestRecordCount,

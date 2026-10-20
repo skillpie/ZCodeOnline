@@ -209,6 +209,8 @@ export interface ZCodeWorkspaceTaskListChanged {
   workspacePath: string;
   workspaceIdentity?: string;
   taskId?: string;
+  // 合并恢复：官方 sync 收窄为 TaskRealtimeReason；用户 fork 的任务列表刷新策略仍依赖
+  // auto_archive（批量归档触发）与 realtime_sync（回退链路补偿刷新）两个 reason。
   reason: "auto_archive" | "realtime_sync" | TaskRealtimeReason;
   taskMeta?: ZCodeTaskMeta;
   /** Host 已确认该终态应制造后台未读；普通 status/resume/snapshot 收敛不得携带。 */

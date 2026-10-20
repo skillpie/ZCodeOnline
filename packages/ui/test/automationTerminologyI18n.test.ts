@@ -49,6 +49,7 @@ describe("Automations terminology", () => {
     }
   });
 
+
   it("keeps the local Customize fallback copy for Client Scenes failures", () => {
     const customize = appendLocalCustomizeTemplate([])[0]!;
     const format =
@@ -64,6 +65,20 @@ describe("Automations terminology", () => {
     expect(
       resolveOffPeakTemplateText(customize, "description", "en-US", format(enUS)),
     ).toBeTruthy();
+  });
+
+  it("keeps imminent next-run copy grammatical across locales", () => {
+    const englishNextRun = enUS["automations.nextRun"].replace(
+      "{when}",
+      enUS["automations.time.soon"],
+    );
+    const chineseNextRun = zhCN["automations.nextRun"].replace(
+      "{when}",
+      zhCN["automations.time.soon"],
+    );
+
+    expect(englishNextRun).toBe("Next run soon");
+    expect(chineseNextRun).toBe("下次运行 1 分钟内");
   });
 
   it("does not retain locale entries for deleted static template catalogs", () => {
@@ -128,20 +143,6 @@ describe("Automations terminology", () => {
       "此操作无法撤销。如果任务当前正在排队或运行中，将立即停止。",
     );
     expect(zhCN["offPeak.delete.confirm"]).toBe("删除闲时任务");
-  });
-
-  it("keeps imminent next-run copy grammatical across locales", () => {
-    const englishNextRun = enUS["automations.nextRun"].replace(
-      "{when}",
-      enUS["automations.time.soon"],
-    );
-    const chineseNextRun = zhCN["automations.nextRun"].replace(
-      "{when}",
-      zhCN["automations.time.soon"],
-    );
-
-    expect(englishNextRun).toBe("Next run soon");
-    expect(chineseNextRun).toBe("下次运行 1 分钟内");
   });
 
   it("uses productized discard-draft copy for both task types", () => {

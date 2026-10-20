@@ -1,4 +1,8 @@
-import type { ProviderListModelsRequest, ProviderListModelsResult } from "@zcode/shared";
+import type {
+  ProviderListModelsRequest,
+  ProviderListModelsResult,
+  ProviderModelListItem,
+} from "@zcode/shared";
 
 /** models 请求超时；供应商网关慢时宁可失败也不要让设置页无限等待。 */
 const FETCH_TIMEOUT_MS = 15000;
@@ -42,7 +46,8 @@ export function parseModelEntries(body: unknown): ProviderListModelsResult["mode
       : Array.isArray(container?.models)
         ? container.models
         : [];
-  const models: ProviderListModelsResult["models"] = [];
+  // 官方把 ProviderListModelsResult["models"] 标为 readonly；此处是本地构建中的可变数组。
+  const models: ProviderModelListItem[] = [];
   const seen = new Set<string>();
   for (const entry of entries) {
     if (!entry || typeof entry !== "object") continue;

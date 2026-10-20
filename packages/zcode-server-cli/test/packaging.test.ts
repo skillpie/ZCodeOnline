@@ -1,8 +1,11 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   collectBareModuleSpecifiers,
@@ -18,6 +21,7 @@ async function runTar(args: string[]): Promise<void> {
 }
 
 const temporaryDirs: string[] = [];
+const macIt = process.platform === "darwin" ? it : it.skip;
 
 async function makeTempDir(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "zcode-server-stage-test-"));
@@ -98,7 +102,9 @@ describe("resolveProductionPackageClosure", () => {
       dependencies: { "pkg-b": "*" },
       devDependencies: { "pkg-dev": "*" },
     });
-    await writeFakePackage(nodeModulesDir, "pkg-b", { dependencies: { "@scope/pkg-c": "*" } });
+    await writeFakePackage(nodeModulesDir, "pkg-b", {
+      dependencies: { "@scope/pkg-c": "*" },
+    });
     await writeFakePackage(nodeModulesDir, "@scope/pkg-c");
     await writeFakePackage(nodeModulesDir, "pkg-dev");
 
@@ -145,8 +151,10 @@ describe("stageRelease", () => {
     distDir: string;
     workspaceNodeModulesDir: string;
     agentBundlePath: string;
+    bundledSkillsDir: string;
     nodeBinaryPath: string;
     outputDir: string;
+    notices: { thirdParty: string; node: string; nodeSource: string };
   }> {
     const root = await makeTempDir();
     const distDir = join(root, "dist");
@@ -178,6 +186,13 @@ describe("stageRelease", () => {
       files: { "prebuilds/linux-x64/pty.node": "linux-binary" },
     });
 
+    const bundledSkillsDir = join(root, "bundled-skills");
+    await mkdir(join(bundledSkillsDir, "skills/dynamic-workflows"), { recursive: true });
+    await writeFile(join(bundledSkillsDir, "README.md"), "bundled skills");
+    await writeFile(join(bundledSkillsDir, "scratch.txt"), "local only");
+    for (const name of ["SKILL.md", "patterns.md", "examples.md"]) {
+      await writeFile(join(bundledSkillsDir, "skills/dynamic-workflows", name), `fixture ${name}`);
+    }
     const agentBundlePath = join(root, "zcode.cjs");
     await writeFile(agentBundlePath, "// fake agent bundle\n", "utf8");
     const nodeBinaryPath = join(root, "node-binary");
@@ -193,6 +208,7 @@ describe("stageRelease", () => {
       distDir,
       workspaceNodeModulesDir,
       agentBundlePath,
+      bundledSkillsDir,
       nodeBinaryPath,
       outputDir,
       notices,
@@ -384,30 +400,232 @@ describe("stageRelease", () => {
     }
   });
 
-  it("工具目录缺少声明或声明参数为空时拒绝组装发行包", async () => {
+  it.each([true, false])(
+    "工具目录缺少声明或声明参数为空时拒绝组装发行包（componentArchives=%s）",
+    async (componentArchives) => {
+      const fixture = await makeStageFixture();
+      const toolsDir = join(await makeTempDir(), "tools");
+      await writeFakeNativeTools(toolsDir, { bfs: "bfs", ripgrep: "rg", ugrep: "ugrep" });
+      await rm(join(toolsDir, "ripgrep", "THIRD-PARTY-NOTICES.txt"));
+      await expect(
+        stageRelease({
+          target: "linux-x64",
+          appVersion: "9.9.9-test",
+          archive: false,
+          nativeToolsDir: toolsDir,
+          componentArchives,
+          ...fixture,
+        }),
+      ).rejects.toThrow(/ENOENT/u);
+      await expect(
+        stageRelease({
+          target: "linux-x64",
+          appVersion: "9.9.9-test",
+          archive: false,
+          ...fixture,
+          notices: { ...fixture.notices, node: " " },
+          componentArchives,
+        }),
+      ).rejects.toThrow(/Missing distribution notice: node/u);
+    },
+  );
+  macIt("omits macOS extended attributes from POSIX release archives", async () => {
     const fixture = await makeStageFixture();
-    const toolsDir = join(await makeTempDir(), "tools");
-    await writeFakeNativeTools(toolsDir, { bfs: "bfs", ripgrep: "rg", ugrep: "ugrep" });
-    await rm(join(toolsDir, "ripgrep", "THIRD-PARTY-NOTICES.txt"));
-    await expect(
-      stageRelease({
-        target: "linux-x64",
-        appVersion: "9.9.9-test",
-        archive: false,
-        nativeToolsDir: toolsDir,
-        ...fixture,
-      }),
-    ).rejects.toThrow(/ENOENT/u);
-    await expect(
-      stageRelease({
-        target: "linux-x64",
-        appVersion: "9.9.9-test",
-        archive: false,
-        ...fixture,
-        notices: { ...fixture.notices, node: " " },
-      }),
-    ).rejects.toThrow(/Missing distribution notice: node/u);
+    await execFileAsync("xattr", ["-w", "com.example.zcode", "value", fixture.nodeBinaryPath]);
+
+    const staged = await stageRelease({
+      target: "linux-x64",
+      appVersion: "9.9.9-test",
+      ...fixture,
+    });
+    const archive = gunzipSync(await readFile(staged.archivePath ?? ""));
+    const tarText = archive.toString("latin1");
+
+    expect(tarText).not.toContain("LIBARCHIVE.xattr");
+    expect(tarText).not.toContain("SCHILY.xattr");
   });
+
+  it("bundled workflow skills ship in the agent component and affect its hash", async () => {
+    const fixture = await makeStageFixture();
+    const officialPluginsDir = join(await makeTempDir(), "packages");
+    await writeOfficialPluginFixture(officialPluginsDir, "zcode-guide-plugin");
+    const options = {
+      ...fixture,
+      officialPluginsDir,
+      target: "linux-x64" as const,
+      appVersion: "test",
+      archive: false,
+    };
+    const staged = await stageRelease(options);
+    const manifest = JSON.parse(await readFile(join(staged.releaseDir, "manifest.json"), "utf8"));
+    const component = manifest.components.find(
+      (entry: { id: string }) => entry.id === "agent-runtime",
+    );
+    expect(component.paths).toContain("runtime/packages/bundled-skills");
+    expect(manifest.plugins).not.toContain("bundled-skills");
+    const archive = gunzipSync(
+      await readFile(join(fixture.outputDir, component.archivePath)),
+    ).toString("utf8");
+    for (const name of ["SKILL.md", "patterns.md", "examples.md"]) {
+      expect(
+        await readFile(
+          join(staged.releaseDir, "runtime/packages/bundled-skills/skills/dynamic-workflows", name),
+          "utf8",
+        ),
+      ).toBe(`fixture ${name}`);
+      expect(archive).toContain(`fixture ${name}`);
+    }
+    await writeFile(
+      join(fixture.bundledSkillsDir, "skills/dynamic-workflows/examples.md"),
+      "updated example",
+    );
+    const updated = await stageRelease(options);
+    const next = JSON.parse(await readFile(join(updated.releaseDir, "manifest.json"), "utf8"));
+    expect(
+      next.components.find((entry: { id: string }) => entry.id === "agent-runtime").sha256,
+    ).not.toBe(component.sha256);
+    expect(
+      next.components.find((entry: { id: string }) => entry.id === "official-plugins").sha256,
+    ).toBe(
+      manifest.components.find((entry: { id: string }) => entry.id === "official-plugins").sha256,
+    );
+  });
+
+  it.each(["SKILL.md", "patterns.md", "examples.md", "entire-pack"])(
+    "rejects missing bundled skill asset %s",
+    async (missing) => {
+      const fixture = await makeStageFixture();
+      await rm(
+        missing === "entire-pack"
+          ? fixture.bundledSkillsDir
+          : join(fixture.bundledSkillsDir, "skills/dynamic-workflows", missing),
+        { recursive: true },
+      );
+      await expect(
+        stageRelease({ ...fixture, target: "linux-x64", appVersion: "test", archive: false }),
+      ).rejects.toThrow(/bundled skill/i);
+    },
+  );
+
+  async function writeOfficialPluginFixture(
+    officialPluginsDir: string,
+    name: string,
+    options: { mcpEntry?: string; withMcpEntryFile?: boolean; withManifest?: boolean } = {},
+  ): Promise<void> {
+    const pluginDir = join(officialPluginsDir, name);
+    await mkdir(join(pluginDir, ".zcode-plugin"), { recursive: true });
+    await writeFile(join(pluginDir, "README.md"), name, "utf8");
+    // 真实官方插件的 package.json 都是 tracked 文件，是"该目录属于当前 checkout"的判据。
+    await writeFile(
+      join(pluginDir, "package.json"),
+      JSON.stringify({ name: `@zcode/${name}`, private: true }),
+      "utf8",
+    );
+    const manifest: Record<string, unknown> = {
+      name: name.replace(/-plugin$/u, ""),
+      version: "0.1.0",
+    };
+    if (options.mcpEntry) {
+      manifest.mcpServers = {
+        [name]: { command: "node", args: [`\${ZCODE_PLUGIN_ROOT}/${options.mcpEntry}`] },
+      };
+      if (options.withMcpEntryFile !== false) {
+        const entryPath = join(pluginDir, ...options.mcpEntry.split("/"));
+        await mkdir(join(entryPath, ".."), { recursive: true });
+        await writeFile(entryPath, "// mcp server\n", "utf8");
+      }
+    }
+    if (options.withManifest !== false) {
+      await writeFile(
+        join(pluginDir, ".zcode-plugin", "plugin.json"),
+        JSON.stringify(manifest),
+        "utf8",
+      );
+    }
+  }
+
+  it.each(["absent", "incomplete", "stale"])(
+    "stages bundled skills from the agent source when the plugin cache is %s",
+    async (cacheState) => {
+      const fixture = await makeStageFixture();
+      const officialPluginsDir = join(await makeTempDir(), "packages");
+      await writeOfficialPluginFixture(officialPluginsDir, "zcode-guide-plugin");
+      if (cacheState !== "absent") {
+        const cachedPackDir = join(officialPluginsDir, "bundled-skills");
+        await mkdir(join(cachedPackDir, "skills/dynamic-workflows"), { recursive: true });
+        await writeFile(join(cachedPackDir, "README.md"), "old cached pack");
+        const files =
+          cacheState === "stale" ? ["SKILL.md", "patterns.md", "examples.md"] : ["SKILL.md"];
+        for (const name of files) {
+          await writeFile(
+            join(cachedPackDir, "skills/dynamic-workflows", name),
+            "old cached skill",
+          );
+        }
+      }
+
+      // 冲突整合时两条复制路径曾并存：插件缓存缺文件会拒绝有效技能包，旧缓存会覆盖 Agent 源。
+      // 技能包只从 bundledSkillsDir 读取，并只由 agent-runtime 交付。
+      const staged = await stageRelease({
+        ...fixture,
+        target: "linux-x64",
+        appVersion: "test",
+        archive: false,
+        officialPluginsDir,
+      });
+      const stagedPackDir = join(staged.releaseDir, "runtime/packages/bundled-skills");
+      expect(await readFile(join(stagedPackDir, "README.md"), "utf8")).toBe("bundled skills");
+      for (const name of ["SKILL.md", "patterns.md", "examples.md"]) {
+        expect(await readFile(join(stagedPackDir, "skills/dynamic-workflows", name), "utf8")).toBe(
+          `fixture ${name}`,
+        );
+      }
+      // 保留发布白名单：本地临时文件不能进入发行包或组件归档。
+      await expect(stat(join(stagedPackDir, "scratch.txt"))).rejects.toThrow();
+      const manifest = JSON.parse(
+        await readFile(join(staged.releaseDir, "manifest.json"), "utf8"),
+      ) as {
+        plugins: string[];
+        components: Array<{ id: string; paths: string[]; archivePath: string }>;
+      };
+      expect(manifest.plugins).toEqual(["zcode-guide"]);
+      const agentComponent = manifest.components.find((entry) => entry.id === "agent-runtime")!;
+      expect(agentComponent.paths).toContain("runtime/packages/bundled-skills");
+      const agentExtractDir = await makeTempDir();
+      await runTar([
+        "-xf",
+        join(fixture.outputDir, agentComponent.archivePath),
+        "-C",
+        agentExtractDir,
+      ]);
+      expect(
+        await readFile(
+          join(
+            agentExtractDir,
+            "runtime/packages/bundled-skills/skills/dynamic-workflows/SKILL.md",
+          ),
+          "utf8",
+        ),
+      ).toBe("fixture SKILL.md");
+      await expect(
+        stat(join(agentExtractDir, "runtime/packages/bundled-skills/scratch.txt")),
+      ).rejects.toThrow();
+      const pluginComponent = manifest.components.find((entry) => entry.id === "official-plugins")!;
+      const pluginExtractDir = await makeTempDir();
+      await runTar([
+        "-xf",
+        join(fixture.outputDir, pluginComponent.archivePath),
+        "-C",
+        pluginExtractDir,
+      ]);
+      await expect(
+        stat(join(pluginExtractDir, "runtime/packages/zcode-guide-plugin")),
+      ).resolves.toBeTruthy();
+      await expect(
+        stat(join(pluginExtractDir, "runtime/packages/bundled-skills")),
+      ).rejects.toThrow();
+    },
+  );
 
   it("stages the official plugin set and excludes the on-demand superpowers package", async () => {
     const fixture = await makeStageFixture();
@@ -422,9 +640,17 @@ describe("stageRelease", () => {
       "zcode-guide-plugin",
       "superpowers-plugin",
     ];
+    const mcpRuntimePlugins = new Set([
+      "android-emulator-plugin",
+      "browser-use-plugin",
+      "ios-simulator-plugin",
+    ]);
     for (const name of pluginNames) {
-      await mkdir(join(officialPluginsDir, name), { recursive: true });
-      await writeFile(join(officialPluginsDir, name, "README.md"), name, "utf8");
+      await writeOfficialPluginFixture(
+        officialPluginsDir,
+        name,
+        mcpRuntimePlugins.has(name) ? { mcpEntry: "dist/mcp/server.js" } : {},
+      );
     }
 
     const staged = await stageRelease({
@@ -438,6 +664,11 @@ describe("stageRelease", () => {
     for (const name of pluginNames.filter((name) => name !== "superpowers-plugin")) {
       await expect(
         stat(join(staged.releaseDir, "runtime/packages", name, "README.md")),
+      ).resolves.toBeTruthy();
+    }
+    for (const name of mcpRuntimePlugins) {
+      await expect(
+        stat(join(staged.releaseDir, "runtime/packages", name, "dist/mcp/server.js")),
       ).resolves.toBeTruthy();
     }
     await expect(
@@ -463,6 +694,85 @@ describe("stageRelease", () => {
     );
   });
 
+  it.each([true, false])(
+    "fails closed on a missing MCP entry with componentArchives=%s",
+    async (componentArchives) => {
+      // Bug 原因：插件 dist 被 gitignore，干净 CI 工作区里 android-emulator / ios-simulator 没有
+      // dist/mcp/server.js；legacy prepare-prebuilds.mjs 曾构建并断言该文件，切到 stageRelease 后只剩
+      // 整目录复制，archive 会静默带上只有 plugin.json 与 skills、缺 MCP 入口的插件。staging 必须以
+      // plugin.json 的 mcpServers 声明为事实源 fail-closed。
+      const fixture = await makeStageFixture();
+      const officialPluginsDir = join(await makeTempDir(), "packages");
+      await writeOfficialPluginFixture(officialPluginsDir, "android-emulator-plugin", {
+        mcpEntry: "dist/mcp/server.js",
+        withMcpEntryFile: false,
+      });
+      await writeOfficialPluginFixture(officialPluginsDir, "zcode-guide-plugin");
+
+      await expect(
+        stageRelease({
+          target: "linux-x64",
+          appVersion: "9.9.9-test",
+          archive: false,
+          officialPluginsDir,
+          componentArchives,
+          ...fixture,
+        }),
+      ).rejects.toThrow(/android-emulator-plugin[\s\S]*dist\/mcp\/server\.js/u);
+    },
+  );
+
+  it("fails closed when a staged official plugin has no plugin manifest", async () => {
+    const fixture = await makeStageFixture();
+    const officialPluginsDir = join(await makeTempDir(), "packages");
+    await writeOfficialPluginFixture(officialPluginsDir, "ios-simulator-plugin", {
+      withManifest: false,
+    });
+
+    await expect(
+      stageRelease({
+        target: "linux-x64",
+        appVersion: "9.9.9-test",
+        archive: false,
+        officialPluginsDir,
+        ...fixture,
+      }),
+    ).rejects.toThrow(/ios-simulator-plugin[\s\S]*plugin\.json/u);
+  });
+
+  it("ignores orphaned *-plugin directories left behind by a previous checkout", async () => {
+    // Bug 原因：CI 用 GIT_CLEAN_FLAGS "-e node_modules/" 跨 job 保留 node_modules，其它分支
+    // （例如曾把 zcode-cua-plugin 改名为 computer-use-plugin 的分支）install 过的插件目录切回本
+    // 分支后只剩 node_modules，tracked 文件全被 checkout 删掉。旧规则仅按 "-plugin" 后缀识别官方
+    // 插件，会把这种僵尸目录当插件 stage，随后 fail-closed 校验读不到 plugin.json 而整段失败。
+    const fixture = await makeStageFixture();
+    const officialPluginsDir = join(await makeTempDir(), "packages");
+    await writeOfficialPluginFixture(officialPluginsDir, "zcode-guide-plugin");
+    const orphanDir = join(officialPluginsDir, "computer-use-plugin");
+    await mkdir(join(orphanDir, "node_modules", "@zcode", "computer-use"), { recursive: true });
+    await writeFile(
+      join(orphanDir, "node_modules", "@zcode", "computer-use", "package.json"),
+      "{}",
+      "utf8",
+    );
+
+    const staged = await stageRelease({
+      target: "linux-x64",
+      appVersion: "9.9.9-test",
+      archive: false,
+      officialPluginsDir,
+      ...fixture,
+    });
+
+    await expect(
+      stat(join(staged.releaseDir, "runtime/packages/computer-use-plugin")),
+    ).rejects.toThrow();
+    const manifest = JSON.parse(
+      await readFile(join(staged.releaseDir, "manifest.json"), "utf8"),
+    ) as { plugins?: string[] };
+    expect(manifest.plugins).toEqual(["zcode-guide"]);
+  });
+
   it("removes stale component archives before restaging a target", async () => {
     const fixture = await makeStageFixture();
     const staleDir = join(fixture.outputDir, "components", "linux-x64");
@@ -478,4 +788,60 @@ describe("stageRelease", () => {
 
     await expect(stat(join(staleDir, "stale-component.tar.gz"))).rejects.toThrow();
   });
+
+  it.each(["linux-x64", "linux-arm64"] as const)(
+    "stages an installable full %s archive without standalone components",
+    async (target) => {
+      const fixture = await makeStageFixture();
+      await writeFakePackage(fixture.workspaceNodeModulesDir, "@lydell/node-pty-linux-arm64", {
+        files: { "prebuilds/linux-arm64/pty.node": "linux-arm64-binary" },
+      });
+      const options = { ...fixture, target, appVersion: "9.9.9-test" };
+      const original = await stageRelease(options);
+      expect(original.componentArchivePaths.length).toBeGreaterThan(0);
+      const expected = JSON.parse(
+        await readFile(join(original.releaseDir, "manifest.json"), "utf8"),
+      );
+      for (const component of expected.components) {
+        expect(component.archivePath).toBeTruthy();
+        delete component.archivePath;
+      }
+
+      const staged = await stageRelease({ ...options, componentArchives: false });
+      expect(staged.componentArchivePaths).toEqual([]);
+      await expect(stat(join(fixture.outputDir, "components", target))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+      await expect(stat(join(fixture.outputDir, ".components"))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+      const manifest = JSON.parse(await readFile(join(staged.releaseDir, "manifest.json"), "utf8"));
+      expect(manifest).toEqual(expected);
+
+      // 用真实整包 installer 验证没有组件 archivePath 仍可安装，且整包摘要校验仍会拒绝错误身份。
+      const { ReleaseInstaller } = await import(
+        fileURLToPath(new URL("../src/runtime/releaseInstaller.ts", import.meta.url))
+      );
+      const { resolveServerLayout } = await import(
+        fileURLToPath(new URL("../src/runtime/paths.ts", import.meta.url))
+      );
+      const installer = new ReleaseInstaller(
+        resolveServerLayout(join(await makeTempDir(), "server")),
+      );
+      const archivePath = staged.archivePath!;
+      const archiveSha256 = createHash("sha256")
+        .update(await readFile(archivePath))
+        .digest("hex");
+      await expect(
+        installer.installArchive({ archivePath, target, archiveSha256: "0".repeat(64) }),
+      ).rejects.toThrow(/checksum mismatch/);
+      const installed = await installer.installArchive({ archivePath, target, archiveSha256 });
+      expect(
+        JSON.parse(await readFile(join(installed.releaseDir, "manifest.json"), "utf8")),
+      ).toEqual(expected);
+      expect(await readFile(join(installed.releaseDir, "runtime", "zcode.cjs"))).toEqual(
+        await readFile(fixture.agentBundlePath),
+      );
+    },
+  );
 });

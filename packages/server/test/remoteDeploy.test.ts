@@ -5,6 +5,7 @@ import { cp, mkdtemp, mkdir, readdir, readFile, rm, stat, writeFile } from "node
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { PassThrough } from "node:stream";
+import { gunzipSync } from "node:zlib";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IDisposable, Event } from "@zcode/rpc";
@@ -615,6 +616,15 @@ function createRemoteAssetComponentMeta(
 }
 
 async function writeTestOfficialPluginPackages(repoDir: string): Promise<void> {
+  for (const name of ["SKILL.md", "patterns.md", "examples.md"]) {
+    const path = join(
+      repoDir,
+      "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows",
+      name,
+    );
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, `bundled workflow ${name}`);
+  }
   await Promise.all(
     OFFICIAL_PLUGIN_PACKAGE_NAMES.map(async (pluginName) => {
       const manifestPath = join(
@@ -897,6 +907,11 @@ async function computeDevelopmentAgentAssetsSha256ForTest(
       }
     }
   }
+  await hashLocalPathForTest(
+    hash,
+    join(repoDir, "apps/zcode-cli/packages/bundled-skills"),
+    "bundled-skills",
+  );
   return hash.digest("hex");
 }
 
@@ -2070,7 +2085,12 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
     );
   });
 
-  it("开发态缺少 Browser client 时应在上传前拒绝残缺插件", async () => {
+  it.each([
+    "browser-use-plugin/scripts/browser-client.mjs",
+    "bundled-skills/skills/dynamic-workflows/SKILL.md",
+    "bundled-skills/skills/dynamic-workflows/patterns.md",
+    "bundled-skills/skills/dynamic-workflows/examples.md",
+  ])("开发态缺少 %s 时应在上传前拒绝残缺资源", async (missingAsset) => {
     const rootDir = await mkdtemp(join(tmpdir(), "zcode-remote-dev-agent-missing-browser-client-"));
     tempDirs.push(rootDir);
     const repoDir = join(rootDir, "z-code");
@@ -2086,17 +2106,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
     await mkdir(dirname(cliBundlePath), { recursive: true });
     await writeFile(cliBundlePath, "console.log('dev zcode agent');\n", "utf8");
     await writeTestOfficialPluginPackages(repoDir);
-    await rm(
-      join(
-        repoDir,
-        "apps",
-        "zcode-cli",
-        "packages",
-        "browser-use-plugin",
-        "scripts",
-        "browser-client.mjs",
-      ),
-    );
+    await rm(join(repoDir, "apps/zcode-cli/packages", missingAsset));
     process.chdir(repoDir);
     process.env.ZCODE_REMOTE_DEV_AGENT_BUNDLE = "1";
     process.env[ZCODE_RUNTIME_ENV_KEY] = "development";
@@ -2123,7 +2133,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
         },
         { log: () => undefined, logWarn: () => undefined },
       ),
-    ).rejects.toThrow(/missing official plugin required asset.*browser-client\.mjs/iu);
+    ).rejects.toThrow(/missing .*required asset/iu);
     expect(backend.uploads).toEqual([]);
   });
 
@@ -2148,6 +2158,13 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
     process.env[ZCODE_RUNTIME_ENV_KEY] = "development";
 
     const backend = new FakeRemoteBackend();
+    let archiveContents = "";
+    const upload = backend.upload.bind(backend);
+    vi.spyOn(backend, "upload").mockImplementation(async (localPath, remotePath) => {
+      if (remotePath.includes("packages.tar.gz"))
+        archiveContents = gunzipSync(await readFile(localPath)).toString("utf8");
+      await upload(localPath, remotePath);
+    });
     const installedFiles: string[] = [];
     const installer: RemoteAssetInstaller = {
       mode: "remote-download",
@@ -2173,6 +2190,10 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       { log: () => undefined, logWarn: () => undefined },
     );
 
+    for (const file of ["SKILL.md", "patterns.md", "examples.md"]) {
+      expect(archiveContents).toContain(`packages/bundled-skills/skills/dynamic-workflows/${file}`);
+      expect(archiveContents).toContain(`bundled workflow ${file}`);
+    }
     expect(installedFiles).toEqual([]);
     const devBundleUpload = backend.uploads.find(
       (upload) =>
@@ -2214,9 +2235,11 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
     expect(permissionRepairCommandIndex).toBeLessThan(packageExtractCommandIndex);
   });
 
-  it.each([true, false])(
-    "开发态标记相同时按实际 bundle 是否一致决定跳过上传：%s",
-    async (bundleMatches) => {
+  it.each(["matching", "bundle-changed", "skill-changed", "remote-skill-missing"])(
+    "开发态复用必须检查 bundle 和 bundled skills：%s",
+    async (scenario) => {
+      const bundleMatches = scenario !== "bundle-changed";
+      const reuse = scenario === "matching";
       const rootDir = await mkdtemp(join(tmpdir(), "zcode-remote-dev-agent-skip-"));
       tempDirs.push(rootDir);
       const repoDir = join(rootDir, "z-code");
@@ -2254,6 +2277,18 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
         },
         { commandPlans: [{ matcher: /createHash/, exitCode: bundleMatches ? 0 : 1 }] },
       );
+      if (scenario === "remote-skill-missing")
+        backend.remoteFiles.delete(
+          "~/.zcode/server/agents/glm/packages/bundled-skills/skills/dynamic-workflows/examples.md",
+        );
+      if (scenario === "skill-changed")
+        await writeFile(
+          join(
+            repoDir,
+            "apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/examples.md",
+          ),
+          "updated examples",
+        );
       const installedFiles: string[] = [];
       const installer: RemoteAssetInstaller = {
         mode: "remote-download",
@@ -2281,10 +2316,10 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
 
       expect(installedFiles).toEqual([]);
       expect(backend.uploads.some((upload) => upload.remotePath.endsWith("zcode.cjs.new"))).toBe(
-        !bundleMatches,
+        !reuse,
       );
       expect(backend.commands.some((command) => command.includes("command chmod -R u+rwX"))).toBe(
-        !bundleMatches,
+        !reuse,
       );
     },
   );

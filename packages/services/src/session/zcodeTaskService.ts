@@ -48,6 +48,8 @@ import type {
   ZCodeTaskListSortBy,
   ZCodeTaskListWorkspaceScope,
   ZCodeWorkspaceEventSubscriptionParams,
+  // 合并说明：官方 sync 退役了 Group 视图服务端，用户 fork 的 UI 链路仍在消费，
+  // 接口成员与类型随 main 恢复。
   ZCodeGroupedTaskView,
   ZCodeGroupedTaskViewOrderInput,
   ZCodeGroupedTaskViewQuery,
@@ -164,6 +166,8 @@ export type {
   ZCodeTaskListSortBy,
   ZCodeTaskListWorkspaceScope,
   ZCodeWorkspaceEventSubscriptionParams,
+  // 合并说明：官方 sync 重写了 zcodeTaskListTypes，用户 fork 的分组任务视图类型链仍被
+  // packages/ui 大量消费，这里保留 main 的再导出集合。
   ZCodeGroupedTaskRef,
   ZCodeGroupedTaskView,
   ZCodeGroupedTaskViewNode,
@@ -219,6 +223,8 @@ export interface IZCodeTaskService {
 
   /** 创建 ZCode session 并同步 task 索引。 */
   createTask(params: {
+    projectId?: string | null;
+    additionalDirectories?: string[];
     workspacePath: string;
     workspaceIdentity?: string;
     provider?: ZCodeProvider;
@@ -229,7 +235,6 @@ export interface IZCodeTaskService {
     model?: string;
     /** @deprecated 仅供尚未迁移的旧调用边界读取。 */
     thoughtLevel?: string;
-    draftSessionId?: string;
     forkedFromTaskId?: string;
     mcpServers?: ZCodeAgentMcpServer[];
     /** 定时任务派发时标记所属 automation，落 tasks-index 的 cron_automation_id 并归入 cron 分组。 */
@@ -244,6 +249,8 @@ export interface IZCodeTaskService {
     /** Bot/host 使用 v4 原生 createSession 建立 draft，再配置并发送。 */
     v4Create?: boolean;
     permissionScope?: "session";
+    /** 合并恢复：用户 fork 的草稿会话预创建链路仍在传该参数。 */
+    draftSessionId?: string;
   }): Promise<ZCodeTaskCreateResult>;
 
   readBotTopicSummaries?(params: {
@@ -424,7 +431,7 @@ export interface IZCodeTaskService {
     clientMode?: ZCodeTaskClientMode;
   }): Promise<boolean>;
 
-  /** 关闭 task（优先 session/close；当 workspace 下最后一个 task 结束时再回收共享进程） */
+  /** 关闭 task（优先 session/close；当 workspace 下最后一个 task 结束时再回收共享进程）。合并恢复：官方 sync 移除了该成员，用户 fork 的任务列表仍在消费。 */
   closeTask(params: { taskId: string }): Promise<void>;
 
   /** 恢复已有 task（复用 workspace 级 agent 进程，如无则创建，再执行 session/load） */
@@ -432,6 +439,7 @@ export interface IZCodeTaskService {
     taskId: string;
     workspacePath: string;
     workspaceIdentity?: string;
+    additionalDirectories?: string[];
     mode?: ZCodeTaskMode;
     model?: string;
     thoughtLevel?: string;
@@ -457,17 +465,26 @@ export interface IZCodeTaskService {
     workspaceIdentity?: string;
   }): Promise<ZCodeTaskMeta[]>;
 
-  /** 读取 workspace 下已删除 task id；用于 sessions-index 列表的持久负向 membership join */
+  /** 读取 workspace 下已删除 task id；供闲时绑定会话与 Bots tombstone 判断 session 是否已删除 */
   listDeletedTaskIds(params: {
     workspacePath: string;
     workspaceIdentity?: string;
   }): Promise<string[]>;
 
   /**
-   * 按当前打开的 workspace scopes 聚合查询任务列表，真相源为 tasks-index.sqlite。
-   * 消费面：全文搜索（searchable_text/snippets）与 remoteTimelineTaskStore 补充链路；
-   * 无搜索列表行走 listTasks/listPinnedTasks/listArchivedTasks，workspace 行由
-   * 客户端用各 endpoint 的 task 行 + session detail 构建（多端收敛）。
+   * 读取 workspace 下仍在运行（sessions-index phase 非终态）的 task id。
+   * tasks-index 只镜像 CLI 的 last_outcome，行上的 status 永远不会是 running，
+   * 运行中判断必须来自 syncer 的实时活动集合。
+   */
+  listActiveTaskIds(params: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+  }): Promise<string[]>;
+
+  /**
+   * 按显式 workspace scopes 查询 tasks-index，供全局搜索与 Controller 查询使用。
+   * 项目侧栏的行集合来自 ProjectService；官方 sync 已退役旧远端列表缓存，
+   * 但用户 fork 保留 Group 视图，相关成员随 main 恢复。
    */
   listTaskList(params: ZCodeTaskListQuery): Promise<ZCodeTaskListResult>;
 

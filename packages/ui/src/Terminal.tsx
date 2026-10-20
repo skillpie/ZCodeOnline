@@ -2,7 +2,11 @@
 import { Plus, SplitSquareHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { IServiceAccessor } from "@zcode/services";
-import { TID_TERMINAL, TID_TERMINAL_CLOSE_BUTTON, TID_TERMINAL_SPLIT_BUTTON } from "@zcode/shared";
+import {
+  TID_TERMINAL,
+  TID_TERMINAL_CLOSE_BUTTON,
+  TID_TERMINAL_SPLIT_BUTTON,
+} from "@zcode/shared/test-ids";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { logger } from "@/logger.js";

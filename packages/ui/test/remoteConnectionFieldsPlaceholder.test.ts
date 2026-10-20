@@ -30,7 +30,7 @@ const platform: IPlatformService = {
   selectFile: vi.fn(),
 };
 
-function renderRemoteConnectionFields(kind: "ssh" | "docker") {
+function renderRemoteConnectionFields() {
   return renderToStaticMarkup(
     createElement(
       PlatformProvider,
@@ -39,7 +39,7 @@ function renderRemoteConnectionFields(kind: "ssh" | "docker") {
         ZCodeIntlProvider,
         { initialLocale: "zh-CN" },
         createElement(RemoteConnectionFields, {
-          kind,
+          kind: "docker",
           host: "",
           port: "22",
           username: "",
@@ -87,8 +87,8 @@ function renderRemoteConnectionFields(kind: "ssh" | "docker") {
 }
 
 describe("RemoteConnectionFields placeholder", () => {
-  it("SSH 必填字段用输入提示承载示例，避免看起来像默认值", () => {
-    const html = renderRemoteConnectionFields("ssh");
+  it("Docker 手动模式保留切换列表入口与空输入提示", () => {
+    const html = renderRemoteConnectionFields();
 
     expect(html).toContain('placeholder="输入主机地址或 IP，例如 192.168.1.100"');
     expect(html).toContain('placeholder="输入用户名，例如 root"');

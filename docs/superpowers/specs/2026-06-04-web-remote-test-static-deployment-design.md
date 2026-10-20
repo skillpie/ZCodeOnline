@@ -1,6 +1,6 @@
 # Web Remote Test 静态资源部署设计
 
-## 背景
+> 已归档：部署部分被 [Relay V2 收口任务](../../issues/web-remote-control-relay-v2/07-contract-v1-removal-and-docs.md) 取代。旧步骤及已迁走的基础设施引用已移除，不能作为当前发布操作手册。
 
 当前手机远控页是 `packages/web` 的 Vite SPA。仓库已经有两条静态部署链路：
 

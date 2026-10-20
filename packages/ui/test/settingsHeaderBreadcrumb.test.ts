@@ -51,10 +51,6 @@ describe("SettingsHeaderBreadcrumb", () => {
     ).toContain("text-foreground-subtlest");
     expect(screen.getAllByRole("button")).toHaveLength(2);
     expect(screen.getByText("MEMORY.md").tagName).toBe("SPAN");
-    expect(screen.getByText("MEMORY.md").className).toContain("px-2");
-    expect(screen.getByText("MEMORY.md").closest("ol")?.className).toContain(
-      "text-ui-base/relaxed",
-    );
     expect(screen.getByRole("button", { name: "Memory" }).className).toContain(
       "[app-region:no-drag]",
     );

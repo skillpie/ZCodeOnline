@@ -31,6 +31,7 @@ import type {
   TurnId,
 } from "../deps.js";
 import { cloneModelSelection } from "../model-selection.js";
+import { acceptSubmissionModelSelection, recordPublishedModelSelection } from "./turn-model.js";
 import { createRuntimeModel } from "./runtime-model.js";
 import {
   buildUserContentFromTurn,
@@ -156,7 +157,21 @@ export async function steerTurn(
     ...(request.reviewEnabled ? { reviewEnabled: true } : {}),
     turnId: activeTurn.turnId,
   };
+  const selectionAccepted = acceptSubmissionModelSelection(
+    this,
+    intent,
+    activeTurn.traceContext,
+    request.modelSelectionScope
+      ? {
+          selectionScope: request.modelSelectionScope,
+          highspeedFallbackSelection: request.highspeedFallbackSelection,
+        }
+      : undefined,
+  );
   activeTurn.pendingInputs.push(pendingInput);
+  // 用户亲手 steer 进来的话（协调者 / 信箱 / 工具跟进也走这里，它们不算）：与 prompt 一样，给每个
+  // 欠着决定的 run 一对新的提醒。
+  if (request.inputPresentation === "user_steer") this.workflowBlockedReminder?.userSpoke();
   const queueLength = activeTurn.pendingInputs.length;
   const event = createSessionEvent(
     SessionEventType.TurnSteerQueued,
@@ -185,6 +200,7 @@ export async function steerTurn(
     },
   );
   await this.appendEvent(event, activeTurn.traceContext);
+  await selectionAccepted;
   this.logger?.debug("Turn steer queued", {
     ...traceContextToLogContext(activeTurn.traceContext),
     activeTurnKind: activeTurn.kind,
@@ -287,6 +303,17 @@ export async function enqueueDeferredInput(
     },
   );
   await this.appendEvent(event, traceContext);
+  await acceptSubmissionModelSelection(
+    this,
+    intent,
+    traceContext,
+    request.modelSelectionScope
+      ? {
+          selectionScope: request.modelSelectionScope,
+          highspeedFallbackSelection: request.highspeedFallbackSelection,
+        }
+      : undefined,
+  );
   this.logger?.debug("Deferred input queued", {
     ...traceContextToLogContext(traceContext),
     delivery,
@@ -1128,6 +1155,7 @@ export async function emitModelSelected(
     { traceId: options.traceContext.traceId },
   );
   await this.appendEvent(event, options.traceContext);
+  recordPublishedModelSelection(this, options.modelSelection);
 }
 
 /**

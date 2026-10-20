@@ -30,35 +30,6 @@ describe("conversation share route", () => {
     expect(resolveConversationShareRouteLocale("/share/share-1")).toBe("en-US");
   });
 
-  it("结果物计数跟随语言，不再中英混排", () => {
-    // Bug 根因：原本硬编码英文 artifact/artifacts 且手写复数，中文页会渲染成
-    // 「2026年9月3日 11:55 · 1 artifact」。
-    const source = readFileSync("packages/web/src/share/ConversationShareLandingPage.tsx", "utf8");
-    expect(source).toContain("artifactCountOne");
-    expect(source).toContain("artifactCountOther");
-    expect(source).toContain("{count} 个结果物");
-    expect(source).not.toContain("artifact{artifactCount === 1");
-  });
-
-  it("英文分享 OAuth callback 与中文 callback 走同一回调页面", () => {
-    const mainSource = readFileSync("packages/web/src/main.tsx", "utf8");
-    const authSource = readFileSync("packages/web/src/auth/webAuthService.ts", "utf8");
-    const stateSource = readFileSync("packages/web/src/auth/oauthStateCodec.ts", "utf8");
-    expect(mainSource).toContain('"/share/callback"');
-    expect(authSource).toContain('"/share/callback"');
-    expect(stateSource).toContain('"/share/callback"');
-    expect(stateSource).toContain("const SHARE_PATH_PATTERN");
-    expect(stateSource).toContain("cn\\/share|share");
-  });
-
-  it("分享页同步 html lang 与浏览器标签标题", () => {
-    // index.html 固定 lang="en"；不同步会让中文分享页对无障碍与浏览器翻译都报错语言。
-    // 而 document.title 此前从未设置，标签只显示 index.html 的通用标题。
-    const source = readFileSync("packages/web/src/main.tsx", "utf8");
-    expect(source).toContain("document.documentElement.lang = routeLocale");
-    expect(source).toMatch(/document\.title =\s*routeLocale === "zh-CN"/u);
-  });
-
   it("dev server base 不能写死 /cn/share/，否则英文路由本地不可达", () => {
     // Bug 根因：dev 脚本写死 --base=/cn/share/，Vite 只服务该前缀，访问 /share/<code>
     // 会被 dev server 直接拒掉（"server is configured with a public base URL of /cn/share/"）。

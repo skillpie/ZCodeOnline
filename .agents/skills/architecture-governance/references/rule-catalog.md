@@ -13,5 +13,9 @@
 | `ui-implementation-import` | UI imports a repository, runtime, or service implementation     | Call a UI hook backed by the service contract                     |
 | `missing-module-artifact`  | A managed module lacks its manifest or contract fixtures        | Add the required module contract, example, test, and CONTRACT.md  |
 | `disable-count`            | Managed code adds a lint suppression                            | Fix the underlying violation or add a reviewed expiring exception |
+| `unmanaged-new-file` | A newly added source file under `packages/` or `apps/` is not inside a managed module | Put it in a managed module, or run `pnpm architecture:adopt <id> --root <dir>` to register its directory (tests, `.d.ts` and test directories are exempt) |
+| `manifest-policy-mismatch` | `module.ts` `requires` disagrees with `architecture-policy.yaml` or names an unknown module | Update both declarations in the same change; the policy owns topology, the manifest owns the local declaration |
 
 Existing violations are suppressible only through `.architecture-baseline.json`; new violations remain blocking.
+
+Import edges are resolved the way Node and TypeScript resolve them: relative paths, `package.json` `imports` (`#src/*`), `tsconfig.json` `paths` (`@/*`), and workspace package names with `exports` (conditional exports and `dist/` targets map back to `src/`). `--changed` compares against a real base (explicit `--base`, CI merge-request variables, pre-push stdin, upstream, then the default branch merge-base), so committed changes are checked in CI and pre-push, not only the dirty working tree.

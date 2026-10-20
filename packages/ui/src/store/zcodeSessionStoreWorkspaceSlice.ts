@@ -15,11 +15,15 @@ import { persistLastSelectedAgentProvider } from "@/lib/zcodeProviderPreference.
 import { areConfigOptionsEquivalent } from "@/lib/configOptionsEquality.js";
 import type { ZCodeUiError } from "@/lib/zcodeUiError.js";
 import { pushNavEntry } from "@/lib/taskNavigationHistory.js";
+import { notifyTaskNavigationCommitted } from "@/store/zcodeSessionStoreNavigation.js";
 import { resolveTaskRestorePreloadConfigOptions } from "@/lib/taskModelRecovery.js";
 import type {
   ZCodeSessionStoreState,
+  ComposerInitialConfig,
+  ComposerInitialization,
   ConfigOptionsStatus,
   ComposerMentionPrefill,
+  // 用户扩展：grouped mode 草稿锚点类型，官方 sync 未包含，合并时保留。
   GroupedDraftTaskState,
   GroupedDraftTaskPlacement,
   ModelSwitchStage,
@@ -39,11 +43,25 @@ type SetFn = (
     | ((state: ZCodeSessionStoreState) => ZCodeSessionStoreState | Partial<ZCodeSessionStoreState>),
 ) => void;
 
+// 用户扩展：grouped mode 草稿锚点的本地 id 序列；官方 sync 未包含，合并时保留。
 let groupedDraftSequence = 0;
 
 function createGroupedDraftId(createdAt: number): string {
   groupedDraftSequence += 1;
   return `grouped-draft-${createdAt}-${groupedDraftSequence}`;
+}
+
+function isSameGroupedDraftPlacement(
+  left: GroupedDraftTaskPlacement,
+  right: GroupedDraftTaskPlacement,
+): boolean {
+  if (left.type !== right.type) {
+    return false;
+  }
+  if (left.type === "top") {
+    return true;
+  }
+  return right.type === "group" && left.groupId === right.groupId;
 }
 
 function normalizeThoughtLevelConfigOption(option: ZCodeConfigOption): ZCodeConfigOption {
@@ -74,19 +92,6 @@ function cloneConfigOptions(options: readonly ZCodeConfigOption[]): ZCodeConfigO
     ...option,
     options: option.options?.map((entry) => ({ ...entry })),
   }));
-}
-
-function isSameGroupedDraftPlacement(
-  left: GroupedDraftTaskPlacement,
-  right: GroupedDraftTaskPlacement,
-): boolean {
-  if (left.type !== right.type) {
-    return false;
-  }
-  if (left.type === "top") {
-    return true;
-  }
-  return right.type === "group" && left.groupId === right.groupId;
 }
 
 function isModeConfigOption(option: ZCodeConfigOption): boolean {
@@ -234,7 +239,12 @@ function resolveActiveTaskConfigOptionsOnSwitch(
 
 export function createWorkspaceSlice(set: SetFn) {
   return {
-    setActiveTaskId: (workspacePath: string, id: string | null, workspaceIdentity?: string) => {
+    setActiveTaskId: (
+      workspacePath: string,
+      id: string | null,
+      workspaceIdentity?: string,
+      composerConfig?: ComposerInitialConfig,
+    ) => {
       set((state) => {
         const workspaceUpdate = updateWorkspaceState(
           state,
@@ -265,9 +275,15 @@ export function createWorkspaceSlice(set: SetFn) {
               taskUnreadByTaskId: restTaskUnreadByTaskId,
               optimisticTaskListByTaskId: nextOptimisticTaskListByTaskId,
               activeTaskId: id,
-              // grouped 的 New task 草稿行只是当前草稿态锚点。
+              // 用户扩展：grouped 的 New task 草稿行只是当前草稿态锚点。
               // 一旦用户选中真实 task，就代表离开这个临时实体，必须立刻清掉，避免侧栏留下不可操作的假行。
               groupedDraftTask: id ? null : current.groupedDraftTask,
+              composerInitialization:
+                id && composerConfig
+                  ? { taskId: id, config: composerConfig }
+                  : current.activeTaskId === id
+                    ? current.composerInitialization
+                    : undefined,
             };
             return activeTaskId && activeTaskConfig
               ? {
@@ -299,8 +315,11 @@ export function createWorkspaceSlice(set: SetFn) {
 
         return { ...workspaceUpdate, ...navUpdate };
       });
+      if (id) notifyTaskNavigationCommitted({ workspacePath, workspaceIdentity, taskId: id });
     },
 
+    // 用户扩展：grouped 草稿首发创建真实 task 后，用最小乐观元数据填补 ACK 空档并继承本地定位。
+    // 官方 sync 未包含该事务，合并时按 main 实现恢复。
     promoteGroupedDraftTask: (
       workspacePath: string,
       taskId: string,
@@ -355,6 +374,8 @@ export function createWorkspaceSlice(set: SetFn) {
       );
     },
 
+    // 用户扩展：promoted placement 只负责草稿提升到 SQLite 排序收敛前的单次事务，
+    // 落库后必须消费，避免用户后续手动拖动 task 时被旧 placement 再次拉回原 group。
     clearPromotedGroupedDraftTask: (
       workspacePath: string,
       taskId: string,
@@ -368,34 +389,12 @@ export function createWorkspaceSlice(set: SetFn) {
             if (!current.promotedGroupedDraftTaskByTaskId[taskId]) {
               return current;
             }
-            // promoted placement 只负责草稿提升到 SQLite 排序收敛前的单次事务。
-            // 落库后必须消费，避免用户后续手动拖动 task 时被旧 placement 再次拉回原 group。
             const { [taskId]: _consumedPromotedDraft, ...restPromotedGroupedDraftTaskByTaskId } =
               current.promotedGroupedDraftTaskByTaskId;
             return {
               ...current,
               promotedGroupedDraftTaskByTaskId: restPromotedGroupedDraftTaskByTaskId,
             };
-          },
-          workspaceIdentity,
-        ),
-      );
-    },
-
-    setDraftSessionId: (
-      workspacePath: string,
-      sessionId: string | null,
-      workspaceIdentity?: string,
-    ) => {
-      set((state) =>
-        updateWorkspaceState(
-          state,
-          workspacePath,
-          (current) => {
-            if (current.draftSessionId === sessionId) {
-              return current;
-            }
-            return { ...current, draftSessionId: sessionId };
           },
           workspaceIdentity,
         ),
@@ -409,10 +408,8 @@ export function createWorkspaceSlice(set: SetFn) {
           workspacePath,
           (current) => ({
             ...current,
-            // protocol-v4 的草稿预热会话只存在于 SessionPane 内，不能仅清空
-            // legacy draftSessionId。递增版本让 pane 精确回收未提升的预热会话并重建能力快照。
+            // 预热会话只存在于 V4 pane 内；递增版本让 owner 回收并重建能力快照。
             draftRuntimeInvalidationVersion: current.draftRuntimeInvalidationVersion + 1,
-            draftSessionId: null,
           }),
           workspaceIdentity,
         ),
@@ -508,11 +505,47 @@ export function createWorkspaceSlice(set: SetFn) {
       );
     },
 
+    consumeComposerInitialization: (
+      workspacePath: string,
+      initialization: ComposerInitialization,
+      workspaceIdentity?: string,
+    ) => {
+      set((state) =>
+        updateWorkspaceState(
+          state,
+          workspacePath,
+          (current) =>
+            current.composerInitialization === initialization
+              ? { ...current, composerInitialization: undefined }
+              : current,
+          workspaceIdentity,
+        ),
+      );
+    },
+
+    clearDraftTaskGroup: (workspacePath: string, workspaceIdentity?: string) => {
+      // 关闭分组行只撤销组织意图；调用 startDraft 会重置预热、配置和焦点。
+      set((state) =>
+        updateWorkspaceState(
+          state,
+          workspacePath,
+          (current) =>
+            current.draftTaskGroupId === undefined
+              ? current
+              : { ...current, draftTaskGroupId: undefined },
+          workspaceIdentity,
+        ),
+      );
+    },
+
     startDraft: (
       workspacePath: string,
       provider?: ZCodeProvider,
       workspaceIdentity?: string,
       options?: {
+        projectId?: string | null;
+        taskGroupId?: string | null;
+        // 用户扩展：grouped mode 草稿的插入位置意图（顶部或某个分组内）。
         groupedDraftPlacement?: GroupedDraftTaskPlacement;
         createSource?: SessionCreateSource;
       },
@@ -560,6 +593,7 @@ export function createWorkspaceSlice(set: SetFn) {
               current.activeTaskId && inheritedDraftConfigOptions
                 ? (current.taskConfigOptionsStatusByTaskId[current.activeTaskId] ?? "ready")
                 : current.configOptionsStatus;
+            // 用户扩展：grouped mode 草稿锚点；官方 sync 未包含，合并时按 main 恢复。
             const nextGroupedDraftTask = (() => {
               const placement = options?.groupedDraftPlacement;
               if (!placement) {
@@ -595,6 +629,13 @@ export function createWorkspaceSlice(set: SetFn) {
               ...current,
               activeTaskId: null,
               groupedDraftTask: nextGroupedDraftTask,
+              composerInitialization: undefined,
+              draftProjectId: options?.projectId,
+              draftTaskGroupId: options?.taskGroupId,
+              // 同 cwd 可属于多个项目；换项目不能复用前一个项目的预热 runtime 目录范围。
+              draftRuntimeInvalidationVersion:
+                current.draftRuntimeInvalidationVersion +
+                Number(current.draftProjectId !== options?.projectId),
               draftCreateSource:
                 options?.createSource ?? (options?.groupedDraftPlacement ? "group" : "session"),
               draftRuntime: { status: "idle", error: null },
@@ -604,9 +645,6 @@ export function createWorkspaceSlice(set: SetFn) {
                 ? {
                     configOptions: inheritedDraftConfigOptions,
                     configOptionsStatus: inheritedConfigOptionsStatus,
-                    // 旧 deferred draft session 可能仍停在上一次默认模型。
-                    // 继承 active task 后必须重新创建 draft session，避免旧 session 回包覆盖新草稿。
-                    draftSessionId: null,
                   }
                 : {}),
               draftError: null,
@@ -643,6 +681,7 @@ export function createWorkspaceSlice(set: SetFn) {
       );
     },
 
+    // 用户扩展：清理 grouped mode 下的 UI-only 草稿锚点；官方 sync 未包含，合并时按 main 恢复。
     clearGroupedDraftTask: (workspacePath: string, workspaceIdentity?: string) => {
       set((state) =>
         updateWorkspaceState(

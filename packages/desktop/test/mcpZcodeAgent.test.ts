@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { McpSource, CliMcpSource } from "../src/mcp.js";
+import type { CliMcpSource } from "../src/mcp.js";
 import { MCP_SOURCE_DESCRIPTORS, getSourceDescriptor } from "../src/main/mcpUserDirectory/types.js";
 import {
   loadCliMcpFromUserDirectory,
@@ -26,19 +26,6 @@ afterEach(() => {
       rmSync(root, { recursive: true, force: true });
     }
   }
-});
-
-describe("MCP Source Types", () => {
-  it("应包含 zcodeagentmcp 类型", () => {
-    const sources: McpSource[] = ["mcp", "zcodeagentmcp"];
-
-    expect(sources).toContain("zcodeagentmcp");
-  });
-
-  it("zcodeagentmcp 应该是 CliMcpSource 类型", () => {
-    const cliSource: CliMcpSource = "zcodeagentmcp";
-    expect(cliSource).toBe("zcodeagentmcp");
-  });
 });
 
 describe("MCP Source Descriptors", () => {
@@ -75,9 +62,9 @@ describe("MCP Source Descriptors", () => {
   });
 
   it("应为无效 source 抛出错误", () => {
-    expect(() => getSourceDescriptor("invalid_source" as CliMcpSource)).toThrow(
-      "Unsupported MCP source",
-    );
+  expect(() => getSourceDescriptor("invalid_source" as CliMcpSource)).toThrow(
+    "Unsupported MCP source",
+  );
   });
 });
 

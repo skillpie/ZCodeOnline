@@ -241,6 +241,10 @@ function getFailureDescription(
       });
     case "unexpected-error":
       return formatMessage({ id: "webRemoteControl.failure.unexpectedError" });
+    // 官方 V2 relay 新增的失败原因；用户旧协议链路不会产生，不展示专属描述。
+    case "device-not-owned":
+    case "auth-required":
+      return null;
   }
 }
 
@@ -479,12 +483,21 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
 
     setLoading(true);
     try {
-      const nextStatus = await platform.refreshWebRemoteControlPairing({
-        workspacePath,
-        workspaceIdentity,
-        remoteSessionId,
-        initialTaskId,
-      });
+      // 用户 fork 的平台实现提供 refreshWebRemoteControlPairing（清配对材料后重签）；
+      // 合并后 desktop/web 平台暂未恢复该方法，这里回退 startWebRemoteControl 保证按钮可用。
+      const nextStatus = platform.refreshWebRemoteControlPairing
+        ? await platform.refreshWebRemoteControlPairing({
+            workspacePath,
+            workspaceIdentity,
+            remoteSessionId,
+            initialTaskId,
+          })
+        : await platform.startWebRemoteControl({
+            workspacePath,
+            workspaceIdentity,
+            remoteSessionId,
+            initialTaskId,
+          });
       if (nextStatus.status === "cancelled") {
         // 兼容可取消的平台实现：保持当前运行状态，不显示成功或失败反馈。
         return;

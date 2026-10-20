@@ -1,10 +1,16 @@
+import type { MobilePluginDiscoveryTelemetry } from "./telemetry.js";
+import { z } from "zod";
 import type { MobileSessionCreateTelemetry } from "./sessionCreateTelemetry.js";
-/* eslint-disable max-lines -- Web 远程控制共享协议同时保留旧 /web-remote 类型和新外部 relay 类型，后续拆分时再按 transport/app payload 分文件。 */
-import type { DockerContainerInfo, SSHConfigAliasOption, WSLDistro } from "./platform.js";
+/* eslint-disable max-lines -- Web 远程控制共享 App payload 与 workspace bridge 契约。 */
+import type { WebRemoteControlRelayV2PairStatus } from "#src/web-remote-relay/index.js";
 import type {
+  DockerContainerInfo,
+  SSHConfigAliasOption,
+  WSLDistro,
   CreateTempTextAttachmentRequest,
   CreateTempTextAttachmentResult,
 } from "./platform.js";
+
 import type {
   LoadCliMcpFromUserDirectoryRequest,
   LoadCliMcpFromUserDirectoryResult,
@@ -20,6 +26,14 @@ import type { WorkspacePurpose } from "./workspacePurpose.js";
 export const WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS = 120_000;
 export const WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS = 5_000;
 
+// 用户 fork（main）的 relay 心跳节奏（旧 web-remote-control-heartbeat.ts 的默认值）。
+// 官方把心跳 helper 并入 #src/web-remote-relay/domain/heartbeatTiming.ts（V2：5s/15s），
+// helper 与 WEB_REMOTE_CONTROL_RECONNECT_JITTER_MS 与 V2 同名，为避免 export * 歧义统一走 V2；
+// 这里仅保留旧协议 transport 仍在使用的三个旧名常量，用户版 web/desktop transport 缺省 10s/30s 不变。
+export const WEB_REMOTE_CONTROL_HEARTBEAT_INTERVAL_MS = 10_000;
+export const WEB_REMOTE_CONTROL_HEARTBEAT_JITTER_MS = 2_000;
+export const WEB_REMOTE_CONTROL_HEARTBEAT_ACK_TIMEOUT_MS = 30_000;
+
 export type WebRemoteControlThemeSeed = "light" | "dark" | "zai-light" | "zai-dark" | "system";
 
 export interface WebRemoteControlContext {
@@ -30,7 +44,16 @@ export interface WebRemoteControlContext {
   theme?: WebRemoteControlThemeSeed;
 }
 
+/** Renderer 只通知会话变化；main 必须重新读取本地凭据。 */
+export const webRemoteControlAuthStateChangeSchema = z
+  .object({
+    state: z.enum(["signed-in", "signed-out"]),
+  })
+  .strict();
+export type WebRemoteControlAuthStateChange = z.infer<typeof webRemoteControlAuthStateChangeSchema>;
+
 export type WebRemoteControlStatusKind =
+  | "auth-required"
   | "idle"
   | "starting"
   | "running"
@@ -39,6 +62,8 @@ export type WebRemoteControlStatusKind =
   | "error";
 
 export type WebRemoteControlFailureReason =
+  | "device-not-owned"
+  | "auth-required"
   | "session-not-found"
   | "session-expired"
   | "session-conflict"
@@ -96,6 +121,9 @@ export interface WebRemoteControlMobileDeviceInfo extends WebRemoteControlRelayD
   updatedAt: number;
 }
 
+// 协议并集：以下旧 relay 握手协议（device_register_init/auth_challenge/auth_response 等）
+// 来自用户 fork（main），web/desktop 的 webRemoteControlTransport 仍按该握手实现；
+// 官方 V2 契约在 #src/web-remote-relay/contract.ts（无 register/proof 消息），两套并存互不替代。
 export type WebRemoteControlRelayRole = "device" | "terminal";
 // Bugfix: zcode-remote-hub 当前只会把配对状态表示为 waiting/matched；
 // KICKED、WRONG_PARAM 等是 error code，不是 pair_status。这里收窄共享类型，
@@ -216,19 +244,16 @@ export const WEB_REMOTE_CONTROL_RELAY_AUTH_PROOF_VECTORS: WebRemoteControlRelayA
   },
 ];
 
-export interface WebRemoteControlExternalQrParams {
-  deviceSid: string;
-  passHash: string;
-  timestamp: number;
+export interface WebRemoteControlV2QrParams {
+  deviceSid?: string;
   deviceMid?: string;
   deviceName?: string;
   appVersion?: string;
-  theme?: WebRemoteControlThemeSeed;
 }
 
-export interface BuildWebRemoteControlExternalQrUrlOptions extends WebRemoteControlExternalQrParams {
+export type BuildWebRemoteControlExternalQrUrlOptions = WebRemoteControlV2QrParams & {
   baseUrl: string;
-}
+};
 
 function readNonEmptySearchParam(params: URLSearchParams, name: string): string | undefined {
   const value = params.get(name)?.trim();
@@ -272,17 +297,15 @@ export function matchesWebRemoteControlRoutePath(pathname: string, routePath: st
 export function buildWebRemoteControlExternalQrUrl({
   baseUrl,
   deviceSid,
-  passHash,
-  timestamp,
   deviceMid,
   deviceName,
   appVersion,
-  theme,
 }: BuildWebRemoteControlExternalQrUrlOptions): string {
   const url = new URL(baseUrl);
-  url.searchParams.set("sid", deviceSid);
-  url.searchParams.set("hash", passHash);
-  url.searchParams.set("t", String(timestamp));
+  if (deviceSid !== undefined) url.searchParams.set("sid", deviceSid);
+  // 旧凭据只允许清除，不能从 base URL 重新带入新二维码。
+  url.searchParams.delete("hash");
+  url.searchParams.delete("t");
 
   if (deviceMid?.trim()) {
     url.searchParams.set("mid", deviceMid);
@@ -293,42 +316,24 @@ export function buildWebRemoteControlExternalQrUrl({
   if (appVersion?.trim()) {
     url.searchParams.set("app_version", appVersion);
   }
-  void theme;
-  // Bugfix: 手机端主题现在固定走本地默认 dark，不再通过二维码 URL 透传 theme。
-  // 之前 theme 参数会把桌面端主题耦合到手机首次进入行为，后续维护和排障都更复杂。
-  // 这里保留入参仅做向后兼容，避免旧调用点一次性改动过大。
-
   return url.toString();
 }
 
 export function parseWebRemoteControlExternalQrParams(
   params: URLSearchParams,
-): WebRemoteControlExternalQrParams | null {
-  const deviceSid = readNonEmptySearchParam(params, "sid");
-  const passHash = readNonEmptySearchParam(params, "hash");
-  const rawTimestamp = readNonEmptySearchParam(params, "t");
-  const timestamp = rawTimestamp ? Number(rawTimestamp) : Number.NaN;
-  const theme = readNonEmptySearchParam(params, "theme");
-
-  if (!deviceSid || !passHash || !Number.isFinite(timestamp)) {
-    return null;
+): WebRemoteControlV2QrParams | null {
+  if (params.has("hash") || params.has("t")) return null;
+  const result: WebRemoteControlV2QrParams = {};
+  for (const [key, param] of [
+    ["deviceSid", "sid"],
+    ["deviceMid", "mid"],
+    ["deviceName", "name"],
+    ["appVersion", "app_version"],
+  ] as const) {
+    const value = readNonEmptySearchParam(params, param);
+    if (value) result[key] = value;
   }
-
-  return {
-    deviceSid,
-    passHash,
-    timestamp,
-    ...(readNonEmptySearchParam(params, "mid")
-      ? { deviceMid: readNonEmptySearchParam(params, "mid") }
-      : {}),
-    ...(readNonEmptySearchParam(params, "name")
-      ? { deviceName: readNonEmptySearchParam(params, "name") }
-      : {}),
-    ...(readNonEmptySearchParam(params, "app_version")
-      ? { appVersion: readNonEmptySearchParam(params, "app_version") }
-      : {}),
-    ...(isWebRemoteControlThemeSeed(theme) ? { theme } : {}),
-  };
+  return result;
 }
 
 export type WebRemoteControlTokenKind = "window-pairing";
@@ -398,6 +403,8 @@ export interface WebRemoteControlStatus {
   expiresAt?: number;
   mobileConnected?: boolean;
   mobileViewState?: WebRemoteControlMobileViewState;
+  /** Main 校验后的瞬时可见任务；remoteSessionId 仅由所属 bridge 注入，不接受 Web 自报。 */
+  mobileTaskView?: (WebRemoteControlMobileTaskView & { remoteSessionId?: string }) | null;
   mobileDeviceInfo?: WebRemoteControlMobileDeviceInfo;
   qrUrl?: string;
   connectUrl?: string;
@@ -519,6 +526,8 @@ export interface WebRemoteControlExternalRemoteWorkspaceBridge {
   workspaceIdentity: string;
   remoteSessionId: string;
   initialTaskId?: string;
+  /** 旧桌面不声明；客户端不能根据惰性 RPC proxy 是否存在猜测能力。 */
+  capabilities?: { windowProjectDirectory?: true };
 }
 
 export type WebRemoteControlExternalWorkspaceBridge =
@@ -562,6 +571,10 @@ export interface WebRemoteControlWorkspaceBridgeOpenPayload {
   recoveryId?: string;
   workspaceKey: string;
   taskId?: string;
+  project?: { projectId: string | null; hostId?: string; draftId?: string; reuseDraft?: boolean };
+  taskHostId?: string;
+  /** 仅解析任务目录供文件树使用，不选择任务或标记已读。 */
+  fileTreeTaskId?: string;
 }
 
 export interface WebRemoteControlWorkspaceBridgeReadyPayload {
@@ -610,6 +623,26 @@ export interface WebRemoteControlMobileViewStatePayload {
   deviceInfo?: WebRemoteControlMobileDeviceInfo;
 }
 
+export interface WebRemoteControlMobileTaskView {
+  workspacePath: string;
+  workspaceIdentity?: string;
+  taskId: string;
+}
+
+export interface WebRemoteControlMobileTaskViewUpdatePayload {
+  zcode_type: "mobile-task-view-update";
+  epoch: string;
+  seq: number;
+  bridgeSessionId: string;
+  bridgeGeneration?: number;
+  view: WebRemoteControlMobileTaskView | null;
+}
+
+export interface WebRemoteControlMobileTaskViewRequestPayload {
+  zcode_type: "mobile-task-view-request";
+  epoch: string;
+}
+
 export type WebRemoteControlPlatformRequestPayload = {
   [K in WebRemoteControlPlatformMethod]: {
     zcode_type: "platform-request";
@@ -652,7 +685,12 @@ export interface WebRemoteControlBridgeDegradedPayload {
   bridgeSessionId: string;
   bridgeGeneration?: number;
   recoveryId?: string;
-  reason: "rpc-transport-fault" | "rpc-frame-gap" | "buffer-overflow" | "buffer-timeout";
+  reason:
+    | "rpc-transport-fault"
+    | "rpc-frame-gap"
+    | "buffer-overflow"
+    | "buffer-timeout"
+    | "source-session-replaced";
   seq?: number;
   expectedSeq?: number;
   droppedCount?: number;
@@ -681,7 +719,7 @@ export interface WebRemoteControlMobileDiagnosticPayload {
   timestamp: number;
   state?: string;
   previousState?: string;
-  pairStatus?: WebRemoteControlRelayPairStatus;
+  pairStatus?: WebRemoteControlRelayV2PairStatus;
   closeCode?: number;
   closeReason?: string;
   wasClean?: boolean;
@@ -694,7 +732,10 @@ export interface WebRemoteControlMobileDiagnosticPayload {
 }
 
 export type WebRemoteControlAppPayload =
-  | { zcode_type: "telemetry-report"; event: MobileSessionCreateTelemetry }
+  | {
+      zcode_type: "telemetry-report";
+      event: MobileSessionCreateTelemetry | MobilePluginDiscoveryTelemetry;
+    }
   | WebRemoteControlBootstrapRequestPayload
   | WebRemoteControlBootstrapResponsePayload
   | WebRemoteControlWorkspaceListRequestPayload
@@ -706,6 +747,8 @@ export type WebRemoteControlAppPayload =
   | WebRemoteControlWorkspaceReconnectRequestPayload
   | WebRemoteControlWorkspaceReconnectResponsePayload
   | WebRemoteControlMobileViewStatePayload
+  | WebRemoteControlMobileTaskViewUpdatePayload
+  | WebRemoteControlMobileTaskViewRequestPayload
   | WebRemoteControlPlatformRequestPayload
   | WebRemoteControlPlatformResponsePayload
   | WebRemoteControlRpcTransportPayload
@@ -742,10 +785,13 @@ export type WebRemoteControlReconnectWorkspaceResult =
       error: string;
     };
 
+// 用户 fork（main）的手机任务列表展示状态；官方分支无此类型，仅用户版 UI 消费。
 export type WebRemoteControlTaskDisplayStatus = "idle" | "running" | "completed" | "error";
 
 export interface WebRemoteControlTaskTarget {
   taskId: string;
+  /** 官方新增：多 host 场景下任务所属 host；用户版不发送，缺省即可。 */
+  hostId?: string;
   title: string;
   workspacePath: string;
   workspaceIdentity?: string;
@@ -769,6 +815,7 @@ export interface WebRemoteControlTaskTarget {
 
 export interface WebRemoteControlWorkspaceListResult {
   workspaces: WebRemoteControlWorkspaceTarget[];
+  // 用户 fork（main）：任务首页/任务索引的数据源；官方分支不发送，缺省视为空列表。
   tasks?: WebRemoteControlTaskTarget[];
   activeWorkspaceKey?: string;
   activeTaskId?: string;
@@ -777,9 +824,14 @@ export interface WebRemoteControlWorkspaceListResult {
 export type WebRemoteControlMobileNavigationIntent = "chat";
 
 export interface WebRemoteControlWorkspaceSwitchOptions {
+  /** 仅 Web 页面导航使用，不发送给 Host；目标 Root 打开文件面板。 */
+  openFileManager?: boolean;
   taskId?: string;
+  taskHostId?: string;
+  /** 仅解析任务目录供文件树使用，不选择任务或标记已读。 */
+  fileTreeTaskId?: string;
   mobileNavigationIntent?: WebRemoteControlMobileNavigationIntent;
-  /** 仅由手机任务首页使用；目标 bridge 建立后只清除这次快照对应的未读。 */
+  /** 手机端从项目侧栏打开未读任务时携带；目标 bridge 建立后只清除这次快照对应的未读。 */
   markTaskReadExpectedUnreadAt?: number;
 }
 
@@ -822,9 +874,13 @@ export interface WebRemoteControlWindowBootstrapResult {
   /** 当前连接的桌面实际版本；旧桌面缺失时手机保留原 URL。 */
   desktopAppVersion?: string;
   workspaces: WebRemoteControlWorkspaceTarget[];
-  tasks: WebRemoteControlTaskTarget[];
+  // 协议并集：用户 fork（main）的 bootstrap 携带任务快照（原为必选）；官方 bootstrap 不再发送，
+  // 改为可选，手机端以 workspace-list 的 tasks 为准、缺省回退空列表。
+  tasks?: WebRemoteControlTaskTarget[];
   initialViewState?: WebRemoteControlMobileViewState;
   mobileViewState?: WebRemoteControlMobileViewState;
+  /** 仅新端提供；用 bootstrap 补足配对瞬间的重申请求，不能用来恢复可见任务。 */
+  mobileTaskViewEpoch?: string;
 }
 
 export interface WebRemoteControlWindowControlReadyEvent {
@@ -840,7 +896,7 @@ export function resolveWebRemoteControlWorkspaceKey(
   return target.workspaceIdentity?.trim() || target.workspacePath;
 }
 
-function isWebRemoteControlBridgeableWorkspaceTarget(
+export function isWebRemoteControlBridgeableWorkspaceTarget(
   workspace: WebRemoteControlWorkspaceTarget,
 ): boolean {
   return (

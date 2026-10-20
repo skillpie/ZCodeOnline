@@ -5,8 +5,9 @@ import {
   TID_SIDE_PANE_TOGGLE,
   TID_WORKSPACE_HEADER,
   TID_WORKSPACE_TITLE,
-} from "@zcode/shared";
-import { clearAppData, waitForDefaultWorkspaceReady } from "../helpers/desktop-app.js";
+} from "@zcode/shared/test-ids";
+import { clearAppData } from "../helpers/desktop-app.js";
+import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 
 const TAB_SELECTOR = "[data-side-pane-tab-id]";
 const VIEWPORT_SELECTOR = "[data-side-pane-tabs-viewport]";
@@ -16,7 +17,7 @@ const TOOLTIP_SELECTOR = '[data-slot="tooltip-content"]';
 const DRAFT_SUGGESTED_PROMPTS_SLOT_SELECTOR = '[data-v4-draft-suggested-prompts-slot="true"]';
 
 function expectedWorkspacePanelRadiusPx(): number {
-  if (process.platform === "win32") return 5;
+  if (process.platform === "win32") return 6;
   // Darwin 25 起对应 Tahoe，Sequoia 及旧系统的工作区使用更小的内层圆角。
   if (process.platform === "darwin") return Number.parseInt(release(), 10) >= 25 ? 12 : 6;
   return 12;
@@ -31,7 +32,7 @@ interface TabStripMetrics {
 
 describe("Side Pane Tab responsive interactions", () => {
   before(async () => {
-    await waitForDefaultWorkspaceReady();
+    await prepareV4ConversationE2E({ skipProvider: true });
   });
 
   after(async () => {
@@ -228,6 +229,16 @@ describe("Side Pane Tab responsive interactions", () => {
     await sidePaneClose.waitForClickable({ timeout: 5000 });
     expect(panels?.headerInsideConversation).toBe(true);
     const expectedPanelRadiusPx = expectedWorkspacePanelRadiusPx();
+    if (expectedPanelRadiusPx === 6) {
+      // Side Pane 展开时会话外框使用动态圆角变量，只有右侧 chrome 外框使用圆角 token。
+      const framesUseRadiusToken = await browser.execute(() => {
+        const frame = document.querySelector('[data-workspace-side-frame="true"]');
+        return Boolean(
+          frame?.classList.contains("rounded-md") || frame?.classList.contains("rounded-l-md"),
+        );
+      });
+      expect(framesUseRadiusToken).toBe(true);
+    }
     expect(panels?.leftRadius).toBe(`${expectedPanelRadiusPx}px`);
     expect(panels?.rightRadius).toBe(`${expectedPanelRadiusPx}px`);
     await movePointerAwayFromResizeHandles();
@@ -357,6 +368,9 @@ describe("Side Pane Tab responsive interactions", () => {
       expect(colors[0]).toBe(colors[1]);
       expect(colors[0]).toBe(colors[2]);
       expect(colors[0]).not.toBe("rgba(0, 0, 0, 0)");
+      if (process.platform === "win32" || process.platform === "linux") {
+        expect(await $("[data-desktop-logo-badge] svg").getSize("width")).toBe(13);
+      }
       const terminalTabStyle = await browser.execute(() => {
         const tab = document.querySelector('#terminal [role="tab"][data-active]')!;
         const content = tab.querySelector("[data-terminal-tab-content]")!;
@@ -400,6 +414,16 @@ describe("Side Pane Tab responsive interactions", () => {
       },
       { timeout: 5000, timeoutMsg: "关闭 Side Pane 后会话宽度未恢复" },
     );
+    const closedFrame = await browser.execute(() => {
+      const frame = document.querySelector('[data-workspace-conversation-frame="true"]')!;
+      return {
+        usesRadiusToken:
+          frame.classList.contains("rounded-md") || frame.classList.contains("rounded-l-md"),
+        leftRadius: getComputedStyle(frame).borderTopLeftRadius,
+      };
+    });
+    if (expectedPanelRadiusPx === 6) expect(closedFrame.usesRadiusToken).toBe(true);
+    expect(closedFrame.leftRadius).toBe(`${expectedPanelRadiusPx}px`);
   });
 
   it("SPT-E2E-001 keeps one tab at 156px and the add button beside it", async () => {
@@ -857,6 +881,13 @@ async function readHeaderBorderBottomColor(): Promise<string> {
 
 async function ensureTerminalTabCount(targetCount: number): Promise<void> {
   await ensureSidePaneExpanded();
+  const initialLauncher = await $(
+    '[data-state="active"] [data-side-pane-open-tab-item="terminal"]',
+  );
+  if (await initialLauncher.isDisplayed()) {
+    await initialLauncher.click();
+    await browser.waitUntil(async () => !(await initialLauncher.isDisplayed()));
+  }
   let count = await readTabCount();
 
   while (count > targetCount) {
@@ -880,21 +911,9 @@ async function ensureTerminalTabCount(targetCount: number): Promise<void> {
       const addTrigger = await $(ADD_TRIGGER_SELECTOR);
       await addTrigger.waitForClickable({ timeout: 5_000 });
       await addTrigger.click();
-      await browser.waitUntil(
-        async () =>
-          browser.execute(() =>
-            Boolean(document.querySelector('[data-side-pane-add-item="terminal"]')),
-          ),
-        { timeout: 5_000, timeoutMsg: "新增 Terminal 菜单项未挂载" },
-      );
-      await browser.execute(() => {
-        document.querySelector<HTMLElement>('[data-side-pane-add-item="terminal"]')?.click();
-      });
-      await browser.waitUntil(
-        async () =>
-          browser.execute(() => !document.querySelector('[data-side-pane-add-item="terminal"]')),
-        { timeout: 5_000, timeoutMsg: "新增 Terminal 菜单选择后未卸载" },
-      );
+      const launcher = await $('[data-state="active"] [data-side-pane-open-tab-item="terminal"]');
+      await launcher.waitForClickable({ timeout: 5_000 });
+      await launcher.click();
     }
 
     count += 1;

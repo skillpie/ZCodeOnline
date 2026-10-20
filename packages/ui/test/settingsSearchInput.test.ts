@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { createElement } from "react";
 import { readFileSync } from "node:fs";
+import { createElement } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsSearchInput } from "@/settings/SettingsSearchInput.js";

@@ -92,6 +92,7 @@ export function maybeLocalMicrocompactMessages<T extends LocalMicrocompactMessag
   config?: LocalMicrocompactPolicyConfig;
   lastAssistantCompletedAtMs?: number;
   messages: readonly T[];
+  resolveToolResultName?: (message: T, index: number) => string | undefined;
   nowMs?: number;
 }): LocalMicrocompactResult<T> {
   const config = input.config ?? {};
@@ -120,7 +121,11 @@ export function maybeLocalMicrocompactMessages<T extends LocalMicrocompactMessag
     };
   }
 
-  const candidateGroups = collectCompactableToolResultGroups(messages, config);
+  const candidateGroups = collectCompactableToolResultGroups(
+    messages,
+    config,
+    input.resolveToolResultName,
+  );
   if (candidateGroups.length === 0) {
     return {
       decision: { estimatedTokenCount, reason: "no_candidates", thresholdTokens, trigger },
@@ -205,6 +210,7 @@ function resolveMicrocompactTrigger(input: {
 function collectCompactableToolResultGroups<T extends LocalMicrocompactMessage>(
   messages: readonly T[],
   config: LocalMicrocompactPolicyConfig,
+  resolveToolResultName?: (message: T, index: number) => string | undefined,
 ): ToolResultCandidate[][] {
   const compactableTools = new Set(
     config.compactableToolNames ?? DEFAULT_MICROCOMPACT_COMPACTABLE_TOOLS,
@@ -228,8 +234,11 @@ function collectCompactableToolResultGroups<T extends LocalMicrocompactMessage>(
     }
 
     if (message.role !== "tool") return;
-    if (!message.toolCallId || !message.toolName) return;
-    if (!compactableTools.has(message.toolName)) return;
+    const toolName = resolveToolResultName
+      ? resolveToolResultName(message, index)
+      : message.toolName;
+    if (!message.toolCallId || !toolName) return;
+    if (!compactableTools.has(toolName)) return;
     if (message.isError && !clearErrorResults) return;
     if (isMicrocompactClearedToolResultContent(message.content)) return;
     if (hasMediaToolResultContent(message.content)) return;

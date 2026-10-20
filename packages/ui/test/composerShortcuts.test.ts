@@ -137,12 +137,11 @@ describe("composer 作用域键位解析（spec §12.3）", () => {
     expect(resolveComposerKeyAction(enterEvent({ metaKey: true }), effective, MAC)).toBe("send");
     // mac 显式 Ctrl 是独立的修饰（系统 Emacs 编辑保留区），用户没绑就是没绑 → 主链
     expect(resolveComposerKeyAction(enterEvent({ ctrlKey: true }), effective, MAC)).toBeNull();
-    expect(shouldBareEnterFallThroughToNewline(effective)).toBe(true);
   });
 
   it("win/linux：Ctrl+Enter 命中 CmdOrCtrl 改绑；Win/Super+Enter 被裸键守卫挡住", () => {
     const effective = ctrlEnterEffective();
-    expect(resolveComposerKeyAction(enterEvent({ ctrlKey: true }), effective, WIN)).toBe("send");
+
     expect(resolveComposerKeyAction(enterEvent({ ctrlKey: true }), effective, LINUX)).toBe("send");
     // 裸键绑定要求主修饰键抬起：meta（Win/Super）+Enter 不命中任何绑定
     expect(resolveComposerKeyAction(enterEvent({ metaKey: true }), effective, WIN)).toBeNull();

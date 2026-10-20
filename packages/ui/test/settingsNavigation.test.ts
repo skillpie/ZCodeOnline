@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe("settingsNavigation", () => {
-  it("在 test 环境保留 usage 分区", async () => {
+  it("保留 usage、hooks 和 memory 分区", async () => {
     const navigation = await loadSettingsNavigation("test");
 
     expect(navigation.isSettingsSectionEnabled("usage")).toBe(true);
@@ -420,4 +420,75 @@ describe("settingsNavigation", () => {
 
     expect(localStorage.get("zcode-settings-last-section")).toBe("hooks");
   });
+});
+
+it("设备卡定位意图支持首次挂载和已打开设置页，并在消费后清理", async () => {
+  const events = new EventTarget();
+  const storage = new Map<string, string>();
+  vi.stubGlobal("window", {
+    addEventListener: events.addEventListener.bind(events),
+    removeEventListener: events.removeEventListener.bind(events),
+    dispatchEvent: events.dispatchEvent.bind(events),
+    sessionStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    },
+  });
+  const navigation = await loadSettingsNavigation("test");
+  navigation.setPendingSettingsSectionIntent("remoteDevices", { sourceServerId: "device-a" });
+  expect(navigation.consumePendingSettingsSourceServerId()).toBe("device-a");
+  expect(navigation.consumePendingSettingsSourceServerId()).toBeUndefined();
+  const listener = vi.fn();
+  const dispose = navigation.addPendingSettingsSectionListener(listener);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", { sourceServerId: "device-b" });
+  expect(listener).toHaveBeenCalledWith(
+    "remoteDevices",
+    expect.objectContaining({ sourceServerId: "device-b" }),
+  );
+  expect(navigation.consumePendingSettingsSourceServerId()).toBeUndefined();
+  dispose();
+});
+
+it("设备定位与失败详情保持独立意图，已挂载事件消费清除存储", async () => {
+  const eventTarget = new EventTarget();
+  const storage = new Map<string, string>();
+  vi.stubGlobal("window", {
+    addEventListener: eventTarget.addEventListener.bind(eventTarget),
+    removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
+    dispatchEvent: eventTarget.dispatchEvent.bind(eventTarget),
+    sessionStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      removeItem: (key: string) => storage.delete(key),
+      setItem: (key: string, value: string) => storage.set(key, value),
+    },
+  });
+  const navigation = await loadSettingsNavigation("test");
+  const listener = vi.fn();
+  const dispose = navigation.addPendingSettingsSectionListener(listener);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", {
+    sourceServerId: " source ",
+    sourceServerDetails: true,
+  });
+  expect(listener).toHaveBeenLastCalledWith(
+    "remoteDevices",
+    expect.objectContaining({ sourceServerId: "source", sourceServerDetails: true }),
+  );
+  expect(storage.size).toBe(0);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", { sourceServerId: "source" });
+  expect(listener.mock.calls.at(-1)?.[1].sourceServerDetails).toBeUndefined();
+  dispose();
+  navigation.setPendingSettingsSectionIntent("remoteDevices", {
+    sourceServerId: "source",
+    sourceServerDetails: true,
+  });
+  expect(navigation.consumePendingSettingsSourceServerId()).toBe("source");
+  expect(navigation.consumePendingSettingsSourceServerDetails()).toBe(true);
+  expect(navigation.consumePendingSettingsSourceServerDetails()).toBe(false);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", {
+    sourceServerId: "source",
+    sourceServerDetails: true,
+  });
+  navigation.setPendingSettingsSectionIntent("general");
+  expect(navigation.consumePendingSettingsSourceServerDetails()).toBe(false);
 });

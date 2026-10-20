@@ -1,3 +1,4 @@
+import { ToolPresentation } from "@/ToolCallBlocks/ToolPresentation.js";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -14,6 +15,7 @@ function renderExecuteGroup(
       ZCodeIntlProvider,
       { initialLocale: locale },
       createElement(ExecuteGroupToolCallBlock, {
+        nestedToolRenderer: ToolPresentation,
         toolCallNode: {
           toolCall: {
             toolId: "execute:tool-1",

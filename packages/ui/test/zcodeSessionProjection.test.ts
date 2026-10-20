@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   encodeCustomModelValue,
-  formatModelPickerValue as formatSharedModelSelection,
   ZCODE_PROTOCOL_NAME,
   ZCODE_PROTOCOL_VERSION,
   type ZCodeSessionEvent,
@@ -366,9 +365,6 @@ describe("zcodeSessionProjection", () => {
       raw: {
         toolCallId: "tool_1",
       },
-    });
-    expect(snapshot.messages[1]?.tools?.[0]?.raw).toMatchObject({
-      toolCallId: "tool_1",
     });
     expect(snapshot.runtime?.pendingPermissions?.[0]).toMatchObject({
       requestId: "perm_1",
@@ -1949,7 +1945,6 @@ describe("zcodeSessionProjection", () => {
       role: "user",
       content: "/goal 优化性能到 60fps",
     });
-    expect(snapshot.messages[0]?.content).not.toContain("system-reminder");
     expect(snapshot.messages[1]).toMatchObject({
       role: "assistant",
       content: "我会先定位渲染瓶颈。",
@@ -5700,7 +5695,6 @@ describe("zcodeSessionProjection", () => {
       options: { reasoningLevel: "fast" },
     };
 
-    expect(formatSharedModelSelection(modelSelection)).toBe("custom-openai/agent-model:free$fast");
     expect(formatProjectedModelSelection(modelSelection)).toBe(
       "custom-openai/agent-model:free$fast",
     );

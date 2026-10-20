@@ -79,40 +79,42 @@ function readFirstStdoutLine(child: ChildProcessWithoutNullStreams): Promise<str
   return new Promise((resolve, reject) => {
     let buffer = "";
     let stderrBuffer = "";
-    const timer = setTimeout(() => {
-      reject(
-        new Error(
-          `child did not report grandchild pid stdout=${JSON.stringify(buffer)} stderr=${JSON.stringify(stderrBuffer)}`,
-        ),
-      );
-    }, 2_000);
-
-    child.stdout.on("data", (chunk: Buffer) => {
+    // 修复原因：嵌套 Node 启动可能超过 2 秒，但此时尚未开始验证回收。
+    // 就绪由完整输出行确认，挂起由测试整体超时约束，不另设启动竞速窗口。
+    const cleanup = () => {
+      child.stdout.off("data", onStdout);
+      child.stderr.off("data", onStderr);
+      child.off("error", onError);
+      child.off("close", onClose);
+    };
+    const onStdout = (chunk: Buffer) => {
       buffer += chunk.toString("utf8");
       const newlineIndex = buffer.indexOf("\n");
       if (newlineIndex < 0) {
         return;
       }
-      clearTimeout(timer);
+      cleanup();
       resolve(buffer.slice(0, newlineIndex).trim());
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
+    };
+    const onStderr = (chunk: Buffer) => {
       stderrBuffer += chunk.toString("utf8");
-    });
-    child.once("error", (error) => {
-      clearTimeout(timer);
+    };
+    const onError = (error: Error) => {
+      cleanup();
       reject(error);
-    });
-    child.once("exit", (code, signal) => {
-      if (!buffer.trim()) {
-        clearTimeout(timer);
-        reject(
-          new Error(
-            `child exited before reporting pid code=${code} signal=${signal} stderr=${JSON.stringify(stderrBuffer)}`,
-          ),
-        );
-      }
-    });
+    };
+    const onClose = (code: number | null, signal: NodeJS.Signals | null) => {
+      cleanup();
+      reject(
+        new Error(
+          `child exited before reporting pid code=${code} signal=${signal} stdout=${JSON.stringify(buffer)} stderr=${JSON.stringify(stderrBuffer)}`,
+        ),
+      );
+    };
+    child.stdout.on("data", onStdout);
+    child.stderr.on("data", onStderr);
+    child.once("error", onError);
+    child.once("close", onClose);
   });
 }
 
@@ -533,20 +535,26 @@ const descendant = spawn(
   { stdio: ["ignore", "ignore", "ignore", "ipc"] },
 );
 descendant.once("message", () => {
-  process.stdout.write(String(descendant.pid) + "\\n", () => setTimeout(() => process.exit(0), 100));
+  process.stdout.write(String(descendant.pid) + "\\n");
+});
+process.on("message", (message) => {
+  if (message === "exit") process.exit(0);
 });
 `,
       ],
       {
         detached: shouldSpawnInDetachedProcessGroup(),
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
         windowsHide: true,
       },
     );
     activeChildren.add(child);
     const descendantPid = await readReportedPid(child);
-    const snapshot = captureProcessTreeSnapshot(child);
-    expect(snapshot?.identities.some((identity) => identity.pid === descendantPid)).toBe(true);
+    // 修复原因：固定 100ms 后退出会与父测试取快照竞争；确认身份后再允许根进程退出。
+    const captured = await waitForProcessTreeSnapshotIdentity(child, descendantPid);
+    expect(captured).toBeDefined();
+    const { snapshot } = captured!;
+    child.send("exit");
     expect(await waitForPidExit(child.pid!)).toBe(true);
     expect(isPidRunning(descendantPid)).toBe(true);
 

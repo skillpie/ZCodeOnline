@@ -15,6 +15,28 @@ interface WebRemoteControlScreenCopy {
 
 const WEB_REMOTE_CONTROL_SCREEN_COPY = {
   "zh-CN": {
+    // 官方 V2 relay 新增失败原因；device-not-owned 文案沿用官方，auth-required 官方入口
+    // 直接回登录页，这里按“需要登录”兜底展示。
+    "device-not-owned": {
+      tone: "warning",
+      badge: "账号不匹配",
+      title: "该设备不属于当前账号",
+      description: "请使用与电脑端相同的账号登录。",
+      detailLabel: "失败原因",
+      nextStepsTitle: "下一步",
+      nextSteps: ["确认电脑端当前登录的账号。", "切换为相同账号后重新连接。"],
+      action: "重新连接",
+    },
+    "auth-required": {
+      tone: "warning",
+      badge: "需要登录",
+      title: "请先登录后重试",
+      description: "Web 远程控制需要登录鉴权，当前会话缺少有效凭据。",
+      detailLabel: "失败原因",
+      nextStepsTitle: "下一步",
+      nextSteps: ["确认电脑端已登录 ZCode 账号。", "回到桌面端重新生成二维码后再连接。"],
+      action: "重新加载",
+    },
     "session-not-found": {
       tone: "warning",
       badge: "链接不可用",
@@ -130,6 +152,32 @@ const WEB_REMOTE_CONTROL_SCREEN_COPY = {
     },
   },
   "en-US": {
+    "device-not-owned": {
+      tone: "warning",
+      badge: "Account mismatch",
+      title: "This device does not belong to this account",
+      description: "Sign in with the same account as the computer.",
+      detailLabel: "Failure detail",
+      nextStepsTitle: "Next steps",
+      nextSteps: [
+        "Check which account is signed in on the computer.",
+        "Switch to the same account and reconnect.",
+      ],
+      action: "Try Again",
+    },
+    "auth-required": {
+      tone: "warning",
+      badge: "Sign-in required",
+      title: "Sign In Required",
+      description: "Web remote control requires sign-in; this session has no valid credentials.",
+      detailLabel: "Failure detail",
+      nextStepsTitle: "Next steps",
+      nextSteps: [
+        "Make sure desktop is signed in to the ZCode account.",
+        "Scan a new QR code from desktop and reconnect.",
+      ],
+      action: "Reload",
+    },
     "session-not-found": {
       tone: "warning",
       badge: "Link unavailable",

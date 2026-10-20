@@ -36,3 +36,17 @@ describe("remoteWorkspaceServiceError", () => {
     ).toBe(false);
   });
 });
+
+it("发送竞态使用远程连接分类；模型自身的连接错误不误分类", async () => {
+  const { getRemoteConnectionFailureCode } = await import("@/lib/remoteWorkspaceServiceError.js");
+  expect(getRemoteConnectionFailureCode({ code: REMOTE_WORKSPACE_DISCONNECTED_ERROR_CODE })).toBe(
+    REMOTE_WORKSPACE_DISCONNECTED_ERROR_CODE,
+  );
+  expect(
+    getRemoteConnectionFailureCode({ code: "remote-host-unreachable", message: "timeout" }),
+  ).toBe("remote-host-unreachable");
+  expect(getRemoteConnectionFailureCode(new Error("RPC channel closed"))).toBeUndefined();
+  expect(
+    getRemoteConnectionFailureCode({ code: "MODEL_ERROR", message: "Connection error" }),
+  ).toBeUndefined();
+});

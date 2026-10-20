@@ -1,6 +1,6 @@
 // remote shard（web/手机远控/SSH workspace）也以各 endpoint 的 tasks-index
 // 持久行为列表左表，sessions-index 帧只补 activity/detail；旧 listTaskList 零调用。
-import { act, createElement, type ReactNode } from "react";
+import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Emitter } from "@zcode/rpc";
@@ -15,7 +15,7 @@ import { ServiceProvider } from "@/hooks/useServices.js";
 import { useGlobalTaskList } from "@/hooks/useGlobalTaskList.js";
 import { useSessionsMentionProvider } from "@/mentions/providers/sessionsMentionProvider.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
-import { TabStoreProvider, useTabStoreApi } from "@/store/TabStoreProvider.js";
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
@@ -363,35 +363,76 @@ function createWorkspaceTabs(): WorkspaceTabState[] {
   ];
 }
 
-function WorkspaceTabsSeed({
-  activeWorkspaceIdentity,
-  activeWorkspacePath,
-  children,
-  tabs,
-}: {
-  activeWorkspaceIdentity?: string;
-  activeWorkspacePath: string;
-  children: ReactNode;
-  tabs: WorkspaceTabState[];
-}) {
-  const store = useTabStoreApi();
-  if (store.getState().tabs.length === 0) {
-    const activeTab = tabs.find(
-      (tab) =>
-        (tab.workspaceIdentity?.trim() || tab.workspacePath) ===
-        (activeWorkspaceIdentity?.trim() || activeWorkspacePath),
-    );
-    store.setState({
-      tabs,
-      activeTabId: activeTab?.id ?? null,
-      activeWorkspacePath,
-      activeWorkspaceIdentity: activeWorkspaceIdentity ?? null,
-    });
-  }
-  return children;
-}
-
 describe("useGlobalTaskList remote shard tasks-index 行 + sessions-index detail", () => {
+  it("远端 # 使用实际 attachment 的项目树，不请求本机项目或 sessions-index", async () => {
+    const local = createEndpointServices({ workspaceId: "local", sessions: [] });
+    const remote = createEndpointServices({ workspaceId: "remote", sessions: [] });
+    const localRead = vi.fn(async () => ({ projects: [], tasks: [] }));
+    const remoteRead = vi.fn(async () => ({
+      projects: [],
+      tasks: [
+        {
+          ...createTaskMeta("unopened-remote", {
+            workspacePath: "/other",
+            workspaceIdentity: "host-a:/other",
+          }),
+          hostId: "host-a",
+          projectId: null,
+          pinned: false,
+          archived: false,
+        },
+      ],
+    }));
+    for (const [endpoint, readTree] of [
+      [local, localRead],
+      [remote, remoteRead],
+    ] as const) {
+      Object.assign(endpoint.services, {
+        projectService: { readTree },
+        broadcastService: { onMessage: () => ({ dispose() {} }) },
+      });
+    }
+    useRemoteWorkspaceSessionStore.setState({
+      baseServices: local.services,
+      sessionsById: {
+        [REMOTE_SESSION_ID]: { sessionId: REMOTE_SESSION_ID, services: remote.services },
+      },
+      sessionIdByWorkspaceIdentity: { [REMOTE_IDENTITY]: REMOTE_SESSION_ID },
+      sessionIdByWorkspacePath: { "/remote-ws": REMOTE_SESSION_ID },
+    });
+    let values: string[] = [];
+    function Probe() {
+      const result = useSessionsMentionProvider(
+        "glm",
+        "/remote-ws",
+        REMOTE_IDENTITY,
+        "",
+        true,
+        "same-authority-workspaces",
+        "Empty",
+        "Sessions",
+      );
+      values = result.items.map((item) => item.value);
+      return null;
+    }
+    const root = createRoot(installMinimalDom());
+    await act(async () => {
+      root.render(
+        createElement(
+          ServiceProvider,
+          { services: local.services },
+          createElement(TabStoreProvider, null, createElement(Probe)),
+        ),
+      );
+      await flushMicrotasks();
+    });
+    expect(values).toEqual(["unopened-remote"]);
+    expect(localRead).not.toHaveBeenCalled();
+    expect(remoteRead).toHaveBeenCalledOnce();
+    expect(remote.subscribeSessionsIndexV4).not.toHaveBeenCalled();
+    expect(local.subscribeSessionsIndexV4).not.toHaveBeenCalled();
+    act(() => root.unmount());
+  });
   afterEach(() => {
     useTaskQueryCacheStore.getState().clearAll();
     useRemoteWorkspaceSessionStore.setState({
