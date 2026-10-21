@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import { selectDefaultBranchRef } from "../affected-unit-test-baseline.mjs";
 import { gitFileNames } from "./git-file-names.mjs";
 import { applyUpstreamAdmission } from "./upstream-admission.mjs";
 
@@ -37,6 +36,16 @@ function parsePrePushInput(text) {
         : null;
     })
     .filter(Boolean);
+}
+
+function selectDefaultBranchRef({ originHead, hasCommit }) {
+  // Bug 原因：新分支首次 push 没有 remote SHA；若直接回退 origin/main，
+  // 会把 staging 尚未合入 main 的历史差异误算成本分支变更，并错误触发全量单测。
+  // 原实现位于已删除的 pre-push 脚本 affected-unit-test-baseline.mjs，仅架构检查仍在
+  // 使用，故就地内联恢复，避免 architecture:check 因模块缺失整体崩溃。
+  return ["origin/staging", originHead, "origin/main", "origin/master", "main", "master"].find(
+    (candidate) => candidate && hasCommit(candidate),
+  );
 }
 
 /**
