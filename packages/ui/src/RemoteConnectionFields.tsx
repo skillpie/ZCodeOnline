@@ -1051,7 +1051,8 @@ export function RemoteConnectionFields({
             <>
             <div>
               <FieldLabel htmlFor={`${fieldId}-docker-select`}>
-                {intl.formatMessage({ id: "docker.container" })}
+                {/* 合并恢复：选择器与手动输入同屏后，label 沿用用户的 selectContainer 文案避免重复。 */}
+                {intl.formatMessage({ id: "docker.selectContainer" })}
               </FieldLabel>
               <Popover
                 open={dockerContainerPopoverOpen}
