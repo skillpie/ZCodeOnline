@@ -15,6 +15,8 @@ import { projectSourceServerId } from "@/project-sidebar/view.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { isGitWorktreeRootPath } from "@/project-sidebar/ProjectFolderIcon.js";
+import { useDeleteWorktreeProject } from "@/git-branch-switcher/useDeleteWorktreeProject.js";
 import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
 import { toast } from "@/components/ui/toast.js";
 import { logger } from "@/logger.js";
@@ -75,6 +77,12 @@ export const ProjectSidebarNode = memo(
     const msg = (id: string) => intl.formatMessage({ id: `project.${id}` });
     const sourceServerId = projectSourceServerId(project);
     const { refresh, availability } = display;
+    // fork 语义：`.worktrees/` 下的项目是 git worktree，删除项目时要同步移除磁盘
+    // 目录与副本分支，否则 worktree 会堆积在电脑里（非 worktree 项目保持官方语义）。
+    const worktreeRootPath = project.roots.find((root) => isGitWorktreeRootPath(root.rootPath));
+    const { deleteWorktreeProject } = useDeleteWorktreeProject({
+      worktreePath: worktreeRootPath?.rootPath ?? "",
+    });
     return (
       <ProjectNode
         {...display}
@@ -137,6 +145,12 @@ export const ProjectSidebarNode = memo(
         onViewFiles={(rootPath) => runProjectAction(() => onViewFiles(project, rootPath))}
         onDelete={() =>
           runProjectAction(async () => {
+            // worktree 项目先移除磁盘目录与副本分支（含确认），被阻塞时中止项目删除，
+            // 避免「界面移除了、目录还留着」的堆积。
+            if (worktreeRootPath) {
+              const removed = await deleteWorktreeProject();
+              if (!removed) return;
+            }
             await service!.deleteProject(project.id, project.hostId);
             await refresh();
           })
