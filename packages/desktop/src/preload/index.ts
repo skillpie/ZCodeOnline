@@ -28,6 +28,21 @@ function parseDeviceIdFromArgs(): string {
 // 在 contextBridge 建立之前就暴露同步值，让 renderer 在 React 渲染前就能读到
 contextBridge.exposeInMainWorld("__ZCODE_DEVICE_ID__", parseDeviceIdFromArgs());
 
+// settings-changed 的单监听器分发：见下方 onSettingsChanged 的注释。
+const settingsChangedCallbacks = new Set<() => void>();
+const dispatchSettingsChanged = () => {
+  for (const callback of settingsChangedCallbacks) callback();
+};
+
+// renderer-action-trace-config-changed 的单监听器分发：见 onRendererActionTraceConfigChanged 的注释。
+const rendererActionTraceConfigCallbacks = new Set<(config: RendererActionTraceConfigV1) => void>();
+const dispatchRendererActionTraceConfigChanged = (
+  _event: Electron.IpcRendererEvent,
+  config: RendererActionTraceConfigV1,
+) => {
+  for (const callback of rendererActionTraceConfigCallbacks) callback(config);
+};
+
 import type {
   AppSettings,
   ApplicationIconRequest,
@@ -764,10 +779,24 @@ contextBridge.exposeInMainWorld("zcode", {
   onRendererActionTraceConfigChanged: (
     callback: (config: RendererActionTraceConfigV1) => void,
   ): (() => void) => {
-    const handler = (_event: unknown, config: RendererActionTraceConfigV1) => callback(config);
-    ipcRenderer.on(PlatformChannels.RendererActionTraceConfigChanged, handler);
-    return () =>
-      ipcRenderer.removeListener(PlatformChannels.RendererActionTraceConfigChanged, handler);
+    // 与 onSettingsChanged 同因：逐回调注册 ipcRenderer 监听会在多订阅组件同屏时
+    // 触发 MaxListenersExceededWarning（实测 11 个）。收敛为单监听器 + 回调集合分发。
+    rendererActionTraceConfigCallbacks.add(callback);
+    if (rendererActionTraceConfigCallbacks.size === 1) {
+      ipcRenderer.on(
+        PlatformChannels.RendererActionTraceConfigChanged,
+        dispatchRendererActionTraceConfigChanged,
+      );
+    }
+    return () => {
+      rendererActionTraceConfigCallbacks.delete(callback);
+      if (rendererActionTraceConfigCallbacks.size === 0) {
+        ipcRenderer.removeListener(
+          PlatformChannels.RendererActionTraceConfigChanged,
+          dispatchRendererActionTraceConfigChanged,
+        );
+      }
+    };
   },
   /** 发送已结束 Span；使用 send 避免遥测往返阻塞业务。 */
   reportLocalTtftBatch: (batch: import("@zcode/shared").LocalTtftBatch): void =>
@@ -831,9 +860,20 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.invoke(PlatformChannels.GetZCodeStdioTapDevState),
   /** 注册 main 进程修改 settings 后的通知，返回 disposer */
   onSettingsChanged: (callback: () => void): (() => void) => {
-    const handler = () => callback();
-    ipcRenderer.on(PlatformChannels.SettingsChanged, handler);
-    return () => ipcRenderer.removeListener(PlatformChannels.SettingsChanged, handler);
+    // Bug 原因：useSettings 在每个消费组件实例上各注册一个 ipcRenderer 监听器，
+    // 同屏订阅数超过 Electron 默认 10 个就触发 MaxListenersExceededWarning
+    // （生产桌面实测涨到 11）。这里收敛为单条 ipcRenderer 监听 + 回调集合分发，
+    // 订阅数不再随组件实例线性增长。
+    settingsChangedCallbacks.add(callback);
+    if (settingsChangedCallbacks.size === 1) {
+      ipcRenderer.on(PlatformChannels.SettingsChanged, dispatchSettingsChanged);
+    }
+    return () => {
+      settingsChangedCallbacks.delete(callback);
+      if (settingsChangedCallbacks.size === 0) {
+        ipcRenderer.removeListener(PlatformChannels.SettingsChanged, dispatchSettingsChanged);
+      }
+    };
   },
   /** 注册应用语言变化，返回 disposer */
   onApplicationLocaleChanged: (callback: (locale: Locale) => void): (() => void) => {
