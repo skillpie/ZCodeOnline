@@ -82,9 +82,11 @@ export async function runServerCore(generation: number): Promise<void> {
   });
   // 隧道运行时归 Core 所有（specs/web-tunnel.md §3.2）：与 loopback server 同进程，
   // 拼接流直连本机 /ws；serverRoot 与 Supervisor 同 env，按同一公式解析。
+  // ingressToken 随行下发：官方 3.16.2 起 /ws 强制鉴权，不带 token 的 loopback 拨号被 401。
   const tunnel = createTunnelRuntime({
     serverRoot: resolveServerLayout().serverRoot,
     loopbackPort: http.port,
+    ingressToken,
   });
   // 本地配对发现端点（specs/web-tunnel.md §5.8）：浏览器打开网站即自动探测配对。
   // 端口被占/失败非致命（手动配对仍可用）；core 无专用 logger，stderr 结构化输出随

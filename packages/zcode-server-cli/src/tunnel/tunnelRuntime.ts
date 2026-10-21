@@ -6,7 +6,11 @@ import { hostname } from "node:os";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { DEFAULT_TUNNEL_RELAY_URL } from "@zcode/shared";
 import { dirname, join } from "node:path";
-import { TunnelConnector, type TunnelConnectorEvent } from "./tunnelConnector.js";
+import {
+  TunnelConnector,
+  buildLoopbackWsUrl,
+  type TunnelConnectorEvent,
+} from "./tunnelConnector.js";
 import { startPairingSession, type PairingSessionHandle } from "./tunnelPairing.js";
 import {
   createTunnelHostState,
@@ -36,6 +40,11 @@ export interface TunnelActionResult {
 export interface TunnelRuntimeOptions {
   serverRoot: string;
   loopbackPort: number;
+  /**
+   * Core 业务面 ingress token：官方 3.16.2 起 /ws 强制鉴权，loopback 拨号必须携带，
+   * 缺省时退回裸 URL（兼容未启用鉴权的旧业务服务）。
+   */
+  ingressToken?: string;
   onEvent?: (event: TunnelConnectorEvent) => void;
 }
 
@@ -141,7 +150,7 @@ export function createTunnelRuntime(options: TunnelRuntimeOptions): TunnelRuntim
         hostCredential: state.hostCredential,
         displayName: state.displayName,
         psk: state.psk,
-        loopbackWsUrl: `ws://127.0.0.1:${options.loopbackPort}/ws`,
+        loopbackWsUrl: buildLoopbackWsUrl(options.loopbackPort, options.ingressToken),
         // 持久机器码：初值取身份文件，生成/轮换后回存（specs/web-tunnel.md §5.9）。
         initialAssist: state.assist,
         onAssistChange: (assist) => {

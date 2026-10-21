@@ -31,6 +31,18 @@ export type TunnelConnectorEvent =
   | { kind: "streamClosed"; streamId: string }
   | { kind: "error"; message: string };
 
+/**
+ * loopback 业务 WS 地址。官方 3.16.2 起 Core HTTP 服务器默认启用 ingress token 鉴权
+ * （server-core/http.ts 全局 middleware，接受 Bearer 头或 ?token=），隧道 loopback 拨号
+ * 必须携带 token，否则 /ws 升级被 401 拒绝——症状是 relay 侧等不到流认领、向浏览器报
+ * hostOffline，网页端卡「正在连接你的电脑」无限重试。token 为 base64url，可直拼 query。
+ */
+export function buildLoopbackWsUrl(port: number, ingressToken?: string): string {
+  const base = `ws://127.0.0.1:${port}/ws`;
+  const token = ingressToken?.trim();
+  return token ? `${base}?token=${token}` : base;
+}
+
 export interface TunnelConnectorOptions {
   relayUrl: string;
   hostId: string;

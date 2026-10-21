@@ -13,7 +13,11 @@ import {
   hashTunnelSecret,
   parsePairingUrl,
 } from "@zcode/shared";
-import { TunnelConnector, type TunnelConnectorEvent } from "../src/tunnel/tunnelConnector.js";
+import {
+  TunnelConnector,
+  buildLoopbackWsUrl,
+  type TunnelConnectorEvent,
+} from "../src/tunnel/tunnelConnector.js";
 import { startPairingSession } from "../src/tunnel/tunnelPairing.js";
 
 // 隧道连接器集成验收（specs/web-tunnel.md §3.2 / §7）：
@@ -527,4 +531,14 @@ test("刷新语义：regenerateAssistCode 轮换新码并回写持久化", async
     refreshConnector.stop();
     await deferredRelay.close();
   }
+});
+
+// 回归（2026-10-21 deploy_web 后网页端卡「正在连接你的电脑」）：官方 3.16.2 起 Core /ws
+// 强制 ingress token 鉴权，loopback 拨号必须带 ?token=，否则流认领被 401、relay 报 hostOffline。
+test("buildLoopbackWsUrl：有 token 拼 query，无 token 退回裸 URL", () => {
+  assert.equal(buildLoopbackWsUrl(58575, "abc123"), "ws://127.0.0.1:58575/ws?token=abc123");
+  assert.equal(buildLoopbackWsUrl(58575, "  abc123  "), "ws://127.0.0.1:58575/ws?token=abc123");
+  assert.equal(buildLoopbackWsUrl(3030, ""), "ws://127.0.0.1:3030/ws");
+  assert.equal(buildLoopbackWsUrl(3030, "   "), "ws://127.0.0.1:3030/ws");
+  assert.equal(buildLoopbackWsUrl(3030), "ws://127.0.0.1:3030/ws");
 });

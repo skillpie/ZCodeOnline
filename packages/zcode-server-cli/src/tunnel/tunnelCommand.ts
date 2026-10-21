@@ -4,10 +4,11 @@
 // 拼接流桥接到本机 loopback 业务服务的 /ws；与 serve 守护进程互斥使用（同一 hostId
 // 双连接会被 relay 顶替互踢）。宿主身份持久化在 <server-root>/tunnel/state.json（0600）。
 import { hostname } from "node:os";
+import { readFile } from "node:fs/promises";
 import { DEFAULT_TUNNEL_RELAY_URL } from "@zcode/shared";
 import type { CliIO } from "../cli.js";
 import type { ServerLayout } from "../runtime/paths.js";
-import { TunnelConnector, type TunnelConnectorEvent } from "./tunnelConnector.js";
+import { TunnelConnector, buildLoopbackWsUrl, type TunnelConnectorEvent } from "./tunnelConnector.js";
 import { startTunnelDiscoveryServer } from "./tunnelDiscovery.js";
 import { startPairingSession } from "./tunnelPairing.js";
 import { createTunnelHostState, createTunnelStateStore } from "./tunnelState.js";
@@ -53,6 +54,12 @@ export async function runTunnelCommand(
   }
   const displayName = flagValue(argv, "--display-name") ?? hostname();
 
+  // 业务服务若启用 ingress token 鉴权（同 serverRoot 的 Core），拨号必须携带；
+  // 无 token 文件（旧版业务服务/未启用鉴权）时退回裸 URL。
+  const ingressToken = await readFile(layout.ingressTokenFile, "utf8")
+    .then((raw) => raw.trim())
+    .catch(() => "");
+
   const state = createTunnelStateStore(layout.serverRoot);
   let hostState = await state.load();
   if (!hostState) {
@@ -67,7 +74,7 @@ export async function runTunnelCommand(
     hostCredential: hostState.hostCredential,
     displayName: hostState.displayName,
     psk: hostState.psk,
-    loopbackWsUrl: `ws://127.0.0.1:${businessPort}/ws`,
+    loopbackWsUrl: buildLoopbackWsUrl(businessPort, ingressToken),
     onCredentialIssued: (credential) => {
       void state.save({ ...hostState, hostCredential: credential }).catch(() => undefined);
     },
