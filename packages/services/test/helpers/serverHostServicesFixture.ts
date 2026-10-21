@@ -23,7 +23,9 @@ try {
   const project = await host.services
     .get(IProjectService)
     .saveProject({ name: "Server", roots: [root], primaryRoot: root });
-  assert.equal(project.hostId, "remote:server:server-owner");
+  // Fork 适配（见 node.ts createServerHostServices 注释）：宿主 daemon 是用户自己的机器，
+  // 存储归属保持 "local"（官方 3.16.2 派生 remote:server:<id> 会隔离既有本机数据）。
+  assert.equal(project.hostId, "local");
   const mapping = await host.services
     .get(ISourceServerWorkspaceService)
     .resolveWorkspace({ workspacePath: root });

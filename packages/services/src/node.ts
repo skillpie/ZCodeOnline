@@ -354,10 +354,7 @@ export {
   isValidCronExpr,
 } from "./session/automationCron.js";
 
-import {
-  buildServerRemoteWorkspaceIdentity,
-  remoteHostIdFromWorkspaceIdentity,
-} from "@zcode/shared";
+import { buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
 import { SourceServerWorkspaceAliasRepo } from "./session/sourceServerWorkspaceAliasRepo.js";
 import { SourceServerWorkspaceIdentityMapper } from "./source-server-workspace/sourceServerWorkspaceIdentityChannelServer.js";
 import { ServiceCollection } from "./collection.js";
@@ -3223,7 +3220,18 @@ export { bindRemoteProjectIdentities } from "#src/project/index.js";
 
 export { startupStorage } from "#src/startup-storage/index.js";
 
-/** 独立 Server 共用迁移屏障与身份装配；入口不得以 local owner 开放远端项目 RPC。 */
+/**
+ * 独立 Server 共用迁移屏障与身份装配。
+ *
+ * Fork 适配（2026-10-21，合并官方 3.16.2 后）：官方在此按
+ * remoteHostIdFromWorkspaceIdentity(buildServerRemoteWorkspaceIdentity(serverId))
+ * 派生存储归属（策略「入口不得以 local owner 开放远端项目 RPC」），把独立 Server 定位成
+ * 多机联邦里的远端数据源。但本仓库的宿主 daemon 是用户自己的机器：web 隧道（specs/web-tunnel.md）
+ * 按 local owner 语义读写本机项目/任务，与桌面端共用同一 tasks-index 库（既有数据 host_id 均为
+ * "local"）。派生归属会让全部本机项目/任务在 RPC 下不可见（readProjects 为空），且
+ * hostId="local" 的目录读取被拒（project.host-offline）。因此存储归属保持 "local"；
+ * 身份装配（mapper/alias/sourceServerWorkspaceService）仍按官方 serverId 派生，不受影响。
+ */
 export async function createServerHostServices(options: {
   topicResourceRelayChannel?: NonNullable<
     Parameters<typeof createLocalServices>[0]
@@ -3232,10 +3240,7 @@ export async function createServerHostServices(options: {
   zcodeBuiltinProviderConfigFilePath: string;
   providerProvisioningTargetEnabled?: boolean;
 }) {
-  const projectStorageHostId = remoteHostIdFromWorkspaceIdentity(
-    buildServerRemoteWorkspaceIdentity({ serverId: options.sourceServerId, workspacePath: "/" }),
-  );
-  if (!projectStorageHostId) throw new Error("Invalid Source Server storage identity");
+  const projectStorageHostId = "local";
   await migrateApplicationStorage(await createSettingService().get(), projectStorageHostId);
   const workspaceAliasRepo = new SourceServerWorkspaceAliasRepo();
   const workspaceIdentityMapper = new SourceServerWorkspaceIdentityMapper();
