@@ -705,7 +705,11 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
     });
 
     expect(html).toContain('data-testid="web-remote-mobile-shell"');
-    expect(html).toContain('data-testid="workspace-sidebar"');
+    // fork 契约（用户版 WebRemoteControlMobileShell）：手机端任务首页由组件内置的
+    // WebRemoteControlMobileTaskHome 承担（onSelectTask / onStartDraftInWorkspace），
+    // 不渲染桌面 WorkspaceSidebar；上游用例断言的 renderTaskHome=sidebar 组装未被合并采用。
+    expect(html).not.toContain('data-testid="workspace-sidebar"');
+    expect(html).toContain('data-testid="v4-chat-pane"');
 
     vi.unstubAllGlobals();
   });
@@ -1060,11 +1064,36 @@ describe("WorkspaceShellLayout Web remote control mobile layout", () => {
 });
 
 it.each([
-  { isDesktop: true, isMacDesktop: true },
-  { isDesktop: true, isWindowsDesktop: true },
-  { isDesktop: true, isMacDesktop: false, isWindowsDesktop: false },
-])("keeps desktop panel outer padding consistent: %j", async (platform) => {
+  {
+    isDesktop: true,
+    isMacDesktop: true,
+    expectedPadding: "pr-1 pb-1",
+    expectedDragStripHeight: "h-1",
+  },
+  {
+    isDesktop: true,
+    isWindowsDesktop: true,
+    expectedPadding: "pr-1.5 pb-1.5",
+    expectedDragStripHeight: "h-1.5",
+  },
+  {
+    isDesktop: true,
+    isMacDesktop: false,
+    isWindowsDesktop: false,
+    expectedPadding: "pr-1 pb-1",
+    expectedDragStripHeight: "h-1",
+  },
+])("keeps desktop panel outer padding consistent: %j", async ({
+  expectedPadding,
+  expectedDragStripHeight,
+  ...platform
+}) => {
   const html = await renderWorkspaceShell(platform);
-  expect(html).toMatch(/id="content"[^>]*p-1 pl-0 pt-0/);
-  expect(html).toContain('class="h-1 w-full [app-region:drag]"');
+  // v3.16.2 合并采用上游 inset 方案：#content 只保留右/下内边距，顶部拖拽条单条置于 #content 内
+  // （cn 输出顺序为 w-full [app-region:drag] h-1）。曾因合并冲突在 ResizablePanelGroup 内
+  // 多出一条 w-full 拖拽条，row flex 下吞掉整行宽度、把对话面板挤成 0 宽（生产整片空白），
+  // 这里同时断言全树只此一条，防止回归。
+  expect(html).toMatch(new RegExp(`id="content"[^>]*${expectedPadding.replaceAll(".", "\\.")}`));
+  expect(html).toContain(`class="w-full [app-region:drag] ${expectedDragStripHeight}"`);
+  expect(html.match(/class="w-full \[app-region:drag\] h-1(\.5)?"/gu)).toHaveLength(1);
 });

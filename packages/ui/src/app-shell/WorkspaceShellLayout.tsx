@@ -2457,11 +2457,11 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
               isFullView && "relative",
             )}
           >
-            {
-              hasDesktopPanelInset && (
-                <div className="h-1 w-full [app-region:drag]" />
-              ) /* 修复 macOS 顶部窗口控制按钮被 header 遮挡无法点击的问题 */
-            }
+            {/* Bugfix：此处不能放 [app-region:drag] 拖拽条。v3.16.2 合并时把上方 #content 内的
+                macOS 顶部拖拽条又复制了一份进这个 row flex Group，`w-full` 子项会占满整个主轴，
+                把 conversation-column / side-pane 两个面板挤压成 0 宽并推出视口，桌面端表现为
+                侧栏正常但右侧正文整片空白、点击看似无响应（dev 与安装版同样塌陷，见
+                WorkspaceShellLayout 布局塌陷修复记录）。macOS 拖拽区由 #content 内那条覆盖。 */}
             <ResizablePanel
               id="conversation-column"
               minSize={isWebRemoteControlShell ? "0px" : "35%"}
@@ -2909,7 +2909,15 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
       isWindowsDesktop={isWindowsDesktop}
       headerTestId={TID_APP_HEADER}
     >
-      {isWebRemoteControlShell ? renderRemoteShell(wideContent) : wideContent}
+      {/* Bugfix：手机远控专用 shell 必须按视口门控。fork 原实现（7c6e2337）以
+          isWebRemoteControlMobileViewport 早退，仅窄屏渲染移动任务首页；v3.16.2 合并时
+          采用了上游的无条件路由，但保留了 fork 版 WebRemoteControlMobileShell（组件内部
+          没有上游的 isMobileViewport 回退渲染 children 的分支），导致桌面尺寸的
+          Web 远控窗口也会渲染手机 UI、主 shell（侧栏/导航抽屉/拖拽手柄）整体丢失。
+          这里恢复视口门控：窄屏走移动 shell，桌面尺寸维持主 shell。 */}
+      {isWebRemoteControlShell && isWebRemoteControlMobileViewport
+        ? renderRemoteShell(wideContent)
+        : wideContent}
     </DesktopWindowFrame>
   );
 });
