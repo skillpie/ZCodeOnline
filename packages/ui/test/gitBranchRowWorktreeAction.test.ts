@@ -263,8 +263,17 @@ describe("useGitWorktreeActions", () => {
       roots: ["/repo/.worktrees/feature-todo"],
       primaryRoot: "/repo/.worktrees/feature-todo",
     });
+    // 登记到的项目 id 必须带进草稿：首发 createSession 按 draftProjectId 写 project_id，
+    // 缺失时首条会话落入未归类「任务」而不在侧栏项目下。
+    expect(mocks.startDraft).toHaveBeenCalledWith(
+      "/repo/.worktrees/feature-todo",
+      undefined,
+      undefined,
+      {
+        projectId: "proj-1",
+      },
+    );
     expect(mocks.addTab).toHaveBeenCalledWith("/repo/.worktrees/feature-todo");
-    expect(mocks.startDraft).toHaveBeenCalledWith("/repo/.worktrees/feature-todo");
   });
 
   it("createWorktreeForBranch：目录已是项目 root 时不重复登记", async () => {
@@ -288,7 +297,16 @@ describe("useGitWorktreeActions", () => {
       await createWorktreeForBranch("feature/todo");
     });
 
+    // 已是项目 root：复用既有项目 id 作为草稿归属，不再重复登记。
     expect(mocks.saveProject).not.toHaveBeenCalled();
+    expect(mocks.startDraft).toHaveBeenCalledWith(
+      "/repo/.worktrees/feature-todo",
+      undefined,
+      undefined,
+      {
+        projectId: "proj-existing",
+      },
+    );
     expect(mocks.addTab).toHaveBeenCalledWith("/repo/.worktrees/feature-todo");
   });
 
@@ -322,6 +340,11 @@ describe("useGitWorktreeActions", () => {
       issues: [],
     } satisfies GitWorktreeMutationResult);
     mocks.projectReadTree.mockResolvedValue({ projects: [], tasks: [] });
+    mocks.saveProject.mockResolvedValue({
+      id: "proj-1",
+      name: "feat-123456",
+      roots: [{ rootPath: "/repo/.worktrees/feat-123456" }],
+    });
 
     const { createWorktreeForProject } = await renderWorktreeActionsHarness();
     await act(async () => {
@@ -339,6 +362,20 @@ describe("useGitWorktreeActions", () => {
     // 目录名不显式指定：服务端按「目录名 = 净化分支名」派生为 feat-{同后缀}。
     expect(request.directoryName).toBeUndefined();
     expect(mocks.toast).toHaveBeenCalledWith("git.worktree.toast.created");
+    // 新建模式同样登记项目并把 id 带进草稿，保证首条会话归属该项目。
+    expect(mocks.saveProject).toHaveBeenCalledWith({
+      name: "feat-123456",
+      roots: ["/repo/.worktrees/feat-123456"],
+      primaryRoot: "/repo/.worktrees/feat-123456",
+    });
+    expect(mocks.startDraft).toHaveBeenCalledWith(
+      "/repo/.worktrees/feat-123456",
+      undefined,
+      undefined,
+      {
+        projectId: "proj-1",
+      },
+    );
     expect(mocks.addTab).toHaveBeenCalledWith("/repo/.worktrees/feat-123456");
   });
 });

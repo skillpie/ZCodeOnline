@@ -58,11 +58,15 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
   );
 
   const openWorktreeTab = useCallback(
-    (worktreePath: string) => {
+    (worktreePath: string, projectId?: string) => {
       // 与 useRootWorkspaceActions 打开本地目录一致：addTab 命中已打开 tab 时激活它；
       // startDraft 表达 workspace-only 意图，回到空草稿并清掉该 workspace 的 activeTaskId。
+      // projectId 用于首发 createSession 的项目归属（reserveCreatedTask 写 project_id），
+      // 缺失时首条会话会落入未归类「任务」而不在侧栏项目下。
       tabStoreApi.getState().addTab(worktreePath);
-      useZCodeSessionStore.getState().startDraft(worktreePath);
+      useZCodeSessionStore
+        .getState()
+        .startDraft(worktreePath, undefined, undefined, projectId ? { projectId } : undefined);
     },
     [tabStoreApi],
   );
@@ -76,24 +80,26 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
    * 打开（目录已创建，可稍后手动添加项目）。
    */
   const registerWorktreeProject = useCallback(
-    async (worktreePath: string) => {
-      if (!projectService) return;
+    async (worktreePath: string): Promise<string | undefined> => {
+      if (!projectService) return undefined;
       try {
         const tree = await projectService.readTree({ includeDeleted: false });
-        const alreadyRegistered = tree.projects.some((project) =>
+        const existing = tree.projects.find((project) =>
           project.roots.some((root) => root.rootPath === worktreePath),
         );
-        if (alreadyRegistered) return;
-        await projectService.saveProject({
+        if (existing) return existing.id;
+        const saved = await projectService.saveProject({
           name: getPathLeaf(worktreePath),
           roots: [worktreePath],
           primaryRoot: worktreePath,
         });
+        return saved.id;
       } catch (error: unknown) {
         logger.warn("[GitWorktreeActions] worktree 项目登记失败", {
           worktreePath,
           error: getErrorMessage(error),
         });
+        return undefined;
       }
     },
     [projectService],
@@ -123,9 +129,10 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
       toast(
         intl.formatMessage({ id: "git.worktree.toast.created" }, { path: result.worktree.path }),
       );
-      // 先登记项目再开 tab：addTab 触发侧栏项目树 refresh，readTree 才能读到新项目。
-      await registerWorktreeProject(result.worktree.path);
-      openWorktreeTab(result.worktree.path);
+      // 先登记项目再开 tab：addTab 触发侧栏项目树 refresh，readTree 才能读到新项目；
+      // 同时把登记到的项目 id 带进草稿，首发会话归属该项目。
+      const projectId = await registerWorktreeProject(result.worktree.path);
+      openWorktreeTab(result.worktree.path, projectId);
       return true;
     },
     [intl, notifyWorktreeFailure, openWorktreeTab, registerWorktreeProject, workspacePath],

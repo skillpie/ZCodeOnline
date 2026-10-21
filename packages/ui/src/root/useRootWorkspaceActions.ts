@@ -1,5 +1,6 @@
 import { stageV4ComposerDraftAttachments } from "@/v4/composer/composerDraftWorkspaceTransfer.js";
 import { readProjectSidebarView } from "@/project-sidebar/index.js";
+import { useOptionalProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
 /* eslint-disable max-lines -- Root workspace action hook 集中编排项目、远程和 conversation 入口；合并期保持动作边界完整，后续按领域拆分。 */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -137,6 +138,9 @@ export function useRootWorkspaceActions({
   const navigationSequence = useRef(0);
   const [workspaceActionError, setWorkspaceActionError] = useState<string | null>(null);
   const requestConfirmation = useConfirmDialog();
+  // 项目目录的权威树由 Root 顶层的 ProjectDirectoryProvider 持有；原地草稿的项目归属
+  // 解析直接读这份内存树（同步、无 RPC），Provider 未挂载（嵌入式/测试）时为 undefined。
+  const projectDirectory = useOptionalProjectDirectory();
   // Root 的远端装配依赖本 hook 返回的动作，函数引用每轮都会变化；它只用于点击执行，
   // 不应使整个新建入口失稳。与任务导航一致，读取最近已提交实现，并冻结本次操作的实现。
   const remoteProjectOpener = useRef(openRemoteProjectWorkspace);
@@ -315,6 +319,65 @@ export function useRootWorkspaceActions({
             paneLayout: usePaneLayoutStore.getState(),
           }),
         );
+        // 修复原因：上游 project-aware 重构把所有新建都送进 prepareSession 目录准入，
+        // 丢失了 fork 的两条原地草稿入口，远程身份目标还会因无项目抛
+        // project.remote-project-required，桌面端表现为点击新建会话无响应
+        // （rootNewTaskWorkbenchContext 套件回归）。fork 契约：落点已是已绑定 workspace
+        // 时原地开草稿、不分配新目录，因此不触发目录准入；带预填内容的“试运行技能/插件”
+        // 请求必须落在用户当前可见 workspace，保持 Composer 插入与 workspaceIdentity
+        // 隔离单一路径（SkillsSection/PluginStorePage 的 onCreateTask 注释）。显式携带
+        // 项目/Host/targetWorkspace 的工作流启动仍走 ProjectService 按项目准入。
+        const requestObject = typeof request === "object" && request !== null ? request : null;
+        const prefillsPrompt = Boolean(requestObject?.initialPrompt?.trim());
+        const targetsFocusedPaneWorkspace =
+          newTaskTarget !== null &&
+          (newTaskTarget.workspacePath !== activeWorkspacePath ||
+            (newTaskTarget.workspaceIdentity ?? null) !== (activeWorkspaceIdentity ?? null));
+        if (
+          workbenchGroupClientMode === "desktop-continuous" &&
+          newTaskTarget &&
+          !requestObject?.targetWorkspace &&
+          !hasExplicitProject &&
+          !hostId &&
+          (targetsFocusedPaneWorkspace || prefillsPrompt)
+        ) {
+          // Bugfix：官方归属机制在首发 createSession 时按 draftProjectId 写 task 的
+          // project_id（prepareSessionCreation → reserveCreatedTask），而原地草稿跳过
+          // 目录准入后没人解析项目，startDraftInWorkspace 会把 draftProjectId 落成
+          // null，首个会话因此落入未归类「任务」而不在侧栏项目下。这里按目录从
+          // Provider 持有的项目树同步解析归属（worktree 创建流程已 saveProject 登记，
+          // 可解析到）；Provider 缺席或解析不到时保持 undefined（沿用原 null 语义）。
+          const draftProjectId = projectDirectory?.tree.projects.find((project) =>
+            project.roots.some((root) => root.rootPath === newTaskTarget.workspacePath),
+          )?.id;
+          if (!isCurrent()) return;
+          const identityOptions = newTaskTarget.workspaceIdentity
+            ? { workspaceIdentity: newTaskTarget.workspaceIdentity }
+            : undefined;
+          if (
+            !tabStoreApi.getState().activateTabByPath(newTaskTarget.workspacePath, identityOptions)
+          ) {
+            addTab(newTaskTarget.workspacePath, identityOptions);
+          }
+          startDraftInWorkspace(
+            newTaskTarget.workspacePath,
+            newTaskTarget.workspaceIdentity ?? undefined,
+            {
+              ...(typeof request === "string"
+                ? { provider: request }
+                : (requestObject ?? undefined)),
+              projectId: draftProjectId,
+            },
+          );
+          requestObject?.onComplete?.();
+          setWorkspaceActionError(null);
+          logger.info(`[Root] ${source}`, {
+            workspacePath: newTaskTarget.workspacePath,
+            inPlaceDraft: true,
+            projectId: draftProjectId ?? null,
+          });
+          return;
+        }
         if (!hasExplicitProject && newTaskTarget) {
           // 原因：仅远程继承项目会让本地快捷键落入未归类。按任务完整身份读取归属，不能由 cwd 猜项目。
           if (newTaskTarget.workspaceIdentity) {
@@ -405,6 +468,7 @@ export function useRootWorkspaceActions({
     },
     [
       services.projectService,
+      projectDirectory,
       composerClientNamespace,
       activeWorkspacePath,
       activeWorkspaceIdentity,
