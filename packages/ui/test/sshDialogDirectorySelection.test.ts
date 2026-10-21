@@ -22,9 +22,15 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
   }),
 }));
 
-vi.mock("lucide-react", () => ({
-  AlertTriangleIcon: () => null,
-}));
+vi.mock("lucide-react", () => {
+  const icon = (name: string) => () => null;
+  const explicit: Record<string, unknown> = {
+    AlertTriangleIcon: icon("alert-triangle"),
+    Server: icon("server"),
+  };
+  // 合并后 SSHDialog 图标链来自两侧组件，Proxy 兜底缺失图标。
+  return new Proxy(explicit, { get: (t, p) => t[p as string] ?? icon(String(p)) });
+});
 
 vi.mock("@/hooks/useConfirmDialog.js", () => ({
   useConfirmDialog: () => async () => true,

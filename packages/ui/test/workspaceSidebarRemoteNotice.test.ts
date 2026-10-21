@@ -46,6 +46,13 @@ vi.mock("lucide-react", () => {
     RefreshCwIcon: createIcon("refresh"),
     MessageCirclePlus: createIcon("message-circle-plus"),
     UploadCloud: createIcon("upload-cloud"),
+    WandIcon: createIcon("wand"),
+    FolderGit2: createIcon("folder-git-2"),
+    TrashIcon: createIcon("trash"),
+    TerminalSquare: createIcon("terminal-square"),
+    BlocksIcon: createIcon("blocks"),
+    CableIcon: createIcon("cable"),
+    ChevronDown: createIcon("chevron-down"),
     XIcon: createIcon("x"),
   };
 });

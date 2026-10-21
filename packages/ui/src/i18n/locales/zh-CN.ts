@@ -2784,8 +2784,8 @@ const zhCN: Record<string, string> = {
   "docker.manualContainerHint": "如果运行中的容器列表不完整，可以手动输入容器名或 ID 连接。",
   "docker.selectContainer": "选择正在运行的容器",
   "docker.loading": "正在检测运行中的容器...",
-  "docker.unavailable": "Docker 不可用",
-  "docker.noContainers": "没有运行中的容器",
+  "docker.unavailable": "未检测到运行中容器",
+  "docker.noContainers": "未检测到运行中容器",
   "docker.validation.required": "容器名或 ID 不能为空",
 
   // 语言切换

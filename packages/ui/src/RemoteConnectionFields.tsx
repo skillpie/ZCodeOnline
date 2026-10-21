@@ -490,6 +490,13 @@ export function RemoteConnectionFields({
       ? intl.formatMessage({ id: "docker.loading" })
       : intl.formatMessage({ id: "docker.selectContainer" }));
   const dockerContainerTriggerIsPlaceholder = !dockerContainer.trim();
+  // 合并恢复：手动输入模式下，容器列表为空或 Docker 不可用时显示原因提示（用户版语义）。
+  const dockerContainerEmptyReason =
+    dockerContainers.length === 0
+      ? dockerAvailable === false
+        ? intl.formatMessage({ id: "docker.unavailable" })
+        : intl.formatMessage({ id: "docker.noContainers" })
+      : null;
   const manualDockerContainerIsEmpty = manualDockerContainer.trim().length === 0;
   const wslUserIsRoot = wslUser.trim().toLowerCase() === "root";
   const wslUserIsInvalid = wslUser.trim().length > 0 && !isValidWslUser(wslUser);
@@ -1037,7 +1044,11 @@ export function RemoteConnectionFields({
               label: intl.formatMessage({ id: `docker.inputMode.${mode}` }),
             }))}
           />
-          {dockerInputMode === "select" ? (
+          {/* 合并恢复：用户版 Docker 选择器与手动输入同时渲染；官方 sync 改为互斥切换，
+              丢弃了「选中容器标签保留 + 手动输入框独立」的组合，这里恢复同屏。 */}
+          {/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- dockerInputMode 保留初始态语义 */}
+          {(
+            <>
             <div>
               <FieldLabel htmlFor={`${fieldId}-docker-select`}>
                 {intl.formatMessage({ id: "docker.container" })}
@@ -1136,7 +1147,6 @@ export function RemoteConnectionFields({
                 <FieldHint>{dockerContainerEmptyText}</FieldHint>
               ) : null}
             </div>
-          ) : (
             <div>
               <FieldLabel htmlFor={`${fieldId}-docker.container`}>
                 {intl.formatMessage({ id: "docker.container" })}
@@ -1161,6 +1171,7 @@ export function RemoteConnectionFields({
                 <FieldHint>{intl.formatMessage({ id: "docker.manualContainerHint" })}</FieldHint>
               ) : null}
             </div>
+            </>
           )}
         </div>
       );

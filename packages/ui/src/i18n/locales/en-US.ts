@@ -2990,8 +2990,8 @@ const enUS: Record<string, string> = {
     "If the running container list is incomplete, enter a container name or ID manually to connect.",
   "docker.selectContainer": "Choose a running container",
   "docker.loading": "Detecting running containers...",
-  "docker.unavailable": "Docker is unavailable",
-  "docker.noContainers": "No running containers",
+  "docker.unavailable": "No running containers detected.",
+  "docker.noContainers": "No running containers detected.",
   "docker.validation.required": "Container name or ID is required",
 
   // Locale switch
