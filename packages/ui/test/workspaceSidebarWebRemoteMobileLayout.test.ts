@@ -1,284 +1,82 @@
 // @vitest-environment jsdom
-import { createElement, type ReactNode } from "react";
+import { createElement } from "react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { IPlatformService } from "@zcode/shared";
+import { ProjectSidebarNavigation } from "@/project-sidebar/ProjectSidebarNavigation.js";
+
+// v3.16.2 起 sidebar 切换为官方 ProjectSidebar（packages/ui/src/project-sidebar/）。
+// 旧单体侧栏的手机远控布局用例（单滚动区/归档按钮切换 Close/远端任务索引合并）
+// 随官方重构被取代：列表滚动收敛进统一 ScrollFadeViewport，归档管理迁移到设置页，
+// 任务索引由 HomeOnlyWorkspaceRows / 移动 shell 承接。本文件保留仍成立的 fork 决策：
+// D37（手机 home-only 不承载自动化入口）与技能市场移植入口。
 
 const { setPendingSettingsSectionMock } = vi.hoisted(() => ({
   setPendingSettingsSectionMock: vi.fn(),
 }));
 
-vi.stubGlobal(
-  "ResizeObserver",
-  class ResizeObserverMock {
-    disconnect() {}
-    observe() {}
-    unobserve() {}
-  },
-);
-
-const workspaceTab = {
-  id: "tab-1",
-  kind: "workspace" as const,
-  label: "Project",
-  workspacePath: "/tmp/project",
-};
-
-const tabStoreState = {
-  activeTabId: workspaceTab.id,
-  tabs: [workspaceTab],
-  expandedWorkspacePaths: new Set([workspaceTab.workspacePath]),
-  activateTab: vi.fn(),
-  closeTab: vi.fn(),
-  collapseAllWorkspaceTabs: vi.fn(),
-  expandAllWorkspaceTabs: vi.fn(),
-  openSettingsTab: vi.fn(),
-  reorderWorkspaceTabs: vi.fn(),
-  toggleWorkspaceExpanded: vi.fn(),
-};
-
-vi.mock("@dnd-kit/core", () => ({
-  DndContext: ({ children }: { children: ReactNode }) => createElement("div", null, children),
-  DragOverlay: ({ children }: { children: ReactNode }) => createElement("div", null, children),
-  KeyboardSensor: function KeyboardSensor() {},
-  PointerSensor: function PointerSensor() {},
-  closestCenter: vi.fn(),
-  useSensor: vi.fn(() => ({})),
-  useSensors: vi.fn(() => []),
-}));
-
-vi.mock("@dnd-kit/sortable", () => ({
-  SortableContext: ({ children }: { children: ReactNode }) => createElement("div", null, children),
-  sortableKeyboardCoordinates: vi.fn(),
-  useSortable: vi.fn(() => ({
-    attributes: {},
-    isDragging: false,
-    listeners: {},
-    setActivatorNodeRef: vi.fn(),
-    setNodeRef: vi.fn(),
-    transform: null,
-    transition: undefined,
-  })),
-  verticalListSortingStrategy: {},
-}));
-
-vi.mock("@/ControlHintTooltip.js", () => ({
-  ControlHintTooltip: ({ children }: { children: ReactNode }) => children,
-}));
-
-vi.mock("@/NewTaskButtonGroup.js", () => ({
-  NewTaskButtonGroup: () => createElement("div", { "data-testid": "new-task-button-group" }),
-}));
-
-vi.mock("@/TaskSearchDialog.js", () => ({
-  TaskSearchDialog: () => null,
-}));
-
-vi.mock("@/BotsDialog.js", () => ({
-  BotsDialog: () => null,
-}));
-
-vi.mock("@/WebRemoteControlTaskIndex.js", () => ({
-  WebRemoteControlTaskIndex: ({
-    renderBeforePinnedTasks,
-  }: {
-    renderBeforePinnedTasks?: () => ReactNode;
-  }) => createElement("div", { "data-testid": "remote-task-index" }, renderBeforePinnedTasks?.()),
-}));
-
-vi.mock("@/WorkspaceArchivedTasksFlatSection.js", () => ({
-  WorkspaceArchivedTasksFlatSection: () =>
-    createElement("div", { "data-testid": "archived-tasks" }),
-}));
-
-vi.mock("@/WorkspacePinnedTasksSection.js", () => ({
-  WorkspacePinnedTasksSection: () => createElement("div", { "data-testid": "pinned-tasks" }),
-}));
-
-vi.mock("@/WorkspaceTimelineTasksSection.js", () => ({
-  WorkspaceTimelineTasksSection: () => createElement("div", { "data-testid": "timeline-tasks" }),
-}));
-
-vi.mock("@/WorkspaceGroupedTasksSection.js", () => ({
-  WorkspaceGroupedTasksSection: () => createElement("div", { "data-testid": "grouped-tasks" }),
-}));
-
-vi.mock("@/WorkspaceSidebarFooter.js", () => ({
-  WorkspaceSidebarFooter: () => createElement("footer", { "data-testid": "sidebar-footer" }),
-}));
-
-vi.mock("@/SortableWorkspaceSidebar.js", () => ({
-  SortableWorkspaceSidebarItem: ({ tab }: { tab: typeof workspaceTab }) =>
-    createElement("li", { "data-testid": "workspace-sidebar-item" }, tab.label),
-  restrictVerticalDragWithinContainer: vi.fn(),
-}));
-
-vi.mock("@/hooks/useWorkspaceTaskLists.js", () => ({
-  useWorkspaceTaskLists: () => ({
-    groups: [],
-    loadingByWorkspaceKey: {},
-  }),
-}));
-
+vi.mock("@/NewTaskButtonGroup.js", () => ({ NewTaskButtonGroup: () => null }));
 vi.mock("@/i18n/IntlProvider.js", () => ({
-  // useZCodeIntlOrDefault 为本地 blame 无 Provider 回退路径新增的导出，mock 需同步提供。
-  useZCodeIntlOrDefault: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
-  useZCodeIntl: () => ({
-    intl: {
-      formatMessage: ({ id }: { id: string }) => id,
-    },
-    localePreference: "en-US",
-    setLocalePreference: vi.fn(),
-  }),
+  useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
 
-vi.mock("@/store/zcodeSessionStore.js", () => ({
-  selectWorkspaceZCodeState: () => ({ activeTaskId: "task-1" }),
-  useZCodeSessionStore: (selector: (state: { selectDraftProvider: () => void }) => unknown) =>
-    selector({ selectDraftProvider: vi.fn() }),
-}));
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
-vi.mock("@/store/StoreProvider.js", () => ({
-  useZCodeStore: (selector: (state: { setTheme: () => void }) => unknown) =>
-    selector({ setTheme: vi.fn() }),
-}));
-
-vi.mock("@/store/TabStoreProvider.js", () => ({
-  useTabStore: (selector: (state: typeof tabStoreState) => unknown) => selector(tabStoreState),
-}));
-
-vi.mock("@/settings/CodingPlanUpgradeDialogProvider.js", () => ({
-  useCodingPlanUpgradeDialog: () => ({
-    openCodingPlanUpgrade: vi.fn(),
-  }),
-}));
-
-vi.mock("@/lib/settingsNavigation.js", () => ({
-  setPendingSettingsSection: setPendingSettingsSectionMock,
-}));
-
-function createSidebarProps(overrides: Record<string, unknown> = {}) {
-  return {
-    isDesktop: false,
-    isWindowsDesktop: false,
-    onCancelRemoteProject: vi.fn(async () => {}),
-    onConnectRemote: vi.fn(async () => ""),
-    onCreateTask: vi.fn(),
-    onLogin: vi.fn(),
-    onLogout: vi.fn(),
-    onReconnectRemoteWorkspace: vi.fn(async () => {}),
-    onSelectRemoteProject: vi.fn(async () => {}),
-    onSelectTask: vi.fn(),
-    reconnectingRemoteWorkspaceKeys: [],
-    remoteWorkspaceErrorByWorkspaceKey: {},
-    selectedProvider: "codex",
-    theme: "light",
-    user: null,
-    webRemoteControlWorkspaceSwitcher: {
-      listWorkspaces: vi.fn(async () => ({ tasks: [], workspaces: [] })),
-      switchWorkspace: vi.fn(async () => {}),
-    },
-    workspacePath: workspaceTab.workspacePath,
-    ...overrides,
-  };
+function renderNavigation(
+  propsOverride: Partial<Parameters<typeof ProjectSidebarNavigation>[0]["props"]> = {},
+) {
+  const onOpenPluginStore = vi.fn();
+  const onOpenSkillMarket = vi.fn();
+  const props = {
+    onOpenPluginStore,
+    onOpenSkillMarket,
+    skillMarketActive: false,
+    ...propsOverride,
+  } as Parameters<typeof ProjectSidebarNavigation>[0]["props"];
+  render(createElement(ProjectSidebarNavigation, { props, onCreate: vi.fn() }));
+  return { onOpenPluginStore, onOpenSkillMarket };
 }
 
-async function createSidebarElement(overrides: Record<string, unknown> = {}) {
-  const { WorkspaceSidebar } = await import("@/WorkspaceSidebar.js");
-  // 快捷键特性后侧栏经 useShortcutCommandLabel → useSettings 读 ServiceContext 与 PlatformContext，
-  // 裸渲染需提供最小 ServiceProvider/PlatformProvider（onSettingsChanged 可选，空 platform 即可）
-  const { ServiceProvider } = await import("@/hooks/useServices.js");
-  const { PlatformProvider } = await import("@/hooks/usePlatform.js");
-  const { createSettingsTestServices } = await import("./lib/settingsTestServices.js");
+describe("ProjectSidebar web remote mobile layout", () => {
+  it("手机 home-only 不渲染自动化入口，插件与技能市场保留（D37）", () => {
+    // ProjectSidebar 在 home-only（service 为空）时向 Navigation 传 onOpenAutomations: undefined。
+    renderNavigation({ onOpenAutomations: undefined });
 
-  return createElement(
-    ServiceProvider,
-    { services: createSettingsTestServices() },
-    createElement(
-      PlatformProvider,
-      { platform: {} as unknown as IPlatformService },
-      createElement(
-        WorkspaceSidebar,
-        createSidebarProps(overrides) as Parameters<typeof WorkspaceSidebar>[0],
-      ),
-    ),
-  );
-}
-
-async function renderSidebar(overrides: Record<string, unknown> = {}) {
-  return renderToStaticMarkup(await createSidebarElement(overrides));
-}
-
-describe("WorkspaceSidebar Web remote mobile layout", () => {
-  afterEach(() => {
-    cleanup();
-    vi.clearAllMocks();
+    expect(screen.queryByRole("button", { name: "workspace.openScheduledSettings" })).toBeNull();
+    expect(screen.getByTestId("plugin-store-sidebar-open")).toBeTruthy();
+    expect(screen.getByTestId("skill-market-sidebar-open")).toBeTruthy();
   });
 
-  // Bugfix: 该用例需要 SSR WorkspaceSidebar；pre-push 全量并发时首次导入和渲染偶尔超过默认 5s。
-  // 子组件已经尽量 mock，剩余成本来自被测布局自身，局部放宽避免误报。
-  it("places remote tasks and workspace navigation in one mobile scroll area", async () => {
-    const html = await renderSidebar();
-
-    expect(html).toContain('data-web-remote-navigation-scroll="true"');
-    expect(html).toContain("max-md:overflow-y-auto");
-    expect(html).toContain('data-testid="remote-task-index"');
-    // Bugfix: 远控模式已把全局任务索引合并进主任务区，不再渲染重复的 workspace 列表项。
-    // 这里显式断言缺失，防止回归到“同屏两段列表”。
-    expect(html).not.toContain('data-testid="workspace-sidebar-item"');
-    expect(html).toContain("max-md:hidden");
-    expect(html).not.toContain("bots.title");
-    expect(html).not.toContain("workspace.openWorkspace");
-
-    const newTaskIndex = html.indexOf('data-testid="new-task-button-group"');
-    const filterIndex = html.indexOf("workspaceSidebar.taskViewOptions");
-    const topSearchIndex = html.indexOf("commandCenter.open");
-    const automationsIndex = html.indexOf("workspace.openScheduledSettings");
-    const pluginsIndex = html.indexOf("workspace.openPluginsSettings");
-    expect(newTaskIndex).toBeGreaterThan(-1);
-    expect(filterIndex).toBeGreaterThan(-1);
-    expect(topSearchIndex).toBeGreaterThan(newTaskIndex);
-    // D37：手机 /remote 不承载 Automations；合并 main 后不能恢复桌面入口。
-    expect(automationsIndex).toBe(-1);
-    expect(pluginsIndex).toBeGreaterThan(topSearchIndex);
-    expect(pluginsIndex).toBeLessThan(filterIndex);
-    expect(topSearchIndex).toBeLessThan(filterIndex);
-    expect(html.lastIndexOf("commandCenter.open")).toBe(topSearchIndex);
-  }, 15_000);
-
-  it("opens the workspace plugin marketplace from the home shortcut", async () => {
-    const onOpenPluginStore = vi.fn();
-
-    render(await createSidebarElement({ onOpenPluginStore }));
+  it("opens the workspace plugin marketplace from the home shortcut", () => {
+    const { onOpenPluginStore } = renderNavigation();
     fireEvent.click(screen.getByRole("button", { name: "workspace.openPluginsSettings" }));
 
     expect(onOpenPluginStore).toHaveBeenCalledTimes(1);
     expect(setPendingSettingsSectionMock).not.toHaveBeenCalled();
-    expect(tabStoreState.openSettingsTab).not.toHaveBeenCalled();
   });
 
-  it("归档视图打开后将关闭按钮的 tooltip label 切换为 Close", async () => {
-    render(await createSidebarElement());
-    const archiveButton = screen.getByRole("button", {
-      name: "workspaceSidebar.toggleArchivedTasks",
-    });
+  it("技能市场入口渲染在插件市场之后且可打开（fork 移植能力）", () => {
+    const { onOpenSkillMarket } = renderNavigation();
+    const pluginsButton = screen.getByRole("button", { name: "workspace.openPluginsSettings" });
+    const skillButton = screen.getByRole("button", { name: "workspace.openSkillMarket" });
 
-    fireEvent.click(archiveButton);
-
-    expect(screen.getByRole("button", { name: "common.close" })).toBe(archiveButton);
+    expect(
+      pluginsButton.compareDocumentPosition(skillButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(skillButton);
+    expect(onOpenSkillMarket).toHaveBeenCalledTimes(1);
   });
 
-  it("places plugins immediately after automations on the desktop home sidebar", async () => {
-    render(await createSidebarElement({ webRemoteControlWorkspaceSwitcher: undefined }));
+  it("places plugins immediately after automations on the desktop home sidebar", () => {
+    renderNavigation({ onOpenAutomations: vi.fn() });
     const automationsButton = screen.getByRole("button", {
       name: "workspace.openScheduledSettings",
     });
-    const pluginsButton = screen.getByRole("button", {
-      name: "workspace.openPluginsSettings",
-    });
+    const pluginsButton = screen.getByRole("button", { name: "workspace.openPluginsSettings" });
 
     expect(pluginsButton.querySelector("svg")?.classList.contains("lucide-blocks")).toBe(true);
     expect(
@@ -294,5 +92,15 @@ describe("WorkspaceSidebar Web remote mobile layout", () => {
 
     expect(sidebarSource).not.toContain("webRemoteTaskSearchOpen");
     expect(sidebarSource).not.toContain("webRemoteTaskSearchQuery");
+  });
+
+  it("手机 home-only 的自动化入口由 ProjectSidebar 统一门控（D37 防回归）", () => {
+    const sidebarSource = readFileSync(
+      resolve(process.cwd(), "packages/ui/src/project-sidebar/index.tsx"),
+      "utf8",
+    );
+
+    expect(sidebarSource).toContain("homeOnlySwitcher");
+    expect(sidebarSource).toContain("onOpenAutomations: undefined");
   });
 });

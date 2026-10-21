@@ -1,4 +1,4 @@
-import { Blocks, CalendarClock } from "lucide-react";
+import { Blocks, CalendarClock, Sparkles } from "lucide-react";
 import { TID_AUTOMATIONS_OPEN } from "@zcode/shared/test-ids";
 import type { ProjectSidebarProps } from "@/project-sidebar/contract.js";
 import { Button } from "@/components/ui/button.js";
@@ -18,6 +18,9 @@ export function ProjectSidebarNavigation({
     | "automationsActive"
     | "onOpenPluginStore"
     | "pluginStoreActive"
+    | "onOpenSkillMarket"
+    | "skillMarketActive"
+    | "workspaceReadOnlyReason"
     | "webRemoteControlWorkspaceSwitcher"
   >;
   onCreate(): void;
@@ -31,7 +34,12 @@ export function ProjectSidebarNavigation({
     >
       {/* Relay V2 远控：当前电脑是项目与任务的上一级，放在导航首行；手机端占用原顶部留白。 */}
       {deviceNavigation ? <WebRemoteControlDeviceHeader navigation={deviceNavigation} /> : null}
-      <NewTaskButtonGroup onCreateTask={onCreate} />
+      {/* fork 能力：只读 workspace 禁用新建并解释原因；正常态无 tooltip。 */}
+      <NewTaskButtonGroup
+        onCreateTask={onCreate}
+        disabled={Boolean(props.workspaceReadOnlyReason)}
+        disabledReason={props.workspaceReadOnlyReason ?? undefined}
+      />
       {props.onOpenAutomations ? (
         <Button
           variant="ghost"
@@ -57,6 +65,20 @@ export function ProjectSidebarNavigation({
         <Blocks className="size-4" />
         {intl.formatMessage({ id: "workspace.openPluginsSettings" })}
       </Button>
+      {/* fork 能力：技能市场入口，与插件市场入口同构；官方 ProjectSidebar 无此入口。 */}
+      {props.onOpenSkillMarket ? (
+        <Button
+          variant="ghost"
+          size="lg"
+          className={`w-full justify-start gap-2 ${props.skillMarketActive ? "bg-selected text-foreground" : ""}`}
+          aria-pressed={props.skillMarketActive ?? false}
+          data-testid="skill-market-sidebar-open"
+          onClick={() => props.onOpenSkillMarket?.()}
+        >
+          <Sparkles className="size-4" />
+          {intl.formatMessage({ id: "workspace.openSkillMarket" })}
+        </Button>
+      ) : null}
     </div>
   );
 }

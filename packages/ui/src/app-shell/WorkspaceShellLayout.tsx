@@ -2028,6 +2028,15 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
       workspaceIdentity={workspaceIdentity}
       workspaceRemoteSessionId={workspaceRemoteSessionId}
       activePreviewPath={activePreviewPath}
+      onOpenFileManager={
+        mobile
+          ? (target) => {
+              handleOpenSidebarFiles(target);
+              // 手机 Home 不挂载 side pane，文件入口必须同时进入 Chat。
+              mobile.navigateToChat();
+            }
+          : handleOpenSidebarFiles
+      }
       onSelectTask={handleSidebarSelectTask}
       onStartDraftInWorkspace={handleSidebarStartDraft}
       onOpenCodeViewer={handleOpenCodeViewer}
@@ -2035,6 +2044,9 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
       fileTreeOpenRequest={fileTreeOpenRequest}
       onCreateTask={handleSidebarCreateTask}
       onCreateConversationTask={handleSidebarCreateConversationTask}
+      onCreateConversationTaskOnSource={onCreateConversationTaskOnSource}
+      remoteWorkspaceRecoveryByWorkspaceKey={remoteWorkspaceRecoveryByWorkspaceKey}
+      workspaceReadOnlyReason={workspaceReadOnlyReason}
       onOpenFolderFromWorkspaceMenu={onOpenFolderFromWorkspaceMenu}
       onOpenRemoteWorkspace={onOpenRemoteWorkspace}
       webRemoteControlWorkspaceSwitcher={webRemoteControlWorkspaceSwitcher}
@@ -2253,9 +2265,9 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
                 </div>
               </AutomationsMainBreadcrumbFrame>
             </main>
-            ) : (
-              <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
-                {/* Bugfix: 手机远控聊天页中间层必须继续提供 flex 高度链。
+          ) : (
+            <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
+              {/* Bugfix: 手机远控聊天页中间层必须继续提供 flex 高度链。
                   只有 h-full 的普通 block 会让 ChatView 的 flex-1 失效，草稿空态贴顶且内部滚动被外层裁掉。 */}
               <ScopedErrorBoundary
                 scope="workspace-chat"

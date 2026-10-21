@@ -255,19 +255,15 @@ describe("WebRemoteControlTaskIndex layout", () => {
       resolve(process.cwd(), "packages/ui/src/WebRemoteControlTaskIndex.tsx"),
       "utf8",
     );
-    const sidebarSource = readFileSync(
-      resolve(process.cwd(), "packages/ui/src/WorkspaceSidebar.tsx"),
-      "utf8",
-    );
 
+    // v3.16.2 起 sidebar 切换为官方 ProjectSidebar：宽远控侧栏的 workspace 工具栏由
+    // ProjectSidebarListHeader 视图切换承接，旧侧栏的 workspaceTaskToolbar 接线随单体
+    // 实现移除；这里只保留任务索引组件内部「工具栏槽位在置顶任务之前」的顺序断言。
     expect(taskIndexSource).toContain("renderBeforePinnedTasks");
     expect(taskIndexSource).toContain("model.pinnedTasks.map((task) => renderTaskRow(task))");
     expect(
       taskIndexSource.indexOf("{renderBeforePinnedTasks ? renderBeforePinnedTasks() : null}"),
     ).toBeLessThan(taskIndexSource.indexOf("{model.pinnedTasks.length > 0 ? ("));
-    expect(sidebarSource).toContain("const workspaceTaskToolbar");
-    expect(sidebarSource).toContain("renderBeforePinnedTasks={workspaceTaskToolbar}");
-    expect(sidebarSource).toContain("{!isWebRemoteControlSidebar ? workspaceTaskToolbar() : null}");
   });
 
   it("keeps mutable wide remote task actions out of the initial static markup", async () => {

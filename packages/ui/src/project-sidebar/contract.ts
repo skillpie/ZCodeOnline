@@ -145,6 +145,11 @@ export interface ProjectSidebarProps {
   onOpenPluginStore?: () => void;
   automationsActive?: boolean;
   pluginStoreActive?: boolean;
+  // fork 能力：技能市场入口与选中态，与插件市场入口同构。
+  onOpenSkillMarket?: () => void;
+  skillMarketActive?: boolean;
+  // fork 能力：只读 workspace 下禁用新建任务并解释原因；空值表示可新建。
+  workspaceReadOnlyReason?: string | null;
   onFileTreeOpenChange?: (open: boolean) => void;
   onWebRemoteTaskOpen?: (options: { crossWorkspace: boolean }) => void;
   onWebRemoteTaskSwitchingChange?: (switching: boolean) => void;

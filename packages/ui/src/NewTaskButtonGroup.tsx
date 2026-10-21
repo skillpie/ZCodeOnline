@@ -1,6 +1,7 @@
 import { MessageCirclePlus } from "lucide-react";
 import { TID_TASK_NEW_BUTTON } from "@zcode/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { runUserAction } from "@/lib/userActionTelemetry.js";
@@ -8,13 +9,16 @@ import { runUserAction } from "@/lib/userActionTelemetry.js";
 export function NewTaskButtonGroup({
   onCreateTask,
   disabled = false,
+  disabledReason,
 }: {
   onCreateTask: () => void;
   disabled?: boolean;
+  /** fork 能力：只读 workspace 下禁用新建时，tooltip 解释原因；正常态不挂 tooltip（按钮已带文案与快捷键）。 */
+  disabledReason?: string;
 }) {
   const { intl } = useZCodeIntl();
   const newTaskShortcutLabel = useShortcutCommandLabel("newTask");
-  return (
+  const button = (
     <div
       role="group"
       aria-disabled={disabled}
@@ -43,5 +47,11 @@ export function NewTaskButtonGroup({
         </span>
       </div>
     </div>
+  );
+  if (!disabledReason) return button;
+  return (
+    <ControlHintTooltip title={disabledReason}>
+      <div>{button}</div>
+    </ControlHintTooltip>
   );
 }

@@ -228,7 +228,12 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
               className="absolute inset-0 flex min-h-0 flex-col"
             >
               {/* 原因：顶层新建显式传 null 会抹掉当前项目；省略归属，让 Root 与快捷键共用继承路径。 */}
-              <ProjectSidebarNavigation props={props} onCreate={() => props.onCreateTask()} />
+              {/* fork 决策 D37：手机 home-only 不承载 Automations 入口（手机端没有自动化主视图）；
+                  插件/技能市场入口保留。桌面与已连接远控不受影响。 */}
+              <ProjectSidebarNavigation
+                props={homeOnlySwitcher ? { ...props, onOpenAutomations: undefined } : props}
+                onCreate={() => props.onCreateTask()}
+              />
               <div
                 data-testid="sidebar-task-list-region"
                 className="flex min-h-0 flex-1 flex-col border-t border-border/50 pt-3 [anchor-name:--sidebar-task-list-divider]"

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyWorkspaceTriggerSelection } from "../src/WorkspaceSidebar.js";
+// v3.16.2 起 WorkspaceSidebar.tsx 改为 ProjectSidebar 转发，选择工具从规范模块导入。
+import { applyWorkspaceTriggerSelection } from "../src/WorkspaceSidebar/workspaceSidebarSelection.js";
 import {
   createTabStore,
   isWorkspaceReadOnly,
