@@ -137,6 +137,9 @@ describe("GitBranchListRow 新建 Worktree 动作", () => {
     const button = screen.getByRole("button", {
       name: "git.branchSwitcher.createWorktreeAction.ariaLabel:feature/todo",
     });
+    // 行容器 items-start，行尾图标按钮统一用 -mt-0.5 贴齐首行文本（与删除/对话动作同款）；
+    // 曾缺失导致「检出为 Worktree」按钮比相邻按钮低 2px。
+    expect(button.className).toContain("-mt-0.5");
     fireEvent.click(button);
 
     expect(onCreateWorktree).toHaveBeenCalledWith("feature/todo");

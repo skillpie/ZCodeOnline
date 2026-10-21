@@ -122,7 +122,7 @@ export function GitBranchListRow({
             { id: "git.branchSwitcher.createWorktreeAction.ariaLabel" },
             { branchName: branch.name },
           )}
-          className="-ml-2 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
+          className="-ml-2 -mt-0.5 shrink-0 rounded-sm text-foreground-subtle hover:text-foreground"
           onClick={(event) => {
             // 阻止冒泡到 cmdk Item，避免创建动作被当作分支切换。
             event.stopPropagation();
