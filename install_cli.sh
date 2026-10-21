@@ -47,6 +47,25 @@ if [ "$NO_RESTART" = false ]; then
     exit 1
   fi
   step "重启宿主 daemon（运行中的网页会话任务会被中断）"
-  "$SERVER_CLI" restart
+  # Bug 原因：`zcode restart` 只重启 server core 子进程；launchd 保活的 supervisor
+  # 进程常驻不退出，内存里仍是旧构建（含版本号），表现为「构建了新版本、状态仍报
+  # 旧版本」。必须整进程重启 supervisor 才能加载新 dist。服务未安装（无 LaunchAgent）
+  # 时回退 zcode restart。
+  SERVICE_LABEL="$(
+    grep -l "<string>$HOME/.zcode/server</string>" \
+      "$HOME/Library/LaunchAgents/"com.zhipu.zcode.server.*.plist 2>/dev/null \
+      | head -1 | sed -E 's/.*com\.zhipu\.zcode\.server\.([^.]+)\.plist/\1/'
+  )"
+  if [ -n "$SERVICE_LABEL" ]; then
+    launchctl kickstart -k "gui/$(id -u)/com.zhipu.zcode.server.$SERVICE_LABEL"
+    # 等待 supervisor 重新就绪（首次启动可能带 SQLite 迁移），脚本结束时状态可预期。
+    for _ in $(seq 1 30); do
+      STATE="$("$SERVER_CLI" status 2>/dev/null | sed -n 's/.*"state":"\([a-z]*\)".*/\1/p' | head -1)"
+      [ "$STATE" = "ready" ] && break
+      sleep 1
+    done
+  else
+    "$SERVER_CLI" restart
+  fi
   "$SERVER_CLI" status
 fi
