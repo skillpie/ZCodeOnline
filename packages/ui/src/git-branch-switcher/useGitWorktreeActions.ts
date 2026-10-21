@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import { toast } from "@/components/ui/toast.js";
 import { resolveGitWorktreeIssueMessageId } from "@/git-branch-switcher/display.js";
+import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
+import { getPathLeaf } from "@/lib/path.js";
 import { buildWorktreeBranchName } from "@/lib/worktreeBranchName.js";
 import { logger } from "@/logger.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
@@ -24,6 +26,9 @@ interface UseGitWorktreeActionsOptions {
  */
 export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOptions) {
   const { gitService } = useServices();
+  // 项目登记必须写入侧栏读取的同一窗口目录服务；useServices 可能是远端 attachment 的服务组。
+  const baseServices = useBaseWorkspaceServices();
+  const projectService = (baseServices.windowProjectDirectory ?? baseServices).projectService;
   const { intl } = useZCodeIntl();
   const tabStoreApi = useTabStoreApi();
   const [worktreePending, setWorktreePending] = useState(false);
@@ -62,6 +67,38 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
     [tabStoreApi],
   );
 
+  /**
+   * Bugfix：v3.16.2 侧栏切换为官方 ProjectSidebar 后，项目列表来自项目服务
+   * readTree（虚拟项目注册表）；fork 的 worktree 流程只开 tab + UI 草稿、不走
+   * prepareSession 目录准入，新目录不会进注册表，侧栏就看不到该 worktree
+   * （旧单体侧栏直接列 workspace tab，无此问题）。这里在打开 tab 前按「新项目」
+   * 同款 saveProject 把 worktree 目录登记为独立项目；登记失败不阻塞 worktree
+   * 打开（目录已创建，可稍后手动添加项目）。
+   */
+  const registerWorktreeProject = useCallback(
+    async (worktreePath: string) => {
+      if (!projectService) return;
+      try {
+        const tree = await projectService.readTree({ includeDeleted: false });
+        const alreadyRegistered = tree.projects.some((project) =>
+          project.roots.some((root) => root.rootPath === worktreePath),
+        );
+        if (alreadyRegistered) return;
+        await projectService.saveProject({
+          name: getPathLeaf(worktreePath),
+          roots: [worktreePath],
+          primaryRoot: worktreePath,
+        });
+      } catch (error: unknown) {
+        logger.warn("[GitWorktreeActions] worktree 项目登记失败", {
+          worktreePath,
+          error: getErrorMessage(error),
+        });
+      }
+    },
+    [projectService],
+  );
+
   /** 两种创建模式的共同后置处理：失败 toast、成功 toast 并作为独立项目打开新 worktree。 */
   const settleAddWorktreeResult = useCallback(
     async (
@@ -86,10 +123,12 @@ export function useGitWorktreeActions({ workspacePath }: UseGitWorktreeActionsOp
       toast(
         intl.formatMessage({ id: "git.worktree.toast.created" }, { path: result.worktree.path }),
       );
+      // 先登记项目再开 tab：addTab 触发侧栏项目树 refresh，readTree 才能读到新项目。
+      await registerWorktreeProject(result.worktree.path);
       openWorktreeTab(result.worktree.path);
       return true;
     },
-    [intl, notifyWorktreeFailure, openWorktreeTab, workspacePath],
+    [intl, notifyWorktreeFailure, openWorktreeTab, registerWorktreeProject, workspacePath],
   );
 
   const createWorktreeForProject = useCallback(async () => {

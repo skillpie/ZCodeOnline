@@ -41,7 +41,10 @@ import { remoteHostIdFromWorkspaceIdentity } from "@/project-sidebar/contract.js
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { ProjectEditor } from "@/project-sidebar/ProjectEditor.js";
 import { ProjectCreation } from "@/project-sidebar/ProjectCreation.js";
-import { ProjectFolderIcon } from "@/project-sidebar/ProjectFolderIcon.js";
+import {
+  isGitWorktreeRootPath,
+  ProjectFolderIcon,
+} from "@/project-sidebar/ProjectFolderIcon.js";
 import { projectKey, projectSourceServerId } from "@/project-sidebar/view.js";
 import { useProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
@@ -350,6 +353,7 @@ export function ProjectComposerMenu({
             ) : (
               <ProjectFolderIcon
                 rootCount={currentProject?.roots.length ?? 0}
+                worktree={isGitWorktreeRootPath(currentProject?.roots[0]?.rootPath)}
                 className={currentWorkspaceIconClassName}
               />
             )}
@@ -449,6 +453,7 @@ export function ProjectComposerMenu({
                       ) : (
                         <ProjectFolderIcon
                           rootCount={project.roots.length}
+                          worktree={isGitWorktreeRootPath(project.roots[0]?.rootPath)}
                           className="size-4 text-foreground-subtle"
                         />
                       )}

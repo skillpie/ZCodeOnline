@@ -14,7 +14,7 @@ import {
   Trash2,
   MessageCirclePlus,
 } from "lucide-react";
-import { ProjectFolderIcon } from "@/project-sidebar/ProjectFolderIcon.js";
+import { isGitWorktreeRootPath, ProjectFolderIcon } from "@/project-sidebar/ProjectFolderIcon.js";
 import { sourceServerConnectionStateSchema } from "@zcode/shared";
 import type {
   ProjectTask,
@@ -245,6 +245,8 @@ export const ProjectNodeContent = memo(function ProjectNodeContent({
                           <ProjectFolderIcon
                             rootCount={project.roots.length}
                             open={isOpen}
+                            /* fork 能力：主 root 位于 `.worktrees/` 下时识别为 git worktree。 */
+                            worktree={isGitWorktreeRootPath(project.roots[0]?.rootPath)}
                             className="size-4 shrink-0 text-foreground-subtle"
                           />
                         )}

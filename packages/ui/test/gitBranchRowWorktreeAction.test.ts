@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   addTab: vi.fn(),
   startDraft: vi.fn(),
   toast: vi.fn(),
+  projectReadTree: vi.fn(),
+  saveProject: vi.fn(),
 }));
 
 vi.mock("lucide-react", () => {
@@ -55,6 +57,16 @@ vi.mock("@/lib/pickerFocus.js", () => ({
 vi.mock("@/hooks/useServices.js", () => ({
   useServices: () => ({
     gitService: { addWorktree: mocks.addWorktree, getLocalBranches: mocks.getLocalBranches },
+  }),
+}));
+
+vi.mock("@/hooks/useWorkspaceServices.js", () => ({
+  // 侧栏项目列表读取 windowProjectDirectory 下的项目服务；worktree 项目登记须写同一服务。
+  useBaseWorkspaceServices: () => ({
+    projectService: {
+      readTree: mocks.projectReadTree,
+      saveProject: mocks.saveProject,
+    },
   }),
 }));
 
@@ -219,12 +231,19 @@ describe("useGitWorktreeActions", () => {
     return captured;
   }
 
-  it("createWorktreeForBranch：以既有分支请求 addWorktree，成功后 toast 并作为独立项目打开", async () => {
+  it("createWorktreeForBranch：以既有分支请求 addWorktree，成功后登记项目并 toast 打开", async () => {
     mocks.addWorktree.mockResolvedValue({
       ok: true,
       worktree: { path: "/repo/.worktrees/feature-todo", branchName: "feature/todo" },
       issues: [],
-    } satisfies GitWorktreeMutationResult);
+    });
+    // 项目树里没有该目录 → 走 saveProject 登记为独立项目。
+    mocks.projectReadTree.mockResolvedValue({ projects: [], tasks: [] });
+    mocks.saveProject.mockResolvedValue({
+      id: "proj-1",
+      name: "feature-todo",
+      roots: [{ rootPath: "/repo/.worktrees/feature-todo" }],
+    });
 
     const { createWorktreeForBranch } = await renderWorktreeActionsHarness();
     await act(async () => {
@@ -237,8 +256,40 @@ describe("useGitWorktreeActions", () => {
       branchName: "feature/todo",
     });
     expect(mocks.toast).toHaveBeenCalledWith("git.worktree.toast.created");
+    // Bugfix：官方 ProjectSidebar 的项目列表读项目服务 readTree；worktree 只开 tab
+    // 不走目录准入，必须 saveProject 登记后侧栏才可见（登记先于 addTab 触发的刷新）。
+    expect(mocks.saveProject).toHaveBeenCalledWith({
+      name: "feature-todo",
+      roots: ["/repo/.worktrees/feature-todo"],
+      primaryRoot: "/repo/.worktrees/feature-todo",
+    });
     expect(mocks.addTab).toHaveBeenCalledWith("/repo/.worktrees/feature-todo");
     expect(mocks.startDraft).toHaveBeenCalledWith("/repo/.worktrees/feature-todo");
+  });
+
+  it("createWorktreeForBranch：目录已是项目 root 时不重复登记", async () => {
+    mocks.addWorktree.mockResolvedValue({
+      ok: true,
+      worktree: { path: "/repo/.worktrees/feature-todo", branchName: "feature/todo" },
+      issues: [],
+    });
+    mocks.projectReadTree.mockResolvedValue({
+      projects: [
+        {
+          id: "proj-existing",
+          roots: [{ rootPath: "/repo/.worktrees/feature-todo" }],
+        },
+      ],
+      tasks: [],
+    });
+
+    const { createWorktreeForBranch } = await renderWorktreeActionsHarness();
+    await act(async () => {
+      await createWorktreeForBranch("feature/todo");
+    });
+
+    expect(mocks.saveProject).not.toHaveBeenCalled();
+    expect(mocks.addTab).toHaveBeenCalledWith("/repo/.worktrees/feature-todo");
   });
 
   it("createWorktreeForBranch：创建被阻塞时不打开新项目，按 issue 码提示", async () => {
@@ -270,6 +321,7 @@ describe("useGitWorktreeActions", () => {
       worktree: { path: "/repo/.worktrees/feat-123456", branchName: "feat/123456" },
       issues: [],
     } satisfies GitWorktreeMutationResult);
+    mocks.projectReadTree.mockResolvedValue({ projects: [], tasks: [] });
 
     const { createWorktreeForProject } = await renderWorktreeActionsHarness();
     await act(async () => {
