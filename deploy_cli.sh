@@ -3,8 +3,8 @@
 # 内容：server-cli 多平台 stage 归档 + catalog.json（宿主自动更新源）+ install.sh/ps1/cmd，
 # 上传到服务器 $DL_DIR，供终端用户 curl 安装脚本与已装宿主自动更新使用（specs/web-tunnel.md）。
 # 用法：
-#   ./deploy_cli.sh                 # 发布全平台（默认）
-#   ./deploy_cli.sh darwin-arm64    # 发布指定平台（可传多个，位置参数优先级最高，
+#   ./deploy_cli.sh                 # 发布默认平台（darwin-x64/arm64 + win32-x64/arm64，不含 linux）
+#   ./deploy_cli.sh linux-x64       # 发布指定平台（可传多个，位置参数优先级最高，
 #                                   # 等价于 RELEASE_TARGETS 环境变量）
 #
 # 服务器与站点信息不写入本文件（deploy_web.sh 曾因此出库）：从
@@ -28,12 +28,12 @@ fi
 SERVER_USER="${SERVER_USER:-root}"
 DL_DIR="${DL_DIR:-/var/www/zcode-dl}"
 
-# 发布平台：位置参数 > RELEASE_TARGETS 环境变量 > 默认全平台（supportedServerTargets 全集，
-# packages/zcode-server-cli/src/runtime/manifest.ts）。缺哪个平台，该平台宿主就更新不到。
+# 发布平台：位置参数 > RELEASE_TARGETS 环境变量 > 默认（darwin 全架构 + win32 全架构，
+# 不含 linux——当前没有 linux 宿主用户；需要时显式传参，如 ./deploy_cli.sh linux-x64 linux-arm64）。
 if [ $# -gt 0 ]; then
   RELEASE_TARGETS="$*"
 fi
-RELEASE_TARGETS="${RELEASE_TARGETS:-darwin-x64 darwin-arm64 linux-x64 linux-arm64 win32-x64 win32-arm64}"
+RELEASE_TARGETS="${RELEASE_TARGETS:-darwin-x64 darwin-arm64 win32-x64 win32-arm64}"
 
 step() { printf '\n\033[0;34m========== %s ==========\033[0m\n' "$1"; }
 

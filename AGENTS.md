@@ -36,12 +36,12 @@
 | 桌面端打包并重装本机（macOS）            | `./install_desktop.sh`（`--skip-build` 只重装）                                                          |
 | 桌面端打包并安装本机（Windows）          | `.\install_desktop.ps1`（`-SkipBuild` 只安装）                                                           |
 | Web 隧道部署                             | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库）                 |
-| 终端用户 CLI 发行包发布                  | `./deploy_cli.sh`（server-cli 归档 + catalog + 安装脚本；默认全平台六目标，可传参覆盖）                 |
+| 终端用户 CLI 发行包发布                  | `./deploy_cli.sh`（server-cli 归档 + catalog + 安装脚本；默认 darwin/win32 全架构不含 linux，可传参覆盖） |
 | 桌面版两端构建并发布                     | `./deploy_desktop.sh`（正式身份构建 mac-arm64 + win-x64 并上传，`--mac` / `--win` 单端）                 |
 | 宿主 daemon 重建并重启（网页会话 Agent） | `./install_cli.sh`（`--skip-build` 只重启，`--no-restart` 只构建）                                       |
 | 宿主 daemon 重建并重启（Windows）        | `.\install_cli.ps1`（`-SkipBuild` 只重启，`-NoRestart` 只构建）                                          |
 
-- 提交不触发自动部署：Web 隧道部署、CLI 发行包发布（`./deploy_cli.sh`，默认发布全平台六目标：darwin-x64/arm64、linux-x64/arm64、win32-x64/arm64）均需手动执行。
+- 提交不触发自动部署：Web 隧道部署、CLI 发行包发布（`./deploy_cli.sh`，默认 darwin-x64/arm64 + win32-x64/arm64 不含 linux，需要 linux 时传参 `./deploy_cli.sh linux-x64 linux-arm64` 指定）均需手动执行。
 - 部署脚本只上传静态 Web / relay / 发行包，不重建本机宿主 daemon；改动 `apps/zcode-cli` 或 `packages/zcode-server-cli` 后必须手动执行 `./install_cli.sh` 重建并重启，否则 zcode.skillpie.cn 的网页会话仍运行旧 Agent 产物。daemon 有运行中任务时先 `./install_cli.sh --no-restart` 只构建，任务结束后再 `./install_cli.sh --skip-build` 重启。
 - 桌面版安装包自包含 Agent 运行时：`packages/desktop/scripts/prepare-agent-node-bundle.mjs` 把 `zcode.cjs` 打进安装包 `bundled-agents/`，由 Electron 内置 Node（`ELECTRON_RUN_AS_NODE`）执行，`packages/desktop/src/main/desktopRuntimeEnv.ts` 的 `resolveBundledZCodeAgentBinaryPath` 打包态只从 `process.resourcesPath` 解析入口、不查 PATH——用户只装桌面版不需要 CLI，不要让桌面版依赖外部安装的 `zcode`。
 - CLI 发行包与桌面安装包受众互不覆盖：`./deploy_cli.sh` 的用户经 `catalog.json` 空闲自动更新，`./deploy_desktop.sh` 的用户需重新下载安装包；同一修复同时影响两端时必须各发一版，只发一端则另一端停留在旧版。
