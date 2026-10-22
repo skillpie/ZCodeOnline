@@ -156,39 +156,19 @@ export function createDataSourceService(): IDataSourceService {
       return result;
     },
 
-    async getSessionDataSourceBinding({ workspacePath, workspaceIdentity, sessionId }): Promise<{
+    async getSessionDataSourceBinding({ sessionId }): Promise<{
       dataSourceId: string | null;
     }> {
-      return {
-        dataSourceId: await readSessionDataSourceBindingFile(
-          workspacePath,
-          workspaceIdentity,
-          sessionId,
-        ),
-      };
+      return { dataSourceId: await readSessionDataSourceBindingFile(sessionId) };
     },
 
-    async setSessionDataSourceBinding({
-      workspacePath,
-      workspaceIdentity,
-      sessionId,
-      dataSourceId,
-    }): Promise<void> {
-      await writeSessionDataSourceBindingFile(
-        workspacePath,
-        workspaceIdentity,
-        sessionId,
-        dataSourceId,
-      );
+    async setSessionDataSourceBinding({ sessionId, dataSourceId }): Promise<void> {
+      await writeSessionDataSourceBindingFile(sessionId, dataSourceId);
       log.info("session binding updated", sessionId, dataSourceId ?? "cleared");
     },
 
-    async deleteSessionDataSourceBinding({
-      workspacePath,
-      workspaceIdentity,
-      sessionId,
-    }): Promise<void> {
-      await deleteSessionDataSourceBindingFile(workspacePath, workspaceIdentity, sessionId);
+    async deleteSessionDataSourceBinding({ sessionId }): Promise<void> {
+      await deleteSessionDataSourceBindingFile(sessionId);
       log.info("session binding deleted", sessionId);
     },
   };

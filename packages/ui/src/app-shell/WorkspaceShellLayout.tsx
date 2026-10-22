@@ -1705,14 +1705,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   const handleV4SessionDeleted = useCallback(() => {
     if (activeTaskId) {
       // 会话删除时同步清理宿主侧的数据源绑定（用户决策：防绑定表无限增长）。
-      void deleteSessionDataSourceBinding(
-        services.dataSourceService,
-        {
-          workspacePath: workspaceAbsPath,
-          ...(workspaceIdentity ? { workspaceIdentity } : {}),
-        },
-        activeTaskId,
-      );
+      void deleteSessionDataSourceBinding(services.dataSourceService, activeTaskId);
       for (const tab of sidePaneState?.tabs ?? []) {
         if (tab.type === "selection-side-chat" && tab.parentSessionId === activeTaskId) {
           handleCloseSidePaneTab(tab.id);

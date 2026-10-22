@@ -35,24 +35,17 @@ export interface IDataSourceService {
   ): Promise<DataSourceExecuteResult>;
   /**
    * 会话级数据源绑定（用户决策：宿主持久化，桌面端与 Web 端共用同一份）。
+   * sessionId 全局唯一，不按 workspace 分桶（跨端 key 天然一致）。
    * 读取未绑定为 null；写入 null 清除。会话删除时调用 delete 清理，防止无限增长。
    */
-  getSessionDataSourceBinding(input: {
-    workspacePath: string;
-    workspaceIdentity?: string;
-    sessionId: string;
-  }): Promise<{ dataSourceId: string | null }>;
+  getSessionDataSourceBinding(input: { sessionId: string }): Promise<{
+    dataSourceId: string | null;
+  }>;
   setSessionDataSourceBinding(input: {
-    workspacePath: string;
-    workspaceIdentity?: string;
     sessionId: string;
     dataSourceId: string | null;
   }): Promise<void>;
-  deleteSessionDataSourceBinding(input: {
-    workspacePath: string;
-    workspaceIdentity?: string;
-    sessionId: string;
-  }): Promise<void>;
+  deleteSessionDataSourceBinding(input: { sessionId: string }): Promise<void>;
 }
 
 export const IDataSourceService = createServiceDescriptor<IDataSourceService>(

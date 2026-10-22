@@ -204,11 +204,7 @@ export function useDraftConfigControl(params: {
   useEffect(() => {
     if (sessionId === null) return;
     let cancelled = false;
-    void readSessionDataSourceBinding(
-      dataSourceService,
-      { workspacePath, workspaceIdentity },
-      sessionId,
-    ).then((bound) => {
+    void readSessionDataSourceBinding(dataSourceService, sessionId).then((bound) => {
       if (cancelled || !bound) return;
       setStoredState((current) =>
         current.scopeKey === sessionBindingScopeKey && !current.draft.dataSourceId
@@ -220,7 +216,7 @@ export function useDraftConfigControl(params: {
     return () => {
       cancelled = true;
     };
-  }, [dataSourceService, sessionId, sessionBindingScopeKey, workspacePath, workspaceIdentity]);
+  }, [dataSourceService, sessionId, sessionBindingScopeKey]);
   // 首发是同一 pane 的地址迁移，保持其间的新编辑；换页或卸载不保留第二份配置。
   let currentState: ComposerState =
     storedState.scopeKey === scopeKey
@@ -673,12 +669,7 @@ export function useDraftConfigControl(params: {
       // 会话级绑定写宿主侧 map（桌面/Web 共享、切换保持）；草稿对象同步携带驱动
       // 当前控件显示。项目级记忆（按项目）继续负责新对话初始勾选。
       if (sessionId !== null) {
-        void writeSessionDataSourceBinding(
-          dataSourceService,
-          { workspacePath, workspaceIdentity },
-          sessionId,
-          dataSourceId,
-        );
+        void writeSessionDataSourceBinding(dataSourceService, sessionId, dataSourceId);
       }
       writeDataSourceSelectionRecent(
         workspacePath,
