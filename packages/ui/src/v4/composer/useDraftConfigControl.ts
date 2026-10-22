@@ -197,26 +197,10 @@ export function useDraftConfigControl(params: {
   }, [scopeKey]);
   const [storedState, setStoredState] = useState(loadedScope);
   // 用户决策：真实会话的数据源绑定以宿主侧会话 map 为准（草稿生命周期会反复冲掉
-  // 绑定）。会话切换/挂载时异步读宿主绑定，回填到当前草稿内存态（不写草稿持久化，
-  // 避免又被空白清理冲掉）；未绑定时不动草稿，由 new-task 初始化回退项目级记忆。
+  // 绑定）；未绑定时不动草稿，由 new-task 初始化回退项目级记忆。读宿主绑定回填的
+  // effect 定义在 stateRef 之后（回填基于 stateRef.current 构造，见下方注释）。
   const sessionBindingScopeKey = scopeKey;
   const [, forceBindingSeed] = useState(0);
-  useEffect(() => {
-    if (sessionId === null) return;
-    let cancelled = false;
-    void readSessionDataSourceBinding(dataSourceService, sessionId).then((bound) => {
-      if (cancelled || !bound) return;
-      setStoredState((current) =>
-        current.scopeKey === sessionBindingScopeKey && !current.draft.dataSourceId
-          ? { ...current, draft: { ...current.draft, dataSourceId: bound } }
-          : current,
-      );
-      forceBindingSeed((n) => n + 1);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [dataSourceService, sessionId, sessionBindingScopeKey]);
   // 首发是同一 pane 的地址迁移，保持其间的新编辑；换页或卸载不保留第二份配置。
   let currentState: ComposerState =
     storedState.scopeKey === scopeKey
@@ -303,6 +287,31 @@ export function useDraftConfigControl(params: {
   if (currentState !== storedState) setStoredState(currentState);
   const stateRef = useRef(currentState);
   stateRef.current = currentState;
+  // 会话切换/挂载时异步读宿主绑定，回填到当前草稿内存态（不写草稿持久化，避免
+  // 又被空白清理冲掉）。
+  useEffect(() => {
+    if (sessionId === null) return;
+    let cancelled = false;
+    void readSessionDataSourceBinding(dataSourceService, sessionId).then((bound) => {
+      if (cancelled || !bound) return;
+      // Bugfix：回填必须基于 stateRef.current（每渲染同步到最新 scope）构造。此前检查
+      // setStoredState 的 current（旧 scope 的 storedState）——Web 端切换会话不重挂载
+      // composer 时 storedState 停留在旧 scope，守卫永不满足，宿主绑定读回后被丢弃，
+      // 表现为「远端没记住」；桌面端因 composer 重挂载而侥幸正常。
+      if (stateRef.current.scopeKey !== sessionBindingScopeKey) return;
+      if (stateRef.current.draft.dataSourceId) return;
+      const next = {
+        ...stateRef.current,
+        draft: { ...stateRef.current.draft, dataSourceId: bound },
+      };
+      stateRef.current = next;
+      setStoredState(next);
+      forceBindingSeed((n) => n + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dataSourceService, sessionId, sessionBindingScopeKey]);
   // 与 stateRef 同步的草稿快照；发送冻结路径读 .current（与 draftConfigRef 同一模式）。
   const composerDraftRef = useRef(draft);
   composerDraftRef.current = draft;
