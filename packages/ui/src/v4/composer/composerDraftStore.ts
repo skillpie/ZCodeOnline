@@ -352,6 +352,7 @@ export function readV4ComposerDraft(
   const key = draftStorageKey(workspacePath, workspaceIdentity, scopeId, scope);
   const file = readDraftFile(key);
   const draft = file.scopes[scopeId];
+  logComposerDraftDiag("read", workspacePath, workspaceIdentity, scopeId, draft);
   if (!draft || typeof draft.text !== "string") {
     // 旧记录只有显式项目归属才能认领；未归类历史不能靠最近目录猜测。
     if (!file.legacyClaimed && scopeId === V4_DRAFT_SCOPE_ROOT && scope?.projectId) {
@@ -364,6 +365,24 @@ export function readV4ComposerDraft(
   return draft;
 }
 
+/** 临时诊断：定位数据源绑定在会话切换后被覆写的问题（定位后移除）。 */
+export function logComposerDraftDiag(
+  phase: "read" | "persist",
+  workspacePath: string,
+  workspaceIdentity: string | undefined,
+  scopeId: string,
+  draft: { dataSourceId?: string; text?: string; mode?: string } | null | undefined,
+): void {
+  logger.info("[draft-persist-diag]", {
+    phase,
+    scopeId: scopeId.slice(0, 24),
+    workspaceKey: (workspaceIdentity?.trim() || workspacePath).slice(-40),
+    dataSourceId: draft?.dataSourceId ?? null,
+    hasText: Boolean(draft?.text),
+    mode: draft?.mode ?? null,
+  });
+}
+
 export function persistV4ComposerDraft(
   workspacePath: string,
   workspaceIdentity: string | undefined,
@@ -374,6 +393,7 @@ export function persistV4ComposerDraft(
   const key = draftStorageKey(workspacePath, workspaceIdentity, scopeId, scope);
   const file = readDraftFile(key);
   const hadDraft = Boolean(file.scopes[scopeId]);
+  logComposerDraftDiag("persist", workspacePath, workspaceIdentity, scopeId, draft);
   // 正文/模型各自更新草稿时不能抹掉项目意图；显式新建传 null 才清除项目归属。
   const savedGroupId = file.scopes[scopeId]?.taskGroupId;
   const savedProjectId = file.scopes[scopeId]?.projectId;
