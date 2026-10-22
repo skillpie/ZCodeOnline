@@ -373,7 +373,8 @@ export function logComposerDraftDiag(
   scopeId: string,
   draft: { dataSourceId?: string; text?: string; mode?: string } | null | undefined,
 ): void {
-  logger.info("[draft-persist-diag]", {
+  // 注意：生产构建下 logger.info 是 no-op，生命周期诊断必须走 logger.lifecycle（桌面桥落盘）。
+  logger.lifecycle.info("[draft-persist-diag]", {
     phase,
     scopeId: scopeId.slice(0, 24),
     workspaceKey: (workspaceIdentity?.trim() || workspacePath).slice(-40),
