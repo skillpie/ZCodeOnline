@@ -33,6 +33,15 @@ const log = createServiceLogger("data-source");
 /** 同一数据源的内省去重：进行中时复用同一 Promise（覆盖式同步，最后完成者为准）。 */
 const inflightSyncs = new Map<string, Promise<DataSourceSchemaSnapshot>>();
 
+/** 激活路径专用：只返回缓存的快照（无缓存为 null），不做内省、不走网络。 */
+async function syncOrCollectErrorSnapshotOnly(
+  config: DataSourceConfig,
+  activeId: string | null,
+): Promise<DataSourceMutationResult> {
+  const schema = await readSchemaSnapshot(config.id);
+  return { dataSource: maskDataSource(config), activeId, schema, syncError: null };
+}
+
 async function upsertDataSource(input: DataSourceInput): Promise<
   | {
       ok: true;
@@ -124,7 +133,19 @@ export function createDataSourceService(): IDataSourceService {
         await saveDataSourceConfigFile({ ...file, activeId: id });
         log.info("data source activated", id);
       }
-      return syncOrCollectError(target, id);
+      // 用户决策：选中立即返回缓存的表结构快照（远端 SSH 场景全库内省 + 大快照
+      // 传输要数秒，不能阻塞选中）；内省挪到后台执行，完成后快照文件自动更新，
+      // 管理面板/缓存读取即可见。显式刷新走「同步表结构」按钮（syncSchema）。
+      void syncSchemaOf(target)
+        .then(() => log.info("background schema synced", id))
+        .catch((error) =>
+          log.warn(
+            "background schema sync failed",
+            id,
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
+      return syncOrCollectErrorSnapshotOnly(target, id);
     },
 
     async testDataSource(input): Promise<DataSourceTestResult> {
