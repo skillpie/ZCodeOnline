@@ -17,6 +17,11 @@ import { createServiceLogger } from "../logger/serviceLogger.js";
 import { executeStatements, introspect, testConnection } from "./dbDriver.js";
 import { loadDataSourceConfigFile, saveDataSourceConfigFile } from "./dataSourceConfigFile.js";
 import {
+  deleteSessionDataSourceBinding as deleteSessionDataSourceBindingFile,
+  readSessionDataSourceBinding as readSessionDataSourceBindingFile,
+  writeSessionDataSourceBinding as writeSessionDataSourceBindingFile,
+} from "./sessionDataSourceBinding.js";
+import {
   invalidateSchemaCache,
   readSchemaSnapshot,
   writeSchemaSnapshot,
@@ -149,6 +154,42 @@ export function createDataSourceService(): IDataSourceService {
       });
       log.debug("executeSql", id, `ok=${String(result.ok)}`, `${result.results.length} statements`);
       return result;
+    },
+
+    async getSessionDataSourceBinding({ workspacePath, workspaceIdentity, sessionId }): Promise<{
+      dataSourceId: string | null;
+    }> {
+      return {
+        dataSourceId: await readSessionDataSourceBindingFile(
+          workspacePath,
+          workspaceIdentity,
+          sessionId,
+        ),
+      };
+    },
+
+    async setSessionDataSourceBinding({
+      workspacePath,
+      workspaceIdentity,
+      sessionId,
+      dataSourceId,
+    }): Promise<void> {
+      await writeSessionDataSourceBindingFile(
+        workspacePath,
+        workspaceIdentity,
+        sessionId,
+        dataSourceId,
+      );
+      log.info("session binding updated", sessionId, dataSourceId ?? "cleared");
+    },
+
+    async deleteSessionDataSourceBinding({
+      workspacePath,
+      workspaceIdentity,
+      sessionId,
+    }): Promise<void> {
+      await deleteSessionDataSourceBindingFile(workspacePath, workspaceIdentity, sessionId);
+      log.info("session binding deleted", sessionId);
     },
   };
   return service;

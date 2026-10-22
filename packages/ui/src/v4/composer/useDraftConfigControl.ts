@@ -27,6 +27,11 @@ import { useSettings } from "@/hooks/useSettingService.js";
 import { parseModelPickerValue } from "@/lib/zcodeSessionProjection.js";
 import { writeDataSourceSelectionRecent } from "@/lib/dataSourceSelectionRecent.js";
 import { useOptionalProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
+import {
+  readSessionDataSourceBinding,
+  writeSessionDataSourceBinding,
+} from "@/v4/composer/sessionDataSourceBinding.js";
+import { useServices } from "@/hooks/useServices.js";
 import { resolveDraftInitialModelSelection } from "@/lib/composerRecent.js";
 import { initializeNewTaskDraft } from "@/v4/composer/newTaskDraft.js";
 import { useComposerClientNamespace } from "@/hooks/useServices.js";
@@ -141,6 +146,7 @@ export function useDraftConfigControl(params: {
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
   const zcodeSessionService = useZCodeSessionService(workspacePath, null, workspaceIdentity);
   const { settings: sharedSettings } = useSettings();
+  const { dataSourceService } = useServices();
   const appFollowupMode = resolveAppFollowupMode(sharedSettings);
   const scopeId = sessionId ?? V4_DRAFT_SCOPE_ROOT;
   const clientNamespace = useComposerClientNamespace();
@@ -190,6 +196,31 @@ export function useDraftConfigControl(params: {
     };
   }, [scopeKey]);
   const [storedState, setStoredState] = useState(loadedScope);
+  // 用户决策：真实会话的数据源绑定以宿主侧会话 map 为准（草稿生命周期会反复冲掉
+  // 绑定）。会话切换/挂载时异步读宿主绑定，回填到当前草稿内存态（不写草稿持久化，
+  // 避免又被空白清理冲掉）；未绑定时不动草稿，由 new-task 初始化回退项目级记忆。
+  const sessionBindingScopeKey = scopeKey;
+  const [, forceBindingSeed] = useState(0);
+  useEffect(() => {
+    if (sessionId === null) return;
+    let cancelled = false;
+    void readSessionDataSourceBinding(
+      dataSourceService,
+      { workspacePath, workspaceIdentity },
+      sessionId,
+    ).then((bound) => {
+      if (cancelled || !bound) return;
+      setStoredState((current) =>
+        current.scopeKey === sessionBindingScopeKey && !current.draft.dataSourceId
+          ? { ...current, draft: { ...current.draft, dataSourceId: bound } }
+          : current,
+      );
+      forceBindingSeed((n) => n + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dataSourceService, sessionId, sessionBindingScopeKey, workspacePath, workspaceIdentity]);
   // 首发是同一 pane 的地址迁移，保持其间的新编辑；换页或卸载不保留第二份配置。
   let currentState: ComposerState =
     storedState.scopeKey === scopeKey
@@ -639,6 +670,16 @@ export function useDraftConfigControl(params: {
   // §7.1；用户决策改为按项目记忆，项目 id 即 draftProjectId，与草稿桶的项目作用域一致）。
   const handleDraftSelectDataSource = useCallback(
     (dataSourceId: string | null) => {
+      // 会话级绑定写宿主侧 map（桌面/Web 共享、切换保持）；草稿对象同步携带驱动
+      // 当前控件显示。项目级记忆（按项目）继续负责新对话初始勾选。
+      if (sessionId !== null) {
+        void writeSessionDataSourceBinding(
+          dataSourceService,
+          { workspacePath, workspaceIdentity },
+          sessionId,
+          dataSourceId,
+        );
+      }
       writeDataSourceSelectionRecent(
         workspacePath,
         workspaceIdentity,
@@ -650,7 +691,14 @@ export function useDraftConfigControl(params: {
         ...(dataSourceId ? { dataSourceId } : { dataSourceId: undefined }),
       }));
     },
-    [updateComposerDraft, workspaceProjectId, workspaceIdentity, workspacePath],
+    [
+      dataSourceService,
+      sessionId,
+      updateComposerDraft,
+      workspaceProjectId,
+      workspaceIdentity,
+      workspacePath,
+    ],
   );
 
   return {

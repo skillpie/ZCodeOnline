@@ -33,6 +33,26 @@ export interface IDataSourceService {
     sql: string,
     options?: { maxRows?: number },
   ): Promise<DataSourceExecuteResult>;
+  /**
+   * 会话级数据源绑定（用户决策：宿主持久化，桌面端与 Web 端共用同一份）。
+   * 读取未绑定为 null；写入 null 清除。会话删除时调用 delete 清理，防止无限增长。
+   */
+  getSessionDataSourceBinding(input: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    sessionId: string;
+  }): Promise<{ dataSourceId: string | null }>;
+  setSessionDataSourceBinding(input: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    sessionId: string;
+    dataSourceId: string | null;
+  }): Promise<void>;
+  deleteSessionDataSourceBinding(input: {
+    workspacePath: string;
+    workspaceIdentity?: string;
+    sessionId: string;
+  }): Promise<void>;
 }
 
 export const IDataSourceService = createServiceDescriptor<IDataSourceService>(
