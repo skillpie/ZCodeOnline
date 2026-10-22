@@ -209,6 +209,7 @@ export function useDraftConfigControl(params: {
       workspaceIdentity,
       modelSelectionView,
       rootScope,
+      draftProjectId,
     );
   }
   // 空配置先初始化了权限，旧逻辑便因已有 mode 永久跳过模型初始化。
@@ -622,16 +623,22 @@ export function useDraftConfigControl(params: {
   );
 
   // 会话级数据源绑定随草稿 scope 持久化；promote 整体转移时自动带到真实会话。
-  // 同时写入 workspace 级记忆（含取消）：新对话初始化按上一次显式操作恢复（specs/data-source.md §7.1）。
+  // 同时写入项目级记忆（含取消）：同项目内的新对话按上一次显式操作恢复（specs/data-source.md
+  // §7.1；用户决策改为按项目记忆，项目 id 即 draftProjectId，与草稿桶的项目作用域一致）。
   const handleDraftSelectDataSource = useCallback(
     (dataSourceId: string | null) => {
-      writeDataSourceSelectionRecent(workspacePath, workspaceIdentity, dataSourceId);
+      writeDataSourceSelectionRecent(
+        workspacePath,
+        workspaceIdentity,
+        dataSourceId,
+        draftProjectId,
+      );
       updateComposerDraft((current) => ({
         ...current,
         ...(dataSourceId ? { dataSourceId } : { dataSourceId: undefined }),
       }));
     },
-    [updateComposerDraft, workspaceIdentity, workspacePath],
+    [draftProjectId, updateComposerDraft, workspaceIdentity, workspacePath],
   );
 
   return {

@@ -19,11 +19,16 @@ export function initializeNewTaskDraft(
   workspaceIdentity: string | undefined,
   view: ModelSelectionView,
   scope?: ComposerScope,
+  projectId?: string | null,
 ): V4ComposerDraft {
   const recent = readComposerRecent(workspacePath, workspaceIdentity, undefined, scope);
-  // 跨会话记忆（specs/data-source.md §7.1）：草稿自身意图优先，其次恢复该 workspace
-  // 上一次显式选择/取消的结果；null（取消或无记忆）回到缺省未选择态。
-  const lastDataSourceId = readDataSourceSelectionRecent(workspacePath, workspaceIdentity);
+  // 跨会话记忆（specs/data-source.md §7.1，按项目记忆）：草稿自身意图优先，其次恢复该
+  // 项目上一次显式选择/取消的结果；null（取消或无记忆）回到缺省未选择态。
+  const lastDataSourceId = readDataSourceSelectionRecent(
+    workspacePath,
+    workspaceIdentity,
+    projectId,
+  );
   return {
     ...draft,
     mode: recent?.mode === "plan" ? "build" : (recent?.mode ?? "build"),
