@@ -26,6 +26,7 @@ import { useZCodeSessionService } from "@/hooks/useZCodeSessionService.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import { parseModelPickerValue } from "@/lib/zcodeSessionProjection.js";
 import { writeDataSourceSelectionRecent } from "@/lib/dataSourceSelectionRecent.js";
+import { useOptionalProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
 import { resolveDraftInitialModelSelection } from "@/lib/composerRecent.js";
 import { initializeNewTaskDraft } from "@/v4/composer/newTaskDraft.js";
 import { useComposerClientNamespace } from "@/hooks/useServices.js";
@@ -146,6 +147,17 @@ export function useDraftConfigControl(params: {
   const draftProjectId = useZCodeSessionStore(
     (state) => state.workspaces[workspaceKey]?.draftProjectId,
   );
+  // Bugfix：数据源按项目记忆的归属不能用 draftProjectId——运行中会话的 follow-up
+  // composer 里它是 undefined，选择会落到 workspace 桶、项目桶留存陈旧选择，恢复即旧值。
+  // 这里改为按目录从 Provider 持有的项目树同步解析（与草稿桶同源）；解析不到再回退
+  // draftProjectId，最终回退 workspace 记忆。
+  const projectDirectory = useOptionalProjectDirectory();
+  const workspaceProjectId = useMemo(() => {
+    const byRoot = projectDirectory?.tree.projects.find((project) =>
+      project.roots.some((root) => root.rootPath === workspacePath),
+    )?.id;
+    return byRoot ?? draftProjectId ?? null;
+  }, [projectDirectory, workspacePath, draftProjectId]);
   const rootScope = useMemo(
     () => resolveComposerScope(draftProjectId, workspaceIdentity, clientNamespace),
     [draftProjectId, workspaceIdentity, clientNamespace],
@@ -209,7 +221,7 @@ export function useDraftConfigControl(params: {
       workspaceIdentity,
       modelSelectionView,
       rootScope,
-      draftProjectId,
+      workspaceProjectId,
     );
   }
   // 空配置先初始化了权限，旧逻辑便因已有 mode 永久跳过模型初始化。
@@ -631,14 +643,14 @@ export function useDraftConfigControl(params: {
         workspacePath,
         workspaceIdentity,
         dataSourceId,
-        draftProjectId,
+        workspaceProjectId,
       );
       updateComposerDraft((current) => ({
         ...current,
         ...(dataSourceId ? { dataSourceId } : { dataSourceId: undefined }),
       }));
     },
-    [draftProjectId, updateComposerDraft, workspaceIdentity, workspacePath],
+    [updateComposerDraft, workspaceProjectId, workspaceIdentity, workspacePath],
   );
 
   return {
