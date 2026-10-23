@@ -63,6 +63,10 @@ export function GitPaneChangeCard({
   const { intl } = useZCodeIntl();
   const createBlameResolver = useGitBlameLineResolver();
   const diffPreviewPlan = useMemo(() => getGitPaneDiffPreviewPlan(diffState), [diffState]);
+  // 无可审查文本差异的条目（二进制/空文件等零行数未跟踪文件）向 Git 功能对齐后
+  // 会进列表与计数，但没有可展开的 diff：整行不可点击、不渲染展开箭头；
+  // 右键菜单与「定位文件树 / 撤销」等文件级动作保留。
+  const expandable = change.isReviewable !== false;
   const multiFileDiffFiles = useMemo(() => {
     if (diffState?.availability !== "patch" || diffState.afterContent === null) {
       return null;
@@ -96,12 +100,14 @@ export function GitPaneChangeCard({
         <ContextMenuTrigger asChild>
           <button
             type="button"
-            aria-expanded={isExpanded}
+            aria-expanded={expandable ? isExpanded : undefined}
             className={cn(
-              "sticky top-0 z-10 flex h-8 w-full items-center gap-3 bg-background px-3 text-left transition-colors hover:bg-surface-hover supports-[backdrop-filter]:backdrop-blur-sm",
+              "sticky top-0 z-10 flex h-8 w-full items-center gap-3 bg-background px-3 text-left transition-colors supports-[backdrop-filter]:backdrop-blur-sm",
+              expandable && "hover:bg-surface-hover",
               isExpanded && "bg-surface-hover",
+              !expandable && "cursor-default",
             )}
-            onClick={() => onOpenChange(change, !isExpanded)}
+            onClick={expandable ? () => onOpenChange(change, !isExpanded) : undefined}
           >
             {/* Review 打开会一次性挂载几十个可视/overscan 行；每行都用 Radix Collapsible
                 会额外创建 provider/presence 和测量链路，CDP CPU profile 里 click 后主线程集中耗在
@@ -165,12 +171,14 @@ export function GitPaneChangeCard({
                   <Undo2Icon className="size-4 shrink-0" />
                 </span>
               ) : null}
-              <ChevronDownIcon
-                className={cn(
-                  "size-4 shrink-0 text-foreground-subtle transition-transform",
-                  isExpanded && "rotate-180",
-                )}
-              />
+              {expandable ? (
+                <ChevronDownIcon
+                  className={cn(
+                    "size-4 shrink-0 text-foreground-subtle transition-transform",
+                    isExpanded && "rotate-180",
+                  )}
+                />
+              ) : null}
             </div>
           </button>
         </ContextMenuTrigger>

@@ -178,6 +178,13 @@ export function GitPane({
         return;
       }
 
+      // 无可审查文本差异的条目（二进制/空文件等零行数未跟踪文件）只读展示、
+      // 不可展开；查找的批量预加载也会遍历到这里，统一在入口跳过，
+      // 不为它们发注定无 diff 的 getDiff 请求。
+      if (change.isReviewable === false) {
+        return;
+      }
+
       const cacheKey = getDiffCacheKey(sourceId, change.path);
       if (pendingDiffKeysRef.current.has(cacheKey) || diffStateByKey[cacheKey]?.diff) {
         return;
@@ -402,6 +409,9 @@ export function GitPane({
   }, [aiReviewPromptMessageId, intl, workspaceIdentity, workspacePath]);
 
   const handleExpandChange = (change: GitPaneFileChange, nextOpen: boolean) => {
+    if (nextOpen && change.isReviewable === false) {
+      return;
+    }
     logger.info(
       `[GitPane] 切换文件展开 workspace=${workspacePath} source=${currentSourceOption.id} path=${change.path} expanded=${nextOpen}`,
     );

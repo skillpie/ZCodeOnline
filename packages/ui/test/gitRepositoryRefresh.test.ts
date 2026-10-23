@@ -182,9 +182,9 @@ describe("buildRepositoryDatasets", () => {
     isConflicted: false,
   };
 
-  it("excludes non-reviewable untracked entries from review datasets but keeps reviewable ones", () => {
-    // Bugfix 回归（fengqun-scm）：二进制/空文件等零行数未跟踪条目保留在服务端变更
-    // 列表里供提交弹窗识别「可提交」，审阅面板按 isReviewable 过滤，不再以 +0/-0 污染列表。
+  it("keeps non-reviewable untracked entries in review datasets to align with git status", () => {
+    // 口径对齐（fengqun-scm）：二进制/空文件等零行数未跟踪条目与提交弹窗、isDirty
+    // 同源全量进数据集与计数，「不可审查」只表现为卡片不可展开，不在数据集裁剪。
     const datasets = buildRepositoryDatasets({
       unstagedChanges: [
         { ...baseChange, section: "untracked", isReviewable: false },
@@ -211,8 +211,7 @@ describe("buildRepositoryDatasets", () => {
       datasets.unstaged.sections
         .find((section) => section.id === "untracked")
         ?.changes.map((change) => change.workspaceRelativePath) ?? [];
-    expect(untrackedPaths).toEqual(["text.txt"]);
-    expect(datasets.unstaged.sections).toHaveLength(1);
+    expect(untrackedPaths).toEqual(["asset.bin", "text.txt"]);
   });
 
   it("keeps all sections when every entry is reviewable", () => {
