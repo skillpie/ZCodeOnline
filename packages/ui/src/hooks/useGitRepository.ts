@@ -214,6 +214,12 @@ function buildSectionsForSource(
 ): GitPaneSection[] {
   const grouped = new Map<GitChangeSectionId, GitPaneFileChange[]>();
   for (const change of changes) {
+    // 审阅面板只展示有可审查文本差异的条目（gitService 已把二进制/空文件等
+    // 零行数未跟踪条目标记为 isReviewable: false）；这些条目仍保留在服务端
+    // 变更列表里，供提交弹窗与 isDirty 的「可提交」口径识别，这里不重复裁剪数据源。
+    if (change.isReviewable === false) {
+      continue;
+    }
     const sectionChanges = grouped.get(change.section) ?? [];
     sectionChanges.push(toPaneFileChange(change));
     grouped.set(change.section, sectionChanges);
@@ -238,7 +244,7 @@ function buildSectionsForSource(
     .filter((section): section is GitPaneSection => Boolean(section));
 }
 
-function buildRepositoryDatasets(options: {
+export function buildRepositoryDatasets(options: {
   unstagedChanges: GitFileChange[];
   stagedChanges: GitFileChange[];
   branchComparison: GitBranchComparison;

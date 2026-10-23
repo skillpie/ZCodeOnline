@@ -33,6 +33,7 @@ function buildFileChange(
   section: GitChangeSectionId,
   added: number,
   removed: number,
+  isReviewable: boolean,
 ): GitFileChange {
   return {
     path: toAbsolutePath(snapshot.resolution.repoRoot, entry.path),
@@ -50,17 +51,20 @@ function buildFileChange(
     isStaged: section === "staged",
     isUntracked: section === "untracked",
     isConflicted: section === "conflicted",
+    isReviewable,
   };
 }
 
-function shouldIncludeUntrackedChange(
+function hasReviewableUntrackedDiff(
   entry: GitStatusEntry,
   stat: { added: number; removed: number },
 ): boolean {
-  // 构建目录里常见大量未跟踪的空文件、失效链接或不可读产物。
-  // 这类条目没有可审查的文本增删，之前会以 +0/-0 挤进 Review 面板，既污染列表又拖慢打开。
+  // 构建目录里常见大量未跟踪的空文件、失效链接或不可读产物；二进制文件也没有
+  // 可审查的文本增删。这类条目曾经被直接从变更列表丢弃，导致提交弹窗与 isDirty
+  // 口径不一致：仓库显示有未提交内容，弹窗里却 0 个文件、无法提交（也无法提交
+  // 二进制新文件）。现在改为保留条目并打 isReviewable 标记，由审阅面板过滤展示。
   // 但详细 status 超限后，Git 会用末尾 `/` 的目录记录表达整棵未跟踪目录；它本身不可读，
-  // 行数必然为 0，却仍必须作为可 stage/discard 的降级入口保留。
+  // 行数必然为 0，却仍必须作为可 stage/discard 的降级入口保留（视为可审查）。
   return entry.path.endsWith("/") || stat.added > 0 || stat.removed > 0;
 }
 
@@ -82,11 +86,11 @@ function toChangeForSource(
       added: 0,
       removed: 0,
     };
-    return buildFileChange(snapshot, entry, "staged", stat.added, stat.removed);
+    return buildFileChange(snapshot, entry, "staged", stat.added, stat.removed, true);
   }
 
   if (entry.isConflicted) {
-    return buildFileChange(snapshot, entry, "conflicted", 0, 0);
+    return buildFileChange(snapshot, entry, "conflicted", 0, 0, true);
   }
 
   if (entry.isUntracked) {
@@ -94,10 +98,14 @@ function toChangeForSource(
       added: 0,
       removed: 0,
     };
-    if (!shouldIncludeUntrackedChange(entry, stat)) {
-      return null;
-    }
-    return buildFileChange(snapshot, entry, "untracked", stat.added, stat.removed);
+    return buildFileChange(
+      snapshot,
+      entry,
+      "untracked",
+      stat.added,
+      stat.removed,
+      hasReviewableUntrackedDiff(entry, stat),
+    );
   }
 
   if (!entry.y || entry.y === ".") {
@@ -108,7 +116,7 @@ function toChangeForSource(
     added: 0,
     removed: 0,
   };
-  return buildFileChange(snapshot, entry, "unstaged", stat.added, stat.removed);
+  return buildFileChange(snapshot, entry, "unstaged", stat.added, stat.removed, true);
 }
 
 function getChangesForSource(
@@ -142,6 +150,9 @@ function toBranchComparisonChange(
     isStaged: false,
     isUntracked: false,
     isConflicted: false,
+    // branch 段来自 upstream...HEAD 的 numstat 对比，二进制文件也为 0/0，
+    // 但它有对应的只读 diff（Binary files differ），保持可审查语义不变。
+    isReviewable: true,
   };
 }
 

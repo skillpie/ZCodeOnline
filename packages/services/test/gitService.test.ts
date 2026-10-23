@@ -560,6 +560,7 @@ describeIfGit("gitService", () => {
     writeFileSync(join(workspacePath, "tracked.txt"), "line 1\nline 2 changed\n");
     writeFileSync(join(workspacePath, "staged.txt"), "staged content\n");
     writeFileSync(join(workspacePath, "untracked.txt"), "new file\n");
+    writeFileSync(join(workspacePath, "asset.bin"), Buffer.from([0x89, 0x00, 0x0a, 0x00]));
     mkdirSync(join(workspacePath, ".build"), { recursive: true });
     writeFileSync(join(workspacePath, ".build", "empty-generated.h"), "");
     writeFileSync(join(repoPath, "packages", "other", "skip.txt"), "skip changed\n");
@@ -583,15 +584,26 @@ describeIfGit("gitService", () => {
     });
     expect(
       unstagedChanges.map((change) => `${change.section}:${change.workspaceRelativePath}`).sort(),
-    ).toEqual(["unstaged:tracked.txt", "untracked:untracked.txt"]);
+    ).toEqual([
+      "unstaged:tracked.txt",
+      "untracked:.build/empty-generated.h",
+      "untracked:asset.bin",
+      "untracked:untracked.txt",
+    ]);
     expect(
       unstagedChanges.some((change) => change.repoRelativePath.includes("packages/other")),
     ).toBe(false);
-    expect(
-      unstagedChanges.some((change) =>
-        change.repoRelativePath.endsWith(".build/empty-generated.h"),
-      ),
-    ).toBe(false);
+    // Bugfix 回归：零行数未跟踪条目（空文件/二进制）不再从变更列表丢弃，
+    // 而是保留并标记 isReviewable: false——提交弹窗能识别它们为可提交内容，
+    // 审阅面板按同一标记过滤展示，避免「入口有提交、弹窗 0 个文件」的口径分裂。
+    const untrackedChangeByPath = new Map(
+      unstagedChanges
+        .filter((change) => change.section === "untracked")
+        .map((change) => [change.workspaceRelativePath, change]),
+    );
+    expect(untrackedChangeByPath.get("untracked.txt")?.isReviewable).toBe(true);
+    expect(untrackedChangeByPath.get(".build/empty-generated.h")?.isReviewable).toBe(false);
+    expect(untrackedChangeByPath.get("asset.bin")?.isReviewable).toBe(false);
 
     const stagedChanges = await service.getChanges({
       workspacePath,
@@ -609,12 +621,19 @@ describeIfGit("gitService", () => {
       refresh.unstagedChanges
         .map((change) => `${change.section}:${change.workspaceRelativePath}`)
         .sort(),
-    ).toEqual(["unstaged:tracked.txt", "untracked:untracked.txt"]);
-    expect(
-      refresh.unstagedChanges.some((change) =>
-        change.workspaceRelativePath.endsWith(".build/empty-generated.h"),
-      ),
-    ).toBe(false);
+    ).toEqual([
+      "unstaged:tracked.txt",
+      "untracked:.build/empty-generated.h",
+      "untracked:asset.bin",
+      "untracked:untracked.txt",
+    ]);
+    const refreshUntrackedByPath = new Map(
+      refresh.unstagedChanges
+        .filter((change) => change.section === "untracked")
+        .map((change) => [change.workspaceRelativePath, change]),
+    );
+    expect(refreshUntrackedByPath.get(".build/empty-generated.h")?.isReviewable).toBe(false);
+    expect(refreshUntrackedByPath.get("asset.bin")?.isReviewable).toBe(false);
     expect(refresh.stagedChanges.map((change) => change.workspaceRelativePath)).toEqual([
       "staged.txt",
     ]);

@@ -71,6 +71,12 @@ export interface GitFileChange {
   isStaged: boolean;
   isUntracked: boolean;
   isConflicted: boolean;
+  /**
+   * 是否存在可审查的文本差异。未跟踪的零行数条目（二进制文件、空文件、不可读产物）
+   * 为 false：审阅面板不展示这类条目，但它们保留在变更列表中，
+   * 供提交弹窗与「可提交」口径识别（isDirty 与提交内容保持一致）。
+   */
+  isReviewable: boolean;
 }
 
 export interface GitDiffRequest {

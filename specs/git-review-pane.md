@@ -12,12 +12,13 @@
 - 2026-09 产品决策：原下拉框中的「全部分支更改」更名为「已提交」并改为分段切换；「上一轮更改」（last-turn）来源移除——其数据集自 store 收尾后恒为空壳，不再出现在来源切换中。
 - 头部右侧是「刷新」按钮（`onRefreshGit` 驱动 `refreshToken` 重拉真实 Git）；其右侧为「评审」按钮（2026-09-27 新增，2026-10-14 由「AI 评审」更名）：点击把评审提示词发送到**当前工作区主对话**，**按当前选中来源评审对应类别**——暂存（含未跟踪文件）/ 提交 / 推送（当前分支领先上游的变更），由 AI 自行执行 git 命令查看差异并评审。发送能力复用 `lib/workspaceConversationPromptRuntime.ts`（owner 为主 pane SessionPane 的 `handleSendText`，链路与失败语义见 `specs/workspace-header-git-tools.md`），GitPane 不拼协议命令、不建第二条发送路径；无注册方（可用性 `unavailable`）时按钮不渲染。
 - 变更列表按文件卡片渲染（虚拟滚动），点击展开懒加载该文件 diff（`IGitService.getDiff`，按 `sourceId:path` 缓存）；文件变更查找命中折叠文件时批量预加载 diff 并展开滚动到命中行。
+- **可审查 ≠ 可提交（2026-10-23）**：gitService 对未跟踪的零行数条目（二进制文件、空文件、不可读产物）打 `GitFileChange.isReviewable: false` 标记并保留在变更列表；审阅面板数据集装配（`useGitRepository`）按该标记过滤，不展示这类条目。提交弹窗与「可提交」判定（`isDirty`）继续使用未过滤的完整列表，保证头部入口能打开弹窗并提交二进制新文件，不出现「入口有提交、弹窗 0 个文件」。status 超限的折叠目录条目（路径以 `/` 结尾）视为可审查，保留为 stage/discard 降级入口。
 - `readonly` 字段语义：`unstaged` / `staged` 为可写来源（恒 false），`branch`（推送）为只读来源（恒 true）。
 
 ## 2. 状态所有者与不变量
 
 - **来源选中态归 App**：`gitSelectedSourceId` + `taskSidePaneMemory`（按 workspace 身份记忆）。`GitPane` 不持有来源状态，只回抛 `onSelectSource`。
-- `sourceOptions` / `datasets` 归 `useGitRepository` 所有，含 `unstaged` / `staged` / `branch` 三个来源；header 统计（`gitWorktreeChangeSummary`）与审阅入口 sourceId 推导（`gitWorktreeReviewSourceId`）复用同一份来源统计，不建第二条写路径。
+- `sourceOptions` / `datasets` 归 `useGitRepository` 所有，含 `unstaged` / `staged` / `branch` 三个来源；header 统计（`gitWorktreeChangeSummary`）与审阅入口 sourceId 推导（`gitWorktreeReviewSourceId`）复用同一份来源统计，不建第二条写路径。header 统计因此是「可审查」口径：`isReviewable: false` 的未跟踪条目计入提交弹窗，不计入审阅统计。
 - **历史内存兼容**：`taskSidePaneMemory` 中遗留的 `last-turn` 选中值不再命中 `sourceOptions`，按 App 既有 fallback 回落到第一个来源（暂存），不做迁移清洗。
 - 共享协议类型 `GitChangeSourceId`（含 last-turn）属于服务契约保留不动；UI 层不再生产 `last-turn` 值。
 
