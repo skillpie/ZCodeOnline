@@ -72,6 +72,11 @@ packages/desktop/.e2e-cache/
 packages/desktop/.e2e-network-capture/
 .zcode-runtime/
 
+# deploy_cli.sh / deploy_desktop.sh 是本机发布入口（读取 apps/zcode-relay/deploy/deploy.env
+# 的服务器信息），与 deploy.env 同策略只保留本地副本，不入库；构建/安装脚本仍保持追踪。
+/deploy_cli.sh
+/deploy_desktop.sh
+
 # skillpie 服务器部署信息（IP / 账号 / 服务器路径与拓扑），只保留本地副本，不入库。
 # 终端用户安装脚本（install-zcode-server.* / install.cmd）只含公开域名，保持追踪。
 apps/zcode-relay/deploy/DEPLOY.md
