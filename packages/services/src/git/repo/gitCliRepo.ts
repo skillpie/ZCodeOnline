@@ -21,8 +21,11 @@ import type {
   GitWorktreeMutationResult,
   GitWorktreeRecord,
   GitWorkspaceRepositoryInfo,
+  GitPushIntegration,
+  GitPushIntegrationKind,
   GitPushResult,
 } from "@zcode/shared";
+import { GIT_PUSH_AUTO_INTEGRATION_CONFLICT_PREFIX } from "@zcode/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
   DEFAULT_GIT_COMMAND_TIMEOUT_MS,
@@ -37,6 +40,7 @@ import {
 } from "../config.js";
 import {
   createGitCommandProvider,
+  type GitCommandExecutionResult,
   type GitCommandProvider,
 } from "../providers/gitCommandProvider.js";
 import {
@@ -634,6 +638,19 @@ function parseTrackingRemoteName(trackingBranchName: string | null): string | nu
   return remoteName.length > 0 ? remoteName : null;
 }
 
+// 关键业务逻辑：只对“远端包含本地没有提交”这一类拒绝（fetch first / stale info）做自动集成；
+// 鉴权失败、pre-receive hook 拒绝等其余失败原样抛出，不能把非机械问题伪装成可自动恢复。
+// stderr 粗筛后仍会在 fetch 之后按真实 ahead/behind 决策，不依赖文本猜测。
+function isNonFastForwardRejection(result: GitCommandExecutionResult): boolean {
+  const stderr = result.stderr;
+  return (
+    stderr.includes("! [rejected]") &&
+    (stderr.includes("(fetch first)") ||
+      stderr.includes("(stale info)") ||
+      stderr.includes("non-fast-forward"))
+  );
+}
+
 function parseRemoteList(stdout: string): string[] {
   return stdout
     .replace(/\r\n/g, "\n")
@@ -728,6 +745,148 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
     repositoryResolutionRequests.delete(workspacePath);
     workspaceRepositoryInfoRequests.delete(workspacePath);
     statusRequests.delete(workspacePath);
+  }
+
+  // merge/rebase 进行中的状态标记位于该 worktree 自己的 gitDir（非 common dir）。
+  const INTEGRATION_STATE_MARKERS = [
+    "MERGE_HEAD",
+    "CHERRY_PICK_HEAD",
+    "rebase-merge",
+    "rebase-apply",
+  ] as const;
+
+  async function runGitCommandForIntegration(
+    repoRoot: string,
+    args: string[],
+  ): Promise<GitCommandExecutionResult> {
+    return await commandProvider.run({
+      cwd: repoRoot,
+      args,
+      // 关键业务逻辑：fetch / merge / rebase 都是网络或工作区重写型操作，
+      // 沿用 push 的长超时与输出预算，避免 hook 或慢网络被误判失败。
+      timeoutMs: DEFAULT_GIT_PUSH_TIMEOUT_MS,
+      maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+    });
+  }
+
+  async function findIntegrationMarker(repoRoot: string): Promise<string | null> {
+    const gitDirResult = await commandProvider.run({
+      cwd: repoRoot,
+      args: ["rev-parse", "--git-dir"],
+      timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+    });
+    ensureGitCommandSucceeded("git rev-parse --git-dir", gitDirResult);
+    const rawGitDir = gitDirResult.stdout.trim();
+    const gitDir = isAbsolute(rawGitDir) ? rawGitDir : join(repoRoot, rawGitDir);
+    for (const marker of INTEGRATION_STATE_MARKERS) {
+      if (await fileExists(join(gitDir, marker))) {
+        return marker;
+      }
+    }
+    return null;
+  }
+
+  async function ensureWorktreeCleanForIntegration(repoRoot: string): Promise<void> {
+    const result = await commandProvider.run({
+      cwd: repoRoot,
+      args: ["status", "--porcelain"],
+      timeoutMs: DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+      maxOutputBytes: DEFAULT_GIT_OUTPUT_BYTES,
+    });
+    ensureGitCommandSucceeded("git status", result);
+    const hasTrackedChanges = result.stdout
+      .split("\n")
+      .some((line) => line.length >= 2 && !line.startsWith("??"));
+    if (hasTrackedChanges) {
+      // 未提交改动绝不卷入自动集成：rebase/merge 会把它们混进集成结果，
+      // 冲突回滚也无法完整还原，必须让用户先提交或 stash。
+      throw new Error(
+        "git push auto integration refused: the worktree has uncommitted changes; commit or stash them, then push again",
+      );
+    }
+  }
+
+  async function ensureNoIntegrationInProgress(repoRoot: string): Promise<void> {
+    const marker = await findIntegrationMarker(repoRoot);
+    if (marker) {
+      throw new Error(
+        `git push auto integration refused: an integration is already in progress (${marker}); resolve or abort it, then push again`,
+      );
+    }
+  }
+
+  async function rollbackIntegration(
+    repoRoot: string,
+    kind: GitPushIntegrationKind,
+  ): Promise<void> {
+    const marker = await findIntegrationMarker(repoRoot);
+    if (!marker) {
+      return;
+    }
+    const abortArgs = kind === "rebase" ? ["rebase", "--abort"] : ["merge", "--abort"];
+    const result = await runGitCommandForIntegration(repoRoot, abortArgs);
+    if (result.timedOut || result.outputTruncated || result.exitCode !== 0) {
+      // 关键业务逻辑：回滚失败说明仓库仍停留在集成状态，必须显式暴露，不能静默吞掉。
+      // 前缀供 UI 识别冲突类失败并提供「智能合并」转交入口（含回滚失败的中途状态）。
+      throw new Error(
+        `${GIT_PUSH_AUTO_INTEGRATION_CONFLICT_PREFIX} ${kind} hit conflicts, and rollback (git ${abortArgs.join(" ")}) did not complete; the repository is still mid-integration (${marker})`,
+      );
+    }
+  }
+
+  // push 被非快进拒绝后的确定性恢复：fetch → 按真实 ahead/behind 决策 →
+  // ahead=0 快进、ahead=1 变基（单提交重放冲突代价最小且不产生 merge commit）、
+  // ahead≥2 合并（只对比最终状态，只可能冲突一次）→ 重推恰好一次。
+  // 任一步冲突都 abort 回滚到推送尝试前的状态，再抛出明确错误交人工/Agent 处理。
+  async function integrateRemoteForPush(options: {
+    workspacePath: string;
+    repoRoot: string;
+    baseRef: string;
+    runStatus: () => Promise<GitStatusSnapshot>;
+    runPush: () => Promise<GitCommandExecutionResult>;
+  }): Promise<GitPushIntegration | undefined> {
+    const { workspacePath, repoRoot, baseRef, runStatus, runPush } = options;
+    const fetchResult = await runGitCommandForIntegration(repoRoot, ["fetch"]);
+    ensureGitCommandSucceeded("git fetch", fetchResult);
+    invalidate(workspacePath);
+
+    const status = await runStatus();
+    const ahead = status.summary.ahead;
+    const behind = status.summary.behind;
+    if (behind === 0) {
+      // fetch 后远端引用已刷新但无新提交（典型是 stale info）：直接重推一次，
+      // 仍失败则按原始错误抛出，不进入集成流程。
+      ensureGitCommandSucceeded("git push", await runPush());
+      return undefined;
+    }
+
+    await ensureWorktreeCleanForIntegration(repoRoot);
+    await ensureNoIntegrationInProgress(repoRoot);
+
+    const kind: GitPushIntegrationKind =
+      ahead === 0 ? "fast-forward" : ahead === 1 ? "rebase" : "merge";
+    const integrationArgs =
+      kind === "fast-forward"
+        ? ["merge", "--ff-only", baseRef]
+        : kind === "rebase"
+          ? ["rebase", baseRef]
+          : ["merge", "--no-edit", baseRef];
+    const integrationResult = await runGitCommandForIntegration(repoRoot, integrationArgs);
+    if (
+      integrationResult.timedOut ||
+      integrationResult.outputTruncated ||
+      integrationResult.exitCode !== 0
+    ) {
+      await rollbackIntegration(repoRoot, kind);
+      // 前缀供 UI 识别冲突类失败并提供「智能合并」转交入口（shared 稳定常量）。
+      throw new Error(
+        `${GIT_PUSH_AUTO_INTEGRATION_CONFLICT_PREFIX} ${kind} of ${behind} remote commit(s) hit conflicts and was rolled back; resolve conflicts manually, then push again`,
+      );
+    }
+    invalidate(workspacePath);
+
+    ensureGitCommandSucceeded("git push", await runPush());
+    return { kind, remoteCommitCount: behind, localCommitCount: ahead };
   }
 
   async function validateBranchName(
@@ -2467,29 +2626,52 @@ export function createGitCliRepo(options?: { commandProvider?: GitCommandProvide
       const remoteName = hasTrackingBranch
         ? parseTrackingRemoteName(status.summary.trackingBranchName)
         : await resolvePushRemote(status);
-      const pushResult = await commandProvider.run({
-        cwd: resolution.repoRoot,
-        args: hasTrackingBranch
-          ? ["push"]
-          : ["push", "--set-upstream", remoteName ?? "origin", branchName],
-        // 关键业务逻辑：push 是显式用户动作，而且可能被 pre-push hook 拉长。
-        // 这里单独使用更长超时，避免测试/校验脚本尚未跑完就被前端误判成 push 失败。
-        timeoutMs: DEFAULT_GIT_PUSH_TIMEOUT_MS,
-        // 关键业务逻辑：pre-push hook 可能输出完整测试日志。
-        // 这里单独放宽输出上限，避免在 push 真正完成前因为 hook 输出过多被截断。
-        maxOutputBytes: DEFAULT_GIT_PUSH_OUTPUT_BYTES,
-      });
-      ensureGitCommandSucceeded("git push", pushResult);
-      invalidate(workspacePath);
-
-      const nextStatus = await this.getStatus(workspacePath);
-      return {
-        branchName,
-        trackingBranchName: nextStatus.summary.trackingBranchName,
-        remoteName: remoteName ?? parseTrackingRemoteName(nextStatus.summary.trackingBranchName),
-        setUpstream: !hasTrackingBranch,
-        summary: nextStatus.summary,
+      const pushArgs = hasTrackingBranch
+        ? ["push"]
+        : ["push", "--set-upstream", remoteName ?? "origin", branchName];
+      const runPush = () =>
+        commandProvider.run({
+          cwd: resolution.repoRoot,
+          args: pushArgs,
+          // 关键业务逻辑：push 是显式用户动作，而且可能被 pre-push hook 拉长。
+          // 这里单独使用更长超时，避免测试/校验脚本尚未跑完就被前端误判成 push 失败。
+          timeoutMs: DEFAULT_GIT_PUSH_TIMEOUT_MS,
+          // 关键业务逻辑：pre-push hook 可能输出完整测试日志。
+          // 这里单独放宽输出上限，避免在 push 真正完成前因为 hook 输出过多被截断。
+          maxOutputBytes: DEFAULT_GIT_PUSH_OUTPUT_BYTES,
+        });
+      const buildResult = async (integration?: GitPushIntegration): Promise<GitPushResult> => {
+        invalidate(workspacePath);
+        const nextStatus = await this.getStatus(workspacePath);
+        return {
+          branchName,
+          trackingBranchName: nextStatus.summary.trackingBranchName,
+          remoteName: remoteName ?? parseTrackingRemoteName(nextStatus.summary.trackingBranchName),
+          setUpstream: !hasTrackingBranch,
+          summary: nextStatus.summary,
+          integration,
+        };
       };
+
+      const pushResult = await runPush();
+      if (pushResult.exitCode === 0) {
+        return await buildResult();
+      }
+      // 关键业务逻辑：fetch first / stale info 是纯机械错误，由代码确定性恢复
+      // （集成远端后重推一次），不需要用户或 Agent 介入；其余失败原样抛出。
+      if (!isNonFastForwardRejection(pushResult)) {
+        ensureGitCommandSucceeded("git push", pushResult);
+      }
+      const integration = await integrateRemoteForPush({
+        workspacePath,
+        repoRoot: resolution.repoRoot,
+        baseRef: hasTrackingBranch
+          ? (status.summary.trackingBranchName ?? "")
+          : `${remoteName ?? "origin"}/${branchName}`,
+        runStatus: () => this.getStatus(workspacePath),
+        runPush,
+      });
+      return await buildResult(integration);
     },
 
     async pull(workspacePath: string): Promise<GitPullResult> {

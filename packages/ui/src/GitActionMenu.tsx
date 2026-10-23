@@ -5,15 +5,17 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import type {
-  GitCommitMessageConversationContext,
-  GitIdentity,
-  GitRepositorySummary,
-  ZCodeTaskChangeSummary,
+import {
+  GIT_PUSH_AUTO_INTEGRATION_CONFLICT_PREFIX,
+  type GitCommitMessageConversationContext,
+  type GitIdentity,
+  type GitRepositorySummary,
+  type ZCodeTaskChangeSummary,
 } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -66,10 +68,17 @@ import {
   CloudUploadIcon,
   GitBranchIcon,
   GitCommitIcon,
+  GitMergeIcon,
   LoaderIcon,
   RefreshCwIcon,
   SparklesIcon,
 } from "lucide-react";
+import {
+  getWorkspaceConversationPromptAvailability,
+  requestWorkspaceConversationPrompt,
+  subscribeWorkspaceConversationPromptRuntime,
+  type WorkspaceConversationPromptScope,
+} from "@/lib/workspaceConversationPromptRuntime.js";
 
 interface GitActionMenuProps {
   workspacePath: string;
@@ -89,6 +98,13 @@ interface GitActionMenuProps {
 }
 
 type GitCommitPreviewFile = ReturnType<typeof buildGitBranchCommitPreviewFiles>[number];
+
+// 服务端 push 被拒后自动集成远端提交的结果披露文案；kind → 具体 action 文案。
+const GIT_PUSH_INTEGRATION_ACTION_MESSAGE_IDS = {
+  "fast-forward": "git.actionMenu.pushDialog.toast.integration.fastForward",
+  rebase: "git.actionMenu.pushDialog.toast.integration.rebase",
+  merge: "git.actionMenu.pushDialog.toast.integration.merge",
+} as const;
 
 const COMMIT_DIALOG_ACTION_IDS = [
   "commit",
@@ -609,8 +625,10 @@ interface GitPushDialogProps {
   gitSummary: GitRepositorySummary;
   currentBranchLabel: string;
   pushEnabled: boolean;
+  /** 原始错误消息（未经 i18n 包装），用于按 shared 稳定前缀识别冲突类失败。 */
   error: string | null;
   mutationPending: boolean;
+  conversationPromptScope: WorkspaceConversationPromptScope;
   onOpenChange: (nextOpen: boolean) => void;
   onSubmit: () => void;
 }
@@ -622,12 +640,23 @@ function GitPushDialog({
   pushEnabled,
   error,
   mutationPending,
+  conversationPromptScope,
   onOpenChange,
   onSubmit,
 }: GitPushDialogProps) {
   const { intl, locale } = useZCodeIntl();
   const numberFormatter = new Intl.NumberFormat(locale);
   const [errorCopied, setErrorCopied] = useState(false);
+  // push 自动集成冲突（已回滚）属于机械错误走到头的场景：提供「智能合并」
+  // 把冲突处理转交当前对话的 Agent；主对话未挂载（不可发送）时不渲染死入口。
+  const conflictAgentMergeAvailable = useSyncExternalStore(
+    subscribeWorkspaceConversationPromptRuntime,
+    () => getWorkspaceConversationPromptAvailability(conversationPromptScope),
+    () => "unavailable" as const,
+  );
+  const showConflictAgentMergeAction =
+    conflictAgentMergeAvailable === "ready" &&
+    Boolean(error?.startsWith(GIT_PUSH_AUTO_INTEGRATION_CONFLICT_PREFIX));
   const descriptionId = gitSummary.trackingBranchName
     ? "git.actionMenu.pushDialog.description.tracked"
     : "git.actionMenu.pushDialog.description.untracked";
@@ -686,6 +715,15 @@ function GitPushDialog({
       },
     );
   }, [error, intl]);
+
+  const handleConflictAgentMerge = useCallback(() => {
+    // 关闭弹窗并发送冲突处理提示词，交给当前对话的 Agent 智能合并（同分支行对话动作）。
+    requestWorkspaceConversationPrompt(
+      conversationPromptScope,
+      intl.formatMessage({ id: "git.actionMenu.pushDialog.conflictAgentMergePrompt" }),
+    );
+    onOpenChange(false);
+  }, [conversationPromptScope, intl, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -790,6 +828,27 @@ function GitPushDialog({
                   })}
                 </span>
               </div>
+              {showConflictAgentMergeAction ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-background/60 px-4 py-3">
+                  <span className="text-ui-base text-foreground-subtle">
+                    {intl.formatMessage({
+                      id: "git.actionMenu.pushDialog.error.conflictAgentMergeHint",
+                    })}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1.5 px-3 text-ui-base"
+                    onClick={handleConflictAgentMerge}
+                  >
+                    <GitMergeIcon className="size-3.5" />
+                    {intl.formatMessage({
+                      id: "git.actionMenu.pushDialog.error.conflictAgentMerge",
+                    })}
+                  </Button>
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-ui-base font-medium text-foreground">
@@ -899,6 +958,10 @@ export function GitActionMenu({
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [mutationPending, setMutationPending] = useState(false);
+  const conversationPromptScope = useMemo(
+    () => ({ workspacePath, workspaceIdentity }),
+    [workspacePath, workspaceIdentity],
+  );
 
   const actionAvailable = canUseGitActionMenu(gitSummary);
   const currentBranchLabel = useMemo(
@@ -1150,18 +1213,30 @@ export function GitActionMenu({
         trackingBranchName: result.trackingBranchName,
         remoteName: result.remoteName,
         setUpstream: result.setUpstream,
+        integration: result.integration,
       });
       if (options?.showToast !== false) {
+        // push 被拒后服务端可能已自动集成远端提交再重推；这一步改变了本地历史
+        // （rebase/merge），必须在 toast 里向用户披露，不能静默完成。
+        const integrationKind = result.integration?.kind;
+        const integrationActionMessageId = integrationKind
+          ? GIT_PUSH_INTEGRATION_ACTION_MESSAGE_IDS[integrationKind]
+          : undefined;
         toast(
-          intl.formatMessage(
-            { id: "git.actionMenu.pushDialog.toast.success" },
-            {
-              target:
-                result.trackingBranchName?.trim() ||
-                result.branchName?.trim() ||
-                currentBranchLabel,
-            },
-          ),
+          integrationActionMessageId
+            ? intl.formatMessage(
+                { id: "git.actionMenu.pushDialog.toast.autoIntegrated" },
+                { action: intl.formatMessage({ id: integrationActionMessageId }) },
+              )
+            : intl.formatMessage(
+                { id: "git.actionMenu.pushDialog.toast.success" },
+                {
+                  target:
+                    result.trackingBranchName?.trim() ||
+                    result.branchName?.trim() ||
+                    currentBranchLabel,
+                },
+              ),
         );
       }
       return result;
@@ -1333,16 +1408,12 @@ export function GitActionMenu({
         workspacePath,
         error: message,
       });
-      setPushError(
-        intl.formatMessage(
-          { id: "git.actionMenu.pushDialog.error.requestFailed" },
-          { error: message },
-        ),
-      );
+      // 存原始消息：弹窗需要按 shared 稳定前缀识别冲突类失败，展示时再补充上下文。
+      setPushError(message);
     } finally {
       setMutationPending(false);
     }
-  }, [closePushDialog, intl, onRefreshGit, pushCurrentBranch, pushEnabled, workspacePath]);
+  }, [closePushDialog, onRefreshGit, pushCurrentBranch, pushEnabled, workspacePath]);
 
   const handlePrimaryAction = useCallback(
     (trigger: UserActionTrigger = "button") => {
@@ -1486,6 +1557,7 @@ export function GitActionMenu({
         pushEnabled={pushEnabled}
         error={pushError}
         mutationPending={mutationPending}
+        conversationPromptScope={conversationPromptScope}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             closePushDialog();

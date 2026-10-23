@@ -345,12 +345,31 @@ export interface GitGenerateCommitMessageResult {
 
 export interface GitPushRequest extends GitRepositoryRequest {}
 
+export type GitPushIntegrationKind = "fast-forward" | "rebase" | "merge";
+
+/**
+ * push 自动集成远端提交发生冲突的错误消息前缀。
+ * 服务错误跨 MessagePort/rpc 只保留 message，UI 按此前缀识别冲突类失败，
+ * 并提供「智能合并」入口把冲突处理转交当前对话的 Agent。
+ */
+export const GIT_PUSH_AUTO_INTEGRATION_CONFLICT_PREFIX = "git push auto integration failed:";
+
+export interface GitPushIntegration {
+  kind: GitPushIntegrationKind;
+  /** 自动集成时远端领先的提交数。 */
+  remoteCommitCount: number;
+  /** 自动集成时本地领先的提交数（fast-forward 时为 0）。 */
+  localCommitCount: number;
+}
+
 export interface GitPushResult {
   branchName: string | null;
   trackingBranchName: string | null;
   remoteName: string | null;
   setUpstream: boolean;
   summary: GitRepositorySummary;
+  /** push 被拒后自动集成远端提交的结论；未发生集成时缺省。 */
+  integration?: GitPushIntegration;
 }
 
 export interface GitPullResult {

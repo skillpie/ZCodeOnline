@@ -1722,8 +1722,16 @@ const zhCN: Record<string, string> = {
   "git.actionMenu.pushDialog.error.copy": "复制错误信息",
   "git.actionMenu.pushDialog.error.copy.copied": "已复制",
   "git.actionMenu.pushDialog.error.copyFailed": "复制错误信息失败：{error}",
-  "git.actionMenu.pushDialog.error.requestFailed": "推送失败：{error}",
+  "git.actionMenu.pushDialog.error.conflictAgentMerge": "智能合并",
+  "git.actionMenu.pushDialog.error.conflictAgentMergeHint":
+    "远端提交与本地提交冲突，已回滚到推送前状态；可交给当前对话智能合并。",
+  "git.actionMenu.pushDialog.conflictAgentMergePrompt":
+    "推送被拒：远端有新提交，与本地提交冲突，自动集成已回滚到推送前状态。请智能合并：先 git fetch 获取远端，再分析当前分支与上游分支的冲突文件，逐文件基于两侧内容语义合理取舍，完成集成后推送到远端。",
   "git.actionMenu.pushDialog.toast.success": "已推送到 {target}",
+  "git.actionMenu.pushDialog.toast.autoIntegrated": "远端有新提交，已自动{action}并推送",
+  "git.actionMenu.pushDialog.toast.integration.fastForward": "快进到远端最新",
+  "git.actionMenu.pushDialog.toast.integration.rebase": "变基到远端最新",
+  "git.actionMenu.pushDialog.toast.integration.merge": "合并远端提交",
   "git.branchSwitcher.label": "分支",
   "git.branchSwitcher.trigger.ariaLabel": "切换 Git 分支",
   "git.branchSwitcher.searchPlaceholder": "搜索分支",

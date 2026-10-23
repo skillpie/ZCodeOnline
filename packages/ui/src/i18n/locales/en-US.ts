@@ -1868,8 +1868,17 @@ const enUS: Record<string, string> = {
   "git.actionMenu.pushDialog.error.copy": "Copy error",
   "git.actionMenu.pushDialog.error.copy.copied": "Copied",
   "git.actionMenu.pushDialog.error.copyFailed": "Failed to copy error details: {error}",
-  "git.actionMenu.pushDialog.error.requestFailed": "Push failed: {error}",
+  "git.actionMenu.pushDialog.error.conflictAgentMerge": "Smart merge",
+  "git.actionMenu.pushDialog.error.conflictAgentMergeHint":
+    "Remote commits conflict with local commits and were rolled back; hand this to the current conversation for a smart merge.",
+  "git.actionMenu.pushDialog.conflictAgentMergePrompt":
+    "Push rejected: remote has new commits that conflict with local commits; auto integration was rolled back. Please smart-merge: fetch the remote first, analyze the conflicting files between the current branch and its upstream, resolve each file based on the semantics of both sides, then finish the integration and push.",
   "git.actionMenu.pushDialog.toast.success": "Pushed to {target}",
+  "git.actionMenu.pushDialog.toast.autoIntegrated":
+    "Remote has new commits; auto-{action} and pushed",
+  "git.actionMenu.pushDialog.toast.integration.fastForward": "fast-forwarded to remote",
+  "git.actionMenu.pushDialog.toast.integration.rebase": "rebased onto remote",
+  "git.actionMenu.pushDialog.toast.integration.merge": "merged remote commits",
   "git.branchSwitcher.label": "Branch",
   "git.branchSwitcher.trigger.ariaLabel": "Switch Git branch",
   "git.branchSwitcher.searchPlaceholder": "Search branches",
