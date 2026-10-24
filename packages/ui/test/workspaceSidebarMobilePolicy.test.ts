@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY,
   resolveInitialWorkspaceSidebarVisible,
+  shouldApplyMobileTouchSidebarOverlay,
   shouldCollapseSidebarAfterConversationActivate,
 } from "../src/lib/workspaceSidebarMobilePolicy.js";
 
@@ -70,4 +72,40 @@ test("进入会话后收起：桌面精确指针设备行为不变，不收起",
     shouldCollapseSidebarAfterConversationActivate({ proceeded: true, isCoarseTouch: false }),
     false,
   );
+});
+
+test("全屏覆盖判定：触摸设备窄视口且非远控壳时侧栏走全屏覆盖", () => {
+  assert.equal(
+    shouldApplyMobileTouchSidebarOverlay({
+      matchesMobileTouchViewport: true,
+      isWebRemoteControlShell: false,
+    }),
+    true,
+  );
+});
+
+test("全屏覆盖判定：远控壳有自己的顶部导航形态，不走全屏覆盖", () => {
+  assert.equal(
+    shouldApplyMobileTouchSidebarOverlay({
+      matchesMobileTouchViewport: true,
+      isWebRemoteControlShell: true,
+    }),
+    false,
+  );
+});
+
+test("全屏覆盖判定：桌面窄窗口与 iPad（≥768px 视口不匹配）不走全屏覆盖", () => {
+  assert.equal(
+    shouldApplyMobileTouchSidebarOverlay({
+      matchesMobileTouchViewport: false,
+      isWebRemoteControlShell: false,
+    }),
+    false,
+  );
+});
+
+test("全屏覆盖判定：媒体查询同时约束窄视口与粗指针，避免 iPad / 桌面窄窗口误命中", () => {
+  assert.match(MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY, /\(max-width: 767px\)/);
+  assert.match(MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY, /\(hover: none\)/);
+  assert.match(MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY, /\(pointer: coarse\)/);
 });

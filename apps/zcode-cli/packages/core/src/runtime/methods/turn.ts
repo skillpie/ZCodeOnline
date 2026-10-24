@@ -58,6 +58,7 @@ import {
 } from "./session-title.js";
 import type { RegularTurnLoopState } from "./turn-loop-state.js";
 import { finishOutputTokenRecovery } from "./turn-output-token-continuation.js";
+import { injectDataSourceSchemaReminder } from "./data-source-schema-reminder.js";
 import { recordTurnUsageFact } from "./usage-observability.js";
 import { persistStableForkCompletionBoundary } from "./stable-fork-boundary.js";
 import {
@@ -612,6 +613,9 @@ export async function executeTurnCommand(
         injectReferencedSessionContextReminderIntoMessageHistory.call(this, input, options);
         // 话题原文由标准文本附件按需读取，可信来源归档不能再次生成隐藏上下文。
         injectDateChangeReminderIntoMessageHistory.call(this);
+        // 会话绑定数据源的表清单注入：必须在用户消息入历史之前完成，
+        // 才能先于本轮问题进入上下文；绑定未变时内部幂等跳过。
+        await injectDataSourceSchemaReminder(this, options?.dataSourceId, turnTraceContext);
         const resolvedAttachments = await resolveTurnAttachments(attachments, {
           abortSignal: turnAbortSignal,
           artifactStore: this.artifactStore,

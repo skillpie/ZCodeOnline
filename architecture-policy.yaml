@@ -890,3 +890,8 @@ exceptions:
       - packages/ui/src/settings/DynamicWorkflowModeSetting.tsx
       - packages/ui/src/store/dynamicWorkflowAvailabilityStore.ts
     reason: Admitted upstream files edited only to let the user's dynamic workflow mode choice always win and keep the settings row visible; adopting packages/shared/src and packages/ui/src needs a separate module boundary refactor.
+  - id: data-source-schema-reminder-unmanaged-file
+    rule: unmanaged-new-file
+    paths:
+      - apps/zcode-cli/packages/core/src/runtime/methods/data-source-schema-reminder.ts
+    reason: 会话绑定数据源的表清单注入（data_source_schema reminder）新增单一职责模块；接管 apps/zcode-cli/packages/core/src/runtime 目录需要独立的模块边界重构，不在本次范围。

@@ -3,6 +3,7 @@ import type { RegularTurnLoopState } from "./turn-loop-state.js";
 import { applySubmissionExecutionState, sameModelSelection } from "./turn-model.js";
 import { rebuildContextPrefix } from "./context-refresh.js";
 import { appendTurnRequestEntries } from "./turn-output-token-continuation.js";
+import { injectDataSourceSchemaReminder } from "./data-source-schema-reminder.js";
 import { applyRuntimeExecutionState } from "../execution-state.js";
 
 /**
@@ -63,6 +64,14 @@ export async function drainInlineGuideForNextRequest(
   if (drained.dataSourceId) {
     // 会话级数据源绑定随 guide 注入更新当前 loop state，DB 工具缺省源跟随最新用户选择。
     state.dataSourceId = drained.dataSourceId;
+    // 绑定切换时刷新表清单注入，并追加到进行中轮的请求条目——否则本轮后续
+    // 请求仍拿旧源清单写 SQL；绑定未变时内部幂等跳过。
+    await injectDataSourceSchemaReminder(
+      runtime,
+      drained.dataSourceId,
+      state.turnTraceContext,
+      state.turnRequestState,
+    );
   }
   if (drained.reviewEnabled) {
     // 评审开关随 guide 注入覆盖当前 loop state；评审指令已与 guide 输入同批入历史。

@@ -78,7 +78,8 @@ export const dbSchemaToolEntry: ToolEntry = {
     name: DB_SCHEMA_TOOL_NAME,
     description: dbSchemaToolDescription,
     modelInstructions: [
-      "Call without keyword/table to list all tables; pass keyword (matches table name or Chinese comment) to narrow down; pass table for the exact column list.",
+      "If a bound data-source table list is already in the conversation context (data_source_schema reminder), skip the plain listing call and only query with table=<name> to load exact column names and types.",
+      "Call without keyword/table to list all tables when no table list is in context; pass keyword (matches table name or Chinese comment) to narrow down; pass table for the exact column list.",
       "Run this before composing SQL so identifiers come from the real schema instead of guesses.",
     ],
     readOnly: true,

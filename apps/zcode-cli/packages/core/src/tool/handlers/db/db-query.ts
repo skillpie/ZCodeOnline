@@ -47,7 +47,8 @@ export const dbQueryToolEntry: ToolEntry = {
     name: DB_QUERY_TOOL_NAME,
     description: dbQueryToolDescription,
     modelInstructions: [
-      "Resolve the table and column names with DBSchema before writing SQL; do not guess identifiers.",
+      "Pick table names from the bound data-source table list in context (or resolve them with DBSchema when absent) before writing SQL; do not guess identifiers.",
+      "Load exact column names with DBSchema table=<name> when column details are needed.",
       "Only SELECT / WITH / SHOW / DESCRIBE / EXPLAIN are allowed here — writes belong to DBExecute.",
       "Add LIMIT to exploratory queries; results are capped at 200 rows per statement.",
     ],

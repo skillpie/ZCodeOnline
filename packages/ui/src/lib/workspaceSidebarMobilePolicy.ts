@@ -21,3 +21,22 @@ export function shouldCollapseSidebarAfterConversationActivate({
 }): boolean {
   return proceeded && isCoarseTouch;
 }
+
+// H5 触摸设备（hover: none + pointer: coarse）在窄视口（<768px，与远控壳的移动断点同口径）
+// 打开侧栏时，内联半屏布局会把会话区挤到右侧——既读不了也没有可点目标，任务标题反而被截断。
+// 此时侧栏改为全屏覆盖展示；点击会话后收起复用上面的收起策略。
+// iPad（≥768px）与桌面窄窗口（精确指针，点击会话不自动收起）不命中，保持原内联布局。
+export const MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY =
+  "(max-width: 767px) and (hover: none) and (pointer: coarse)";
+
+// 远控壳（webRemoteControlWorkspaceSwitcher 存在）在 max-md 下把侧栏面板改造成顶部可折叠
+// 导航，且有独立的移动任务首页；全屏覆盖会与其布局互相冲突，必须排除。
+export function shouldApplyMobileTouchSidebarOverlay({
+  matchesMobileTouchViewport,
+  isWebRemoteControlShell,
+}: {
+  matchesMobileTouchViewport: boolean;
+  isWebRemoteControlShell: boolean;
+}): boolean {
+  return matchesMobileTouchViewport && !isWebRemoteControlShell;
+}

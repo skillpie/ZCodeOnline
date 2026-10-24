@@ -38,6 +38,7 @@ export const SYSTEM_REMINDER_PERSISTED_SOURCES = [
   "selection_side_chat",
   "queued_system_notification",
   "shell_environment_change",
+  "data_source_schema",
 ] as const;
 
 export const SYSTEM_REMINDER_PER_REQUEST_SOURCES = [
@@ -183,6 +184,10 @@ const SYSTEM_REMINDER_DESCRIPTORS: Record<SystemReminderSource, DescriptorShape>
     true,
     "sr.shell_environment_change",
   ),
+  // 会话绑定数据源的表清单注入：表名+注释随绑定进入上下文，省掉每会话首次
+  // DBSchema 列表往返；列结构仍按需经 DBSchema table= 精确查询（列全量注入
+  // 体积约为表清单 10 倍，会吃穿上下文）。
+  data_source_schema: descriptor("current_turn", "resume_history", true, "sr.data_source_schema"),
   diagnostics: descriptor("mid_turn_event", "mid_turn_event", true, "sr.diagnostics"),
   // 第四批 4a-0（2026-09-12）：原 plugin_ui_state 源已删除，插件给模型的信息改走 ui/update-model-context。
 };

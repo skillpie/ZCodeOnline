@@ -52,7 +52,11 @@ import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { SkillMarketEmbeddedView } from "@/SkillMarketEmbeddedView.js";
 import { shouldRenderWorkspaceHeader } from "@/app-shell/workspaceHeaderVisibility.js";
 import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
-import { shouldCollapseSidebarAfterConversationActivate } from "@/lib/workspaceSidebarMobilePolicy.js";
+import {
+  MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY,
+  shouldApplyMobileTouchSidebarOverlay,
+  shouldCollapseSidebarAfterConversationActivate,
+} from "@/lib/workspaceSidebarMobilePolicy.js";
 import { useIsMobileCompactViewport } from "@/lib/mobileTextInput.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
 
@@ -240,6 +244,14 @@ function getIsWebRemoteControlMobileViewport() {
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
     window.matchMedia(WEB_REMOTE_CONTROL_MOBILE_QUERY).matches
+  );
+}
+
+function getMatchesMobileTouchSidebarViewport() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY).matches
   );
 }
 
@@ -510,6 +522,9 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   const [isWebRemoteControlMobileViewport, setIsWebRemoteControlMobileViewport] = useState(
     getIsWebRemoteControlMobileViewport,
   );
+  const [matchesMobileTouchSidebarViewport, setMatchesMobileTouchSidebarViewport] = useState(
+    getMatchesMobileTouchSidebarViewport,
+  );
   const [isWebRemoteControlNavigationDragging, setIsWebRemoteControlNavigationDragging] =
     useState(false);
   const webRemoteControlNavigationHeightRef = useRef(webRemoteControlNavigationHeightPx);
@@ -607,6 +622,11 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     activeTaskTitle?.trim() || intl.formatMessage({ id: "taskList.untitled" });
   // 完整视图保留左侧任务列表与左上角按钮组，侧栏显隐只由用户开关决定。
   const isSidebarPanelVisible = isSidebarVisible;
+  // H5 触摸设备窄视口：侧栏改全屏覆盖布局（半屏内联会挤压会话区且截断任务标题）。
+  const isMobileTouchSidebarOverlay = shouldApplyMobileTouchSidebarOverlay({
+    matchesMobileTouchViewport: matchesMobileTouchSidebarViewport,
+    isWebRemoteControlShell,
+  });
   const {
     panelRef: terminalPanelRef,
     panelElementRef: terminalPanelElementRef,
@@ -968,6 +988,35 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     mediaQueryList.addListener(syncMobileViewport);
     return () => {
       mediaQueryList.removeListener(syncMobileViewport);
+    };
+  }, [isWebRemoteControlShell]);
+
+  // 触摸设备窄视口切换（旋转 / 折叠屏展开）时同步全屏覆盖布局开关；远控壳不参与。
+  useEffect(() => {
+    if (
+      isWebRemoteControlShell ||
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+
+    const mediaQueryList = window.matchMedia(MOBILE_TOUCH_SIDEBAR_OVERLAY_QUERY);
+    const syncMobileTouchViewport = () => {
+      setMatchesMobileTouchSidebarViewport(mediaQueryList.matches);
+    };
+
+    syncMobileTouchViewport();
+    if (typeof mediaQueryList.addEventListener === "function") {
+      mediaQueryList.addEventListener("change", syncMobileTouchViewport);
+      return () => {
+        mediaQueryList.removeEventListener("change", syncMobileTouchViewport);
+      };
+    }
+
+    mediaQueryList.addListener(syncMobileTouchViewport);
+    return () => {
+      mediaQueryList.removeListener(syncMobileTouchViewport);
     };
   }, [isWebRemoteControlShell]);
 
@@ -2378,6 +2427,16 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
                   ? "max-md:!h-[var(--web-remote-navigation-height)] max-md:!min-h-0 max-md:!w-full max-md:!max-w-none max-md:!flex-none max-md:!basis-auto max-md:border-b max-md:border-border max-md:bg-sidebar"
                   : "max-md:!h-0 max-md:!min-h-0 max-md:!w-full max-md:!max-w-none max-md:!flex-none max-md:!basis-0 max-md:!border-b-0",
               ),
+            // H5 触摸设备：侧栏改为全屏覆盖层而不是内联半屏列（cn 基于 tailwind-merge，
+            // 后写的 w-full / max-w-none / transition-* 覆盖上面的桌面基类）。
+            // 覆盖层脱离文档流，会话区在下方保持原宽，收起后无挤压跳变；
+            // 侧栏拖宽手柄在全屏下无意义，由下方布局隐藏。
+            isMobileTouchSidebarOverlay &&
+              cn(
+                "absolute inset-y-0 left-0 z-30 w-full max-w-none transition-[transform,opacity]",
+                // 展开收起用 translate 滑入滑出；透明度与点击屏蔽沿用下面统一的可见性分支。
+                isSidebarPanelVisible ? "translate-x-0" : "-translate-x-full",
+              ),
             isSidebarPanelVisible ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         >
@@ -2430,6 +2489,8 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
               "hover:after:opacity-100 data-[separator=hover]:after:opacity-100 data-[separator=active]:after:opacity-100 focus-visible:after:opacity-100 [[data-workspace-sidebar-resizing=true]_&]:after:opacity-100",
               hasDesktopPanelInset && "after:inset-y-[var(--workspace-resize-handle-inset)]",
               isWebRemoteControlShell && "max-md:hidden",
+              // 全屏覆盖下侧栏已脱离文档流，手柄会悬在会话区左缘，隐藏。
+              isMobileTouchSidebarOverlay && "hidden",
             )}
           />
         ) : null}
@@ -2441,6 +2502,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
             className={cn(
               "pointer-events-none absolute h-px w-1 bg-border/50 [left:anchor(--sidebar-task-list-divider_right,-4px)] [top:anchor(--sidebar-task-list-divider_top,-1px)]",
               isWebRemoteControlShell && "max-md:hidden",
+              isMobileTouchSidebarOverlay && "hidden",
             )}
           />
         ) : null}
@@ -2896,6 +2958,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
             onGoBack={primaryNavigationBack}
             onGoForward={handleTaskNavForward}
             hideTaskNavigationButtons={simplifyHeaderForNarrowRemote || isMobileSkillMarketView}
+            floatAboveSidebarOverlay={isMobileTouchSidebarOverlay}
           />
         </ScopedErrorBoundary>
 

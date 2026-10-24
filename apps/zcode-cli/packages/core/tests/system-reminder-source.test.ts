@@ -32,6 +32,7 @@ const EXPECTED_SOURCES = [
   "selection_side_chat",
   "queued_system_notification",
   "shell_environment_change",
+  "data_source_schema",
   "incoming_message",
   "hook_context",
   "memory_update",
@@ -43,6 +44,7 @@ const EXPECTED_SOURCES = [
   "referenced_session_context",
   "model_anomaly",
   "prompt_attachment",
+  "review_mode",
   "diagnostics",
 ] as const satisfies readonly SystemReminderSource[];
 
@@ -77,6 +79,7 @@ describe("system reminder source descriptors", () => {
       "selection_side_chat",
       "queued_system_notification",
       "shell_environment_change",
+      "data_source_schema",
     ]);
     expect(SYSTEM_REMINDER_PER_REQUEST_SOURCES).toEqual([
       "incoming_message",
@@ -90,6 +93,7 @@ describe("system reminder source descriptors", () => {
       "referenced_session_context",
       "model_anomaly",
       "prompt_attachment",
+      "review_mode",
       "diagnostics",
     ]);
 

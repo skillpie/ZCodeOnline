@@ -114,6 +114,19 @@ export async function readAvailableDataSourceSummary(): Promise<string> {
   return describeAvailable(await readConfigFile());
 }
 
+/**
+ * 按 id 非抛错解析数据源（表清单注入用）：仅显式 id 匹配，不回退
+ * activeId——注入内容必须与绑定快照严格一致，回退会注入错误源的表。
+ * 找不到返回 null，由调用方决定降级行为。
+ */
+export async function findDataSourceById(
+  dataSourceId: string,
+): Promise<ResolvedDataSource | null> {
+  const file = await readConfigFile();
+  const picked = file.dataSources.find((item) => item.id === dataSourceId) ?? null;
+  return picked ? { config: picked, view: toView(picked) } : null;
+}
+
 /** 读取表结构快照缓存（只读落盘文件，不触发数据库内省）。 */
 export async function readSchemaCache(
   dataSourceId: string,

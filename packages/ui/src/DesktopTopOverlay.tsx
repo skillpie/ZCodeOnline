@@ -45,6 +45,9 @@ interface DesktopTopOverlayProps {
   onGoForward: () => void;
   hideTaskNavigationButtons?: boolean;
   newTaskDisabledReason?: string;
+  // H5 触摸设备的全屏侧栏覆盖层（z-30）会盖住本浮层（z-20），左上角开关是覆盖态下
+  // 唯一的显式收起入口（全屏没有遮罩可点），需要垫到覆盖层之上保持可点。
+  floatAboveSidebarOverlay?: boolean;
 }
 
 export function DesktopTopOverlay({
@@ -75,6 +78,7 @@ export function DesktopTopOverlay({
   onGoForward,
   hideTaskNavigationButtons = false,
   newTaskDisabledReason,
+  floatAboveSidebarOverlay = false,
 }: DesktopTopOverlayProps) {
   const { intl } = useZCodeIntl();
   const SidebarToggleIcon = isSidebarVisible ? PanelLeftClose : PanelLeftOpen;
@@ -110,6 +114,8 @@ export function DesktopTopOverlay({
         style={topOverlayWidthStyle}
         className={cn(
           "@container/topoverlayer pointer-events-none absolute h-14 flex left-0 top-0 z-20 w-fit",
+          // cn 基于 tailwind-merge，需要时 z-40 覆盖基类 z-20。
+          floatAboveSidebarOverlay && "z-40",
           // 工具组计入各平台顶部留白和 1px 边框，与 Header 中心线对齐。
           usesCustomCaptionArea && "mt-px",
           isWindowsDesktop ? "top-1.5" : isLinuxDesktop && "top-1",

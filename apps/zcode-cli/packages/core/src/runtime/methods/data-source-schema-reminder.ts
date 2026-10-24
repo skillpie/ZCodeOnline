@@ -1,0 +1,168 @@
+// ============================================================
+// Data source schema reminder - 会话绑定数据源的表清单注入
+// ============================================================
+// 背景：DBSchema 是表结构进入模型上下文的唯一通道，会话首次做数据分析前
+// 模型都要先一次列表调用（一整次模型往返）。会话已绑定数据源时，把表名+
+// 注释清单随绑定注入会话流，省掉首次列表往返；列结构不注入（全量列清单
+// 体积约为表清单 10 倍），仍按需经 DBSchema table= 精确查询。
+//
+// 去重以 messageHistory 为唯一事实源（无独立 marker）：注入前反向扫描
+// 最近一条 data_source_schema 附件并比对其中记录的 data-source-id——
+// resume/rewind/fork 重建历史后扫描结果自动反映当前事实，不需要在
+// 恢复路径上手工复位状态。
+import { traceContextToLogContext, type TraceContext } from "../deps.js";
+import type { RuntimeMessageEntry } from "../../agent/message-history.js";
+import {
+  isRuntimeAttachmentEntry,
+  systemReminderAttachmentEntry,
+} from "../../agent/message-history.js";
+import type { DbSchemaTable } from "@zcode/contracts";
+import type { AgentRuntimeInternal } from "../internal.js";
+import { findDataSourceById, readSchemaCache } from "../../tool/handlers/db/store.js";
+import { appendTurnRequestEntries } from "./turn-output-token-continuation.js";
+import { persistRuntimeReminderMessage } from "./runtime-reminder-persistence.js";
+import type { TurnRequestState } from "./turn-loop-state.js";
+
+/** 与 db-schema.ts 的列表上限一致；超出部分提示模型用 keyword 收窄。 */
+const MAX_LISTED_TABLES = 150;
+const DATA_SOURCE_SCHEMA_SOURCE = "data_source_schema" as const;
+const DATA_SOURCE_ID_PATTERN = /^data-source-id: (\S+)$/m;
+
+export function buildDataSourceSchemaReminderBody(input: {
+  dataSourceId: string;
+  sourceName: string;
+  sourceType: string;
+  readOnly: boolean;
+  fetchedAt: string;
+  tables: DbSchemaTable[];
+}): string {
+  const tables = input.tables;
+  const lines = tables
+    .slice(0, MAX_LISTED_TABLES)
+    .map((table) => {
+      const kind = `[${table.kind}]`;
+      return table.comment?.trim()
+        ? `${table.name} ${kind} ${table.comment.trim()}`
+        : `${table.name} ${kind}`;
+    });
+  const omitted = tables.length - Math.min(tables.length, MAX_LISTED_TABLES);
+  const linesBlock = [
+    ...lines,
+    ...(omitted > 0
+      ? [`(${omitted} more tables not listed — call DBSchema with a keyword to narrow down)`]
+      : []),
+  ].join("\n");
+  return [
+    `The data source for this conversation is now "${input.sourceName}" (${input.sourceType}${input.readOnly ? ", read-only" : ", read-write"}).`,
+    `data-source-id: ${input.dataSourceId}`,
+    `Local schema snapshot synced at ${input.fetchedAt} — ${tables.length} tables (name [kind] comment):`,
+    "",
+    linesBlock,
+    "",
+    "Pick tables from the list above when composing SQL, then call DBSchema with table=<name> to load exact column names and types; a plain DBSchema listing call is unnecessary while this list matches the bound data source.",
+  ].join("\n");
+}
+
+/** 从附件正文提取注入时记录的数据源 id；无标记行返回 undefined。 */
+export function extractDataSourceIdFromReminder(content: string): string | undefined {
+  return DATA_SOURCE_ID_PATTERN.exec(content)?.[1];
+}
+
+/**
+ * 绑定与最近一次注入一致时返回 true（无需重复注入）。
+ * 反向扫描到最近一条即停：历史里可能有多条（A→B→A 切换），只有最后一条
+ * 代表当前生效的注入。
+ */
+function isSchemaReminderUpToDate(
+  entries: readonly RuntimeMessageEntry[],
+  dataSourceId: string,
+): boolean {
+  for (let index = entries.length - 1; index >= 0; index--) {
+    const entry = entries[index]!;
+    if (!isRuntimeAttachmentEntry(entry)) continue;
+    if (entry.metadata.source !== DATA_SOURCE_SCHEMA_SOURCE) continue;
+    return extractDataSourceIdFromReminder(entry.content) === dataSourceId;
+  }
+  return false;
+}
+
+/**
+ * 会话数据源绑定变更时注入表清单（幂等）。
+ * - 绑定未变：no-op；绑定解除（undefined）：no-op（旧清单保留为历史事实，
+ *   DB 工具回退 activeId 时模型经 DBSchema 自行发现，与注入前行为一致）。
+ * - 数据源未配置或快照未同步：跳过注入且不报错——工具调用时已有带清单的
+ *   引导错误，注入层不再制造第二条错误路径。
+ * - 持久化失败仅告警：注入是优化项，会话恢复后扫描不到附件会自动重注入，
+ *   不能因落盘失败拖垮整个轮。
+ */
+export async function injectDataSourceSchemaReminder(
+  runtime: AgentRuntimeInternal,
+  dataSourceId: string | undefined,
+  traceContext: TraceContext,
+  turnRequestState?: TurnRequestState,
+): Promise<void> {
+  if (!dataSourceId?.trim()) return;
+  if (isSchemaReminderUpToDate(runtime.messageHistory.borrowReadOnlyRuntimeEntries(), dataSourceId)) {
+    return;
+  }
+
+  const resolved = await findDataSourceById(dataSourceId);
+  if (!resolved) {
+    runtime.logger?.debug("Data source schema reminder skipped: source not found", {
+      ...traceContextToLogContext(traceContext),
+      dataSourceId,
+      event: "data_source_schema_reminder.skipped",
+      module: "core.runtime",
+      reason: "source_not_found",
+    });
+    return;
+  }
+  const cache = await readSchemaCache(resolved.config.id);
+  if (!cache || cache.tables.length === 0) {
+    // 快照未同步：不注入也不阻塞。后续轮绑定不变仍会重试（本地文件读，代价可忽略）。
+    runtime.logger?.debug("Data source schema reminder skipped: no synced schema", {
+      ...traceContextToLogContext(traceContext),
+      dataSourceId,
+      event: "data_source_schema_reminder.skipped",
+      module: "core.runtime",
+      reason: "schema_not_synced",
+    });
+    return;
+  }
+
+  const entry = systemReminderAttachmentEntry(
+    DATA_SOURCE_SCHEMA_SOURCE,
+    buildDataSourceSchemaReminderBody({
+      dataSourceId: resolved.config.id,
+      fetchedAt: cache.fetchedAt,
+      readOnly: resolved.config.readOnly,
+      sourceName: resolved.view.name,
+      sourceType: resolved.view.type,
+      tables: cache.tables,
+    }),
+  );
+  try {
+    await persistRuntimeReminderMessage.call(runtime, entry, traceContext);
+  } catch (error) {
+    runtime.logger?.warn("Data source schema reminder persistence failed", {
+      ...traceContextToLogContext(traceContext),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      event: "data_source_schema_reminder.persist_failed",
+      module: "core.runtime",
+    });
+  }
+  runtime.messageHistory.addAttachment(DATA_SOURCE_SCHEMA_SOURCE, entry.content);
+  // drain 注入发生在 turnRequestState 快照之后，必须同步追加到进行中轮的条目，
+  // 否则本轮后续请求看不到清单；turn 开始路径传入 undefined（快照尚未创建）。
+  if (turnRequestState) {
+    appendTurnRequestEntries(turnRequestState, [entry]);
+  }
+  runtime.logger?.debug("Data source schema reminder injected", {
+    ...traceContextToLogContext(traceContext),
+    dataSourceId,
+    event: "data_source_schema_reminder.injected",
+    module: "core.runtime",
+    status: "completed",
+    tableCount: cache.tables.length,
+  });
+}
