@@ -1,12 +1,13 @@
 // 表清单注入（data_source_schema reminder）的验收：
 // - 绑定首次出现注入一次，绑定不变幂等跳过，切换绑定追加新清单；
-// - 去重以 messageHistory 为唯一事实源（扫描最近一条附件的 data-source-id），
-//   rewind/恢复重建历史后无需复位任何状态；
+// - 去重以 messageHistory 为唯一事实源（扫描最近一条附件的 data-source-id +
+//   notes-fingerprint），rewind/恢复重建历史后无需复位任何状态；
+// - 查数手册（notes/<id>.md）随表清单合并注入，手册更新/删除经指纹变化触发重注入；
 // - 快照未同步/数据源不存在时静默跳过（注入是优化项，不制造第二条错误路径）；
 // - drain 路径同步追加到进行中轮的请求条目。
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MessageHistoryImpl } from "../../src/agent/message-history.js";
@@ -16,6 +17,7 @@ import type { TurnRequestState } from "../../src/runtime/methods/turn-loop-state
 import {
   buildDataSourceSchemaReminderBody,
   extractDataSourceIdFromReminder,
+  extractNotesFingerprintFromReminder,
   injectDataSourceSchemaReminder,
 } from "../../src/runtime/methods/data-source-schema-reminder.js";
 import {
@@ -39,11 +41,12 @@ const TRACE = { traceId: "test-trace" } as AgentRuntimeInternal["rootTraceContex
 
 async function seedDataSources(
   sources: Array<{ id: string; name: string; readOnly?: boolean }>,
-  options: { schemaFor?: string[] } = {},
+  options: { schemaFor?: string[]; notesFor?: Array<{ id: string; content: string }> } = {},
 ): Promise<string> {
   const baseDir = await mkdtemp(join(tmpdir(), "zcode-schema-reminder-"));
   const dir = join(baseDir, ".zcode", "v2", "data-sources");
   await mkdir(join(dir, "schema-cache"), { recursive: true });
+  await mkdir(join(dir, "notes"), { recursive: true });
   await writeFile(
     join(dir, "config.json"),
     JSON.stringify({
@@ -78,7 +81,17 @@ async function seedDataSources(
       "utf-8",
     );
   }
+  for (const notes of options.notesFor ?? []) {
+    await writeFile(join(dir, "notes", `${notes.id}.md`), notes.content, "utf-8");
+  }
   return baseDir;
+}
+
+/** 手动推高文件 mtime，模拟「手册被更新」。 */
+async function bumpNotesMtime(baseDir: string, id: string): Promise<void> {
+  const filePath = join(baseDir, ".zcode", "v2", "data-sources", "notes", `${id}.md`);
+  const future = new Date(Date.now() + 10_000);
+  await utimes(filePath, future, future);
 }
 
 function attachmentsOf(runtime: AgentRuntimeInternal): RuntimeAttachmentEntry[] {
@@ -104,6 +117,7 @@ test("绑定首次出现时注入表清单：含 data-source-id、表行与按�
     assert.equal(attachments.length, 1);
     const content = attachments[0]!.content;
     assert.ok(content.includes("data-source-id: ds-a"));
+    assert.ok(content.includes("notes-fingerprint: none"));
     assert.ok(content.includes('"生产数据库" (mysql, read-only)'));
     assert.ok(content.includes("wms_inbound_order [table] 入库单主表"));
     // 无注释表不悬挂空尾注
@@ -216,6 +230,64 @@ test("正文构建：超上限截断提示；id 标记行可逆向解析", () =>
   assert.ok(body.includes("10 more tables not listed"));
   assert.ok(body.includes("read-write"));
   assert.equal(extractDataSourceIdFromReminder(body), "ds-x");
+  assert.equal(extractNotesFingerprintFromReminder(body), "none");
+});
+
+test("查数手册合并注入：正文含手册段、指纹与冲突裁决句", async () => {
+  const baseDir = await seedDataSources([{ id: "ds-a", name: "生产数据库" }], {
+    schemaFor: ["ds-a"],
+    notesFor: [{ id: "ds-a", content: "# 查数手册\n查询必须带 tenant_id = '2070052879205257218'" }],
+  });
+  const previous = process.env[ENV_KEY];
+  process.env[ENV_KEY] = baseDir;
+  const runtime = createRuntimeStub();
+  try {
+    await injectDataSourceSchemaReminder(runtime, "ds-a", TRACE);
+    const content = attachmentsOf(runtime)[0]!.content;
+    assert.ok(content.includes("## Data source notes (human-maintained query handbook)"));
+    assert.ok(content.includes("tenant_id = '2070052879205257218'"));
+    assert.ok(content.includes("trust the DBSchema result"));
+    const fingerprint = extractNotesFingerprintFromReminder(content);
+    assert.ok(fingerprint && fingerprint !== "none");
+    // 同一绑定同指纹：幂等
+    await injectDataSourceSchemaReminder(runtime, "ds-a", TRACE);
+    assert.equal(attachmentsOf(runtime).length, 1);
+    // 手册更新（mtime 变化）→ 重注入
+    await bumpNotesMtime(baseDir, "ds-a");
+    await injectDataSourceSchemaReminder(runtime, "ds-a", TRACE);
+    assert.equal(attachmentsOf(runtime).length, 2);
+    // 手册删除 → 指纹回 none → 重注入
+    await rm(join(baseDir, ".zcode", "v2", "data-sources", "notes", "ds-a.md"), { force: true });
+    await injectDataSourceSchemaReminder(runtime, "ds-a", TRACE);
+    const latest = attachmentsOf(runtime).at(-1)!.content;
+    assert.ok(latest.includes("notes-fingerprint: none"));
+    assert.ok(!latest.includes("## Data source notes"));
+  } finally {
+    if (previous === undefined) delete process.env[ENV_KEY];
+    else process.env[ENV_KEY] = previous;
+    await rm(baseDir, { recursive: true, force: true });
+  }
+});
+
+test("手册超 64KB 护栏：注入正文截断并注明", async () => {
+  const bigNotes = `# 手册\n${"x".repeat(70_000)}`;
+  const baseDir = await seedDataSources([{ id: "ds-a", name: "生产数据库" }], {
+    schemaFor: ["ds-a"],
+    notesFor: [{ id: "ds-a", content: bigNotes }],
+  });
+  const previous = process.env[ENV_KEY];
+  process.env[ENV_KEY] = baseDir;
+  const runtime = createRuntimeStub();
+  try {
+    await injectDataSourceSchemaReminder(runtime, "ds-a", TRACE);
+    const content = attachmentsOf(runtime)[0]!.content;
+    assert.ok(content.includes(`(notes truncated at 64000 bytes`));
+    assert.ok(!content.includes("x".repeat(70_000)));
+  } finally {
+    if (previous === undefined) delete process.env[ENV_KEY];
+    else process.env[ENV_KEY] = previous;
+    await rm(baseDir, { recursive: true, force: true });
+  }
 });
 
 test("源注册：data_source_schema 在已知源列表且可正常包裹", () => {

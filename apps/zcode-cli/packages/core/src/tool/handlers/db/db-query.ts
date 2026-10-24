@@ -50,7 +50,11 @@ export const dbQueryToolEntry: ToolEntry = {
       "Pick table names from the bound data-source table list in context (or resolve them with DBSchema when absent) before writing SQL; do not guess identifiers.",
       "Load exact column names with DBSchema table=<name> when column details are needed.",
       "Only SELECT / WITH / SHOW / DESCRIBE / EXPLAIN are allowed here — writes belong to DBExecute.",
-      "Add LIMIT to exploratory queries; results are capped at 200 rows per statement.",
+      "Add LIMIT to exploratory detail queries; results are capped at 200 rows per statement.",
+      // 实测（2026-10-24，86 仓聚合案例）：模型先查 information_schema 评量级再聚合、
+      // 截断后重跑，各多一次往返。聚合被 200 行上限保护，无需预查；预期超默认 50 行
+      // 的分组（各仓库/各租户/按天）首查就取 max_rows=200。
+      "Aggregations (GROUP BY / counts) are safe to run directly — skip information_schema row-count pre-checks; when the grouping may exceed the default 50 rows (per-warehouse, per-tenant, per-day breakdowns), pass max_rows=200 on the first call instead of re-querying after truncation.",
     ],
     readOnly: true,
     destructive: false,

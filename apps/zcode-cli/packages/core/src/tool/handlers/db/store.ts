@@ -8,7 +8,7 @@
 
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import type { DbSchemaTable, DbTargetView } from "@zcode/contracts";
 
 const ZCODE_DATA_BASE_DIR_ENV_KEY = "ZCODE_DATA_BASE_DIR";
@@ -140,6 +140,24 @@ export async function readSchemaCache(
       return null;
     }
     return { fetchedAt: raw.fetchedAt ?? "", tables: raw.tables };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 读取查数手册（host 数据源面板编辑的人工口径文档，与 host 侧
+ * dataSourceNotes.ts 同一落盘公式）。mtimeMs 供注入层做更新指纹。
+ */
+export async function readDataSourceNotes(
+  dataSourceId: string,
+): Promise<{ content: string; mtimeMs: number } | null> {
+  try {
+    const safeId = String(dataSourceId).replace(/[^\w-]/g, "_");
+    const filePath = join(resolveDataSourceDataDir(), "notes", `${safeId}.md`);
+    const [content, fileStat] = await Promise.all([readFile(filePath, "utf-8"), stat(filePath)]);
+    if (!content.trim()) return null;
+    return { content, mtimeMs: Math.floor(fileStat.mtimeMs) };
   } catch {
     return null;
   }

@@ -5776,6 +5776,16 @@ const zhCN: Record<string, string> = {
   "chat.toolbar.dataSource.notSynced": "尚未同步表结构",
   "chat.toolbar.dataSource.tablesCount": "{count} 张表 / 视图",
   "chat.toolbar.dataSource.schemaTitle": "表结构",
+  "chat.toolbar.dataSource.notesTitle": "查数手册",
+  "chat.toolbar.dataSource.notesHint":
+    "人工维护的查数口径（租户过滤、单号规则、统计陷阱等），会随表清单注入 Agent 上下文",
+  "chat.toolbar.dataSource.notesPlaceholder":
+    "用 Markdown 记录查库必读口径：\n- 租户/环境过滤（如 tenant_id 固定值）\n- 单号编码规则与对应表.列\n- 跨表关联键与易错点\n- 常见统计口径与陷阱",
+  "chat.toolbar.dataSource.notesSave": "保存",
+  "chat.toolbar.dataSource.notesClear": "清空",
+  "chat.toolbar.dataSource.notesSavedAt": "已保存 · {time}",
+  "chat.toolbar.dataSource.notesSize": "{kb} KB（{bytes} 字节）",
+  "chat.toolbar.dataSource.notesOverLimit": "超过 64 KB，注入上下文时会被截断",
   "chat.toolbar.dataSource.syncDone": "已保存，表结构同步完成（{count} 张表）",
   "chat.toolbar.dataSource.syncFailed": "已保存，但表结构同步失败：{message}",
   "chat.toolbar.dataSource.delete": "删除",

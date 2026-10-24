@@ -31,6 +31,8 @@ export function useDataSourceManager() {
   const resyncAction = useDataSourceStore((state) => state.resync);
   const testAction = useDataSourceStore((state) => state.test);
   const ensureSnapshotAction = useDataSourceStore((state) => state.ensureSnapshot);
+  const loadNotesAction = useDataSourceStore((state) => state.loadNotes);
+  const saveNotesAction = useDataSourceStore((state) => state.saveNotes);
 
   useEffect(() => {
     if (!service) return;
@@ -88,6 +90,23 @@ export function useDataSourceManager() {
     [service, ensureSnapshotAction],
   );
 
+  const notes = useDataSourceStore((state) => state.notes);
+
+  const ensureNotes = useCallback(
+    async (id: string) => {
+      if (service) await loadNotesAction(service, id);
+    },
+    [service, loadNotesAction],
+  );
+
+  const saveNotes = useCallback(
+    async (id: string, content: string | null) => {
+      if (!service) throw new Error("数据源服务不可用");
+      await saveNotesAction(service, id, content);
+    },
+    [service, saveNotesAction],
+  );
+
   return {
     available: service !== undefined,
     dataSources,
@@ -97,6 +116,7 @@ export function useDataSourceManager() {
     syncStatus,
     syncError,
     loading,
+    notes,
     load,
     save,
     remove,
@@ -104,5 +124,7 @@ export function useDataSourceManager() {
     resync,
     test,
     ensureSnapshot,
+    ensureNotes,
+    saveNotes,
   };
 }

@@ -8,6 +8,7 @@ import { create } from "zustand";
 import type {
   DataSourceInput,
   DataSourceMutationResult,
+  DataSourceNotesResult,
   DataSourceSchemaSnapshot,
   DataSourceView,
 } from "@zcode/shared";
@@ -24,6 +25,8 @@ interface DataSourceStoreState {
   snapshots: Record<string, DataSourceSchemaSnapshot | null>;
   syncStatus: Record<string, DataSourceSyncStatus>;
   syncError: Record<string, string | null>;
+  /** 数据源 id → 查数手册（未编写为 content: null；面板打开时拉取） */
+  notes: Record<string, DataSourceNotesResult>;
 }
 
 interface DataSourceStoreActions {
@@ -35,6 +38,10 @@ interface DataSourceStoreActions {
   test(service: IDataSourceService, input: DataSourceInput): Promise<DataSourceTestOutcome>;
   /** 打开管理面板时补拉某个源的快照（不触发内省）。 */
   ensureSnapshot(service: IDataSourceService, id: string): Promise<void>;
+  /** 拉取某个源的查数手册（不触发内省；缺服务时静默）。 */
+  loadNotes(service: IDataSourceService, id: string): Promise<void>;
+  /** 保存/清除查数手册（空内容清除）；成功后回写 store 投影。 */
+  saveNotes(service: IDataSourceService, id: string, content: string | null): Promise<void>;
 }
 
 export type DataSourceStore = DataSourceStoreState & DataSourceStoreActions;
@@ -73,6 +80,7 @@ export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
   snapshots: {},
   syncStatus: {},
   syncError: {},
+  notes: {},
 
   async load(service) {
     set({ loading: true });
@@ -101,15 +109,18 @@ export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
       const snapshots = { ...state.snapshots };
       const syncStatus = { ...state.syncStatus };
       const syncError = { ...state.syncError };
+      const notes = { ...state.notes };
       delete snapshots[id];
       delete syncStatus[id];
       delete syncError[id];
+      delete notes[id];
       return {
         dataSources: state.dataSources.filter((item) => item.id !== id),
         activeId: state.activeId === id ? null : state.activeId,
         snapshots,
         syncStatus,
         syncError,
+        notes,
       };
     });
   },
@@ -169,6 +180,23 @@ export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
     } catch {
       set((state) => ({ snapshots: { ...state.snapshots, [id]: null } }));
     }
+  },
+
+  async loadNotes(service, id) {
+    if (get().notes[id] !== undefined) return;
+    try {
+      const result = await service.getDataSourceNotes(id);
+      set((state) => ({ notes: { ...state.notes, [id]: result } }));
+    } catch {
+      set((state) => ({ notes: { ...state.notes, [id]: { content: null, updatedAt: null } } }));
+    }
+  },
+
+  async saveNotes(service, id, content) {
+    await service.saveDataSourceNotes({ id, content });
+    // 保存后回读（host 侧 mtime 是落盘事实，回读保证 updatedAt 一致）。
+    const result = await service.getDataSourceNotes(id);
+    set((state) => ({ notes: { ...state.notes, [id]: result } }));
   },
 }));
 

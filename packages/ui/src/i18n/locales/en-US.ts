@@ -6167,6 +6167,16 @@ const enUS: Record<string, string> = {
   "chat.toolbar.dataSource.notSynced": "Schema not synced yet",
   "chat.toolbar.dataSource.tablesCount": "{count} tables / views",
   "chat.toolbar.dataSource.schemaTitle": "Schema",
+  "chat.toolbar.dataSource.notesTitle": "Query Handbook",
+  "chat.toolbar.dataSource.notesHint":
+    "Human-maintained query conventions (tenant filters, order-no rules, aggregation pitfalls); injected into the Agent context with the table list",
+  "chat.toolbar.dataSource.notesPlaceholder":
+    "Record must-know query conventions in Markdown:\n- Tenant/environment filters (e.g. fixed tenant_id values)\n- Order-number encoding rules and their table.column\n- Cross-table join keys and pitfalls\n- Common aggregation conventions and traps",
+  "chat.toolbar.dataSource.notesSave": "Save",
+  "chat.toolbar.dataSource.notesClear": "Clear",
+  "chat.toolbar.dataSource.notesSavedAt": "Saved · {time}",
+  "chat.toolbar.dataSource.notesSize": "{kb} KB ({bytes} bytes)",
+  "chat.toolbar.dataSource.notesOverLimit": "Over 64 KB; will be truncated when injected into context",
   "chat.toolbar.dataSource.syncDone": "Saved. Schema synced ({count} tables)",
   "chat.toolbar.dataSource.syncFailed": "Saved, but schema sync failed: {message}",
   "chat.toolbar.dataSource.delete": "Delete",

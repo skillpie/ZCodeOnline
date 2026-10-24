@@ -76,6 +76,17 @@ export interface DataSourceSchemaSnapshot {
   tables: DataSourceTable[];
 }
 
+/**
+ * 查数手册（人工维护的口径/陷阱文档，markdown）：host 唯一所有者落盘
+ * data-sources/notes/<id>.md，agent 侧只读同一文件并随表清单注入上下文。
+ * 与 schema 快照严格分离——快照是内省产物会被「同步表结构」整体覆盖，
+ * 人工知识不能混入其中被冲掉。
+ */
+export interface DataSourceNotesResult {
+  content: string | null;
+  updatedAt: string | null;
+}
+
 /** 单条语句结果：查询（行数截断）或更新（受影响行数）。 */
 export type DataSourceStatementResult =
   | {

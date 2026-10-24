@@ -3,6 +3,7 @@ import type {
   DataSourceInput,
   DataSourceListResult,
   DataSourceMutationResult,
+  DataSourceNotesResult,
   DataSourceSchemaSnapshot,
   DataSourceTestResult,
 } from "@zcode/shared";
@@ -27,6 +28,13 @@ export interface IDataSourceService {
   syncSchema(id: string): Promise<DataSourceMutationResult>;
   /** 读取已缓存快照（不触发内省；未同步过返回 null）。 */
   getSchemaSnapshot(id: string): Promise<DataSourceSchemaSnapshot | null>;
+  /**
+   * 查数手册（人工维护的查数口径/陷阱 markdown）：落盘 data-sources/notes/<id>.md，
+   * agent 侧只读同一文件并随表清单注入上下文。未编写返回 content: null。
+   */
+  getDataSourceNotes(id: string): Promise<DataSourceNotesResult>;
+  /** 保存手册（原子写）；content 为空即清除。 */
+  saveDataSourceNotes(input: { id: string; content: string | null }): Promise<void>;
   /** 核心读写引擎：只读模式拦截非查询语句；写语句统一包事务，任一失败全部回滚。 */
   executeSql(
     id: string,

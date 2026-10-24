@@ -895,3 +895,12 @@ exceptions:
     paths:
       - apps/zcode-cli/packages/core/src/runtime/methods/data-source-schema-reminder.ts
     reason: 会话绑定数据源的表清单注入（data_source_schema reminder）新增单一职责模块；接管 apps/zcode-cli/packages/core/src/runtime 目录需要独立的模块边界重构，不在本次范围。
+  - id: data-source-notes-unmanaged-file
+    rule: unmanaged-new-file
+    paths:
+      - packages/services/src/data-source/dataSourceNotes.ts
+    reason: 查数手册（人工口径文档）落盘模块，与同目录 sessionDataSourceBinding.ts 同构的单一职责文件；接管 services/data-source 目录需要独立的模块边界重构，不在本次范围。
+  - id: group-item-upstream-lint-disable
+    rule: disable-count
+    paths: [packages/ui/src/project-sidebar/grouped/group-item.tsx]
+    reason: max-lines disable 由上游 v3.16.2 合并带入且未过架构门禁，经本次数据源 UI 改动的反向依赖闭包首次暴露；文件本身未被修改，disable 理由见文件头注释。

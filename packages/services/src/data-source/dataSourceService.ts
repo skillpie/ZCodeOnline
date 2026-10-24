@@ -9,6 +9,7 @@ import type {
   DataSourceInput,
   DataSourceListResult,
   DataSourceMutationResult,
+  DataSourceNotesResult,
   DataSourceSchemaSnapshot,
   DataSourceTestResult,
 } from "@zcode/shared";
@@ -16,6 +17,11 @@ import { maskDataSource, normalizeDataSourceInput } from "@zcode/shared";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 import { executeStatements, introspect, testConnection } from "./dbDriver.js";
 import { loadDataSourceConfigFile, saveDataSourceConfigFile } from "./dataSourceConfigFile.js";
+import {
+  deleteDataSourceNotesFile,
+  readDataSourceNotesFile,
+  writeDataSourceNotesFile,
+} from "./dataSourceNotes.js";
 import {
   deleteSessionDataSourceBinding as deleteSessionDataSourceBindingFile,
   readSessionDataSourceBinding as readSessionDataSourceBindingFile,
@@ -122,6 +128,8 @@ export function createDataSourceService(): IDataSourceService {
         dataSources: next,
       });
       await invalidateSchemaCache(id);
+      // 手册是人工知识，删源时一并清理防孤儿（对秤 schema-cache 的清理语义）。
+      await deleteDataSourceNotesFile(id);
       log.info("data source deleted", id);
     },
 
@@ -163,6 +171,19 @@ export function createDataSourceService(): IDataSourceService {
 
     async getSchemaSnapshot(id): Promise<DataSourceSchemaSnapshot | null> {
       return readSchemaSnapshot(id);
+    },
+
+    async getDataSourceNotes(id): Promise<DataSourceNotesResult> {
+      return readDataSourceNotesFile(id);
+    },
+
+    async saveDataSourceNotes({ id, content }): Promise<void> {
+      await writeDataSourceNotesFile(id, content);
+      log.info(
+        "data source notes saved",
+        id,
+        content?.trim() ? `${content.length} chars` : "cleared",
+      );
     },
 
     async executeSql(id, sql, options): Promise<DataSourceExecuteResult> {

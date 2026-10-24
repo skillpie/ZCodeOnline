@@ -3,7 +3,7 @@
  * 附加式新功能，spec 见 specs/data-source.md；数据一律来自 useDataSourceManager 投影。
  */
 import { useEffect, useState } from "react";
-import { Check, CircleAlert, Loader2, Plus, RefreshCw } from "lucide-react";
+import { BookOpen, Check, CircleAlert, Loader2, Plus, RefreshCw } from "lucide-react";
 import type { DataSourceView } from "@zcode/shared";
 import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
+import { Textarea } from "@/components/ui/textarea.js";
 import { useDataSourceManager } from "@/hooks/useDataSource.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { cn } from "@/components/lib/utils.js";
@@ -150,14 +152,51 @@ function DataSourceFormArea({
         onDeleted={onDeleted}
       />
       {source ? (
-        <DataSourceSchemaPanel sourceId={source.id} onResync={() => void resync(source.id)} />
+        <DataSourceKnowledgePanel sourceId={source.id} onResync={() => void resync(source.id)} />
       ) : null}
     </>
   );
 }
 
-/** 选中数据源的表结构快照视图：同步状态 + 表数量 + 表清单。 */
-function DataSourceSchemaPanel({ sourceId, onResync }: { sourceId: string; onResync: () => void }) {
+/** 选中数据源的知识面板：表结构快照 + 查数手册两个视图。 */
+function DataSourceKnowledgePanel({
+  sourceId,
+  onResync,
+}: {
+  sourceId: string;
+  onResync: () => void;
+}) {
+  const { intl } = useZCodeIntl();
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col border-t border-border"
+      data-testid="data-source-knowledge-panel"
+    >
+      <Tabs defaultValue="schema" className="flex min-h-0 flex-1 flex-col gap-0">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1">
+          <TabsList className="h-7">
+            <TabsTrigger value="schema" className="text-ui-sm" data-testid="data-source-tab-schema">
+              {intl.formatMessage({ id: "chat.toolbar.dataSource.schemaTitle" })}
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="text-ui-sm" data-testid="data-source-tab-notes">
+              <BookOpen className="size-3" aria-hidden />
+              {intl.formatMessage({ id: "chat.toolbar.dataSource.notesTitle" })}
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="schema" className="mt-0 min-h-0 flex-1">
+          <DataSourceSchemaView sourceId={sourceId} onResync={onResync} />
+        </TabsContent>
+        <TabsContent value="notes" className="mt-0 min-h-0 flex-1">
+          <DataSourceNotesView sourceId={sourceId} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/** 表结构快照视图：同步状态 + 表数量 + 表清单 + 重新同步。 */
+function DataSourceSchemaView({ sourceId, onResync }: { sourceId: string; onResync: () => void }) {
   const { intl } = useZCodeIntl();
   const { snapshots, syncStatus, ensureSnapshot } = useDataSourceManager();
   const snapshot = snapshots[sourceId];
@@ -175,16 +214,10 @@ function DataSourceSchemaPanel({ sourceId, onResync }: { sourceId: string; onRes
     : intl.formatMessage({ id: "chat.toolbar.dataSource.notSynced" });
 
   return (
-    <div
-      className="flex min-h-0 flex-1 flex-col border-t border-border"
-      data-testid="data-source-schema-panel"
-    >
+    <div className="flex h-full min-h-0 flex-col" data-testid="data-source-schema-panel">
       <div className="flex shrink-0 items-center gap-2 px-3 py-1.5">
-        <span className="text-ui-base font-medium">
-          {intl.formatMessage({ id: "chat.toolbar.dataSource.schemaTitle" })}
-        </span>
         {syncing ? (
-          <Loader2 className="size-3.5 animate-spin text-foreground-subtle" aria-hidden />
+          <Loader2 className="size-3.5 animate-spin text-foreground-subtlest" aria-hidden />
         ) : syncStatus[sourceId] === "error" ? (
           <CircleAlert className="size-3.5 text-[var(--color-warning)]" aria-hidden />
         ) : null}
@@ -231,6 +264,118 @@ function DataSourceSchemaPanel({ sourceId, onResync }: { sourceId: string; onRes
           </ul>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** 手册正文体量上限（与 agent 注入护栏一致），超出仅提示不阻止保存。 */
+const NOTES_SIZE_HINT_THRESHOLD = 64_000;
+
+/** 查数手册编辑视图：人工口径/陷阱文档，保存后随表清单注入 Agent 上下文。 */
+function DataSourceNotesView({ sourceId }: { sourceId: string }) {
+  const { intl } = useZCodeIntl();
+  const { notes, ensureNotes, saveNotes } = useDataSourceManager();
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    void ensureNotes(sourceId);
+  }, [sourceId, ensureNotes]);
+
+  const loaded = notes[sourceId];
+  // draft 为 null 表示「未编辑」，展示落盘正文；一旦编辑以 draft 为准。
+  const text = draft ?? loaded?.content ?? "";
+
+  const dirty = draft !== null && draft !== (loaded?.content ?? "");
+
+  const onSave = async () => {
+    if (draft === null) return;
+    setSaving(true);
+    try {
+      await saveNotes(sourceId, draft.trim() ? draft : null);
+      setDraft(null);
+      setSavedAt(new Date().toLocaleTimeString());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onClear = async () => {
+    setSaving(true);
+    try {
+      await saveNotes(sourceId, null);
+      setDraft(null);
+      setSavedAt(new Date().toLocaleTimeString());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const bytes = new TextEncoder().encode(text).length;
+  const overLimit = bytes > NOTES_SIZE_HINT_THRESHOLD;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col" data-testid="data-source-notes-panel">
+      <div className="flex shrink-0 items-center gap-2 px-3 py-1.5">
+        <span className="min-w-0 flex-1 truncate text-ui-sm text-foreground-subtlest">
+          {intl.formatMessage({ id: "chat.toolbar.dataSource.notesHint" })}
+        </span>
+        {savedAt && !dirty ? (
+          <span className="shrink-0 text-ui-sm text-[var(--color-success)]">
+            {intl.formatMessage({ id: "chat.toolbar.dataSource.notesSavedAt" }, { time: savedAt })}
+          </span>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-ui-sm"
+          disabled={saving || !loaded?.content}
+          onClick={() => void onClear()}
+        >
+          {intl.formatMessage({ id: "chat.toolbar.dataSource.notesClear" })}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-ui-sm"
+          disabled={saving || !dirty}
+          onClick={() => void onSave()}
+        >
+          {saving ? (
+            <Loader2 className="size-3 animate-spin" aria-hidden />
+          ) : (
+            <Check className="size-3" aria-hidden />
+          )}
+          {intl.formatMessage({ id: "chat.toolbar.dataSource.notesSave" })}
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 px-3 pb-2">
+        <Textarea
+          value={text}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder={intl.formatMessage({ id: "chat.toolbar.dataSource.notesPlaceholder" })}
+          className="field-sizing-fixed h-full resize-none font-mono text-ui-sm leading-relaxed"
+          data-testid="data-source-notes-editor"
+          spellCheck={false}
+        />
+      </div>
+      <div
+        className={cn(
+          "shrink-0 px-3 py-1 text-ui-sm text-foreground-subtlest",
+          overLimit && "text-[var(--color-warning)]",
+        )}
+      >
+        {intl.formatMessage(
+          { id: "chat.toolbar.dataSource.notesSize" },
+          { bytes, kb: (bytes / 1024).toFixed(1) },
+        )}
+        {overLimit
+          ? ` · ${intl.formatMessage({ id: "chat.toolbar.dataSource.notesOverLimit" })}`
+          : ""}
+      </div>
     </div>
   );
 }

@@ -6,8 +6,14 @@
 # 网页会话会一直跑旧产物。daemon dev 态经 findUpward 定位
 # apps/zcode-cli/packages/cli/dist/zcode.cjs，因此两个产物都要重建。
 #
+# 构建用 `--filter <pkg>...`（含 workspace 依赖闭包，pnpm 按拓扑序构建）：
+# cli bundle 与 server-cli 引用的是各依赖包的 dist，若只构建末端包，
+# 改了 @zcode/core 等中间包源码而未编译时，会把旧 dist 打进新 bundle——
+# 表现为「install 成功但 daemon 跑旧代码」（2026-10-24 实测踩坑）。全闭包
+# 构建增量约 20s，代价可接受。
+#
 # 用法：
-#   ./install_cli.sh                 # 构建 @zcode/cli + @zcode/server-cli，然后重启 daemon
+#   ./install_cli.sh                 # 构建 Agent 运行时 + 宿主 daemon（含依赖闭包），然后重启 daemon
 #   ./install_cli.sh --skip-build    # 跳过构建，直接重启（复用现有 dist 产物）
 #   ./install_cli.sh --no-restart    # 只构建不重启（daemon 有运行中任务时先构建，稍后自行重启）
 #
@@ -34,11 +40,11 @@ esac
 step() { printf '\n\033[0;34m========== %s ==========\033[0m\n' "$1"; }
 
 if [ "$SKIP_BUILD" = false ]; then
-  step "构建 Agent 运行时（@zcode/cli → apps/zcode-cli/packages/cli/dist/zcode.cjs）"
-  pnpm --filter @zcode/cli build
+  step "构建 Agent 运行时（@zcode/cli 及依赖闭包 → apps/zcode-cli/packages/cli/dist/zcode.cjs）"
+  pnpm --filter @zcode/cli... run build
 
-  step "构建宿主 daemon（@zcode/server-cli → packages/zcode-server-cli/dist/）"
-  pnpm --filter @zcode/server-cli build
+  step "构建宿主 daemon（@zcode/server-cli 及依赖闭包 → packages/zcode-server-cli/dist/）"
+  pnpm --filter @zcode/server-cli... run build
 fi
 
 if [ "$NO_RESTART" = false ]; then
