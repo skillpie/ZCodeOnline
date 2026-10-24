@@ -368,6 +368,7 @@ export function AnimatedSidePanePanel({
   fullViewSlotRef,
   mobileOverlay = false,
   mobileStacked = false,
+  fullscreenOverlay = false,
 }: {
   services: IServiceAccessor;
   frameClassName?: string;
@@ -454,6 +455,15 @@ export function AnimatedSidePanePanel({
   onSelectGitSource: (value: GitChangeSourceId) => void;
   mobileOverlay?: boolean;
   mobileStacked?: boolean;
+  /**
+   * H5 触摸设备（coarse touch + 窄视口）的右侧栏全屏覆盖模式：面板脱离
+   * ResizablePanelGroup 布局流、全宽覆盖整个工作区并从右侧滑入，会话区在下方保持原宽。
+   * 实现：库的 className 落在内层 div，无法影响作为 flex 子项的外层（inline flex 样式），
+   * 因此通过 data 属性（rest props 透传到外层）+ styles.css 的
+   * [data-workspace-side-pane-fullscreen] 规则把外层 absolute 出流。
+   * 全屏没有其他退出入口，需要自带关闭按钮（mobileOverlay 远控抽屉的关闭由壳层承担）。
+   */
+  fullscreenOverlay?: boolean;
 }) {
   const onOpenPluginUi = useOpenPluginUi();
   const { intl } = useZCodeIntl();
@@ -831,7 +841,7 @@ export function AnimatedSidePanePanel({
     .filter((itemId) => !isOfficeMode || (itemId !== "terminal" && itemId !== "review"))
     .map((itemId) => openTabLauncherItemById[itemId]);
   const closeSidePaneButton =
-    isVisible && !mobileOverlay && onCloseSidePane ? (
+    isVisible && (!mobileOverlay || fullscreenOverlay) && onCloseSidePane ? (
       <div className="flex shrink-0 items-center gap-0.5 [app-region:no-drag]">
         {fullViewToggle ? (
           <SidePaneFullViewToggleButton
@@ -980,7 +990,7 @@ export function AnimatedSidePanePanel({
       className={cn(
         // 独立外框放在内容层：关闭仍保留 Browser Guest 和 tab 实例，不改变面板持久化边界。
         "h-full overflow-hidden bg-background",
-        !mobileOverlay && frameClassName,
+        !mobileOverlay && !fullscreenOverlay && frameClassName,
         mobileStacked && "max-md:rounded-none max-md:border-0",
         mobileOverlay && "min-w-0",
         mobileStacked && "max-md:!w-full",
@@ -990,7 +1000,7 @@ export function AnimatedSidePanePanel({
         // 外框只需 z-0 建立自己的层叠上下文，按 DOM 顺序排在停靠层之下。
         fullView && "absolute inset-0 z-0",
       )}
-      style={mobileOverlay || fullView ? undefined : lockedContentStyle}
+      style={mobileOverlay || fullView || fullscreenOverlay ? undefined : lockedContentStyle}
     >
       <ScopedErrorBoundary
         scope="workspace-side-pane"
@@ -1512,6 +1522,8 @@ export function AnimatedSidePanePanel({
           className={cn(
             WORKSPACE_VERTICAL_RESIZE_HANDLE_CLASS_NAME,
             mobileStacked && "max-md:hidden",
+            // 全屏覆盖下拖宽手柄悬在会话区右缘，隐藏。
+            fullscreenOverlay && "hidden",
           )}
         />
       ) : null}
@@ -1529,6 +1541,14 @@ export function AnimatedSidePanePanel({
         // preview/side pane 收起时没有 ResizableHandle，但库仍会暴露 collapsed panel 边缘拖拽区。
         // 收起后禁用面板 resize target，避免用户绕过显式开关从右侧边缘拖出面板。
         disabled={isResizeDisabled}
+        // H5 全屏覆盖：属性透传到库外层 div（flex 子项），由 styles.css 的
+        // [data-workspace-side-pane-fullscreen] 规则脱离布局流并全屏定位（见 prop 注释）。
+        {...(fullscreenOverlay
+          ? {
+              "data-workspace-side-pane-fullscreen": "true",
+              "data-state": isVisible || isScreenshotSurfaceActive ? "open" : "closed",
+            }
+          : {})}
         className={cn(
           "!overflow-hidden transition-opacity duration-200 ease-out",
           mobileOverlay &&

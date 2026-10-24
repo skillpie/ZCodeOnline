@@ -27,16 +27,24 @@ export function resolveTopOverlayLeadingPaddingClass({
   isMacDesktop,
   isMacFullscreen,
   hasUpdateReady,
+  hideTaskNavigationButtons = false,
 }: {
   isSidebarVisible: boolean;
   isMacDesktop?: boolean;
   isMacFullscreen?: boolean;
   hasUpdateReady?: boolean;
+  /** 移动端窄视口隐藏任务前进/后退后，浮层只剩 侧栏开关+新建（+更新按钮）。 */
+  hideTaskNavigationButtons?: boolean;
 }): string | false {
   if (isSidebarVisible) return false;
   if (isMacDesktop) {
     if (hasUpdateReady) return isMacFullscreen ? "pl-48" : "pl-66";
     return isMacFullscreen ? "pl-38" : "pl-58";
+  }
+  // 移动端顶部空间有限：隐藏前进/后退后按钮组变窄，标题让出更窄的留白即可整体左移。
+  // mac 窄窗桌面无法视觉验证新数值，保留原值（宁松勿叠，留白偏大不会遮挡）。
+  if (hideTaskNavigationButtons) {
+    return hasUpdateReady ? "pl-30" : "pl-24";
   }
   return hasUpdateReady ? "pl-44" : "pl-38";
 }
@@ -165,6 +173,7 @@ export function WorkspaceHeader({
     isMacDesktop,
     isMacFullscreen,
     hasUpdateReady,
+    hideTaskNavigationButtons: isMobileCompactViewport,
   });
 
   return (

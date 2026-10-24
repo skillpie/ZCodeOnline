@@ -61,7 +61,10 @@ export function WorkspaceHeaderActionSection({
       ) : null}
       {/* Git 常驻工具组（同步 / 审查 / 分支）位于分享按钮左侧；远程移动端头部过窄，
           与终端入口同规则整体隐藏，非 Git 工作区由组件自身返回 null。 */}
-      {!simplifyForNarrowRemote && gitSummary && onRefreshGit ? (
+      {/* Bugfix: 窄视口（≤767px）下 Git 工具组会把右侧的终端/面板开关挤出屏幕
+          （390px 视口实测终端开关 x=452），移动端与分享/帮助按钮（2026-10-16 用户反馈）
+          同规则隐藏；桌面窗口拉窄到同断点同样生效，恢复宽度后工具组随断点回归。 */}
+      {!simplifyForNarrowRemote && !isMobileCompactViewport && gitSummary && onRefreshGit ? (
         <WorkspaceHeaderGitTools
           workspaceAbsPath={workspaceAbsPath}
           workspaceIdentity={workspaceIdentity}

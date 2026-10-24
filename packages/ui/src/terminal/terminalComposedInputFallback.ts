@@ -235,3 +235,20 @@ export function resolveTerminalInputFallbackAction(params: {
     shouldWrite,
   };
 }
+
+// 移动端软键盘兜底判定。与 Windows 组合残留路径的关键差异：
+// Android 软键盘每个字符都派发 input(insertText)，前一次兜底 flush 清空 textarea 后，
+// 后续字符到达时 textarea.value 已为空——继续沿用「value 非空才写」会把连打的第 2 个
+// 之后的字符全部丢弃。移动端只信任 onData 去重结果（handled 即 xterm 核心已上送），
+// 不看 textarea.value；insertText 不出现在组合过程中，flush 后无条件清空防止残留累积。
+export function resolveMobileTerminalInputFallbackAction(params: {
+  pending: PendingTerminalInputFallback;
+}): {
+  shouldClearTextarea: boolean;
+  shouldWrite: boolean;
+} {
+  return {
+    shouldClearTextarea: true,
+    shouldWrite: !params.pending.handled,
+  };
+}

@@ -22,11 +22,13 @@ import {
   markTerminalInputFallbackHandled,
   recordTerminalInputFallbackHandledData,
   recordTerminalInputFallbackRecentData,
+  resolveMobileTerminalInputFallbackAction,
   resolveTerminalInputFallbackAction,
   type PendingTerminalInputFallback,
   type TerminalInputFallbackKeydownCandidate,
   type TerminalInputFallbackHandledData,
 } from "@/terminal/terminalComposedInputFallback.js";
+import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
 import { normalizePowerShellReadlineRedraw } from "@/terminal/terminalDataTransform.js";
 import { getHttpLinksForTerminalBufferLine } from "@/terminal/terminalLinks.js";
 import { mergeTerminalTheme } from "@/terminal/terminalTheme.js";
@@ -656,10 +658,17 @@ export function TerminalSession({
             }),
           );
 
-          // Windows 输入法兜底（进 registry，随 term 常驻，与 onData 同生命周期）。
-          // textarea 元素随 term 实例常驻，监听绑一次即可；detach 不取消，重挂后中文输入法兜底仍生效。
+          // 输入法/软键盘兜底（进 registry，随 term 常驻，与 onData 同生命周期）。
+          // textarea 元素随 term 实例常驻，监听绑一次即可；detach 不取消，重挂后兜底仍生效。
+          // - Windows 桌面：某些输入法把 composed text 留在 textarea，xterm 可能只处理一半。
+          // - 移动端（coarse touch）：Android 软键盘每个字符先派发 keydown(keyCode=229,
+          //   key='Unidentified') 再派发 input(insertText)，xterm 核心的 insertText 分支被
+          //   _keyDownSeen 守卫（keydown→input→keyup 时序内恒为 true）整段丢弃，且 229
+          //   keydown 本身映射不出可打印字符——键盘弹出但打不出字。此监听按 onData 去重
+          //   后把文本补写进 PTY；iOS 路径核心已上送，去重命中后只清 textarea 不双写。
+          const isMobileSoftKeyboardFallback = !isWindowsDesktop && isCoarseTouchDevice();
           const textarea =
-            isWindowsDesktop &&
+            (isWindowsDesktop || isMobileSoftKeyboardFallback) &&
             (term as unknown as { _core: { textarea: HTMLTextAreaElement } })._core?.textarea;
           if (textarea) {
             const handleInput = (e: InputEvent) => {
@@ -683,16 +692,23 @@ export function TerminalSession({
                 // 不检查 ptyCancelled：订阅已随 entry 常驻（registryDisposers），
                 // ptyCancelled 是单次 effect 闭包变量，detach 后会变 true 导致 fallback 永久失效。
                 // release 时 entry.dispose 会移除本监听；PTY disposed 后 write 为 no-op，安全。
-                const fallbackAction = resolveTerminalInputFallbackAction({
-                  pending: pendingFallback,
-                  textareaValue: textarea.value,
-                });
+                const fallbackAction = isMobileSoftKeyboardFallback
+                  ? resolveMobileTerminalInputFallbackAction({ pending: pendingFallback })
+                  : resolveTerminalInputFallbackAction({
+                      pending: pendingFallback,
+                      textareaValue: textarea.value,
+                    });
                 if (fallbackAction.shouldWrite) {
-                  logger.debug("[Terminal] flush composed input fallback (persistent)", {
-                    length: insertedText.length,
-                    terminalId: id,
-                    terminalTabId: sessionId,
-                  });
+                  logger.debug(
+                    isMobileSoftKeyboardFallback
+                      ? "[Terminal] flush soft-keyboard input fallback (persistent)"
+                      : "[Terminal] flush composed input fallback (persistent)",
+                    {
+                      length: insertedText.length,
+                      terminalId: id,
+                      terminalTabId: sessionId,
+                    },
+                  );
                   void services.terminalService.write({ id, data: insertedText });
                 }
                 if (fallbackAction.shouldClearTextarea) {
@@ -982,11 +998,14 @@ export function TerminalSession({
           }),
         );
 
-        // Windows desktop 下某些输入法会把 composed text 留在 textarea 里，
-        // xterm 可能只处理到一半；这里保留兜底。但 Linux Wayland 已确认会和 xterm 的
-        // onData 路径重复写入，所以必须显式收窄到 Windows，避免把正常链路误伤。
+        // 输入法/软键盘兜底。Windows：某些输入法把 composed text 留在 textarea 里，
+        // xterm 可能只处理到一半，保留兜底；但 Linux Wayland 已确认会和 xterm 的
+        // onData 路径重复写入，桌面端必须显式收窄到 Windows。
+        // 移动端（coarse touch）：Android 软键盘 keydown(229)→input(insertText)→keyup 的
+        // 时序让 xterm 核心丢弃全部 insertText（详见上方持久化路径注释），同样需要兜底。
+        const isMobileSoftKeyboardFallback = !isWindowsDesktop && isCoarseTouchDevice();
         const textarea =
-          isWindowsDesktop &&
+          (isWindowsDesktop || isMobileSoftKeyboardFallback) &&
           (term as unknown as { _core: { textarea: HTMLTextAreaElement } })._core?.textarea;
         if (textarea) {
           const handleInput = (e: InputEvent) => {
@@ -1016,18 +1035,25 @@ export function TerminalSession({
               if (disposed) {
                 return;
               }
-              const fallbackAction = resolveTerminalInputFallbackAction({
-                pending: pendingFallback,
-                textareaValue: textarea.value,
-              });
+              const fallbackAction = isMobileSoftKeyboardFallback
+                ? resolveMobileTerminalInputFallbackAction({ pending: pendingFallback })
+                : resolveTerminalInputFallbackAction({
+                    pending: pendingFallback,
+                    textareaValue: textarea.value,
+                  });
               if (fallbackAction.shouldWrite) {
                 // 普通空格也会触发 composed input，且 xterm 已经通过 onData 写入 PTY。
                 // 只看 textarea.value 会把空格再手动写一次；这里必须确认 onData 没处理过才兜底。
-                logger.debug("[Terminal] flush composed input fallback", {
-                  length: insertedText.length,
-                  terminalId: id,
-                  terminalTabId: sessionId,
-                });
+                logger.debug(
+                  isMobileSoftKeyboardFallback
+                    ? "[Terminal] flush soft-keyboard input fallback"
+                    : "[Terminal] flush composed input fallback",
+                  {
+                    length: insertedText.length,
+                    terminalId: id,
+                    terminalTabId: sessionId,
+                  },
+                );
                 terminalService.write({ id, data: insertedText });
               }
               if (fallbackAction.shouldClearTextarea) {

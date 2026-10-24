@@ -72,6 +72,7 @@
 - PR 描述须说明背景、设计意图与修改前后行为；包含 bugfix 时逐项说明触发场景、根因证据、修复机制及回归验证，并尽量关联已有工单链接。未确认的根因或引入提交如实标注，不根据模块或时间接近推断归因。
 - 涉及状态、时序、远端或异步同步的方案，用图展示所有者及事件顺序。
 - 必须执行 `pnpm typecheck` 和 `pnpm lint`，报告真实结果，不将已有失败写成通过。
+- 每次改动后在总结末尾用一行汇报影响面与待执行脚本（CLI=`apps/zcode-cli`/`packages/zcode-server-cli`→`sh install_cli.sh`，WEB=`packages/web`/`packages/server`/`apps/zcode-relay`→`sh deploy_web.sh`，DESKTOP=`packages/ui`/`packages/desktop`→`sh install_desktop.sh`，`packages/ui` 同属 WEB+DESKTOP）；`deploy_cli`/`deploy_desktop` 发版由用户自行决定，不在汇报中列；三端均未涉及写「无需部署」。
 - 使用异步文件和网络 IO；跨包导入使用公开入口，遵守现有路径别名。
 - 禁止 UI 直接调用 Repo、Service 引用 Runtime 具体实现、跨域导入实现细节及循环依赖。
 

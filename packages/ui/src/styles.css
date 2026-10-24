@@ -2310,3 +2310,29 @@ html[data-document-hidden] *::after {
   [data-sidebar-divider-extension] {
   display: none;
 }
+
+/* H5 触摸设备右侧栏全屏覆盖：react-resizable-panels 的 className 落在内层 div，
+   作为 flex 子项的外层只吃库写入的内联 flex 样式（className 无法命中），因此由
+   AnimatedSidePanePanel 通过 data 属性（rest props 透传到外层）+ 本规则驱动。
+   absolute 出流后内联 flex 不再参与布局分配，会话列独占剩余宽度保持原宽；
+   展开从右侧滑入，收起滑出并屏蔽点击。定位锚点是最外层 workspace 容器（relative），
+   与左侧任务列表覆盖层（z-30）同层级，后出现在 DOM 顺序中者在上。 */
+[data-workspace-side-pane-fullscreen] {
+  position: absolute;
+  inset-block: 0;
+  /* 库给外层写内联 width: auto，width: 100% 会被内联覆盖缩成内容宽；
+     left/right 双锚 + width:auto 走绝对定位拉伸，正好占满包含块。 */
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background-color: var(--color-background);
+  transition:
+    transform 200ms ease-out,
+    opacity 200ms ease-out;
+}
+
+[data-workspace-side-pane-fullscreen][data-state="closed"] {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}

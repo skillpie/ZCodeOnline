@@ -562,11 +562,18 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   const workspaceShellRef = useRef<HTMLDivElement | null>(null);
   const workspaceSidebarPanelElementRef = useRef<HTMLDivElement | null>(null);
   const conversationPanelElementRef = useRef<HTMLDivElement | null>(null);
+  // H5 触摸设备窄视口：左右侧栏都改全屏覆盖布局（半屏内联会挤压会话区且截断任务标题）。
+  // 左侧任务列表见 sidebar panel；右侧共享面板见 AnimatedSidePanePanel 的 fullscreenOverlay。
+  const isMobileTouchOverlayLayout = shouldApplyMobileTouchSidebarOverlay({
+    matchesMobileTouchViewport: matchesMobileTouchSidebarViewport,
+    isWebRemoteControlShell,
+  });
   const conversationAutoCollapseStateRef = useRef({
     handleToggleSidebar,
     handleToggleSidePane,
     isSidebarVisible,
     isSidePaneOpen,
+    isMobileTouchOverlayLayout,
     workspaceKey,
   });
   const conversationAutoCollapseResizeTimerRef = useRef<number | null>(null);
@@ -622,11 +629,6 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     activeTaskTitle?.trim() || intl.formatMessage({ id: "taskList.untitled" });
   // 完整视图保留左侧任务列表与左上角按钮组，侧栏显隐只由用户开关决定。
   const isSidebarPanelVisible = isSidebarVisible;
-  // H5 触摸设备窄视口：侧栏改全屏覆盖布局（半屏内联会挤压会话区且截断任务标题）。
-  const isMobileTouchSidebarOverlay = shouldApplyMobileTouchSidebarOverlay({
-    matchesMobileTouchViewport: matchesMobileTouchSidebarViewport,
-    isWebRemoteControlShell,
-  });
   const {
     panelRef: terminalPanelRef,
     panelElementRef: terminalPanelElementRef,
@@ -676,9 +678,17 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
       handleToggleSidePane,
       isSidebarVisible,
       isSidePaneOpen,
+      isMobileTouchOverlayLayout,
       workspaceKey,
     };
-  }, [handleToggleSidebar, handleToggleSidePane, isSidebarVisible, isSidePaneOpen, workspaceKey]);
+  }, [
+    handleToggleSidebar,
+    handleToggleSidePane,
+    isSidebarVisible,
+    isSidePaneOpen,
+    isMobileTouchOverlayLayout,
+    workspaceKey,
+  ]);
 
   useEffect(() => {
     if (workspaceMainView !== "chat") {
@@ -723,10 +733,16 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
       const {
         handleToggleSidePane: collapseSidePane,
         isSidePaneOpen: latestIsSidePaneOpen,
+        isMobileTouchOverlayLayout: latestIsMobileTouchOverlayLayout,
         workspaceKey: latestWorkspaceKey,
       } = conversationAutoCollapseStateRef.current;
       // 完整视图中对话由宿主 fixed 定位，对话列宽度不代表可见对话区，不能据此收起面板或侧栏。
       if (isFullViewRef.current) {
+        return;
+      }
+      // H5 全屏覆盖布局：左右侧栏都脱离布局流，会话列恒为全宽，
+      // 窄视口阈值（侧栏 360/面板 480）不再反映面板挤压，旋转时不应据此收起用户打开的全屏面板。
+      if (latestIsMobileTouchOverlayLayout) {
         return;
       }
 
@@ -1936,11 +1952,14 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     updateState?.kind === "update-available" ||
     updateState?.kind === "download-progress" ||
     updateState?.kind === "update-downloaded";
-  const renderSidePanePanel = (options: { mobileOverlay?: boolean } = {}) => (
+  const renderSidePanePanel = (
+    options: { mobileOverlay?: boolean; fullscreenOverlay?: boolean } = {},
+  ) => (
     <AnimatedSidePanePanel
       services={services}
       isDesktop={isDesktop}
       isWindowsDesktop={isWindowsDesktop}
+      fullscreenOverlay={options.fullscreenOverlay}
       frameClassName={resolveWorkspaceShellWindowChromeClass({
         isMacDesktop,
         isWindowsDesktop,
@@ -1979,6 +1998,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
                 isMacDesktop,
                 isMacFullscreen,
                 hasUpdateReady: hasUpdateStatusButton,
+                hideTaskNavigationButtons: isMobileCompactViewport,
               }),
               onSelectSurface: fullViewController.setSurface,
             }
@@ -2048,7 +2068,11 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
       mobileStacked={isWebRemoteControlShell}
     />
   );
-  const sidePanePanel = renderSidePanePanel();
+  // H5 触摸设备：右侧共享面板走 fullscreenOverlay 全屏覆盖（与左侧任务列表同模式），
+  // 桌面/宽视口保持内联分栏。
+  const sidePanePanel = renderSidePanePanel(
+    isMobileTouchOverlayLayout ? { fullscreenOverlay: true } : undefined,
+  );
   // 修复原因：Draft 之前维护一套独立轻量 header，导致 side pane、caption 安全区和拖拽入口
   // 与 Task Header 分叉。桌面端统一复用 WorkspaceHeader，只由 variant 裁剪 task 专属内容；
   // 手机远控无 active task 时仍不渲染桌面 chrome，继续遵守 replayable overlay 边界。
@@ -2431,9 +2455,14 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
             // 后写的 w-full / max-w-none / transition-* 覆盖上面的桌面基类）。
             // 覆盖层脱离文档流，会话区在下方保持原宽，收起后无挤压跳变；
             // 侧栏拖宽手柄在全屏下无意义，由下方布局隐藏。
-            isMobileTouchSidebarOverlay &&
+            // bg-sidebar：覆盖态必须自带不透明背景——桌面内联布局里侧栏从不与内容重叠，
+            // 面板本身无背景；全屏覆盖下缺背景会把会话内容透出来，视觉与点击目标全部错乱
+            // （与远控壳 max-md:bg-sidebar 同一原因）。
+            isMobileTouchOverlayLayout &&
               cn(
-                "absolute inset-y-0 left-0 z-30 w-full max-w-none transition-[transform,opacity]",
+                // Tailwind v4 的 translate-x-* 走独立 translate 属性而非 transform，
+                // 过渡清单必须写 translate，否则位移瞬移只剩透明度渐变（右侧栏原生 CSS 无此问题）。
+                "absolute inset-y-0 left-0 z-30 w-full max-w-none bg-sidebar transition-[translate,opacity]",
                 // 展开收起用 translate 滑入滑出；透明度与点击屏蔽沿用下面统一的可见性分支。
                 isSidebarPanelVisible ? "translate-x-0" : "-translate-x-full",
               ),
@@ -2490,7 +2519,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
               hasDesktopPanelInset && "after:inset-y-[var(--workspace-resize-handle-inset)]",
               isWebRemoteControlShell && "max-md:hidden",
               // 全屏覆盖下侧栏已脱离文档流，手柄会悬在会话区左缘，隐藏。
-              isMobileTouchSidebarOverlay && "hidden",
+              isMobileTouchOverlayLayout && "hidden",
             )}
           />
         ) : null}
@@ -2502,7 +2531,7 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
             className={cn(
               "pointer-events-none absolute h-px w-1 bg-border/50 [left:anchor(--sidebar-task-list-divider_right,-4px)] [top:anchor(--sidebar-task-list-divider_top,-1px)]",
               isWebRemoteControlShell && "max-md:hidden",
-              isMobileTouchSidebarOverlay && "hidden",
+              isMobileTouchOverlayLayout && "hidden",
             )}
           />
         ) : null}
@@ -2957,8 +2986,12 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
             onCreateTask={handleCreateTaskInChat}
             onGoBack={primaryNavigationBack}
             onGoForward={handleTaskNavForward}
-            hideTaskNavigationButtons={simplifyHeaderForNarrowRemote || isMobileSkillMarketView}
-            floatAboveSidebarOverlay={isMobileTouchSidebarOverlay}
+            hideTaskNavigationButtons={
+              simplifyHeaderForNarrowRemote || isMobileSkillMarketView || isMobileCompactViewport
+            }
+            // 左侧栏全屏覆盖时开关需要垫高（z-40）；右侧面板全屏打开时反而要沉下去（z-20）
+            // ——面板自带关闭按钮，浮层按钮若浮在面板之上会误触发出现在面板下方的左侧栏。
+            floatAboveSidebarOverlay={isMobileTouchOverlayLayout && !isSidePaneOpen}
           />
         </ScopedErrorBoundary>
 

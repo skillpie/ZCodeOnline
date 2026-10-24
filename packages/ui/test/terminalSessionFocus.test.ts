@@ -124,13 +124,17 @@ describe("persistentKey 路径输入链路保活契约", () => {
 });
 
 describe("terminal composed input fallback is platform gated", () => {
-  it("keeps the composed input fallback guarded by the Windows desktop flag", () => {
+  it("keeps the composed input fallback guarded to Windows desktop or coarse-touch mobile", () => {
     const source = readSource("packages/ui/src/terminal/TerminalSession.tsx");
 
     expect(source).toContain("isWindowsDesktop = false");
     expect(source).toContain("const textarea =");
-    expect(source).toContain("isWindowsDesktop &&");
-    expect(source).toContain("Windows desktop 下某些输入法");
+    // 兜底必须平台收窄：Windows 桌面（IME 组合残留）或移动端软键盘（Android 229 丢字）。
+    // Linux/macOS 精确指针桌面曾确认与 onData 路径重复写入，不能放开。
+    expect(source).toContain("!isWindowsDesktop && isCoarseTouchDevice()");
+    expect(source).toContain("(isWindowsDesktop || isMobileSoftKeyboardFallback)");
     expect(source).toContain("isWindowsDesktop,");
+    // 两条代码路径（persistent + 原路径）都必须挂同款门控。
+    expect(source.match(/\(isWindowsDesktop \|\| isMobileSoftKeyboardFallback\)/g)?.length).toBe(2);
   });
 });

@@ -6,6 +6,7 @@ import {
   markTerminalInputFallbackHandled,
   recordTerminalInputFallbackHandledData,
   recordTerminalInputFallbackRecentData,
+  resolveMobileTerminalInputFallbackAction,
   resolveTerminalInputFallbackAction,
 } from "@/terminal/terminalComposedInputFallback.js";
 
@@ -412,6 +413,93 @@ describe("terminal composed input fallback", () => {
     const pending = createPendingTerminalInputFallback("中");
 
     expect(resolveTerminalInputFallbackAction({ pending, textareaValue: "中" })).toEqual({
+      shouldClearTextarea: true,
+      shouldWrite: true,
+    });
+  });
+});
+
+describe("mobile soft-keyboard input fallback", () => {
+  it("flushes a character that xterm core dropped (Android keydown-229 path)", () => {
+    // Android 软键盘：keydown(229) 后 input(insertText)，xterm 核心被 _keyDownSeen
+    // 守卫跳过、onData 不发生 → pending 未被认领 → 必须兜底写入。
+    const pending = createPendingTerminalInputFallback("a");
+
+    expect(resolveMobileTerminalInputFallbackAction({ pending })).toEqual({
+      shouldClearTextarea: true,
+      shouldWrite: true,
+    });
+  });
+
+  it("does not double-write when xterm core already emitted onData (iOS path)", () => {
+    const pending = createPendingTerminalInputFallback("a");
+    markTerminalInputFallbackHandled([pending], "a");
+
+    expect(resolveMobileTerminalInputFallbackAction({ pending })).toEqual({
+      shouldClearTextarea: true,
+      shouldWrite: false,
+    });
+  });
+
+  it("still writes when a previous flush already cleared the textarea (rapid typing)", () => {
+    // Android 连打：第 1 个字符的 flush 清空 textarea 后，第 2 个字符到达时 value
+    // 已为空——Windows 路径的「value 非空才写」会丢字，移动端判定只信任 onData 去重。
+    const pending = createPendingTerminalInputFallback("b");
+
+    expect(resolveMobileTerminalInputFallbackAction({ pending })).toEqual({
+      shouldClearTextarea: true,
+      shouldWrite: true,
+    });
+  });
+
+  it("mobile dedup consumes onData recorded without a keydown candidate (Android 229 keydown maps to none)", () => {
+    // Android 的 229 keydown（key='Unidentified'）不产生 keydown candidate，
+    // 核心上送时只能走 recentData 短窗口去重，防止 iOS/安卓混合路径双写。
+    const now = 1000;
+    const history = recordTerminalInputFallbackRecentData({
+      data: "c",
+      history: [],
+      maxAgeMs: MAX_HISTORY_AGE_MS,
+      now,
+    });
+    const pending = createPendingTerminalInputFallback("c");
+
+    consumeTerminalInputFallbackHandledData({
+      history,
+      inputEventTimeStamp: now + 5,
+      maxAgeMs: MAX_HISTORY_AGE_MS,
+      maxInputDelayMs: MAX_KEYDOWN_INPUT_DELAY_MS,
+      now: now + 5,
+      pending,
+    });
+
+    expect(resolveMobileTerminalInputFallbackAction({ pending })).toEqual({
+      shouldClearTextarea: true,
+      shouldWrite: false,
+    });
+  });
+
+  it("mobile dedup leaves a stale recentData entry unconsumed beyond the short window", () => {
+    const now = 1000;
+    const history = recordTerminalInputFallbackRecentData({
+      data: "d",
+      history: [],
+      maxAgeMs: MAX_HISTORY_AGE_MS,
+      now,
+    });
+    const pending = createPendingTerminalInputFallback("d");
+
+    // 超过 maxInputDelayMs 的历史 onData 与本次 input 无关，不能据此吞掉兜底写入。
+    consumeTerminalInputFallbackHandledData({
+      history,
+      inputEventTimeStamp: now + 200,
+      maxAgeMs: MAX_HISTORY_AGE_MS,
+      maxInputDelayMs: MAX_KEYDOWN_INPUT_DELAY_MS,
+      now: now + 200,
+      pending,
+    });
+
+    expect(resolveMobileTerminalInputFallbackAction({ pending })).toEqual({
       shouldClearTextarea: true,
       shouldWrite: true,
     });

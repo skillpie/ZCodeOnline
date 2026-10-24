@@ -178,7 +178,8 @@ export function DesktopTopOverlay({
               </DesktopTopOverlayActionButton>
             )}
 
-            {/* 远程控制移动端左上角空间有限，任务前进/后退在这里会与主操作拥挤重叠。*/}
+            {/* 远程控制移动端与窄视口（≤767px）左上角空间有限，任务前进/后退在这里
+                会与主操作拥挤重叠，隐藏后「新建」按钮紧贴侧栏开关，标题让位留白同步收窄。*/}
             {hideTaskNavigationButtons ? null : (
               <>
                 <DesktopTopOverlayActionButton
