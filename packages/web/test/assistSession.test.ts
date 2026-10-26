@@ -90,13 +90,19 @@ describe("redeemAssistCodeAsResult", () => {
     const maskedPsk = await maskAssistPsk(psk, code);
     globalThis.fetch = (async () =>
       new Response(
-        JSON.stringify({ hostId: "h-web-1", connectToken: `tok-${"x".repeat(40)}`, maskedPsk }),
+        JSON.stringify({
+          hostId: "h-web-1",
+          connectToken: `tok-${"x".repeat(40)}`,
+          maskedPsk,
+          hostDisplayName: "assist-host",
+        }),
         { status: 200 },
       )) as typeof fetch;
     try {
       const result = await redeemAssistCodeAsResult(code);
       assert.equal(result.ok, true);
       assert.equal(result.ok ? result.hostId : null, "h-web-1");
+      assert.equal(result.ok ? result.hostDisplayName : null, "assist-host");
     } finally {
       globalThis.fetch = originalFetch;
     }

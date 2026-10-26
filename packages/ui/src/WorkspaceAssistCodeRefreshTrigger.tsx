@@ -470,8 +470,10 @@ export function WorkspaceAssistCodeRefreshTrigger({
         }}
         localCode={localCode}
         existingCodes={machines.map((machine) => machine.code)}
-        onSubmit={(code) => {
-          upsertAssistMachine(code);
+        onSubmit={(code, hostDisplayName) => {
+          // 默认名 = 预检应答里的宿主展示名（对方主机名）；旧 relay 缺省时回退
+          // 「<码>的ZCode」，用户改过名/已有条目不受影响（store 只升级缺省名）。
+          upsertAssistMachine(code, hostDisplayName);
           setMachines(orderMachines(loadAssistMachines(), localCode));
           closeAddForm();
         }}

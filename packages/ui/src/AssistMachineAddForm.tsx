@@ -17,8 +17,11 @@ export function AssistMachineAddForm({
   localCode: string | null;
   /** 已登记的远程码集合（提交时查重，防列表并发更新下的重复入库）。 */
   existingCodes: readonly string[];
-  /** 预检通过：code 为归一化 8 位码；入库（默认名 = <码>的ZCode）由父组件负责。 */
-  onSubmit: (code: string) => void;
+  /**
+   * 预检通过：code 为归一化 8 位码，hostDisplayName 为 relay 返回的宿主展示名
+   * （旧 relay 缺省）；入库（默认名）由父组件负责。
+   */
+  onSubmit: (code: string, hostDisplayName?: string) => void;
   onCancel: () => void;
 }) {
   const { intl } = useZCodeIntl();
@@ -54,7 +57,9 @@ export function AssistMachineAddForm({
         setError(result.message);
         return;
       }
-      onSubmit(parsedCode);
+      // relay 返回的宿主展示名（hostHello 登记的主机名）作为条目默认名；
+      // 旧 relay 不带该字段时由父组件回退「<码>的ZCode」。
+      onSubmit(parsedCode, result.hostDisplayName);
     } catch (cause) {
       setError(
         cause instanceof Error

@@ -105,6 +105,8 @@ test("兑换成功且持久：同一码可反复兑换（多浏览器），PSK �
   const first = await redeem(code);
   assert.equal(first.status, 200);
   assert.equal(first.json.hostId, "h-assist-1");
+  // 宿主展示名（hostHello 登记的主机名）随兑换应答下发，弹窗添加据此命名。
+  assert.equal(first.json.hostDisplayName, "assist-host");
   assert.equal(await revealAssistPsk(first.json.maskedPsk, code), psk);
   assert.ok(first.json.connectToken.length >= 32);
 

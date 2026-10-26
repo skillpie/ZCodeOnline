@@ -191,11 +191,15 @@ export async function startRelayServer(options: RelayServerOptions = {}): Promis
       displayName: stores.hosts.get(invitation.hostId)?.displayName ?? "",
     });
     log.info("assist accepted", { hostId: invitation.hostId });
+    // 宿主展示名（hostHello 登记的主机名）随兑换应答下发：弹窗「添加远程链接」
+    // 预检据此为条目命名，不再落「<码>的ZCode」占位名。未知宿主/旧数据缺省。
+    const hostDisplayName = stores.hosts.get(invitation.hostId)?.displayName;
     return context.json(
       assistConnectResultSchema.parse({
         hostId: invitation.hostId,
         connectToken,
         maskedPsk: invitation.maskedPsk,
+        ...(hostDisplayName ? { hostDisplayName } : {}),
       }),
     );
   });

@@ -69,7 +69,21 @@ describe("AssistMachineAddForm 预检入库", () => {
     expect(redeemAssistCode).not.toHaveBeenCalled();
   });
 
-  it("预检成功：以归一化 8 位码回调入库", async () => {
+  it("预检成功：以归一化 8 位码回调入库，宿主展示名随应答透传", async () => {
+    const props = renderForm();
+    redeemAssistCode.mockResolvedValue({
+      ok: true,
+      hostId: "h-1",
+      connectToken: `tok-${"x".repeat(40)}`,
+      psk: "psk",
+      hostDisplayName: "技术中心的Mac",
+    });
+    fillCodeAndSubmit("https://zcode.skillpie.cn/12345678");
+    await waitFor(() => expect(props.onSubmit).toHaveBeenCalledWith("12345678", "技术中心的Mac"));
+    expect(redeemAssistCode).toHaveBeenCalledWith("12345678");
+  });
+
+  it("预检成功但旧 relay 无宿主名：hostDisplayName 缺省，回退码占位名", async () => {
     const props = renderForm();
     redeemAssistCode.mockResolvedValue({
       ok: true,
@@ -77,9 +91,8 @@ describe("AssistMachineAddForm 预检入库", () => {
       connectToken: `tok-${"x".repeat(40)}`,
       psk: "psk",
     });
-    fillCodeAndSubmit("https://zcode.skillpie.cn/12345678");
-    await waitFor(() => expect(props.onSubmit).toHaveBeenCalledWith("12345678"));
-    expect(redeemAssistCode).toHaveBeenCalledWith("12345678");
+    fillCodeAndSubmit("12345678");
+    await waitFor(() => expect(props.onSubmit).toHaveBeenCalledWith("12345678", undefined));
   });
 
   it("预检失败（码无效/已轮换）：展示结构化应答文案，不入库", async () => {

@@ -194,6 +194,7 @@ async function redeemAssistCodeViaRelay(code: string): Promise<RedeemAssistCodeR
     hostId?: string;
     connectToken?: string;
     maskedPsk?: string;
+    hostDisplayName?: unknown;
   } | null;
   if (
     typeof body?.hostId !== "string" ||
@@ -211,5 +212,9 @@ async function redeemAssistCodeViaRelay(code: string): Promise<RedeemAssistCodeR
     hostId: body.hostId,
     connectToken: body.connectToken,
     psk: await revealAssistPsk(body.maskedPsk, code),
+    // 宿主展示名（弹窗添加远程链接的默认名）随应答透传；旧 relay 缺省。
+    ...(typeof body.hostDisplayName === "string" && body.hostDisplayName.trim()
+      ? { hostDisplayName: body.hostDisplayName }
+      : {}),
   };
 }

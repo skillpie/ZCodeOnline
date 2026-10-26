@@ -87,12 +87,28 @@ test("结构化兑换（Web 平台契约用）：成功透传；错误归类为 
   const maskedPsk = await maskAssistPsk(psk, code);
   const ok = await redeemAssistCodeViaEndpointAsResult(code, ENDPOINT, async () =>
     new Response(
-      JSON.stringify({ hostId: "h-1", connectToken: `tok-${"x".repeat(40)}`, maskedPsk }),
+      JSON.stringify({
+        hostId: "h-1",
+        connectToken: `tok-${"x".repeat(40)}`,
+        maskedPsk,
+        hostDisplayName: "技术中心的Mac",
+      }),
       { status: 200 },
     ),
   );
   assert.equal(ok.ok, true);
   assert.equal(await revealAssistPsk(maskedPsk, code), (ok as { psk: string }).psk);
+  // 宿主展示名透传（弹窗添加远程链接的条目默认名）。
+  assert.equal((ok as { hostDisplayName?: string }).hostDisplayName, "技术中心的Mac");
+  // 旧 relay 不带该字段 → 缺省，不报错。
+  const legacy = await redeemAssistCodeViaEndpointAsResult(code, ENDPOINT, async () =>
+    new Response(
+      JSON.stringify({ hostId: "h-1", connectToken: `tok-${"x".repeat(40)}`, maskedPsk }),
+      { status: 200 },
+    ),
+  );
+  assert.equal(legacy.ok, true);
+  assert.equal((legacy as { hostDisplayName?: string }).hostDisplayName, undefined);
 
   // 401 → invalid：弹窗「添加远程链接」预检据此拒绝入库并展示原因。
   const invalid = await redeemAssistCodeViaEndpointAsResult(code, ENDPOINT, async () =>

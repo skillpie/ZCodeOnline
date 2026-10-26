@@ -9,6 +9,8 @@ export interface AssistRedeemResult {
   hostId: string;
   connectToken: string;
   psk: string;
+  /** relay 已知的宿主展示名（hostHello 登记的主机名）；旧 relay / 未知宿主缺省。 */
+  hostDisplayName?: string;
 }
 
 type AssistRedeemErrorKind = "invalid" | "rateLimited" | "network" | "generic";
@@ -77,6 +79,7 @@ export async function redeemAssistCodeViaEndpoint(
     hostId: parsed.data.hostId,
     connectToken: parsed.data.connectToken,
     psk: await revealAssistPsk(parsed.data.maskedPsk, code),
+    ...(parsed.data.hostDisplayName ? { hostDisplayName: parsed.data.hostDisplayName } : {}),
   };
 }
 
@@ -86,7 +89,12 @@ export async function redeemAssistCodeViaEndpoint(
  */
 export function assertRedeemResult(result: RedeemAssistCodeResult): AssistRedeemResult {
   if (result.ok) {
-    return { hostId: result.hostId, connectToken: result.connectToken, psk: result.psk };
+    return {
+      hostId: result.hostId,
+      connectToken: result.connectToken,
+      psk: result.psk,
+      ...(result.hostDisplayName ? { hostDisplayName: result.hostDisplayName } : {}),
+    };
   }
   throw new AssistRedeemError(result.message, result.kind);
 }
@@ -108,6 +116,7 @@ export async function redeemAssistCodeViaEndpointAsResult(
       hostId: result.hostId,
       connectToken: result.connectToken,
       psk: result.psk,
+      ...(result.hostDisplayName ? { hostDisplayName: result.hostDisplayName } : {}),
     };
   } catch (cause) {
     if (cause instanceof AssistRedeemError) {

@@ -18,8 +18,8 @@ export function AssistMachineAddDialog({
   localCode: string | null;
   /** 已登记的远程码集合（提交时查重）。 */
   existingCodes: readonly string[];
-  /** 码格式校验与 relay 预检通过：code 为归一化 8 位码。 */
-  onSubmit: (code: string) => void;
+  /** 码格式校验与 relay 预检通过：code 为归一化 8 位码，hostDisplayName 为宿主展示名。 */
+  onSubmit: (code: string, hostDisplayName?: string) => void;
   onCancel: () => void;
 }) {
   const { intl } = useZCodeIntl();

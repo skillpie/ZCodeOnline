@@ -387,6 +387,11 @@ export const assistConnectResultSchema = z
     hostId: z.string().trim().min(1).max(128),
     connectToken: z.string().min(32).max(256),
     maskedPsk: z.string().min(32).max(128),
+    /**
+     * 宿主展示名（hostHello 登记的主机名，daemon 支持 --display-name 自定义）：
+     * 弹窗「添加远程链接」预检据此为条目命名。可选：自建旧 relay 不返回该字段。
+     */
+    hostDisplayName: z.string().trim().min(1).max(128).optional(),
   })
   .strict();
 export type AssistConnectResult = z.infer<typeof assistConnectResultSchema>;
@@ -398,7 +403,14 @@ export type AssistConnectResult = z.infer<typeof assistConnectResultSchema>;
  * （maskedPsk ⊕ SHA-256(code)），renderer 拿到即可发起隧道握手。
  */
 export type RedeemAssistCodeResult =
-  | { ok: true; hostId: string; connectToken: string; psk: string }
+  | {
+      ok: true;
+      hostId: string;
+      connectToken: string;
+      psk: string;
+      /** relay 已知的宿主展示名；旧 relay / 未知宿主缺省。 */
+      hostDisplayName?: string;
+    }
   | { ok: false; kind: "invalid" | "rateLimited" | "network" | "generic"; message: string };
 
 /** 发现端点：A 侧展示自己的远程码。 */
