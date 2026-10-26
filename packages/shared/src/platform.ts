@@ -1227,9 +1227,11 @@ export interface IPlatformService {
   /** 读取宿主当前远程协助码；宿主不可达时实现方可回退本地存储码（expiresAt 未知传 null）。 */
   getRemoteAssistCode?(): Promise<{ code: string; expiresAt: number | null }>;
   /**
-   * 用远程码向 relay 兑换一次性连接票据与端到端 PSK（桌面远程控制「切换」链路）。
-   * 仅桌面实现：renderer 直连 relay 会被控制面 CORS 白名单拦截，由 main 进程代理；
-   * 结构化应答区分 invalid（码已轮换，调用方清存储回退）与其余可重试失败。
+   * 用远程码向 relay 兑换一次性连接票据与端到端 PSK（specs/web-tunnel.md §5.9）。
+   * Web 走同源端点直连 relay；桌面 renderer 直连会被控制面 CORS 白名单拦截，由 main
+   * 进程代理。兑换只校验码、不消费（码可反复使用）：远程控制弹窗「添加远程链接」
+   * 据此预检（成功才入库），隧道「切换」链路据此建连。结构化应答区分 invalid
+   * （码已轮换/不存在，调用方清存储回退）与其余可重试失败。
    */
   redeemAssistCode?(code: string): Promise<RedeemAssistCodeResult>;
 

@@ -20,6 +20,7 @@ export {
   assertRedeemResult,
   AssistRedeemError,
   redeemAssistCodeViaEndpoint,
+  redeemAssistCodeViaEndpointAsResult,
 } from "./tunnel/assistRedeem.js";
 export type { AssistRedeemResult } from "./tunnel/assistRedeem.js";
 export { backoffDelayMs, createAutoReconnect } from "./tunnel/autoReconnect.js";

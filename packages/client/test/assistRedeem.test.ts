@@ -5,6 +5,7 @@ import {
   assertRedeemResult,
   AssistRedeemError,
   redeemAssistCodeViaEndpoint,
+  redeemAssistCodeViaEndpointAsResult,
 } from "../src/tunnel/assistRedeem.js";
 
 // 远程码兑换验收（specs/web-tunnel.md §5.9「码即凭证」）：HTTP 错误归类
@@ -78,4 +79,34 @@ test("assertRedeemResult：成功应答透传；失败应答还原为 AssistRede
       assert.equal(cause.kind, kind);
     }
   }
+});
+
+test("结构化兑换（Web 平台契约用）：成功透传；错误归类为 kind + 面向用户文案", async () => {
+  const psk = generateTunnelSecret();
+  const code = "12345678";
+  const maskedPsk = await maskAssistPsk(psk, code);
+  const ok = await redeemAssistCodeViaEndpointAsResult(code, ENDPOINT, async () =>
+    new Response(
+      JSON.stringify({ hostId: "h-1", connectToken: `tok-${"x".repeat(40)}`, maskedPsk }),
+      { status: 200 },
+    ),
+  );
+  assert.equal(ok.ok, true);
+  assert.equal(await revealAssistPsk(maskedPsk, code), (ok as { psk: string }).psk);
+
+  // 401 → invalid：弹窗「添加远程链接」预检据此拒绝入库并展示原因。
+  const invalid = await redeemAssistCodeViaEndpointAsResult(code, ENDPOINT, async () =>
+    new Response(null, { status: 401 }),
+  );
+  assert.equal(invalid.ok, false);
+  assert.equal(invalid.ok ? null : invalid.kind, "invalid");
+  assert.ok(invalid.ok ? false : invalid.message.length > 0);
+
+  // 底层 fetch 抛错已归类为 network（非 AssistRedeemError 的异常兜底为 generic，
+  // 正常路径不可达）；封装层保证任何情况下都不向调用方抛异常。
+  const degraded = await redeemAssistCodeViaEndpointAsResult(code, ENDPOINT, async () => {
+    throw new Error("offline");
+  });
+  assert.equal(degraded.ok, false);
+  assert.equal(degraded.ok ? null : degraded.kind, "network");
 });

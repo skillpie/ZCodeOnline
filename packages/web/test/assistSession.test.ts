@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { afterAll as after, beforeEach, describe, test } from "vitest";
+import { generateTunnelSecret, maskAssistPsk } from "@zcode/shared";
 import {
   clearStoredAssistCode,
   fetchAssistCodeViaDiscovery,
   loadStoredAssistCode,
+  redeemAssistCodeAsResult,
   refreshAssistCodeViaDiscovery,
   saveStoredAssistCode,
 } from "../src/tunnel/assistSession.js";
@@ -73,6 +75,40 @@ describe("refreshAssistCodeViaDiscovery", () => {
       const current = await fetchAssistCodeViaDiscovery();
       assert.equal(current.code, "88888888");
       assert.equal(loadStoredAssistCode(), null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("redeemAssistCodeAsResult", () => {
+  const originalFetch = globalThis.fetch;
+
+  test("兑换成功 → 结构化 ok 应答（弹窗添加预检据此入库）", async () => {
+    const psk = generateTunnelSecret();
+    const code = "12345678";
+    const maskedPsk = await maskAssistPsk(psk, code);
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({ hostId: "h-web-1", connectToken: `tok-${"x".repeat(40)}`, maskedPsk }),
+        { status: 200 },
+      )) as typeof fetch;
+    try {
+      const result = await redeemAssistCodeAsResult(code);
+      assert.equal(result.ok, true);
+      assert.equal(result.ok ? result.hostId : null, "h-web-1");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("401（码无效/已轮换）→ ok:false + invalid，不抛异常", async () => {
+    globalThis.fetch = (async () => new Response(null, { status: 401 })) as typeof fetch;
+    try {
+      const result = await redeemAssistCodeAsResult("99999999");
+      assert.equal(result.ok, false);
+      assert.equal(result.ok ? null : result.kind, "invalid");
+      assert.ok(result.ok ? false : result.message.length > 0);
     } finally {
       globalThis.fetch = originalFetch;
     }

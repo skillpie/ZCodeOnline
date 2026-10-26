@@ -470,9 +470,8 @@ export function WorkspaceAssistCodeRefreshTrigger({
         }}
         localCode={localCode}
         existingCodes={machines.map((machine) => machine.code)}
-        onSubmit={(code, name) => {
+        onSubmit={(code) => {
           upsertAssistMachine(code);
-          if (name) renameAssistMachine(code, name);
           setMachines(orderMachines(loadAssistMachines(), localCode));
           closeAddForm();
         }}

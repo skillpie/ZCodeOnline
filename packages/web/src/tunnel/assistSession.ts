@@ -10,8 +10,9 @@ import {
   assistCodeResponseSchema,
   type TunnelAssistCode,
 } from "@zcode/shared";
-import { redeemAssistCodeViaEndpoint } from "@zcode/client";
+import { redeemAssistCodeViaEndpoint, redeemAssistCodeViaEndpointAsResult } from "@zcode/client";
 import type { AssistRedeemResult } from "@zcode/client";
+import type { RedeemAssistCodeResult } from "@zcode/shared";
 import { saveStoredAssistCode } from "@zcode/ui/assist-machine-store";
 
 export { AssistRedeemError } from "@zcode/client";
@@ -30,6 +31,14 @@ const ASSIST_CONNECT_ENDPOINT = "/relay/api/v1/assist/connect";
 /** 用远程码向 relay 兑换一次性连接票据与端到端 PSK（错误语义见 @zcode/client）。 */
 export async function redeemAssistCode(code: string): Promise<AssistRedeemResult> {
   return redeemAssistCodeViaEndpoint(code, ASSIST_CONNECT_ENDPOINT);
+}
+
+/**
+ * 平台契约实现（shared RedeemAssistCodeResult 结构化应答）：远程控制弹窗「添加远程
+ * 链接」的预检走这里——兑换只校验码、不消费，invalid 即码不存在或已轮换。
+ */
+export function redeemAssistCodeAsResult(code: string): Promise<RedeemAssistCodeResult> {
+  return redeemAssistCodeViaEndpointAsResult(code, ASSIST_CONNECT_ENDPOINT);
 }
 
 /**

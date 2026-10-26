@@ -90,3 +90,33 @@ export function assertRedeemResult(result: RedeemAssistCodeResult): AssistRedeem
   }
   throw new AssistRedeemError(result.message, result.kind);
 }
+
+/**
+ * 端点兑换 → shared 结构化应答（RedeemAssistCodeResult）的反向封装：平台契约实现方
+ * （Web 同源端点）用同一套错误归类返回，不抛异常。弹窗「添加远程链接」据此预检：
+ * 兑换只校验码、不消费（码可反复使用），invalid 即码不存在或已轮换。
+ */
+export async function redeemAssistCodeViaEndpointAsResult(
+  code: string,
+  endpoint: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RedeemAssistCodeResult> {
+  try {
+    const result = await redeemAssistCodeViaEndpoint(code, endpoint, fetchImpl);
+    return {
+      ok: true,
+      hostId: result.hostId,
+      connectToken: result.connectToken,
+      psk: result.psk,
+    };
+  } catch (cause) {
+    if (cause instanceof AssistRedeemError) {
+      return { ok: false, kind: cause.kind, message: cause.message };
+    }
+    return {
+      ok: false,
+      kind: "generic",
+      message: t("兑换远程码失败，请稍后重试。", "Failed to redeem the assist code."),
+    };
+  }
+}

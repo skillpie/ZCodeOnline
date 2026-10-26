@@ -55,6 +55,7 @@ import {
   fetchAssistCodeViaDiscovery,
   loadStoredAssistCode,
   refreshAssistCodeViaDiscovery,
+  redeemAssistCodeAsResult,
   saveStoredAssistCode,
   upsertAssistMachine,
 } from "./tunnel/assistSession.js";
@@ -772,6 +773,9 @@ function createWebPlatform(options?: {
       }
     },
     refreshRemoteAssistCode: () => refreshAssistCodeViaDiscovery(),
+    // 远程码兑换（specs/web-tunnel.md §5.9）：同源端点直连 relay；远程控制弹窗
+    // 「添加远程链接」预检与隧道 bootstrap 共用同一套错误语义（@zcode/client）。
+    redeemAssistCode: (code) => redeemAssistCodeAsResult(code),
   };
 }
 
