@@ -35,7 +35,7 @@ export interface AssistMachine {
   /**
    * 隐藏标记：该码曾由回环发现端点确认为「浏览器所在机器」的本机码。本机换码若发生在
    * 其他浏览器（他处点刷新、宿主身份重建），本浏览器无从得知新旧码的关联，弹窗会把
-   * 新码当新机器另登记一条「我的ZCode」；据此标记把新发现的本机码并入旧条目（原位
+   * 新码当新机器另登记一条本机条目；据此标记把新发现的本机码并入旧条目（原位
    * 换码、保留名称），列表至多一个本机条目。
    */
   local?: boolean;
@@ -44,6 +44,17 @@ export interface AssistMachine {
 /** 条目默认名：码本身没有辨识度，补「的ZCode」后缀；改名清空时也回退到它。 */
 export function defaultAssistMachineName(code: string): string {
   return `${code}的ZCode`;
+}
+
+// 历史版本写入的本机缺省名（i18n 两种语言的固定串）。登录名引入前，本机条目由代码
+// 写成这些名字而非用户起的名，视为「未改名」，允许升级为登录用户名；仅本机条目会
+// 持有它们（远端条目缺省名一直是 <码>的ZCode，用户手动改成同款名字不参与升级）。
+const LEGACY_LOCAL_DEFAULT_NAMES = new Set(["我的ZCode", "My ZCode"]);
+
+/** 条目名是否仍是缺省名（未被用户改过）：码缺省名，或本机条目的历史缺省名。 */
+function isUntouchedDefaultName(entry: AssistMachine): boolean {
+  if (entry.name === defaultAssistMachineName(entry.code)) return true;
+  return entry.local === true && LEGACY_LOCAL_DEFAULT_NAMES.has(entry.name);
 }
 
 export function loadAssistMachines(): AssistMachine[] {
@@ -75,10 +86,10 @@ function saveAssistMachines(machines: AssistMachine[]): void {
   localStorage.setItem(MACHINES_STORAGE_KEY, JSON.stringify(machines));
 }
 
-/** 仅当条目名仍是「<码>的ZCode」缺省名（未被用户改过）时升级为传入的默认名。 */
+/** 仅当条目名仍是缺省名（未被用户改过）时升级为传入的默认名。 */
 function maybeUpgradeDefaultName(entry: AssistMachine, defaultName?: string): boolean {
   const nextDefault = defaultName?.trim();
-  if (!nextDefault || entry.name !== defaultAssistMachineName(entry.code)) return false;
+  if (!nextDefault || !isUntouchedDefaultName(entry)) return false;
   entry.name = nextDefault;
   return true;
 }
@@ -93,9 +104,9 @@ function markAsLocalMachine(machines: AssistMachine[], entry: AssistMachine): vo
 
 /**
  * 打开带码链接 / 发现本机码时登记：新码以默认名（缺省「<码>的ZCode」）入列，已有码
- * 保留名称；仅当旧名称仍是码默认名（未被用户改过）时才升级为传入的 defaultName
- * （本机条目用它把默认名定为「我的ZCode」）。注意：打开链接 / 远程切换不等于本机，
- * 不打 local 标记——确认本机必须走回环发现的 upsertLocalAssistMachine。
+ * 保留名称；仅当旧名称仍是缺省名（未被用户改过）时才升级为传入的 defaultName
+ * （本机条目用它定为登录用户名，未登录时为 i18n 文案）。注意：打开链接 / 远程切换
+ * 不等于本机，不打 local 标记——确认本机必须走回环发现的 upsertLocalAssistMachine。
  */
 export function upsertAssistMachine(code: string, defaultName?: string): AssistMachine | null {
   const normalized = normalizeAssistCode(code);
@@ -120,7 +131,7 @@ export function upsertAssistMachine(code: string, defaultName?: string): AssistM
  * 在宿主不可达时会回退返回本地存储的活动码（expiresAt = null），那可能是正在远控的
  * 其他机器，误标会让后续合并吃掉远端条目——只有权威发现（expiresAt 非 null）走这里。
  * local 条目至多一条：发现新本机码时优先并入旧 local 条目，原位换码、保留名称与
- * 登记顺序，本机在别的浏览器换码后本浏览器不再多出一条重复的「我的ZCode」。
+ * 登记顺序，本机在别的浏览器换码后本浏览器不再多出一条重复的本机条目。
  */
 export function upsertLocalAssistMachine(code: string, defaultName?: string): AssistMachine | null {
   const normalized = normalizeAssistCode(code);
@@ -136,7 +147,7 @@ export function upsertLocalAssistMachine(code: string, defaultName?: string): As
   const previousLocal = machines.find((machine) => machine.local === true);
   if (previousLocal) {
     // 本机换码：并入旧条目。缺省名跟随新码；用户改过名则保留。
-    if (previousLocal.name === defaultAssistMachineName(previousLocal.code)) {
+    if (isUntouchedDefaultName(previousLocal)) {
       previousLocal.name = defaultName?.trim() || defaultAssistMachineName(normalized);
     }
     previousLocal.code = normalized;

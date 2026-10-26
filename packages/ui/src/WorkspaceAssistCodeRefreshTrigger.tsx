@@ -3,7 +3,7 @@
 // 内容超出滚动），右栏为 Bot Channel 渠道操作区（见 BotChannelPanel，可用时展示，
 // 窄屏退化为上下堆叠）。本机（Web 经回环发现端点、桌面经 daemon 控制链的权威码）固定
 // 第一项并带「本机」标签，权威发现的新码若与列表里带 local 标记的旧本机条目不同码
-// （本机在别处换过码），由 store 原位并入而不是新增，避免重复的「我的ZCode」；兜底
+// （本机在别处换过码），由 store 原位并入而不是新增，避免重复的本机条目；兜底
 // 回退码不打标记、也不计入本机语义（见 resolveLocalAssistCode）——移动端回环永不可
 // 达，正在远控的远端机器不得显示「本机」或提供刷新。「刷新」二次确认后轮换本机码，旧链接立即失效；其余条目支持改名
 // （默认名 = <远程码>的ZCode）、「复制」与删除；列表无独立「切换」按钮，整卡即选中
@@ -14,6 +14,7 @@
 // Channel 至少一个可用时渲染本入口；轮换权威所有者在宿主 Core 隧道运行时。
 import { useState } from "react";
 import { Link2, Loader2, MonitorSmartphone, Plus, XIcon } from "lucide-react";
+import type { UserInfo } from "@zcode/shared";
 import { DEFAULT_TUNNEL_RELAY_URL, relayWebOrigin } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
@@ -59,16 +60,24 @@ function orderMachines(list: AssistMachine[], localCode: string | null): AssistM
   ];
 }
 
+/** 本机条目缺省名：已登录 ZCode 账号用账号名（displayName 优先），未登录退回 i18n 文案。 */
+function resolveLocalDefaultName(user: UserInfo | null | undefined, fallback: string): string {
+  return user?.displayName?.trim() || user?.username?.trim() || fallback;
+}
+
 export function WorkspaceAssistCodeRefreshTrigger({
   className,
   isDesktop = false,
   botChannel = null,
+  user = null,
 }: {
   className?: string;
   /** 桌面端：分享链接用 relay 站点源（renderer origin 非网页域名）。 */
   isDesktop?: boolean;
   /** Bot Channel（移动端远程控制）可用时传入：弹窗右栏展示其渠道操作区（见 BotChannelPanel）。 */
   botChannel?: { workspacePath: string; workspaceIdentity?: string } | null;
+  /** 登录的 ZCode 账号：已登录时本机条目缺省名用账号名，未登录退回「我的ZCode」文案。 */
+  user?: UserInfo | null;
 }) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
@@ -112,13 +121,16 @@ export function WorkspaceAssistCodeRefreshTrigger({
       // 本机语义（徽标/刷新/置顶/添加查重/桌面本地模式当前判定）只认权威回环发现
       // （见 resolveLocalAssistCode）：移动端回环永不可达，兜底回退的存储码可能是
       // 正在远控的其他机器，误当本机会让远端条目显示「本机」并可误刷新。回退码仍作为
-      // 普通条目登记展示，但不升级「我的ZCode」默认名；本机默认名仅权威路径写入，
+      // 普通条目登记展示，但不升级本机缺省名；本机缺省名仅权威路径写入，
       // 曾被用户改过名的条目不会被覆盖。
       if (local) {
         if (authoritative) {
           upsertLocalAssistMachine(
             local,
-            intl.formatMessage({ id: "assistCode.dialog.localDefaultName" }),
+            resolveLocalDefaultName(
+              user,
+              intl.formatMessage({ id: "assistCode.dialog.localDefaultName" }),
+            ),
           );
         } else {
           upsertAssistMachine(local);

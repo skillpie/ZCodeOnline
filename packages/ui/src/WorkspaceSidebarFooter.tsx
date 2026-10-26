@@ -495,6 +495,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
               官方 web-remote 触发器不在此使用：本仓库远控入口以隧道方案为准。 */}
           <WorkspaceAssistCodeRefreshTrigger
             isDesktop={isDesktop}
+            user={user}
             botChannel={
               botChannelTriggerWorkspacePath
                 ? { workspacePath: botChannelTriggerWorkspacePath, workspaceIdentity }

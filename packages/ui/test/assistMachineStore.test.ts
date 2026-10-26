@@ -155,6 +155,38 @@ test("本机换码合并：缺省名跟随新码；用户改过名则保留", ()
   assert.equal(kept?.name, "客厅的电脑");
 });
 
+test("本机缺省名升级：历史「我的ZCode」/「My ZCode」视为未改名，升级为登录名", () => {
+  // 存量数据：登录名引入前，旧版本把本机缺省名写成 i18n 固定串。
+  storage.set(
+    "zcode-assist-machines",
+    JSON.stringify([{ code: "11111111", name: "我的ZCode", local: true }]),
+  );
+  const upgraded = upsertLocalAssistMachine("11111111", "林春成");
+  assert.equal(upgraded?.name, "林春成");
+  storage.set(
+    "zcode-assist-machines",
+    JSON.stringify([{ code: "22222222", name: "My ZCode", local: true }]),
+  );
+  const enUpgraded = upsertLocalAssistMachine("22222222", "Lin");
+  assert.equal(enUpgraded?.name, "Lin");
+});
+
+test("远端条目被手改成「我的ZCode」不参与缺省名升级（历史缺省名仅限本机条目）", () => {
+  storage.set("zcode-assist-machines", JSON.stringify([{ code: "33333333", name: "我的ZCode" }]));
+  const kept = upsertAssistMachine("33333333", "林春成");
+  assert.equal(kept?.name, "我的ZCode");
+});
+
+test("本机换码合并：历史缺省名跟随新默认名（登录名）", () => {
+  storage.set(
+    "zcode-assist-machines",
+    JSON.stringify([{ code: "11111111", name: "我的ZCode", local: true }]),
+  );
+  const merged = upsertLocalAssistMachine("33333333", "林春成");
+  assert.equal(merged?.code, "33333333");
+  assert.equal(merged?.name, "林春成");
+});
+
 test("普通登记不打标记也不清除已有本机标记（打开链接 ≠ 本机）", () => {
   upsertLocalAssistMachine("11111111", "我的ZCode");
   // 打开本机自己的分享链接：已有条目保留标记，不新增。
