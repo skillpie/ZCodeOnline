@@ -414,6 +414,20 @@ modules:
     layers:
       app: .
     owner: conversation
+  # cli-extension-host：由 architecture:adopt 登记
+  - id: cli-extension-host
+    roots:
+      - apps/zcode-cli/packages/bootstrap/src/extension-host
+      - apps/zcode-cli/packages/bootstrap/tests/extension-host
+    managed: true
+    requires:
+      - zcode-cli
+    publicEntrypoints:
+      - apps/zcode-cli/packages/bootstrap/src/extension-host/index.ts
+      - apps/zcode-cli/packages/bootstrap/src/extension-host/contract.ts
+    layers:
+      app: .
+    owner: agent
   # web-remote-relay：由 architecture:adopt 登记
   - id: web-remote-relay
     roots:

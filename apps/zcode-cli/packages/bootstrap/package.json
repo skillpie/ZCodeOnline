@@ -37,6 +37,7 @@
     "@zcode/shared": "workspace:*",
     "@zcode/telemetry": "workspace:*",
     "diff": "^9.0.0",
+    "jiti": "^2.7.0",
     "zod": "4.6.5"
   },
   "devDependencies": {

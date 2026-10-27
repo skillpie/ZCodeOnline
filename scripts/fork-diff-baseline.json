@@ -1,0 +1,12 @@
+{
+  "comment": "存量禁区改动清单（2026-10 盘点）：fork 已有定制，计划随 extension-host 外移后逐项移除。新增禁区改动必须先评审再更新本文件；CI 不自动刷新基线。",
+  "accepted": [
+    "apps/zcode-cli/packages/contracts/src/events/session.events.ts",
+    "apps/zcode-cli/packages/core/src/runtime/methods/turn.ts",
+    "apps/zcode-cli/packages/core/src/runtime/types.ts",
+    "apps/zcode-cli/packages/core/src/tool/executor/batch-runner.ts",
+    "apps/zcode-cli/packages/core/src/tool/executor/call-runner.ts",
+    "apps/zcode-cli/packages/core/src/tool/executor/types.ts",
+    "apps/zcode-cli/packages/core/src/tool/types.ts"
+  ]
+}

@@ -22,6 +22,7 @@ import { createNodeSkillAdapter } from "@zcode/adapters/skills";
 import { createMcpAdapter } from "@zcode/adapters/mcp";
 import {
   AgentRuntime,
+  createToolRegistry,
   normalizeAgentProfiles,
   PermissionService,
   buildPluginReferenceCatalog,
@@ -32,6 +33,7 @@ import {
 import { createModelTelemetry } from "@zcode/telemetry";
 import {
   createRootTraceContext,
+  getCurrentTraceContext,
   traceContextToLogContext,
   type TraceContext,
   createSessionId,
@@ -46,6 +48,7 @@ import {
 } from "@zcode/shared/zcode-protocol-v4";
 
 import { createModelAdapter } from "../model-factory.js";
+import { createExtensionAwareHookRunner, loadExtensions } from "../extension-host/index.js";
 import { StartupTimer, startupNow } from "../startup-logging.js";
 import { scheduleStartupLogRetentionCleanup } from "../log-retention.js";
 import type {
@@ -801,7 +804,56 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       registry: options.providerRegistry,
       currentSelection: () => getRuntime().getSessionModelSelection(),
     });
+    // extension-host：进程内 TS 扩展经 core 既有 deps 注入点（toolRegistry /
+    // hookRunner）进 runtime，core 零改动。只装配主会话 runtime；workflow
+    // child runtime 刻意不注入（extension-host/CONTRACT.md「Non-goals」）。
+    const extensionOutcome = await loadExtensions({ workingDirectory, logger });
+    const extensionToolRegistry =
+      extensionOutcome.toolEntries.length > 0 ? createToolRegistry() : undefined;
+    for (const entry of extensionOutcome.toolEntries) {
+      extensionToolRegistry?.register(entry);
+    }
+    if (extensionOutcome.extensions.length > 0) {
+      logger.info(`Loaded ${extensionOutcome.extensions.length} extension(s)`, {
+        event: "extension.host.loaded",
+        extensions: extensionOutcome.extensions.map((extension) => ({
+          id: extension.id,
+          tools: extension.tools.length,
+          events: extension.events.length,
+        })),
+      });
+    }
+    // 诊断必须落日志：扩展加载失败如果静默，用户无从得知工具为何缺席
+    //（2026-10-27 冒烟测试正是靠这条日志才定位到 jiti 被内联的问题）。
+    for (const diagnostic of extensionOutcome.diagnostics) {
+      const message = `Extension diagnostic [${diagnostic.code}] ${diagnostic.message}`;
+      if (diagnostic.severity === "info") {
+        logger.info(message, { event: "extension.host.diagnostic", path: diagnostic.path });
+      } else {
+        logger.warn(message, {
+          event: "extension.host.diagnostic",
+          path: diagnostic.path,
+          severity: diagnostic.severity,
+        });
+      }
+    }
+    const extensionHookRunner = createExtensionAwareHookRunner({
+      hooksRuntimeConfig: runtimeConfig.hooks,
+      executionPort,
+      workspaceHookSnapshot: workspaceHookRuntimeSecurity?.snapshot,
+      workspaceHookAdmission: workspaceHookRuntimeSecurity?.admission,
+      getWorkingDirectory: () => workingDirectory,
+      emitEvent: async (event) => {
+        await getRuntime().appendEvent(event, getCurrentTraceContext() ?? traceContext);
+      },
+      logger,
+      registrations: extensionOutcome.hookRegistrations,
+    });
     runtime = new AgentRuntime(sessionId, runtimeConfig, {
+      // 扩展工具先注册进独立注册表再整体注入；内置工具在 runtime 装配时后
+      // 注册覆盖，重名时内置胜出（extension-host/CONTRACT.md「Defaults」）。
+      ...(extensionToolRegistry ? { toolRegistry: extensionToolRegistry } : {}),
+      ...(extensionHookRunner ? { hookRunner: extensionHookRunner } : {}),
       ...(options.readSubagentRuntimeConfig
         ? {
             loadAgentDefinitions: async (input) => {

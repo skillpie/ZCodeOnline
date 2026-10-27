@@ -12,7 +12,10 @@ const executableFileMode = 0o755;
 const packageJsonFile = "package.json";
 const rootPackageVersionError = "Root package.json must define a non-empty string version.";
 const desktopAgentBuildFlag = "--desktop-agent";
-export const resolveBuildExternal = () => ["@zcode/tui", "playwright-core", "koffi"];
+// jiti 必须外部化：它是 TS 加载器，运行时要动态 require 用户扩展文件；
+// 内联进 cjs bundle 会被 esbuild 改写成 __require 垫片，运行时报
+// "Dynamic require of ... is not supported"。与 koffi/playwright-core 同理。
+export const resolveBuildExternal = () => ["@zcode/tui", "playwright-core", "koffi", "jiti"];
 
 export const readZodBuildVersion = async () => {
   const sharedPackage = JSON.parse(

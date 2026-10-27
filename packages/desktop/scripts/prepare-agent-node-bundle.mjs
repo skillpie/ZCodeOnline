@@ -23,6 +23,7 @@ import {
   stageSharpIntoBundledAgents,
 } from "./sharp-package-assets.mjs";
 import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
+import { stageJitiIntoBundledAgents } from "./jiti-package-assets.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
@@ -491,6 +492,13 @@ function stageKoffiForCuaPlugin() {
   );
 }
 
+// jiti 是主 bundle 的运行时外部依赖（extension-host 动态加载用户扩展），
+// 主 bundle 没有 node_modules 树，必须显式 stage 到 glm/node_modules/jiti。
+function stageJitiForAgentBundle() {
+  const targetRoot = stageJitiIntoBundledAgents({ repoRoot, glmDir });
+  console.log(`[prepare:agent-bundle] staged jiti into ${targetRoot}`);
+}
+
 // 修复原因：Electron 生产包只带 resources/glm/zcode.cjs 时，app-server 进程的
 // __dirname 附近没有官方插件目录，启动时 seed 找不到 source，用户侧不会自动得到内置插件。
 // 这里把官方插件按 bootstrap 的 rootCandidates 期望放到 glm/packages/*-plugin，
@@ -504,3 +512,4 @@ stageOfficialPlugins();
 stageBundledSkillPack();
 stageKoffiForCuaPlugin();
 stageSharpForNodeReplPlugin();
+stageJitiForAgentBundle();

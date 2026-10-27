@@ -201,6 +201,12 @@ test("CLI bundle externalizes native koffi so esbuild does not parse platform .n
   assert.ok(resolveBuildExternal().includes("koffi"));
 });
 
+test("CLI bundle externalizes jiti so extension dynamic require survives bundling", () => {
+  // extension-host 在运行时动态加载用户 TS 扩展；内联 jiti 会被 esbuild 的
+  // __require 垫片拦下（"Dynamic require of ... is not supported"）。
+  assert.ok(resolveBuildExternal().includes("jiti"));
+});
+
 test("every shared package export has an exact build alias, including SQLite migrations", async () => {
   const shared = JSON.parse(
     await readFile(new URL("../../../../../packages/shared/package.json", import.meta.url), "utf8"),
