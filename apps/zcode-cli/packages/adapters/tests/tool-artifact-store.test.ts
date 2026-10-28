@@ -368,6 +368,59 @@ describe("Node tool artifact store", () => {
     }
   });
 
+  it("materializes a generic prompt attachment file preserving the original filename", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "zcode-tool-artifacts-"));
+    const rootDir = join(tempRoot, "artifacts");
+    const store = createNodeToolArtifactStore({
+      imageCacheRootDir: join(tempRoot, "image-cache"),
+      rootDir,
+      videoCacheRootDir: join(tempRoot, "video-cache"),
+    });
+    const sessionId = createSessionId("artifact-file-cache");
+    // xlsx 的真实文件头（ZIP container）。
+    const xlsxBytes = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00, 0x08, 0x00]);
+
+    try {
+      const artifact = await store.writeToolResultArtifact({
+        sessionId,
+        toolCallId: createToolCallId("prompt-attachment-upload"),
+        toolName: "prompt-attachment:upload",
+        content: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${xlsxBytes.toString("base64")}`,
+        contentType: "text/plain",
+        retention: "session",
+      });
+
+      const first = store.ensurePromptAttachmentPath!({
+        uri: artifact.uri,
+        fileName: "雄哥货品.xlsx",
+      });
+      const second = store.ensurePromptAttachmentPath!({
+        uri: artifact.uri,
+        fileName: "雄哥货品.xlsx",
+      });
+      expect(second).toBe(first);
+      const materialized = await first;
+      if (materialized.status !== "ready") throw new Error("expected generic file materialization");
+
+      // 派生文件落在 file-cache（默认取 rootDir 同级），保留原始扩展名供下游识别。
+      expect(dirname(materialized.path)).toBe(join(dirname(rootDir), "file-cache", sessionId));
+      expect(materialized.path).toMatch(/\.xlsx$/);
+      await expect(readFile(materialized.path)).resolves.toEqual(xlsxBytes);
+
+      // 幂等：删除派生文件后按 durable artifact 重建出同一路径与字节。
+      await unlink(materialized.path);
+      const rebuilt = await store.ensurePromptAttachmentPath!({
+        uri: artifact.uri,
+        fileName: "雄哥货品.xlsx",
+      });
+      expect(rebuilt).toEqual({ status: "ready", path: materialized.path });
+      if (rebuilt.status !== "ready") throw new Error("expected rebuilt generic file path");
+      await expect(readFile(rebuilt.path)).resolves.toEqual(xlsxBytes);
+    } finally {
+      await rm(tempRoot, { force: true, recursive: true });
+    }
+  });
+
   it("skips unsupported image cache media types without interrupting the attachment flow", async () => {
     const rootDir = await mkdtemp(join(tmpdir(), "zcode-tool-artifacts-"));
     const imageCacheRootDir = join(rootDir, "image-cache");

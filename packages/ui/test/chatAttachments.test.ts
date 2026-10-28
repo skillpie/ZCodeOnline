@@ -147,6 +147,51 @@ describe("serializeChatComposerAttachment", () => {
     });
   });
 
+  it("Web 无路径二进制文件内联 dataBase64，并可从草稿恢复", async () => {
+    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00]);
+    const file = new File([bytes], "雄哥货品.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const serialized = await serializeChatComposerAttachment(createChatComposerAttachment(file));
+
+    expect(serialized).toEqual({
+      kind: "file",
+      filename: "雄哥货品.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      dataBase64: Buffer.from(bytes).toString("base64"),
+      sizeBytes: bytes.byteLength,
+    });
+    const restored = restoreChatComposerAttachment(serialized);
+    expect(restored).toMatchObject({
+      filename: "雄哥货品.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      sizeBytes: bytes.byteLength,
+    });
+    expect(await serializeChatComposerAttachment(restored)).toEqual(serialized);
+  });
+
+  it("Web 无路径二进制文件超过 V4 上限时在 base64 编码前抛结构化错误", async () => {
+    const file = new File([new Uint8Array([0x50, 0x4b])], "large.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const attachment = createChatComposerAttachment(file);
+    Object.defineProperty(attachment, "sizeBytes", {
+      value: PROTOCOL_V4_LIMITS.attachmentMaxBytes + 1,
+    });
+    const readAsDataUrl = vi.spyOn(TestFileReader.prototype, "readAsDataURL");
+
+    try {
+      await expect(serializeChatComposerAttachment(attachment)).rejects.toMatchObject({
+        filename: "large.xlsx",
+        maxSizeBytes: PROTOCOL_V4_LIMITS.attachmentMaxBytes,
+        name: "OversizedInlineFileAttachmentError",
+      });
+      expect(readAsDataUrl).not.toHaveBeenCalled();
+    } finally {
+      readAsDataUrl.mockRestore();
+    }
+  });
+
   it("图片仍保持 ZCode Agent image 附件格式", async () => {
     const file = new File(["png-bytes"], "image.png", {
       type: "image/png",

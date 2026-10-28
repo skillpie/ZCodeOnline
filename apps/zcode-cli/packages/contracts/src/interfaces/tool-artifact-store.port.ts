@@ -99,6 +99,12 @@ export interface MediaAttachmentPathEnsureRequest {
   mediaType: string;
 }
 
+export interface PromptAttachmentPathEnsureRequest {
+  uri: string;
+  /** 原始文件名：派生文件保留扩展名，供下游工具/技能按类型识别。 */
+  fileName: string;
+}
+
 export type MediaAttachmentPathResult =
   | { status: "ready"; path: string }
   | { status: "unsupported" };
@@ -137,5 +143,13 @@ export interface ToolArtifactStorePort {
   ): Promise<MediaAttachmentPathResult>;
   ensureMediaAttachmentPath?(
     request: MediaAttachmentPathEnsureRequest,
+  ): Promise<MediaAttachmentPathResult>;
+  /**
+   * 把 prompt 附件 artifact（data-URL 形态）物化为可被文件工具读取的本地路径。
+   * 与 {@link ensureMediaAttachmentPath} 同规：派生文件是可重建缓存，确定性路径按
+   * uri+fileName 幂等；可选能力，缺席/unsupported 时消费方降级为仅展示元信息。
+   */
+  ensurePromptAttachmentPath?(
+    request: PromptAttachmentPathEnsureRequest,
   ): Promise<MediaAttachmentPathResult>;
 }

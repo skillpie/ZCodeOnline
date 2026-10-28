@@ -380,6 +380,14 @@ export interface ZCodeApp {
     mime: string;
     bytes: Uint8Array;
   }): Promise<{ ref: string }>;
+  /**
+   * 把非媒体 prompt 附件 artifact 物化为本地文件路径（保留原始文件名），
+   * 供发送映射交付 path 引用。物化不支持/失败返回 undefined，调用方降级为仅展示元信息。
+   */
+  materializePromptAttachmentPath(input: {
+    uri: string;
+    fileName: string;
+  }): Promise<{ path: string } | undefined>;
   /** 已发送 image/video 预览：在拥有 session 的 runtime 内读取 artifact 或实际路径。 */
   readPromptAttachment(input: {
     ref: string;

@@ -9,6 +9,7 @@ import { PROTOCOL_V4_LIMITS } from "@zcode/shared/zcode-protocol-v4";
 import {
   MissingInlineImageContentError,
   MissingInlinePdfContentError,
+  OversizedInlineFileAttachmentError,
   OversizedInlineImageAttachmentError,
   OversizedInlinePdfAttachmentError,
   OversizedInlineVideoAttachmentError,
@@ -24,6 +25,7 @@ import {
 export {
   MissingInlineImageContentError,
   MissingInlinePdfContentError,
+  OversizedInlineFileAttachmentError,
   OversizedInlineImageAttachmentError,
   OversizedInlinePdfAttachmentError,
   OversizedInlineVideoAttachmentError,
@@ -422,9 +424,25 @@ export async function serializeChatComposerAttachment(
     };
   }
 
+  // Bug 根因：Web/无路径环境过去对二进制普通文件只产出元信息（无 localPath/dataBase64/
+  // textContent），uploadComposerAttachment 判定无内容可发返回 null，chip 报
+  // 「附件缺少可读取内容」。这里把 V4 上限内的二进制内联为 dataBase64，
+  // 走 attachment/put 分片通道寄存成 artifact ref；超限在读取前结构化拒绝。
+  if (attachment.file && attachment.sizeBytes > PROTOCOL_V4_LIMITS.attachmentMaxBytes) {
+    throw new OversizedInlineFileAttachmentError({
+      filename: attachment.filename,
+      maxSizeBytes: PROTOCOL_V4_LIMITS.attachmentMaxBytes,
+      sizeBytes: attachment.sizeBytes,
+    });
+  }
+
   const textContent =
     attachment.file && isTextLikeAttachment(attachment)
       ? await readAttachmentText(attachment.file)
+      : undefined;
+  const dataBase64 =
+    textContent === undefined && attachment.file
+      ? await readAttachmentBase64(attachment)
       : undefined;
   return {
     kind: "file",
@@ -432,6 +450,7 @@ export async function serializeChatComposerAttachment(
     mimeType,
     sizeBytes: attachment.sizeBytes,
     ...(textContent !== undefined ? { textContent } : {}),
+    ...(dataBase64 !== undefined ? { dataBase64 } : {}),
     ...(attachment.sourceKind
       ? { sourceKind: attachment.sourceKind, messageCount: attachment.messageCount }
       : {}),

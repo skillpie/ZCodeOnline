@@ -9,6 +9,7 @@ import type {
   MediaAttachmentPathPrimeRequest,
   MediaAttachmentPathEnsureRequest,
   MediaAttachmentPathResult,
+  PromptAttachmentPathEnsureRequest,
   ToolBinaryArtifactWriteRequest,
   ToolArtifactStorePort,
   ToolArtifactReadRequest,
@@ -32,6 +33,7 @@ export {
 } from "@zcode/contracts";
 
 export interface NodeToolArtifactStoreOptions {
+  fileCacheRootDir?: string;
   imageCacheRootDir: string;
   pdfCacheRootDir?: string;
   rootDir: string;
@@ -39,6 +41,7 @@ export interface NodeToolArtifactStoreOptions {
 }
 
 export class NodeToolArtifactStore implements ToolArtifactStorePort {
+  private readonly fileCacheRootDir: string;
   private readonly imageCacheRootDir: string;
   private readonly pdfCacheRootDir: string;
   private readonly rootDir: string;
@@ -47,8 +50,13 @@ export class NodeToolArtifactStore implements ToolArtifactStorePort {
     string,
     Promise<MediaAttachmentPathResult>
   >();
+  private readonly promptAttachmentPathFlights = new Map<
+    string,
+    Promise<MediaAttachmentPathResult>
+  >();
 
   constructor(options: NodeToolArtifactStoreOptions) {
+    this.fileCacheRootDir = options.fileCacheRootDir ?? join(dirname(options.rootDir), "file-cache");
     this.imageCacheRootDir = options.imageCacheRootDir;
     this.rootDir = options.rootDir;
     this.pdfCacheRootDir = options.pdfCacheRootDir ?? join(dirname(options.rootDir), "pdf-cache");
@@ -261,6 +269,49 @@ export class NodeToolArtifactStore implements ToolArtifactStorePort {
     return flight;
   }
 
+  /**
+   * 普通文件 prompt 附件（xlsx/docx 等二进制）的物化：artifact 里的 data-URL
+   * 解码成原始字节，落到保留原始文件名的派生缓存，交付给 core 的 path 引用链。
+   * 派生文件是可重建缓存，确定性路径按 uri+fileName 幂等，写失败原样上抛，
+   * 由消费方降级为仅展示元信息。
+   */
+  ensurePromptAttachmentPath(
+    request: PromptAttachmentPathEnsureRequest,
+  ): Promise<MediaAttachmentPathResult> {
+    const flightKey = `${request.uri}\u0000${request.fileName}`;
+    return this.runPromptAttachmentPathFlight(flightKey, async () => {
+      const path = derivedPromptAttachmentPath(
+        this.fileCacheRootDir,
+        request.uri,
+        request.fileName,
+      );
+      if (await isRegularFile(path)) return { status: "ready", path };
+
+      const artifact = await this.readToolResultArtifact({ uri: request.uri });
+      const bytes = decodeDataUrlArtifactBytes(artifact.content, request.uri);
+      await writeDerivedAttachmentFileAtomically(path, bytes);
+      return { status: "ready", path };
+    });
+  }
+
+  private runPromptAttachmentPathFlight(
+    flightKey: string,
+    materialize: () => Promise<MediaAttachmentPathResult>,
+  ): Promise<MediaAttachmentPathResult> {
+    const inFlight = this.promptAttachmentPathFlights.get(flightKey);
+    if (inFlight) return inFlight;
+    // 与媒体物化同规：同一 (uri, fileName) 的并发发送等待同一写任务。
+    // 键带上 fileName：同一 artifact 换名物化时不得拿到别的文件名的 ready 结果。
+    let flight!: Promise<MediaAttachmentPathResult>;
+    flight = materialize().finally(() => {
+      if (this.promptAttachmentPathFlights.get(flightKey) === flight) {
+        this.promptAttachmentPathFlights.delete(flightKey);
+      }
+    });
+    this.promptAttachmentPathFlights.set(flightKey, flight);
+    return flight;
+  }
+
   private async writeDerivedMediaAttachment(
     uri: string,
     mediaType: string,
@@ -278,19 +329,7 @@ export class NodeToolArtifactStore implements ToolArtifactStorePort {
     if (!path) return { status: "unsupported" };
     if (await isRegularFile(path)) return { status: "ready", path };
 
-    const sessionDir = dirname(path);
-    const temporaryPath = `${path}.tmp-${randomUUID()}`;
-    maybeThrowStorageFsFault({ operation: "mkdir", path: sessionDir });
-    await mkdir(sessionDir, { recursive: true });
-    try {
-      maybeThrowStorageFsFault({ operation: "writeFile", path: temporaryPath });
-      await writeFile(temporaryPath, bytes);
-      maybeThrowStorageFsFault({ operation: "rename", path });
-      await rename(temporaryPath, path);
-    } catch (error) {
-      await unlink(temporaryPath).catch(() => undefined);
-      throw error;
-    }
+    await writeDerivedAttachmentFileAtomically(path, bytes);
     return { status: "ready", path };
   }
 }
@@ -406,6 +445,51 @@ function mediaKindForContentType(mediaType: string): DerivedMediaKind | undefine
   if (normalized.startsWith("video/")) return "video";
   if (normalized === "application/pdf") return "pdf";
   return undefined;
+}
+
+/** 派生文件路径：会话目录内保留原始文件名（含扩展名），uri 哈希防冲突。 */
+function derivedPromptAttachmentPath(
+  fileCacheRootDir: string,
+  uri: string,
+  fileName: string,
+): string {
+  const { sessionId } = parseArtifactUri(uri);
+  const uriHash = createHash("sha256").update(uri).digest("hex").slice(0, 32);
+  return join(
+    fileCacheRootDir,
+    sanitizePathSegment(sessionId),
+    `file-${uriHash}-${sanitizePathSegment(fileName)}`,
+  );
+}
+
+function decodeDataUrlArtifactBytes(content: string, uri: string): Buffer {
+  const commaIndex = content.indexOf(",");
+  const headerParts =
+    content.slice(0, "data:".length).toLowerCase() === "data:" && commaIndex >= 0
+      ? content.slice("data:".length, commaIndex).split(";")
+      : [];
+  const mediaType = headerParts.shift()?.trim();
+  if (!mediaType || headerParts.at(-1)?.trim().toLowerCase() !== "base64" || commaIndex < 0) {
+    throw new Error(`Prompt attachment artifact is not a base64 data URL: ${uri}`);
+  }
+  return Buffer.from(content.slice(commaIndex + 1), "base64");
+}
+
+/** 派生附件落盘统一走 tmp + 原子 rename，写失败清理临时文件（媒体与普通文件共用）。 */
+async function writeDerivedAttachmentFileAtomically(path: string, bytes: Buffer): Promise<void> {
+  const sessionDir = dirname(path);
+  const temporaryPath = `${path}.tmp-${randomUUID()}`;
+  maybeThrowStorageFsFault({ operation: "mkdir", path: sessionDir });
+  await mkdir(sessionDir, { recursive: true });
+  try {
+    maybeThrowStorageFsFault({ operation: "writeFile", path: temporaryPath });
+    await writeFile(temporaryPath, bytes);
+    maybeThrowStorageFsFault({ operation: "rename", path });
+    await rename(temporaryPath, path);
+  } catch (error) {
+    await unlink(temporaryPath).catch(() => undefined);
+    throw error;
+  }
 }
 
 function extensionForDerivedMediaContentType(mediaType: string): string | undefined {

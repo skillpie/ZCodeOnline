@@ -258,6 +258,111 @@ describe("attachment-refs 映射（AttachmentRef → TurnAttachment）", () => {
     });
   });
 
+  it("二进制 artifact ref（xlsx）物化为本地文件 path ref，交给 core 读取链", async () => {
+    const materializedPath = "/cache/file-abc-123/货品.xlsx";
+    const rawApp = makeApp({
+      materializePromptAttachmentPath: vi.fn().mockResolvedValue({ path: materializedPath }),
+    });
+    const app = rawApp as unknown as V4SessionRecordView["app"];
+    const mapped = await mapAttachmentRefsToTurnAttachments(app, [
+      {
+        ref: "zcode-artifact://xlsx-1",
+        fileName: "雄哥货品.xlsx",
+        mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        bytes: 80 * 1024,
+      },
+    ]);
+    expect(mapped).toEqual([
+      {
+        path: materializedPath,
+        type: "file",
+        filename: "雄哥货品.xlsx",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        sizeBytes: 80 * 1024,
+      },
+    ]);
+    expect(rawApp.materializePromptAttachmentPath).toHaveBeenCalledWith({
+      uri: "zcode-artifact://xlsx-1",
+      fileName: "雄哥货品.xlsx",
+    });
+    // 二进制不得再走 UTF-8 文本解码（旧实现会产出乱码正文）。
+    expect(rawApp.readToolResultArtifact).not.toHaveBeenCalled();
+  });
+
+  it("小体积二进制（≤64KiB）不再按文本解码，统一物化", async () => {
+    const rawApp = makeApp({
+      materializePromptAttachmentPath: vi.fn().mockResolvedValue({ path: "/cache/small.zip" }),
+    });
+    const app = rawApp as unknown as V4SessionRecordView["app"];
+    const mapped = await mapAttachmentRefsToTurnAttachments(app, [
+      { ref: "zcode-artifact://zip-1", fileName: "bundle.zip", mime: "application/zip", bytes: 100 },
+    ]);
+    expect(mapped?.[0]).toMatchObject({ path: "/cache/small.zip", type: "file" });
+    expect(rawApp.readToolResultArtifact).not.toHaveBeenCalled();
+  });
+
+  it("超长文本 artifact ref 物化后交付 path 引用（旧实现只剩元信息）", async () => {
+    const rawApp = makeApp({
+      materializePromptAttachmentPath: vi.fn().mockResolvedValue({ path: "/cache/big.log" }),
+    });
+    const mapped = await mapAttachmentRefsToTurnAttachments(
+      rawApp as unknown as V4SessionRecordView["app"],
+      [
+        {
+          ref: "zcode-artifact://log-1",
+          fileName: "server.log",
+          mime: "text/plain",
+          bytes: 65 * 1024,
+        },
+      ],
+    );
+    expect(mapped?.[0]).toMatchObject({ path: "/cache/big.log", type: "file" });
+  });
+
+  it("物化不支持/失败时降级为仅展示元信息，不让发送整体失败", async () => {
+    const unsupported = makeApp({
+      materializePromptAttachmentPath: vi.fn().mockResolvedValue(undefined),
+    });
+    const unsupportedMapped = await mapAttachmentRefsToTurnAttachments(
+      unsupported as unknown as V4SessionRecordView["app"],
+      [
+        {
+          ref: "zcode-artifact://xlsx-2",
+          fileName: "data.xlsx",
+          mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          bytes: 80 * 1024,
+        },
+      ],
+    );
+    expect(unsupportedMapped?.[0]).toEqual({
+      type: "file",
+      filename: "data.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      sizeBytes: 80 * 1024,
+    });
+
+    const failing = makeApp({
+      materializePromptAttachmentPath: vi.fn().mockRejectedValue(new Error("disk full")),
+    });
+    const failingMapped = await mapAttachmentRefsToTurnAttachments(
+      failing as unknown as V4SessionRecordView["app"],
+      [
+        {
+          ref: "zcode-artifact://xlsx-3",
+          fileName: "data.xlsx",
+          mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          bytes: 80 * 1024,
+        },
+      ],
+    );
+    expect(failingMapped?.[0]).toEqual({
+      type: "file",
+      filename: "data.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      sizeBytes: 80 * 1024,
+    });
+  });
+
   it("空/缺省 → undefined；isUriAttachmentRef 区分 scheme:// 与本地路径（含 Windows 盘符）", async () => {
     const app = makeApp() as unknown as V4SessionRecordView["app"];
     expect(await mapAttachmentRefsToTurnAttachments(app, undefined)).toBeUndefined();

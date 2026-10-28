@@ -1210,6 +1210,10 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
         }
         return { ref: artifact.uri };
       },
+      materializePromptAttachmentPath: async (input) => {
+        const result = await artifactStore.ensurePromptAttachmentPath?.(input);
+        return result?.status === "ready" && result.path.trim() ? { path: result.path } : undefined;
+      },
       readPromptAttachment: async (input) => {
         const { ref, mediaType } = await resolvePromptAttachment(input);
         // 读取必须留在 session runtime 内：artifact 走 session store，路径走当前

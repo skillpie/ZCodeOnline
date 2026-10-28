@@ -2669,7 +2669,8 @@ const enUS: Record<string, string> = {
   "assistCode.dialog.add": "Add remote link",
   "assistCode.dialog.addCodePlaceholder": "Paste an assist link or an 8-digit code",
   "assistCode.dialog.addVerifying": "Verifying…",
-  "assistCode.dialog.addVerifyUnavailable": "Cannot verify the assist code in this environment. Update the app and retry.",
+  "assistCode.dialog.addVerifyUnavailable":
+    "Cannot verify the assist code in this environment. Update the app and retry.",
   "assistCode.dialog.addConfirm": "Add",
   "assistCode.dialog.addInvalid": "Invalid link or code: expected an 8-digit assist code.",
   "assistCode.dialog.addDuplicate": "This assist code is already in the list.",
@@ -6177,7 +6178,8 @@ const enUS: Record<string, string> = {
   "chat.toolbar.dataSource.notesClear": "Clear",
   "chat.toolbar.dataSource.notesSavedAt": "Saved · {time}",
   "chat.toolbar.dataSource.notesSize": "{kb} KB ({bytes} bytes)",
-  "chat.toolbar.dataSource.notesOverLimit": "Over 64 KB; will be truncated when injected into context",
+  "chat.toolbar.dataSource.notesOverLimit":
+    "Over 64 KB; will be truncated when injected into context",
   "chat.toolbar.dataSource.syncDone": "Saved. Schema synced ({count} tables)",
   "chat.toolbar.dataSource.syncFailed": "Saved, but schema sync failed: {message}",
   "chat.toolbar.dataSource.delete": "Delete",
@@ -7121,6 +7123,8 @@ const enUS: Record<string, string> = {
     "Video attachment {filename} is too large ({size}). Please compress it to {maxSize} or smaller and try again.",
   "chat.attachments.oversizedInlinePdf":
     "PDF attachment {filename} is too large ({size}). Please compress it to {maxSize} or smaller and try again.",
+  "chat.attachments.oversizedInlineFile":
+    "File attachment {filename} is too large ({size}). Please compress it to {maxSize} or smaller and try again.",
   "chat.attachments.restoreDropped":
     "Some draft attachments could not be restored after restart. Please add them again: {filenames}",
   "chat.attachments.clipboardText": "Pasted text",
