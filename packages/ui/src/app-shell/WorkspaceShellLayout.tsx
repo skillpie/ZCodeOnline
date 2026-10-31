@@ -42,7 +42,6 @@ import {
   useRemotePaneSessionLookup,
 } from "@/v4/usePaneSessionPersistence.js";
 import { requestV4ComposerDraftWorkspaceTransfer } from "@/v4/composer/composerDraftWorkspaceTransfer.js";
-import { deleteSessionDataSourceBinding } from "@/v4/composer/sessionDataSourceBinding.js";
 import { ChatEmptyWorkspacePreviewMenu } from "@/ChatEmptyState.js";
 import { ProjectDirectoryProvider } from "@/project-sidebar/index.js";
 import { DesktopTopOverlay } from "@/DesktopTopOverlay.js";
@@ -1769,8 +1768,8 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   );
   const handleV4SessionDeleted = useCallback(() => {
     if (activeTaskId) {
-      // 会话删除时同步清理宿主侧的数据源绑定（用户决策：防绑定表无限增长）。
-      void deleteSessionDataSourceBinding(services.dataSourceService, activeTaskId);
+      // 数据源绑定清理已收口到宿主 deleteSession 命令漏斗（settleSessionDataSourceBindingOnAck）；
+      // 本回调链（SessionPane.onSessionDeleted）从未被触发，不再重复记账。
       for (const tab of sidePaneState?.tabs ?? []) {
         if (tab.type === "selection-side-chat" && tab.parentSessionId === activeTaskId) {
           handleCloseSidePaneTab(tab.id);
@@ -1782,7 +1781,6 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
     activeTaskId,
     handleCloseSidePaneTab,
     handleStartDraftInWorkspaceInChat,
-    services.dataSourceService,
     sidePaneState?.tabs,
     workspaceAbsPath,
     workspaceIdentity,

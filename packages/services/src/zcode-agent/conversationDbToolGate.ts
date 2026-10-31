@@ -41,3 +41,31 @@ export function mergeSendTextDbToolGate(
   if (dataSourceId) return toolDisallowlist;
   return [...(toolDisallowlist ?? []), ...CONVERSATION_DB_TOOL_NAMES];
 }
+
+export interface SendTextDataSourceGateDecision {
+  /** 本轮实际生效的数据源 id；来自 payload 或宿主会话绑定回退。 */
+  effectiveDataSourceId?: string;
+  /** undefined = 无需改写名单（已绑定透传）；数组 = 合并后的轮级禁用名单。 */
+  toolDisallowlist?: readonly string[];
+}
+
+/**
+ * sendText 数据源权威解析（specs/data-source.md §7.2，宿主会话绑定为准）：
+ * payload 携带的 dataSourceId 优先（含显式取消后草稿为空 → 绑定已同步清除，不回退）；
+ * 缺失时回退宿主会话绑定——草稿是 renderer 缓存，换端/清存储后草稿丢失不应丢绑定，
+ * 回退值同时回填进 payload，CLI 侧 schema reminder 注入与门控使用同一事实。
+ * 悬挂绑定（源已删除）由调用方先行验证（resolveVerifiedSessionDataSourceBinding）。
+ */
+export function resolveSendTextDataSourceGate(
+  payload: { dataSourceId?: string; toolDisallowlist?: readonly string[] },
+  sessionBinding: string | null | undefined,
+): SendTextDataSourceGateDecision {
+  const effectiveDataSourceId = payload.dataSourceId ?? sessionBinding ?? undefined;
+  const merged = mergeSendTextDbToolGate(payload.toolDisallowlist, effectiveDataSourceId);
+  return {
+    effectiveDataSourceId,
+    // 与既有信封语义一致：名单透传（同一引用或缺省）= 无需改写；只有合并出的新数组才返回。
+    toolDisallowlist:
+      merged === undefined || merged === payload.toolDisallowlist ? undefined : merged,
+  };
+}

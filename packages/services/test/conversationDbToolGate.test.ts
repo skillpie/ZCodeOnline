@@ -5,6 +5,7 @@ import {
   CONVERSATION_DB_TOOL_NAMES,
   mergeFirstInputDbToolGate,
   mergeSendTextDbToolGate,
+  resolveSendTextDataSourceGate,
 } from "../src/zcode-agent/conversationDbToolGate.js";
 
 test("sendText 未绑定数据源时注入 DB 工具名单", () => {
@@ -41,4 +42,35 @@ test("firstInput 已绑定数据源时原样返回（同一引用）", () => {
 test("firstInput 调用方自带名单时不覆盖", () => {
   const firstInput = { text: "hi", toolDisallowlist: ["Bash"] };
   assert.equal(mergeFirstInputDbToolGate(firstInput), firstInput);
+});
+
+test("sendText 权威解析：payload 携带时优先且不改名单（宿主绑定被忽略）", () => {
+  const decision = resolveSendTextDataSourceGate(
+    { dataSourceId: "ds-payload", toolDisallowlist: ["CronCreate"] },
+    "ds-binding",
+  );
+  assert.equal(decision.effectiveDataSourceId, "ds-payload");
+  assert.equal(decision.toolDisallowlist, undefined);
+});
+
+test("sendText 权威解析：payload 缺失时回退宿主会话绑定", () => {
+  const decision = resolveSendTextDataSourceGate(
+    { toolDisallowlist: ["CronCreate"] },
+    "ds-binding",
+  );
+  assert.equal(decision.effectiveDataSourceId, "ds-binding");
+  // 已绑定 → 名单透传（无需改写，payload 原名单保持不动），不注入 DB 名单
+  assert.equal(decision.toolDisallowlist, undefined);
+});
+
+test("sendText 权威解析：payload 与绑定都为空时注入 DB 名单", () => {
+  const decision = resolveSendTextDataSourceGate({}, null);
+  assert.equal(decision.effectiveDataSourceId, undefined);
+  assert.deepEqual([...(decision.toolDisallowlist ?? [])], [...CONVERSATION_DB_TOOL_NAMES]);
+});
+
+test("sendText 权威解析：绑定回退且无既有名单时仅回填、不产生名单", () => {
+  const decision = resolveSendTextDataSourceGate({}, "ds-binding");
+  assert.equal(decision.effectiveDataSourceId, "ds-binding");
+  assert.equal(decision.toolDisallowlist, undefined);
 });

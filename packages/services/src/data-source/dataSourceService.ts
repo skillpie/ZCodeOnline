@@ -24,6 +24,7 @@ import {
 } from "./dataSourceNotes.js";
 import {
   deleteSessionDataSourceBinding as deleteSessionDataSourceBindingFile,
+  deleteSessionDataSourceBindingsForDataSource,
   readSessionDataSourceBinding as readSessionDataSourceBindingFile,
   writeSessionDataSourceBinding as writeSessionDataSourceBindingFile,
 } from "./sessionDataSourceBinding.js";
@@ -130,6 +131,9 @@ export function createDataSourceService(): IDataSourceService {
       await invalidateSchemaCache(id);
       // 手册是人工知识，删源时一并清理防孤儿（对秤 schema-cache 的清理语义）。
       await deleteDataSourceNotesFile(id);
+      // 指向被删源的会话绑定一并清理：悬挂绑定在门控回退处按未选择处理，但留着
+      // 会让绑定表累积不可恢复的死引用。
+      await deleteSessionDataSourceBindingsForDataSource(id);
       log.info("data source deleted", id);
     },
 

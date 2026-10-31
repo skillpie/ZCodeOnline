@@ -180,7 +180,15 @@ import {
   mergeOffPeakMutationToolDenylist,
 } from "#src/zcode-agent/automationToolPolicy.js";
 import { ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE } from "./zcodeAgent.js";
-import { mergeFirstInputDbToolGate, mergeSendTextDbToolGate } from "./conversationDbToolGate.js";
+import {
+  mergeFirstInputDbToolGate,
+  resolveSendTextDataSourceGate,
+} from "./conversationDbToolGate.js";
+import {
+  deleteSessionDataSourceBinding,
+  resolveVerifiedSessionDataSourceBinding,
+  writeSessionDataSourceBinding,
+} from "../data-source/sessionDataSourceBinding.js";
 import type {
   ZCodeProtocolRequestId,
   ModelSelection,
@@ -3851,17 +3859,85 @@ export function createZCodeAgentService(
         },
       };
     }
-    // 会话级数据源门控：未选择数据源的普通对话轮隐藏 DB 工具；携带 dataSourceId
-    // 即视为用户已为该对话提权（mergeSendTextDbToolGate 原名单透传，无需改写）。
-    const toolDisallowlist = mergeSendTextDbToolGate(
-      payload.toolDisallowlist,
-      payload.dataSourceId,
-    );
-    if (!toolDisallowlist || toolDisallowlist === payload.toolDisallowlist) return envelope;
+    // 会话级数据源门控与绑定自愈（specs/data-source.md §7.2，宿主会话绑定为准）：
+    // payload 缺 dataSourceId 时回退宿主会话绑定并回填本轮 payload——草稿是 renderer
+    // 缓存，换端/清存储后草稿丢失不应丢绑定；payload 携带时异步 diff 回写绑定，
+    // 补齐「草稿先选中、promote 首发才产生会话」这条从不落盘的路径。绑定悬挂
+    // （源已删除）由 resolveVerifiedSessionDataSourceBinding 按未选择处理。
+    // 常态（payload 已携带）不读绑定文件；仅缺省轮才做绑定回退查询。
+    const sessionBinding =
+      !payload.dataSourceId && envelope.sessionId
+        ? await resolveVerifiedSessionDataSourceBinding(envelope.sessionId)
+        : null;
+    const gate = resolveSendTextDataSourceGate(payload, sessionBinding);
+    if (payload.dataSourceId && envelope.sessionId) {
+      void writeSessionDataSourceBinding(envelope.sessionId, payload.dataSourceId).catch((error) =>
+        logger.warn("session data source binding self-heal write failed", {
+          sessionId: envelope.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+    const payloadNeedsBindingBackfill =
+      gate.effectiveDataSourceId !== undefined &&
+      payload.dataSourceId !== gate.effectiveDataSourceId;
+    if (!payloadNeedsBindingBackfill && !gate.toolDisallowlist) return envelope;
     return {
       ...envelope,
-      payload: { ...payload, toolDisallowlist: [...toolDisallowlist] },
+      payload: {
+        ...payload,
+        ...(payloadNeedsBindingBackfill ? { dataSourceId: gate.effectiveDataSourceId } : {}),
+        ...(gate.toolDisallowlist ? { toolDisallowlist: [...gate.toolDisallowlist] } : {}),
+      },
     };
+  }
+
+  /**
+   * 会话级数据源绑定的宿主收口（specs/data-source.md §7.2，绑定事实宿主为准）：
+   * - createSession 首发携带 dataSourceId（无预热 fallback 的首发路径）→ ack 收口后
+   *   写绑定。此前绑定只活在 renderer localStorage 草稿，换端/清存储即丢；预热路径
+   *   的 createSession 无 firstInput，绑定由首发 sendText 的自愈回写补齐。
+   * - deleteSession 收口 → 清绑定。删除入口在 renderer 侧无法全覆盖（侧栏删除、
+   *   预热回收、工作流回滚都走本命令漏斗），漏清会让绑定表只增不减。
+   * fire-and-forget：绑定是衍生事实，落盘失败不回滚命令，仅告警。
+   */
+  function settleSessionDataSourceBindingOnAck(envelope: CommandEnvelope, ack: CommandAck): void {
+    if (
+      envelope.type === "createSession" &&
+      (ack.status === "accepted" || ack.status === "duplicate")
+    ) {
+      const payload = commandPayloadSchemas.createSession.safeParse(envelope.payload);
+      const firstInputDataSourceId = payload.success
+        ? payload.data.firstInput?.dataSourceId
+        : undefined;
+      if (!firstInputDataSourceId) return;
+      const createdSessionId =
+        ack.result && typeof ack.result === "object" && ack.result.type === "createSession"
+          ? ack.result.sessionId
+          : payload.success
+            ? payload.data.sessionId
+            : undefined;
+      if (!createdSessionId) return;
+      void writeSessionDataSourceBinding(createdSessionId, firstInputDataSourceId).catch((error) =>
+        logger.warn("session data source binding write after createSession failed", {
+          sessionId: createdSessionId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      return;
+    }
+    if (
+      envelope.type === "deleteSession" &&
+      (ack.status === "accepted" || ack.status === "noop") &&
+      envelope.sessionId
+    ) {
+      void deleteSessionDataSourceBinding(envelope.sessionId).catch((error) =>
+        logger.warn("session data source binding cleanup after deleteSession failed", {
+          sessionId: envelope.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
   }
 
   return {
@@ -6226,6 +6302,7 @@ export function createZCodeAgentService(
         }
       }
       const ack: CommandAck = await client.request(V4_METHODS.command, envelope, commandAckSchema);
+      settleSessionDataSourceBindingOnAck(envelope, ack);
       // Prompt command 在 committed TurnStarted 或 committed WorkspaceHookReviewRequested
       // 任一 authority 到达后即返回；人工审核不能占用 Host RPC，因此继续使用统一默认
       // timeout/watchdog。放宽到审核领域 deadline 只会掩盖串行协议队列死锁。

@@ -113,21 +113,31 @@ Agent 从被选中的那一轮起才获得 DB 工具（提权）**；未选择�
   由 renderer 在 fork ACK 接纳后、切到 child 前把父草稿 `dataSourceId` 播种到
   child scope（`seedForkedSessionDraft`）；父会话未选择时不预填。只播种
   `dataSourceId`：mode/模型选择仍由 child 会话自身投影初始化，正文不继承。
-- 选择是纯 renderer 意图：不改变数据源配置事实，唯一的 Host 侧痕迹是激活与表结构同步。
+- 会话绑定的事实所有者在 Host（`session-bindings.json`，见 §7.2）：选择/取消仍由
+  renderer 发起，但落盘后跨端共享；草稿只是 renderer 缓存，丢失不丢绑定。
 
 ### 7.2 状态所有者
 
 ```text
-UI（composerDraftStore，per-scope 会话草稿）
-  └─ V4ComposerDraft.dataSourceId  本对话选择；draft scope 默认缺省（未选择），
-     promote 到真实会话 scope 时随草稿整体转移；fork 时由 seedForkedSessionDraft
-     从父 scope 播种到 child scope
+Host（session-bindings.json，sessionId → dataSourceId，权威事实）
+  └─ 写入路径：renderer 显式选择/取消（dataSourceService RPC）；sendText 携带
+     dataSourceId 时 diff 自愈回写；createSession 首发携带时 ack 收口后落盘
+     （settleSessionDataSourceBindingOnAck，补齐草稿 promote 路径——该路径的绑定
+     此前只活在 localStorage，换端/清存储即丢）。清理路径：deleteSession 命令
+     收口清绑定；删除数据源时清理指向它的全部绑定。写入进程内串行化，防并发
+     读-改-写互吞。悬挂绑定（源已删除）在门控回退处按未选择处理。
+UI（composerDraftStore，per-scope 会话草稿，renderer 缓存）
+  └─ V4ComposerDraft.dataSourceId  驱动控件显示与发送时携带；draft scope 默认缺省
+     （未选择），promote 到真实会话 scope 时随草稿整体转移；fork 时由
+     seedForkedSessionDraft 从父 scope 播种到 child scope
 UI（dataSourceSelectionRecent，per-workspace 偏好 localStorage）
   └─ 上一次显式选择/取消的 dataSourceId；选择回调时写入，新任务草稿初始化时读入
 UI（dataSourceStore，投影缓存）
   └─ 列表 / activeId 仍是 Host 的投影，会话选择校验以投影列表为准
 Host（zcodeAgentService 信封装配）
-  └─ 唯一提权裁决点：按 payload 是否携带 dataSourceId 合并 turn 级 toolDisallowlist
+  └─ 唯一提权裁决点：sendText 缺 dataSourceId 时回退宿主会话绑定并回填本轮
+     payload（resolveSendTextDataSourceGate），再按是否携带合并 turn 级
+     toolDisallowlist；绑定回填使 CLI 的 schema reminder 注入与门控同源
 CLI（bootstrap / core）
   └─ 机械执行：toolDisallowlist 经既有 startPromptTurn → turn-loop 管道逐轮过滤 provider 工具面
 ```
@@ -138,16 +148,19 @@ CLI（bootstrap / core）
 - `createSession.firstInput.dataSourceId?: string`：无预热 fallback 建会话首发的同义字段。
 - `createSession.firstInput.toolDisallowlist?: string[]`：与 sendText 同型的轮级禁用名单；
   Host 在 `firstInput` 未携带 `dataSourceId` 时注入 DB 工具名。
-- 字段值除 Host 门控判定外暂无其他消费方；CLI 侧不解析数据源绑定（工具仍按 §6 fallback
-  `activeId`，与现状一致）。后续如需按会话硬绑定目标源，可从该字段接线。
+- CLI 侧消费：turn 输入的 `dataSourceId` 驱动 schema/手册 reminder 注入
+  （`injectDataSourceSchemaReminder`）与门控结果共同生效；数据源绑定本身仍按 §6
+  fallback `activeId` 解析，后续如需按会话硬绑定目标源，可从该字段接线。
 
 ### 7.4 事件顺序与失败语义
 
 - 提交冻结：点击发送时从草稿读取 `dataSourceId` 并校验其仍存在于数据源投影列表；
   悬挂 id（源已删除）按未选择处理，不随 submission 携带。
 - Host 门控（`buildConversationCommandEnvelope`，桌面与 Web 同源）：
-  - 普通 `sendText` 未携带 `dataSourceId` → 合并 `DBQuery/DBSchema/DBExecute/DBExport`
-    进 `toolDisallowlist`（轮级、registry 保留、只对模型隐藏）。
+  - 普通 `sendText` 未携带 `dataSourceId` → 先回退宿主会话绑定（悬挂绑定按未选择），
+    回退命中则回填本轮 `dataSourceId`（schema reminder 与门控同源）；仍无绑定才合并
+    `DBQuery/DBSchema/DBExecute/DBExport` 进 `toolDisallowlist`（轮级、registry 保留、
+    只对模型隐藏）。payload 携带时 diff 自愈回写绑定。
   - `createSession.firstInput` 未携带 `dataSourceId` → 同型注入 `firstInput.toolDisallowlist`。
   - **automation / off-peak / goal 轮不注入**（保持 §6 的全量工具面）：定时任务在配置时
     已隐含数据源意图，fail-open 避免打断既有自动化。
