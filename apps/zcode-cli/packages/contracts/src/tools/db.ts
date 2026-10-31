@@ -72,9 +72,9 @@ export const DbQueryInputSchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(200)
+    .max(1000)
     .optional()
-    .describe("Max rows returned per statement. Default 50, hard cap 200."),
+    .describe("Max rows returned per statement. Default 50, hard cap 1000."),
 });
 
 export type DbQueryInput = z.infer<typeof DbQueryInputSchema>;

@@ -19,6 +19,7 @@ import { resolveDataSource } from "./store.js";
 import { executeBatch } from "./driver.js";
 
 const DEFAULT_MAX_ROWS = 50;
+const HARD_MAX_ROWS = 1000;
 const MAX_RESULT_MODEL_BYTES = 60_000;
 
 export const dbQueryToolDescription =
@@ -31,7 +32,7 @@ const dbQueryHandler: ToolHandler = async (input, context) => {
   // 缺省目标源优先取会话级选择（specs/data-source.md §7），显式入参仍最优先。
   const source = await resolveDataSource(target, context.dataSourceId);
   const result = await executeBatch(source, sql, {
-    maxRows: Math.min(Math.max(max_rows ?? DEFAULT_MAX_ROWS, 1), 200),
+    maxRows: Math.min(Math.max(max_rows ?? DEFAULT_MAX_ROWS, 1), HARD_MAX_ROWS),
     // 工具级只读不变量：与目标数据源的模式无关，DBQuery 永不放行写语句
     readOnly: true,
     readOnlyReason:
@@ -50,11 +51,11 @@ export const dbQueryToolEntry: ToolEntry = {
       "Pick table names from the bound data-source table list in context (or resolve them with DBSchema when absent) before writing SQL; do not guess identifiers.",
       "Load exact column names with DBSchema table=<name> when column details are needed.",
       "Only SELECT / WITH / SHOW / DESCRIBE / EXPLAIN are allowed here — writes belong to DBExecute.",
-      "Add LIMIT to exploratory detail queries; results are capped at 200 rows per statement.",
+      "Add LIMIT to exploratory detail queries; results are capped at 1000 rows per statement.",
       // 实测（2026-10-24，86 仓聚合案例）：模型先查 information_schema 评量级再聚合、
-      // 截断后重跑，各多一次往返。聚合被 200 行上限保护，无需预查；预期超默认 50 行
-      // 的分组（各仓库/各租户/按天）首查就取 max_rows=200。
-      "Aggregations (GROUP BY / counts) are safe to run directly — skip information_schema row-count pre-checks; when the grouping may exceed the default 50 rows (per-warehouse, per-tenant, per-day breakdowns), pass max_rows=200 on the first call instead of re-querying after truncation.",
+      // 截断后重跑，各多一次往返。聚合被行数上限保护，无需预查；预期超默认 50 行
+      // 的分组（各仓库/各租户/按天）首查就取 max_rows=1000。
+      "Aggregations (GROUP BY / counts) are safe to run directly — skip information_schema row-count pre-checks; when the grouping may exceed the default 50 rows (per-warehouse, per-tenant, per-day breakdowns), pass max_rows=1000 on the first call instead of re-querying after truncation.",
     ],
     readOnly: true,
     destructive: false,
@@ -144,7 +145,9 @@ function formatRows(result: {
   const lines = [`${result.sql}`, `  ${result.row_count ?? rows.length} rows (${result.ms ?? 0}ms)`];
   if (rows.length === 0) return lines;
   lines.push(`  ${columns.join(" | ")}`);
-  for (const row of rows.slice(0, 50)) {
+  // 行数上限由 driver 按 max_rows 截断（rows 即截断后结果），这里不能二次截 50 行，
+  // 否则调高 max_rows 上限对模型不可见；超限提示以 row_count 与 rows 长度差为准。
+  for (const row of rows) {
     lines.push(
       `  ${columns.map((column) => stringifyCell(row[column])).join(" | ")}`,
     );

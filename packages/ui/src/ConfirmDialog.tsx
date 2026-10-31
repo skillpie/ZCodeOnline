@@ -142,13 +142,19 @@ export function ConfirmDialogHost() {
         )}
       >
         <DialogHeader className="gap-2">
-          <DialogTitle className="text-ui-lg font-semibold text-foreground">
+          {/* Bug 原因：文件路径这类连续长字符串没有任何断行点，会把 DialogContent 的隐式 grid
+              列按 min-content 撑爆，远超 sm:max-w-md 的固定卡片宽度：文字随轨道溢出卡片，
+              DialogFooter 的 sm:justify-end 会把按钮一起推到卡片外。
+              修复依据：wrap-anywhere（overflow-wrap: anywhere）与 break-words 的关键区别是
+              断行机会会计入 min-content 计算，grid 轨道不再被撑大；仅加 min-w-0 不影响轨道
+              尺寸计算，overflow-hidden 则只会把溢出内容（含按钮）裁掉，均无法真正修复。 */}
+          <DialogTitle className="text-ui-lg font-semibold text-foreground wrap-anywhere">
             {displayedRequest?.title}
           </DialogTitle>
           {displayedRequest?.description ? (
             <DialogDescription
               className={cn(
-                "whitespace-pre-line pt-0.5 text-ui-base leading-6 text-foreground-subtle",
+                "whitespace-pre-line pt-0.5 text-ui-base leading-6 text-foreground-subtle wrap-anywhere",
                 isAutomationConfirmation && AUTOMATION_CONFIRM_DIALOG_DESCRIPTION_CLASS,
               )}
             >
