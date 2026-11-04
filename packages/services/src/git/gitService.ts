@@ -337,6 +337,7 @@ export function createGitService(options?: {
         workspacePath: params.workspacePath,
         ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
         ...(params.locale ? { locale: params.locale } : {}),
+        ...(params.selection ? { selection: params.selection } : {}),
         branchName: status.summary.branchName,
         files,
         diffs,

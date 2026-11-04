@@ -811,6 +811,34 @@ describeIfGit("gitService", () => {
     expect(capturedContext).toEqual(conversationContext);
   });
 
+  it("passes the renderer selection to commit message generation", async () => {
+    const { repoPath, workspacePath } = await createRepo();
+    let capturedSelection: unknown;
+    const service = createGitService({
+      commitMessageGenerator: {
+        async generate(params) {
+          capturedSelection = params.selection;
+          return {
+            message: "fix(git): use renderer selection",
+            providerId: "custom-api",
+            model: "user-picked-model",
+          };
+        },
+      } as unknown as GitCommitMessageGenerator,
+    });
+
+    writeFileSync(join(workspacePath, "staged.txt"), "staged\n");
+    runGit(repoPath, ["add", "packages/app/staged.txt"]);
+
+    const selection = { providerId: "custom-api", modelId: "user-picked-model" };
+    await service.generateCommitMessage({
+      workspacePath,
+      selection,
+    });
+
+    expect(capturedSelection).toEqual(selection);
+  });
+
   it("filters commit message generation to current session files", async () => {
     const { repoPath, workspacePath } = await createRepo();
     let capturedFiles: readonly GitFileChange[] = [];

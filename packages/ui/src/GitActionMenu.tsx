@@ -61,6 +61,7 @@ import { formatCommandShortcutLabel, matchesPrimaryShortcut } from "@/lib/keyboa
 import { logger } from "@/logger.js";
 import { useShortcutCommandListener } from "@/shortcuts/useShortcutCommandListener.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
+import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import {
   AlertCircleIcon,
   ArrowUpFromLine,
@@ -962,6 +963,13 @@ export function GitActionMenu({
     () => ({ workspacePath, workspaceIdentity }),
     [workspacePath, workspaceIdentity],
   );
+  // Composer 草稿「下一次提交」的模型意图（useDraftConfigControl 发布到 workspace store）。
+  // 该意图在提交前不会写进 Host 会话文件，生成提交消息必须按它选模型，
+  // 否则会回落 Host 初始推荐（如内置登录账号），用户切换的 API 不生效。
+  const composerModelSelectionWorkspaceKey = workspaceIdentity?.trim() || workspacePath;
+  const composerModelSelection = useZCodeSessionStore(
+    (state) => state.workspaces[composerModelSelectionWorkspaceKey]?.composerModelSelection ?? null,
+  );
 
   const actionAvailable = canUseGitActionMenu(gitSummary);
   const currentBranchLabel = useMemo(
@@ -1125,6 +1133,8 @@ export function GitActionMenu({
         currentSessionFileCount: currentSessionFilePaths?.length ?? 0,
         includeUnstaged,
         conversationMessageCount: commitMessageConversationContext?.messages.length ?? 0,
+        selectionProviderId: composerModelSelection?.providerId ?? null,
+        selectionModelId: composerModelSelection?.modelId ?? null,
       });
 
       const result = await gitService.generateCommitMessage({
@@ -1133,6 +1143,7 @@ export function GitActionMenu({
         locale,
         includeUnstaged,
         ...(currentSessionFilePaths ? { currentSessionFilePaths } : {}),
+        ...(composerModelSelection ? { selection: composerModelSelection } : {}),
         ...(commitMessageConversationContext
           ? { conversationContext: commitMessageConversationContext }
           : {}),
@@ -1148,6 +1159,7 @@ export function GitActionMenu({
     },
     [
       commitMessageConversationContext,
+      composerModelSelection,
       gitService,
       gitSummary.branchName,
       locale,

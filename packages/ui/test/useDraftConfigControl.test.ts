@@ -81,6 +81,15 @@ vi.mock("@/hooks/useZCodeSessionService.js", () => ({
   useZCodeSessionService: () => ({ readWorkspacePresentation: vi.fn() }),
 }));
 
+// Bugfix：fork 在 useDraftConfigControl 中新增 useServices()（会话级数据源绑定），
+// 未带 ServiceProvider 的本测试文件从上游同步后整体 42 例全挂。数据源服务只被
+// sessionId 非空的 effect 消费，且 readSessionDataSourceBinding 对缺失服务返回 null，
+// 这里给 undefined 即可恢复全部用例的可运行性。
+vi.mock("@/hooks/useServices.js", () => ({
+  useServices: () => ({ dataSourceService: undefined }),
+  useComposerClientNamespace: () => "desktop",
+}));
+
 vi.mock("@/hooks/useSettingService.js", () => ({
   useSettings: () => ({ settings: null }),
 }));
@@ -102,6 +111,8 @@ vi.mock("@/logger.js", () => ({
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
+    // composerDraftStore 的草稿诊断走 logger.lifecycle（桌面桥落盘），mock 需同步提供。
+    lifecycle: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   },
 }));
 
@@ -1672,6 +1683,50 @@ describe("useDraftConfigControl slash command hydration", () => {
     await act(async () => root.render(createElement(Probe, { sessionId: "other" })));
     await act(async () => root.render(createElement(Probe, { sessionId: "created" })));
     expect(control!.composerDraft).toMatchObject({ text: "typed after acceptance", mode: "build" });
+    act(() => root.unmount());
+  });
+
+  it("把下一次提交的模型意图发布到 workspace store 供 Git 提交消息生成读取", async () => {
+    const workspacePath = "/composer-selection-publish";
+    const workspaceIdentity = "ssh://host/composer-selection-publish";
+    const root = createRoot(installMinimalDom());
+    // isSelectionInView 要求 preferredSelection 带档位；与真实 Host 初始推荐一致。
+    const view = {
+      ...modelSelectionView(1, ["A", "B"], "A"),
+      preferredSelection: {
+        providerId: "provider",
+        modelId: "A",
+        options: { reasoningLevel: "high" },
+      },
+    };
+    let control: ReturnType<typeof useDraftConfigControl> | undefined;
+    function Probe() {
+      control = useDraftConfigControl({
+        workspacePath,
+        workspaceIdentity,
+        sessionId: null,
+        modelSelectionView: view,
+        agentStartupAllowed: false,
+      });
+      return null;
+    }
+    await act(async () => root.render(createElement(Probe)));
+    // 视图就绪 → 新草稿补种 → 输入重解析跨多次渲染，flush 到稳定后再断言发布值。
+    await act(async () => {});
+
+    const readPublished = () =>
+      useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+        .composerModelSelection;
+    // 挂载即发布当前有效选择，非 composer 入口不必等一次真实提交。
+    expect(readPublished()).toMatchObject({ providerId: "provider", modelId: "A" });
+
+    act(() => control!.handleDraftSelectModel("provider", "B", "high"));
+    await act(async () => {});
+    expect(readPublished()).toEqual({
+      providerId: "provider",
+      modelId: "B",
+      options: { reasoningLevel: "high" },
+    });
     act(() => root.unmount());
   });
 });

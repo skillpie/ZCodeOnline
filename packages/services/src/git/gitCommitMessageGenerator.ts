@@ -3,6 +3,7 @@ import type {
   GitDiffResult,
   GitFileChange,
   Locale,
+  ModelSelection,
   ZCodeWorkspaceGenerateTextParams,
 } from "@zcode/shared";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
@@ -65,8 +66,11 @@ export class GitCommitMessageGenerator {
     files: readonly GitFileChange[];
     diffs: readonly GitDiffResult[];
     conversationContext?: GitCommitMessageConversationContext;
+    /** Renderer 草稿的当前选择；缺省时回退 Host View 初始推荐。 */
+    selection?: ModelSelection;
   }): Promise<{ message: string; providerId: string; model: string }> {
-    const selection = await this.resolveCurrentModel(params);
+    const requestSelection = resolveRequestSelection(params.selection);
+    const selection = requestSelection ?? (await this.resolveCurrentModel(params));
     const prompt = buildGitCommitMessageGenerationPrompt({
       branchName: params.branchName,
       locale: params.locale,
@@ -80,6 +84,7 @@ export class GitCommitMessageGenerator {
       workspaceIdentity: params.workspaceIdentity,
       providerId: selection.providerId,
       model: selection.modelId,
+      selectionSource: requestSelection ? "request" : "host-view",
       fileCount: params.files.length,
       diffCount: params.diffs.length,
       conversationMessageCount: params.conversationContext?.messages.length ?? 0,
@@ -170,6 +175,27 @@ export class GitCommitMessageGenerator {
       );
     }
   }
+}
+
+function resolveRequestSelection(
+  selection: ModelSelection | undefined,
+): ZCodeWorkspaceGenerateTextParams["selection"] | undefined {
+  // 请求级选择只在 provider/model 身份完整时可用；半空选择回退 Host View，
+  // 不在此静默补档位（档位缺失由模型执行入口校验）。
+  if (!selection) {
+    return undefined;
+  }
+  const providerId = selection.providerId?.trim();
+  const modelId = selection.modelId?.trim();
+  if (!providerId || !modelId) {
+    return undefined;
+  }
+  const options = selection.options;
+  return {
+    providerId,
+    modelId,
+    ...(options ? { options: { ...options } } : {}),
+  };
 }
 
 function buildGitCommitMessageGenerationPrompt(params: {

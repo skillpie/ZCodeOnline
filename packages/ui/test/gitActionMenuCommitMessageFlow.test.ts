@@ -143,6 +143,10 @@ describe("GitActionMenu commit message flow", () => {
     expect(sessionPaneSource).toContain("activeTaskChangeSummary={activeTaskChangeSummary}");
     expect(actionMenuSource).toContain("conversationMessageCount:");
     expect(actionMenuSource).toContain("currentSessionFileCount:");
+    // 提交消息生成必须携带 composer 草稿的当前模型选择（workspace store 发布）；
+    // 该意图提交前不写 Host 会话文件，缺省会回落 Host 初始推荐（内置限额账号）。
+    expect(actionMenuSource).toContain("selection: composerModelSelection");
+    expect(actionMenuSource).toContain("composerModelSelectionWorkspaceKey");
   });
 
   it("removes the auxiliary dropdown menu from the trigger", () => {

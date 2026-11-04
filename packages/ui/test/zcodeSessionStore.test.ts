@@ -1207,4 +1207,48 @@ describe("useZCodeSessionStore provider preference", () => {
         .configOptionsStatus,
     ).toBe("error");
   });
+
+  it("setComposerModelSelection 按身份隔离且等值选择不重复发布", () => {
+    const workspacePath = "/tmp/workspace-composer-selection";
+    const workspaceIdentity = "ssh://host-b/tmp/workspace-composer-selection";
+    const subscribe = vi.fn();
+    const unsubscribe = useZCodeSessionStore.subscribe(subscribe);
+    const selection = { providerId: "custom-api", modelId: "user-picked-model" };
+    const withThought = {
+      providerId: "custom-api",
+      modelId: "user-picked-model",
+      options: { reasoningLevel: "high" },
+    };
+
+    try {
+      useZCodeSessionStore.getState().setComposerModelSelection(workspacePath, selection);
+      expect(
+        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerModelSelection,
+      ).toEqual(selection);
+
+      // 同 provider/model/档位的等值写入不触发 store 通知（订阅次数不增加）。
+      const notificationsBefore = subscribe.mock.calls.length;
+      useZCodeSessionStore.getState().setComposerModelSelection(workspacePath, { ...selection });
+      expect(subscribe.mock.calls.length).toBe(notificationsBefore);
+
+      useZCodeSessionStore.getState().setComposerModelSelection(workspacePath, withThought);
+      expect(
+        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerModelSelection,
+      ).toEqual(withThought);
+
+      // identity 桶与 path 桶互不污染。
+      useZCodeSessionStore
+        .getState()
+        .setComposerModelSelection(workspacePath, null, workspaceIdentity);
+      expect(
+        useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerModelSelection,
+      ).toEqual(withThought);
+      expect(
+        useZCodeSessionStore.getState().getWorkspaceState(workspacePath, workspaceIdentity)
+          .composerModelSelection,
+      ).toBeNull();
+    } finally {
+      unsubscribe();
+    }
+  });
 });

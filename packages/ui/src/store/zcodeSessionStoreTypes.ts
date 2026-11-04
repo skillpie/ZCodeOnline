@@ -8,6 +8,7 @@ import {
   buildNativeSupplierKey,
   ZCODE_AGENT_PROVIDER,
   type ZCodeApiRetryStatus,
+  type ModelSelection,
   type ModelSelectionGhostReason,
   type ModelSelectionResolution,
   type ZCodeWorkspaceInitStatus,
@@ -220,6 +221,12 @@ export interface WorkspaceZCodeUIState {
   configOptions: ZCodeConfigOption[] | null;
   /** configOptions 加载状态 */
   configOptionsStatus: ConfigOptionsStatus;
+  /**
+   * Composer 草稿当前有效的模型选择（「下一次提交」意图，经 Host ModelSelectionView 解析）。
+   * 提交前 Host 会话文件不更新该意图，Git 提交消息生成等非 composer 入口从这里读取；
+   * 缺省（null）= 尚无 composer 意图，消费方回退服务端初始推荐。
+   */
+  composerModelSelection: ModelSelection | null;
   /** 可用的 slash commands */
   slashCommands: ZCodeSlashCommand[];
   /** 任务列表版本号，每次创建/删除任务时自增，驱动 TaskList 刷新 */
@@ -454,6 +461,11 @@ export interface ZCodeSessionStoreState {
     status: "idle" | "loading" | "ready" | "error",
     workspaceIdentity?: string,
   ) => void;
+  setComposerModelSelection: (
+    workspacePath: string,
+    selection: ModelSelection | null,
+    workspaceIdentity?: string,
+  ) => void;
   setSlashCommands: (
     workspacePath: string,
     commands: ZCodeSlashCommand[],
@@ -568,6 +580,7 @@ export function createDefaultWorkspaceState(
     supplierMismatchReason: null,
     configOptions: null,
     configOptionsStatus: "idle",
+    composerModelSelection: null,
     slashCommands: [],
     taskListVersion: 0,
     taskListCache: null,

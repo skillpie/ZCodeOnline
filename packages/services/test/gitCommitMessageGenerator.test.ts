@@ -126,6 +126,51 @@ describe("GitCommitMessageGenerator", () => {
     );
   });
 
+  it("uses the request selection instead of the Host current model", async () => {
+    const requestSelection: ZCodeSelection = {
+      providerId: "custom-api",
+      modelId: "user-picked-model",
+      options: { reasoningLevel: "high" },
+    };
+    // Host 当前模型是限额账号的内置选择；请求带了 renderer 草稿选择时必须完全以它为准。
+    const { generator, textGenerator } = createGenerator({
+      responseText: "fix(git): generate message",
+      selection: { providerId: "host-account", modelId: "host-model" },
+    });
+
+    const result = await generator.generate({
+      workspacePath: "/repo",
+      branchName: "main",
+      files: [createFileChange()],
+      diffs: [createDiff()],
+      selection: requestSelection,
+    });
+
+    expect(result).toMatchObject({ providerId: "custom-api", model: "user-picked-model" });
+    expect(textGenerator.generateText.mock.calls[0]?.[0]).toMatchObject({
+      selection: requestSelection,
+    });
+  });
+
+  it("falls back to the Host current model when the request selection is incomplete", async () => {
+    const { generator, textGenerator } = createGenerator({
+      responseText: "fix(git): generate message",
+    });
+
+    const result = await generator.generate({
+      workspacePath: "/repo",
+      branchName: "main",
+      files: [createFileChange()],
+      diffs: [createDiff()],
+      selection: { providerId: "  ", modelId: "user-picked-model" },
+    });
+
+    expect(result).toMatchObject({ providerId: "openai-compatible", model: "test-model" });
+    expect(textGenerator.generateText.mock.calls[0]?.[0]).toMatchObject({
+      selection: DEFAULT_SELECTION,
+    });
+  });
+
   it("adds Chinese as the current commit message language", async () => {
     const { generator, textGenerator } = createGenerator({
       responseText: "fix(git): 生成提交消息",

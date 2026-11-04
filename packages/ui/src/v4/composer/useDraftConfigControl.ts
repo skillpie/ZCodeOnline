@@ -342,6 +342,14 @@ export function useDraftConfigControl(params: {
   );
   const draftConfigRef = useRef(draftConfig);
   draftConfigRef.current = draftConfig;
+  // 把「下一次提交」的模型意图发布到 workspace store（setComposerModelSelection 内部按
+  // provider/model/档位去重）。提交前 Host 会话文件不更新该意图，Git 提交消息生成等
+  // 非 composer 入口（GitActionMenu）从这里读取当前会话的有效选择；多 pane 并存时后发布者覆盖先发布者。
+  useEffect(() => {
+    useZCodeSessionStore
+      .getState()
+      .setComposerModelSelection(workspacePath, effectiveSelection ?? null, workspaceIdentity);
+  }, [effectiveSelection, workspaceIdentity, workspacePath]);
   const persistDraft = useCallback(
     (value: V4ComposerDraft) => {
       const workspace = useZCodeSessionStore

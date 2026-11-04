@@ -4,6 +4,7 @@ import {
   buildNativeSupplierKey,
   normalizeAgentProviderToZCodeAgent,
   type ZCodeConfigOption,
+  type ModelSelection,
   type ModelSelectionResolution,
   type ZCodeProvider,
   type ZCodeSlashCommand,
@@ -937,6 +938,34 @@ export function createWorkspaceSlice(set: SetFn) {
           workspaceIdentity,
         ),
       );
+    },
+
+    setComposerModelSelection: (
+      workspacePath: string,
+      selection: ModelSelection | null,
+      workspaceIdentity?: string,
+    ) => {
+      set((state) => {
+        const current = getWorkspaceState(state, workspacePath, workspaceIdentity);
+        const previous = current.composerModelSelection;
+        if (
+          previous?.providerId === selection?.providerId &&
+          previous?.modelId === selection?.modelId &&
+          previous?.options?.reasoningLevel === selection?.options?.reasoningLevel &&
+          (previous !== null) === (selection !== null)
+        ) {
+          return state;
+        }
+        return updateWorkspaceState(
+          state,
+          workspacePath,
+          (current) => ({
+            ...current,
+            composerModelSelection: selection,
+          }),
+          workspaceIdentity,
+        );
+      });
     },
 
     setSlashCommands: (
