@@ -352,6 +352,8 @@ export class EventReducer {
         source: payload.source ?? existing?.source,
         inputPresentation: payload.inputPresentation ?? existing?.inputPresentation,
         intent: payload.intent ?? existing?.intent,
+        // 编辑事件不是重新准入；未携带身份时保留原 automation attribution。
+        automationId: payload.automationId ?? existing?.automationId,
         toolDisallowlist: payload.toolDisallowlist ?? existing?.toolDisallowlist,
         dataSourceId: payload.dataSourceId ?? existing?.dataSourceId,
         reviewEnabled: payload.reviewEnabled ?? existing?.reviewEnabled,

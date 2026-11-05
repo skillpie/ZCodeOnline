@@ -174,7 +174,6 @@ function ProjectRemoteSyncDialog({ target, onClose }: { target: SyncTarget; onCl
       onPluginsSynced={() =>
         refreshWorkspacePluginCapabilitiesAfterRemoteSync({
           commandsService: services.commandsService,
-          mcpSyncService: services.mcpSyncService,
           zcodeAgentService: services.zcodeAgentService,
           reason: "project-remote-plugin-sync",
           skillsService: services.skillsService,

@@ -7,6 +7,7 @@ import {
 import {
   clickV4Stop,
   clickV4QueueItemSendNow,
+  describeV4BackgroundFailureState,
   editFirstV4UserQuery,
   getV4BackgroundWorks,
   getV4PaneSnapshot,
@@ -101,7 +102,14 @@ describe("PV4-20/PV4-23 rewind queue and background fencing", () => {
     await switchV4Mode("yolo");
 
     await sendV4Prompt("E2E_PV4_23_BACKGROUND_ORIGINAL 启动后台 Bash");
-    await waitForV4TimelineContaining("PV4_23_BACKGROUND_ORIGINAL_REPLY", 90000);
+    try {
+      await waitForV4TimelineContaining("PV4_23_BACKGROUND_ORIGINAL_REPLY", 90000);
+    } catch (error) {
+      throw new Error(
+        `PV4-23 原 turn 没有出现后台 Bash 跟进回复: ${await describeV4BackgroundFailureState()}`,
+        { cause: error },
+      );
+    }
     await openV4RunningBackgroundWorks(60000);
     const running = (await getV4BackgroundWorks()).find((work) => work.status === "running");
     expect(running?.workId).toBeTruthy();

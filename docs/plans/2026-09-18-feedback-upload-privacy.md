@@ -60,13 +60,16 @@ Codegraph 工具当前不可用；以精确源码调用点与 rg 交叉验证上
 
 FB-PRIV-02 补充：在隔离 Chromium 窗口挂载真实 `FeedbackSubmitForm`、提交 helper 和后台 job，只替换 `IFeedbackService` 为内存 mock。默认提交必须调用归档与 log 上传；取消后提交必须零归档/上传；真实 job 创建失败后卸载并按 jobId 恢复，再次提交时保持原 true/false。以 job 终态确认零调用，不能只等待短暂超时。该用例验证 Renderer 到服务边界，不宣称覆盖真实 HTTP/OSS 或手机远控。
 
+2026-10-19 正式迁移复验：真实表单的两条用例已通过首轮断言，FB-PRIV-02 的打包前置因仓库根路径沿用 pending 目录深度而失败。
+按正式目录修正根路径，先验证 esbuild 可解析真实表单入口，再重放整份用例；不改表单或服务行为。
+
 ## 待外部确认
 
 服务端工单/OSS 留存、删除、访问审计和跨地域存储不在本客户端仓库可验证范围。客户端按已确认的默认开启、可取消行为实施；不替代服务端或隐私审批结论。
 
 ### E2E 用例落点
 
-`packages/desktop/test/e2e/feedback/manual-review/pending/feedback-upload-privacy.test.ts` 验证 FB-PRIV-01/02/08：FB-PRIV-01/08 通过真实帮助菜单打开表单，检查日志默认开启、用户可取消、无自动图片，并在宽窄窗口及中英文下重复执行；FB-PRIV-02 在隔离 Chromium 中使用真实表单/helper/job 和内存 `IFeedbackService` mock，验证默认提交、取消提交及按 jobId 恢复重试时的日志选择与服务调用，不覆盖真实 HTTP/OSS。复用 help client/config 本机 fixture；不创建真实工单或模型请求。手机远控服务仍 unsupported，窄视口只作为共享 UI 响应式证据，不宣称远控端到端上传覆盖。
+`packages/desktop/test/e2e/feedback/feedback-upload-privacy.test.ts` 验证 FB-PRIV-01/02/08：FB-PRIV-01/08 通过真实帮助菜单打开表单，检查日志默认开启、用户可取消、无自动图片，并在宽窄窗口及中英文下重复执行；FB-PRIV-02 在隔离 Chromium 中使用真实表单/helper/job 和内存 `IFeedbackService` mock，验证默认提交、取消提交及按 jobId 恢复重试时的日志选择与服务调用，不覆盖真实 HTTP/OSS。复用 help client/config 本机 fixture；不创建真实工单或模型请求。手机远控服务仍 unsupported，窄视口只作为共享 UI 响应式证据，不宣称远控端到端上传覆盖。
 
 ## 初次实现的验证记录（2026-09-18）
 

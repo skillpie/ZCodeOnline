@@ -40,6 +40,7 @@ export async function executeToolBatch(
       batch.map((tc) =>
         executeOne(tc, {
           automationTurn: options?.automationTurn,
+          automationId: options?.automationId,
           offPeakTurn: options?.offPeakTurn,
           dataSourceId: options?.dataSourceId,
           signal: options?.signal,
@@ -81,6 +82,7 @@ export async function* executeToolSchedule(
 
     const groupResults = await executeBatch(groupTools, {
       automationTurn: options?.automationTurn,
+      automationId: options?.automationId,
       dataSourceId: options?.dataSourceId,
       signal: options?.signal,
       traceContext: options?.traceContext,

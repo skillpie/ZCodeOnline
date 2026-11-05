@@ -81,6 +81,9 @@ pnpm --filter @zcode/desktop e2e:docker:admit -- \
 
 `e2e:docker:admit` 会同步 `scripts/test-desktop-e2e-container.sh` 和本文的 suite 表格。
 它只接受正式路径下的 spec；`manual-review/pending` 仍然禁止直接进入 Docker preset。
+表格准入按列结构和结束标记验证，不依赖分隔线的横线数量或标记前的空行。
+新增 verified 行必须与表头和已有行连续，不能被格式化产生的空行隔成表外文本；
+写入保留文档的 LF/CRLF 换行，重复登记同一 spec 不新增行。
 
 ## 历史运行记录（已失效的 legacy 路径）
 
@@ -100,7 +103,7 @@ pnpm --filter @zcode/desktop e2e:docker:admit -- \
 总耗时 3 分 35 秒。
 
 2026-06-24 在 `staging` 上执行
-`E2E_SPEC=./test/e2e/conversation-session/manual-review/pending/conversation-session-running-actions.test.ts pnpm run test:e2e:container`，
+`E2E_SPEC=./test/e2e/conversation-session/conversation-session-running-actions.test.ts pnpm run test:e2e:container`，
 产物目录：`packages/desktop/.e2e-artifacts/desktop-e2e-20260624-110228-90545`。
 
 这次使用当前工作树重建 Docker 镜像后，`conversation-session-running-actions` 单 spec

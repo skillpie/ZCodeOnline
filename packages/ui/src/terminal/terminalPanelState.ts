@@ -116,7 +116,7 @@ export function closeTerminalSession(
   state: TerminalPanelState,
   sessionId: string,
 ): TerminalPanelState {
-  if (getTerminalSessionCloseAction(state, sessionId) !== "close-session") {
+  if (getTerminalSessionCloseAction(state, sessionId) === "none") {
     return state;
   }
 
@@ -145,11 +145,16 @@ export function closeTerminalSession(
       fallbackSessionId = groupNeighbor;
     }
   }
+  const { [sessionId]: _closedSession, ...nextSessions } = state.sessions;
   if (!fallbackSessionId) {
-    return state;
+    // 最后一个 tab 被关闭：连 workspace 记录一起删除，重新打开该 workspace 时再由 ensure 懒创建新 PTY。
+    const { [session.workspaceKey]: _closedWorkspace, ...nextWorkspaces } = state.workspaces;
+    return {
+      sessions: nextSessions,
+      workspaces: nextWorkspaces,
+    };
   }
 
-  const { [sessionId]: _closedSession, ...nextSessions } = state.sessions;
   return {
     sessions: nextSessions,
     workspaces: {
@@ -183,15 +188,12 @@ export function exitTerminalSession(
   }
 
   // PTY 自身已经退出时，最后一个 tab 不能像手动关闭那样只收起面板并保活。
-  // 这里同时删除 session/workspace 记录；重新打开该 workspace 时再由 ensure 懒创建新 PTY。
-  const { [sessionId]: _exitedSession, ...nextSessions } = state.sessions;
-  const { [session.workspaceKey]: _exitedWorkspace, ...nextWorkspaces } = state.workspaces;
+  // closeTerminalSession 在无剩余 session 时同步删除 session/workspace 记录；
+  // 重新打开该 workspace 时再由 ensure 懒创建新 PTY。
+  const action = session.workspaceKey === activeWorkspaceKey ? "close-panel" : "close-session";
   return {
-    state: {
-      sessions: nextSessions,
-      workspaces: nextWorkspaces,
-    },
-    action: session.workspaceKey === activeWorkspaceKey ? "close-panel" : "close-session",
+    state: closeTerminalSession(state, sessionId),
+    action,
   };
 }
 

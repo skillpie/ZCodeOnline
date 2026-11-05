@@ -11,7 +11,8 @@ import {
   TID_V4_COMPOSER_INPUT,
   TID_V4_COMPOSER_SEND,
 } from "@zcode/shared/test-ids";
-import { clearAppData } from "../../../helpers/desktop-app.js";
+import { clearAppData, switchToWorkspaceRendererWindow } from "../../../helpers/desktop-app.js";
+import { reloadElectronSessionPreservingBrowserProfile } from "../../../helpers/e2e-electron-reload.js";
 import {
   getUpstreamRequestRecordCount,
   getUpstreamRequestEvidence,
@@ -20,6 +21,8 @@ import {
 import {
   connectSSHWorkspaceAndSendFirstTurn,
   listRemoteAgentProcesses,
+  readRemoteCoreIdentity,
+  terminateRemoteProcess,
   SSH_LIFECYCLE_MODEL_ID,
   type SSHLifecycleProvider,
 } from "../../../helpers/ssh-remote-lifecycle.js";
@@ -31,16 +34,21 @@ import {
   createSSHReplayTunnel,
   readHostProcesses,
   readRemoteTabSnapshot,
+  waitForRemoteTab,
   readSSHRuntimeConfig,
   runSSHCommand,
 } from "../../../helpers/ssh-remote-p0.js";
 import {
   approveV4Permission,
+  clickFirstV4Fork,
+  waitForV4Fork,
   clickV4StopInPane,
   getV4ConfigProjection,
   getV4ConversationState,
   prepareV4ConversationE2E,
+  scrollV4TimelineToTop,
   sendV4Prompt,
+  selectV4TaskById,
   sendV4PromptAndWaitAccepted,
   switchV4Mode,
   waitForV4ConversationState,
@@ -152,12 +160,18 @@ describe(`${CASE_MARKER}: 远端 Agent、工作流 actor 与辅助对话的项�
     });
     await selectFullAccessMode();
 
-    // 父回合触发 Agent 工具 → 远端子会话（子会话执行等待远端 release 文件的 Bash）。
+    // 父回合先真实 Bash cd 到子目录，再触发 Agent 工具 → 远端子会话（子会话执行等待远端 release 文件的 Bash）。
     const start = await getUpstreamRequestRecordCount();
     await sendV4Prompt(`${CASE_MARKER}_PARENT 启动子任务`);
     await waitForUpstreamRequest(
       { lastUserMessageIncludes: [`${CASE_MARKER}_PARENT`] },
       `${CASE_MARKER}: 父回合没有到达回放`,
+      90_000,
+      { afterIndex: start - 1 },
+    );
+    await waitForUpstreamRequest(
+      { lastUserMessageIncludes: ["R3_PARENT_CD_DONE"] },
+      `${CASE_MARKER}: 父会话没有完成 cd`,
       90_000,
       { afterIndex: start - 1 },
     );
@@ -277,24 +291,18 @@ describe(`${CASE_MARKER}: 远端 Agent、工作流 actor 与辅助对话的项�
     // 子会话属于同一 Source（同一 remote tab 下），远端 workspace Agent 仍只有一个。
     const tab = await readRemoteTabSnapshot(taskA.identity);
     expect(tab.remoteSessionId).toBe(taskA.remoteSessionId);
-    // cwd 可能带 "(deleted)" 后缀（目录被重建后旧 Agent 仍存活，见 O-11），按前缀匹配。
-    // 0911 诊断：两次 FAIL 均为过滤后 0，但远端 daemon status runningTaskCount=1、
-    // cli 日志有双 session_create（父+子），进程应在跑。先落未过滤全量（pid/cwd），
-    // 区分"远端无 app-server 进程"与"cwd 口径不符"（chat lane 不做空闲回收）。
+    // Agent 的 cwd 由 Server 启动方式决定；进程归属以 Core 的直接子进程为准。
     const allRemoteAgents = await listRemoteAgentProcesses(prepared.config);
     facts.remoteAllAgents = allRemoteAgents.map((agent) => ({
       pid: agent.pid,
       ppid: agent.ppid,
+      startTicks: agent.startTicks,
       cwd: agent.cwd,
     }));
     const remoteAgents = allRemoteAgents.filter(
       (agent) => agent.cwd === workspaceA || agent.cwd.startsWith(`${workspaceA} `),
     );
     facts.remoteWorkspaceAgents = remoteAgents.map((agent) => ({ pid: agent.pid, cwd: agent.cwd }));
-    // 0911 round 35 取证实锤：agent 进程 cwd 是 daemon home（/home/dev）而非
-    // workspace 路径（daemon spawn cwd 实现细节，§37 剩余主嫌坐实——remoteAllAgents
-    // 有进程、remoteWorkspaceAgents 空）。进程存在性以 args 匹配（app-server
-    // --stdio）为准，cwd 不作为必要条件；双 session 同进程（§37 cli 日志），上界 2 宽松保留。
     expect(allRemoteAgents.length).toBeGreaterThanOrEqual(1);
     expect(allRemoteAgents.length).toBeLessThanOrEqual(2);
     // 子 pane 可以是只读视图，不能把“没有停止按钮”当成已完成。
@@ -460,6 +468,137 @@ describe(`${CASE_MARKER}: 远端 Agent、工作流 actor 与辅助对话的项�
       { timeout: 60_000, timeoutMsg: "辅助对话续发未完成" },
     );
     facts.selectionSideChat = { sideSessionId, panes: await readPanes() };
+    // 原回归只打开热 child，漏掉进程重启后的反向设置请求。先终止真实远端 Agent，
+    // 再重启桌面清空 renderer 缓存；仅挂载 pane 或保留旧正文不算冷恢复成功。
+    const beforeRestart = await listRemoteAgentProcesses(prepared.config);
+    expect(beforeRestart.length).toBeGreaterThan(0);
+    const core = await readRemoteCoreIdentity(prepared.config, CASE_MARKER);
+    expect(beforeRestart.every((process) => process.ppid === core.pid)).toBe(true);
+    await reloadElectronSessionPreservingBrowserProfile(browser, {
+      afterElectronProcessExit: async () => {
+        // 桌面先退出，防止旧订阅在故障注入后立即重启 Agent，污染冷恢复前置。
+        for (const process of beforeRestart) {
+          await terminateRemoteProcess(prepared.config, process, CASE_MARKER);
+        }
+        expect(await listRemoteAgentProcesses(prepared.config)).toEqual([]);
+      },
+    });
+    await switchToWorkspaceRendererWindow("", 60_000);
+    await waitForRemoteTab({
+      caseMarker: CASE_MARKER,
+      expectedIdentity: taskA.identity,
+      expectedPath: workspaceA,
+    });
+    await selectV4TaskById(taskA.taskId, 60_000);
+    await waitForV4TimelineContaining("R3_SUBAGENT_PARENT_LAUNCHED", 90_000);
+    // 重启默认停在底部，虚拟列表未挂载较早的 Agent 行；先滚到历史窗口再找详情入口。
+    await scrollV4TimelineToTop();
+    await browser.waitUntil(
+      async () =>
+        browser.execute(
+          (prefix, historyTrigger, childId) => {
+            for (const trigger of document.querySelectorAll<HTMLElement>(
+              `[data-testid^="${historyTrigger}"]`,
+            )) {
+              if (
+                trigger.getAttribute("aria-expanded") !== "true" &&
+                trigger.getAttribute("data-history-open") !== "true"
+              )
+                trigger.click();
+            }
+            const button = document.querySelector<HTMLElement>(
+              `[data-testid="${prefix}-${childId}"]`,
+            );
+            if (!button?.getClientRects().length) return false;
+            button.click();
+            return true;
+          },
+          TID_V4_SUBAGENT_OPEN_SIDE_PANE,
+          TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
+          childSessionId,
+        ),
+      {
+        timeout: 30_000,
+        timeoutMsg: "冷启后原子会话没有详情入口",
+      },
+    );
+    await browser.waitUntil(
+      async () => {
+        const pane = (await readPanes()).find((entry) => entry.sessionId === childSessionId);
+        return (
+          Boolean(pane?.projectionSeq && pane.rowCount > 0 && !pane.subscriptionFailed) &&
+          (await $(`[data-session-id="${childSessionId}"]`).getText()).includes(
+            "R3_SUBAGENT_CHILD_DONE",
+          )
+        );
+      },
+      { timeout: 60_000, timeoutMsg: "远端 Agent 重启后原子会话没有恢复历史正文" },
+    );
+    const afterRestart = await listRemoteAgentProcesses(prepared.config);
+    expect(afterRestart.length).toBeGreaterThan(0);
+    expect(
+      afterRestart.every((current) =>
+        beforeRestart.every(
+          (previous) => current.pid !== previous.pid || current.startTicks !== previous.startTicks,
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      await $(`[data-session-id="${childSessionId}"]`)
+        .$(`[data-testid="${TID_V4_COMPOSER_INPUT}"]`)
+        .isExisting(),
+    ).toBe(false);
+    facts.coldResume = { beforeRestart, afterRestart, childSessionId, panes: await readPanes() };
+    await browser.saveScreenshot(resolve(artifactDir, "cold-resume-child.png"));
+    // fork ACK 只在 Host 归属可用后返回；先即时打开，再退出两端进程验证落库。
+    await selectV4TaskById(taskA.taskId, 60_000);
+    await waitForV4Fork(30_000);
+    expect(await clickFirstV4Fork()).toBe(true);
+    let forkId = "";
+    await browser.waitUntil(
+      async () => {
+        const state = await getV4ConversationState();
+        if (!state.taskId || state.taskId === "draft" || state.taskId === taskA.taskId)
+          return false;
+        forkId = state.taskId;
+        return state.state === "idle";
+      },
+      { timeout: 60_000, timeoutMsg: "fork ACK 后新会话未能打开" },
+    );
+    await waitForV4TimelineContaining(taskA.firstPrompt, 60_000);
+    const forkProcesses = await listRemoteAgentProcesses(prepared.config);
+    await reloadElectronSessionPreservingBrowserProfile(browser, {
+      afterElectronProcessExit: async () => {
+        for (const process of forkProcesses)
+          await terminateRemoteProcess(prepared.config, process, CASE_MARKER);
+        expect(await listRemoteAgentProcesses(prepared.config)).toEqual([]);
+      },
+    });
+    await switchToWorkspaceRendererWindow("", 60_000);
+    await waitForRemoteTab({
+      caseMarker: CASE_MARKER,
+      expectedIdentity: taskA.identity,
+      expectedPath: workspaceA,
+    });
+    await selectV4TaskById(forkId, 60_000);
+    await waitForV4TimelineContaining(taskA.firstPrompt, 60_000);
+    const reopenedForkProcesses = await listRemoteAgentProcesses(prepared.config);
+    expect(reopenedForkProcesses.length).toBeGreaterThan(0);
+    expect(
+      reopenedForkProcesses.every((current) =>
+        forkProcesses.every(
+          (old) => current.pid !== old.pid || current.startTicks !== old.startTicks,
+        ),
+      ),
+    ).toBe(true);
+    facts.forkColdResume = {
+      forkId,
+      forkProcesses,
+      reopenedForkProcesses,
+      panes: await readPanes(),
+    };
+
+    await browser.saveScreenshot(resolve(artifactDir, "cold-resume-fork.png"));
     expect(await $(`[data-testid="${testId(TID_TASK_ITEM, taskA.taskId)}"]`).isExisting()).toBe(
       true,
     );

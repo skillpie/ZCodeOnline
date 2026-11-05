@@ -15,7 +15,11 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
-import type { BrowserViewScreenshotSurfacePreparePayload, GitChangeSourceId } from "@zcode/shared";
+import {
+  isRemoteWorkspaceIdentity,
+  type BrowserViewScreenshotSurfacePreparePayload,
+  type GitChangeSourceId,
+} from "@zcode/shared";
 import { FileManagerPane } from "@/WorkspaceFileTree.js";
 import type { FileManagerTarget } from "@/lib/workspaceSidePane.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
@@ -57,9 +61,11 @@ import { SelectionSideChatPane } from "@/app-shell/SelectionSideChatPane.js";
 import { BackgroundBashOutputSidePane } from "@/app-shell/BackgroundBashOutputSidePane.js";
 import { PlanDetailSidePane } from "@/app-shell/PlanDetailSidePane.js";
 import {
+  usePluginUiPaneTarget,
   PluginUiLauncherItems,
   PluginUiSidePane,
   SidePaneLauncherRow,
+  useMarketPluginUi,
   useOpenPluginUi,
 } from "@/plugin-ui/index.js";
 import { WorkflowRunSidePane } from "@/app-shell/WorkflowRunSidePane.js";
@@ -79,6 +85,7 @@ import {
 import {
   resolveAnimatedSidePanePanelLayout,
   resolveOpenTabLauncherItemIds,
+  SITES_PLUGIN_ID,
   shouldOfferSelectionSideConversation,
   shouldRenderPreviewPaneHeavyContent,
   type OpenTabLauncherItemId,
@@ -112,6 +119,7 @@ import {
   ChevronRightIcon,
   FileDiffIcon,
   FolderOpenIcon,
+  EarthIcon,
   GlobeIcon,
   MessageSquareTextIcon,
   PlusIcon,
@@ -466,6 +474,14 @@ export function AnimatedSidePanePanel({
   fullscreenOverlay?: boolean;
 }) {
   const onOpenPluginUi = useOpenPluginUi();
+  const pluginUiTarget = usePluginUiPaneTarget({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId ?? undefined,
+    sessionId: activeTaskId,
+  });
+  const pluginUiWorkspaceKey =
+    pluginUiTarget.workspaceIdentity?.trim() || pluginUiTarget.workspacePath;
   const { intl } = useZCodeIntl();
   const isOfficeMode = useIsOfficeMode();
   const developerToolsEnabled = useDeveloperToolsVisibility();
@@ -493,8 +509,10 @@ export function AnimatedSidePanePanel({
       getVisibleSidePaneTabs(tabs, {
         workspaceKey,
         ownerTaskId: sidePaneOwnerId,
+        pluginUiSessionId: pluginUiTarget.sessionId,
+        pluginUiWorkspaceKey,
       }),
-    [sidePaneOwnerId, tabs, workspaceKey],
+    [sidePaneOwnerId, tabs, workspaceKey, pluginUiTarget.sessionId, pluginUiWorkspaceKey],
   );
   const activeTabId = sidePaneState?.activeTabId ?? "";
   const visibleActiveTabId = visibleTabs.some((tab) => tab.id === activeTabId)
@@ -543,6 +561,17 @@ export function AnimatedSidePanePanel({
     activeTaskId,
     isMobileTextInputViewport,
     mobileOverlay,
+  });
+  // Sites 面板是会话级 UI 插件，和辅助对话同样需要正式会话；远端工作区不支持插件面板。
+  const canOpenSites =
+    canOpenSelectionSideConversation &&
+    !workspaceRemoteSessionId &&
+    !isRemoteWorkspaceIdentity(workspaceIdentity ?? "");
+  const sitesPluginUi = useMarketPluginUi({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId ?? null,
+    sessionId: activeTaskId,
   });
   const tabDragSensors = useSensors(
     useSensor(PointerSensor, {
@@ -789,6 +818,13 @@ export function AnimatedSidePanePanel({
     </Button>
   );
   const openTabLauncherItemById: Record<OpenTabLauncherItemId, OpenTabLauncherItem> = {
+    sites: {
+      id: "sites",
+      label: intl.formatMessage({ id: "sidePane.sites" }),
+      description: intl.formatMessage({ id: "sidePane.launcher.sites" }),
+      icon: EarthIcon,
+      onOpen: () => void sitesPluginUi.open(SITES_PLUGIN_ID),
+    },
     "selection-side-conversation": {
       id: "selection-side-conversation",
       label: intl.formatMessage({ id: "sidePane.selectionChat" }),
@@ -834,6 +870,7 @@ export function AnimatedSidePanePanel({
   };
   const openTabLauncherItems: OpenTabLauncherItem[] = resolveOpenTabLauncherItemIds({
     canOpenSelectionSideConversation,
+    canOpenSites,
     developerToolsEnabled,
     hasReviewTab,
     supportsEmbeddedBrowser,
@@ -878,8 +915,8 @@ export function AnimatedSidePanePanel({
               />
             ))}
           </div>
-          {/* 空会话暂不支持应用插件，连同分区入口一起隐藏。 */}
-          {activeTaskId ? (
+          {/* 草稿已有真实预热 session；按正式 task 判断会隐藏整个插件入口。 */}
+          {pluginUiTarget.sessionId ? (
             <>
               <div aria-hidden="true" className="my-4 h-px w-24 self-center bg-border" />
               <section className="min-w-0" data-testid="side-pane-ui-recommendations">
@@ -910,10 +947,11 @@ export function AnimatedSidePanePanel({
                 <div className="mt-2 grid min-w-0 grid-cols-1 gap-x-8 gap-y-1 @min-[36rem]/launcher:grid-cols-2">
                   {onOpenPluginUi ? (
                     <PluginUiLauncherItems
-                      workspacePath={workspaceAbsPath}
-                      workspaceIdentity={workspaceIdentity}
-                      remoteSessionId={workspaceRemoteSessionId}
-                      sessionId={activeTaskId}
+                      workspacePath={pluginUiTarget.workspacePath}
+                      workspaceIdentity={pluginUiTarget.workspaceIdentity}
+                      remoteSessionId={pluginUiTarget.remoteSessionId ?? undefined}
+                      sessionId={pluginUiTarget.sessionId}
+                      paneId={pluginUiTarget.paneId}
                       onOpenPluginUi={onOpenPluginUi}
                     />
                   ) : null}
@@ -990,7 +1028,10 @@ export function AnimatedSidePanePanel({
       className={cn(
         // 独立外框放在内容层：关闭仍保留 Browser Guest 和 tab 实例，不改变面板持久化边界。
         "h-full overflow-hidden bg-background",
+        // fork H5 全屏覆盖：面板全屏铺满工作区时，桌面卡片的圆角外框（frameClassName）
+        // 与官方 v3.17.2 新增的 0.5px 描边/阴影都不参与，避免全屏表面四周画出一圈边框。
         !mobileOverlay && !fullscreenOverlay && frameClassName,
+        !mobileOverlay && !fullscreenOverlay && "border-[0.5px] shadow-xs",
         mobileStacked && "max-md:rounded-none max-md:border-0",
         mobileOverlay && "min-w-0",
         mobileStacked && "max-md:!w-full",
@@ -1407,10 +1448,11 @@ export function AnimatedSidePanePanel({
                                 }
                                 embedded
                                 onCreateTask={onCreateTask}
-                                workspacePath={workspaceAbsPath}
-                                workspaceIdentity={workspaceIdentity}
-                                remoteSessionId={workspaceRemoteSessionId}
-                                sessionId={activeTaskId}
+                                workspacePath={pluginUiTarget.workspacePath}
+                                workspaceIdentity={pluginUiTarget.workspaceIdentity}
+                                remoteSessionId={pluginUiTarget.remoteSessionId ?? undefined}
+                                sessionId={pluginUiTarget.sessionId}
+                                paneId={pluginUiTarget.paneId}
                                 isDesktop={isDesktop}
                                 isWindowsDesktop={isWindowsDesktop}
                                 isMacDesktop={isMacDesktop}
@@ -1462,6 +1504,9 @@ export function AnimatedSidePanePanel({
                             faviconUrl={tab.faviconUrl}
                             workspacePath={workspaceAbsPath}
                             workspaceIdentity={workspaceIdentity}
+                            // 切换 workspace 的那次 commit 里 props 已是新 workspace，tabs 仍是旧的；
+                            // 读当前 workspace 会以错误 scope attach，触发 workspace-mismatch。
+                            workspaceKey={tab.workspaceKey ?? workspaceKey}
                             remoteSessionId={tab.remoteSessionId ?? workspaceRemoteSessionId}
                             residencyGeneration={tab.residencyGeneration}
                             sessionId={tab.ownerTaskId ?? "unscoped"}
@@ -1521,6 +1566,7 @@ export function AnimatedSidePanePanel({
           data-workspace-side-pane-resize-handle="true"
           className={cn(
             WORKSPACE_VERTICAL_RESIZE_HANDLE_CLASS_NAME,
+            "aria-[orientation=vertical]:w-[3px] after:left-px",
             mobileStacked && "max-md:hidden",
             // 全屏覆盖下拖宽手柄悬在会话区右缘，隐藏。
             fullscreenOverlay && "hidden",

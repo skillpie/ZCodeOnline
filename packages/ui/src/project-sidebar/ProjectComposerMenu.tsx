@@ -46,7 +46,7 @@ import {
   ProjectFolderIcon,
 } from "@/project-sidebar/ProjectFolderIcon.js";
 import { projectKey, projectSourceServerId } from "@/project-sidebar/view.js";
-import { useProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
+import { useProjectSelectionDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 
 export function ProjectComposerMenu({
@@ -96,7 +96,7 @@ export function ProjectComposerMenu({
   const canUseRemoteWorkspace =
     allowRemoteWorkspace && showRemoteConnectionEntry && Boolean(onOpenRemoteWorkspace);
   const {
-    tree,
+    allProjects,
     projects,
     availability,
     directory,
@@ -105,7 +105,7 @@ export function ProjectComposerMenu({
     service,
     remoteService,
     refresh,
-  } = useProjectDirectory();
+  } = useProjectSelectionDirectory();
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   const projectId = useZCodeSessionStore((state) => state.workspaces[workspaceKey]?.draftProjectId);
   const activeTaskId = useZCodeSessionStore(
@@ -583,7 +583,7 @@ export function ProjectComposerMenu({
           workspacePath={workspacePath}
           workspaceIdentity={workspaceIdentity}
           onCreateTask={createProjectTask}
-          projects={tree.projects}
+          projects={allProjects}
           directory={directory}
           service={service}
           remoteService={remoteService}
@@ -621,7 +621,7 @@ export function ProjectComposerMenu({
           key={projectKey(currentProject)}
           project={currentProject}
           host={directory.hosts.find((host) => host.id === currentProject.hostId)}
-          projects={tree.projects.filter(
+          projects={allProjects.filter(
             (project) => !availability.get(projectKey(project))?.entryId,
           )}
           service={service}

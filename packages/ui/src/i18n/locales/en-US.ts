@@ -8402,6 +8402,497 @@ const enUS: Record<string, string> = {
     "I used the ZCode Highspeed card and saved {duration}s. Give it a try. Download ZCode https://zcode.z.ai",
   "globalNotice.highspeed.imageSummary": "{tokens} tokens · {duration}s saved",
   "globalNotice.highspeed.close": "Close Highspeed share card",
+  // ===== 官方 v3.17.2 独有文案（merge 回补；来源 MERGE_HEAD locale，按 key 排序追加）=====
+  "chat.loading.working": "Working",
+  "chat.message.link.openInZCode": "Open in ZCode",
+  "chat.previewCards.openCard": "Open {title}",
+  "chat.slash.app.reload.description":
+    "Reload the task runtime, preserving history and stopping current execution.",
+  "chat.workspaceHookPending.label": "Workspace hooks pending review",
+  "chat.workspaceMcpPending.dismiss": "Dismiss",
+  "chat.workspaceMcpPending.label": "Workspace MCP servers awaiting trust",
+  "chat.workspaceMcpPending.message":
+    "{count} workspace MCP server(s) await trust. Trust changes apply to new or restarted chats; you can continue chatting.",
+  "chat.workspaceMcpPending.review": "Review",
+  "fileActions.defaultApp": "Default",
+  "fileActions.downloadStarted": "Download started",
+  "fileActions.moreOpenWith": "More apps",
+  "fileActions.openInApplication": "Open in {application}",
+  "fileActions.saveAs": "Save as…",
+  "fileActions.saveAsFailed":
+    "Could not save this file. Check the source connection and try again.",
+  "fileActions.saveAsTooLarge": "Files larger than 50 MiB cannot be saved here.",
+  "fileActions.saveAsUnavailable": "Saving files is unavailable here",
+  "fileActions.saved": "Saved",
+  "fileActions.scrollMoreApps": "Scroll to see more apps",
+  "git.actionMenu.push": "Push",
+  "git.actionMenu.pushDialog.error.requestFailed": "Push failed: {error}",
+  "git.actionMenu.trigger": "Commit or push",
+  "git.branchSwitcher.section.branches": "Branches",
+  "git.empty.lastTurnDescription":
+    "Once the agent writes files, this view will reuse the existing task snapshot as a read-only review surface.",
+  "git.empty.lastTurnTitle": "The current task has no last-turn file changes yet",
+  "git.section.branch": "Branch comparison",
+  "git.section.lastTurn": "Last turn",
+  "git.source.lastTurn": "Last turn",
+  "git.source.lastTurnTurn": "Task file snapshot from turn {turn}",
+  "imageEditor.applyText": "Add text",
+  "imageEditor.arrow": "Arrow",
+  "imageEditor.color": "Annotation color",
+  "imageEditor.ellipse": "Ellipse",
+  "imageEditor.eraser": "Eraser",
+  "imageEditor.noComposer": "No chat input is available for this image",
+  "imageEditor.pen": "Pen",
+  "imageEditor.rectangle": "Rectangle",
+  "imageEditor.redo": "Redo",
+  "imageEditor.save": "Save to chat",
+  "imageEditor.saveFailed": "Could not save the image. Try again.",
+  "imageEditor.saving": "Saving…",
+  "imageEditor.select": "Select and move",
+  "imageEditor.text": "Text",
+  "imageEditor.textValue": "Annotation text",
+  "imageEditor.tools": "Image editing tools",
+  "imageEditor.undo": "Undo",
+  "login.oauth.browserNotOpened": "Browser didn't open?",
+  "login.oauth.copyLinkFailed": "Could not copy the login link. Please try again.",
+  "login.oauth.copyLinkSuccess": "Copied. Paste and open it in your browser.",
+  "login.oauth.copyLoginLink": "Copy login link",
+  "mode.yoloConfirmation.acknowledgement":
+    "I understand the risks and take responsibility for my data security.",
+  "mode.yoloConfirmation.commands": "Terminal commands",
+  "mode.yoloConfirmation.commands.description":
+    "Run commands, install software, or change system settings.",
+  "mode.yoloConfirmation.confirm": "Confirm",
+  "mode.yoloConfirmation.description":
+    "Tasks can perform the following actions without asking for your approval each time.",
+  "mode.yoloConfirmation.files": "Files and folders",
+  "mode.yoloConfirmation.files.description": "Read, create, change, and delete accessible files.",
+  "mode.yoloConfirmation.network": "Network and apps",
+  "mode.yoloConfirmation.network.description":
+    "Access the network, send data, and use connected apps.",
+  "mode.yoloConfirmation.risk":
+    "These actions may cause data loss or disclosure. Enable only for tasks you trust. You can switch to another permission mode at any time.",
+  "mode.yoloConfirmation.title": "Enable full access?",
+  "onboarding.finish.workspaceRequired":
+    "{count} items need a project and were not imported. Open a project, then migrate them again.",
+  "pluginUi.open": "Open",
+  "project.dataDeleteFailed": "some files couldn’t be deleted",
+  "project.dataSessionReferenced":
+    "a fork in another project still uses the attachments of a session, so that session was kept",
+  "project.dataSessionRunning": "a session is still running; try again when it finishes",
+  "project.dataUnavailable": "this version of the agent can’t delete project data",
+  "project.undoUnavailable":
+    "This entry has no project identity, so it can’t be added back automatically.",
+  "project.viewUnread": "Unread",
+  "projectManagement.clearSearch": "Clear search",
+  "projectManagement.clearSelection": "Clear",
+  "projectManagement.column.device": "Device",
+  "projectManagement.column.lastActive": "Last active",
+  "projectManagement.column.project": "Project",
+  "projectManagement.column.sessions": "Sessions",
+  "projectManagement.confirm.cancel": "Cancel",
+  "projectManagement.confirm.data.calculating": "Calculating…",
+  "projectManagement.confirm.data.checkpoints": "File checkpoints",
+  "projectManagement.confirm.data.confirm": "Remove and delete {size}",
+  "projectManagement.confirm.data.description":
+    "They leave the sidebar and the project picker. The {sessions} of the {count} projects on this computer are deleted with their files. Folders on disk are not touched.",
+  "projectManagement.confirm.data.descriptionOne":
+    "They leave the sidebar and the project picker. The {sessions} of the project on this computer are deleted with their files. Folders on disk are not touched.",
+  "projectManagement.confirm.data.memory": "Memory",
+  "projectManagement.confirm.data.noRestore":
+    "The {count} projects on this computer can’t be restored afterwards.",
+  "projectManagement.confirm.data.noRestoreOne":
+    "The project on this computer can’t be restored afterwards.",
+  "projectManagement.confirm.data.notDeleted": "Not deleted: your folders and app logs.",
+  "projectManagement.confirm.data.notDeletedRemote":
+    "Not deleted: your folders, app logs, and data on {devices}.",
+  "projectManagement.confirm.data.note":
+    "Sessions, session files, checkpoints and memory of the {count} projects on this computer.",
+  "projectManagement.confirm.data.noteOne":
+    "Sessions, session files, checkpoints and memory of the project on this computer.",
+  "projectManagement.confirm.data.option": "Also delete their ZCode data",
+  "projectManagement.confirm.data.optionOne": "Also delete its ZCode data",
+  "projectManagement.confirm.data.sessions": "{count} sessions and their files",
+  "projectManagement.confirm.data.sessionsOne": "1 session and its files",
+  "projectManagement.confirm.data.title": "Remove {count} projects and delete their data?",
+  "projectManagement.confirm.data.titleOne": "Remove 1 project and delete its data?",
+  "projectManagement.confirm.data.type": "Type {word} to confirm",
+  "projectManagement.confirm.data.word": "delete",
+  "projectManagement.confirm.description":
+    "They leave the sidebar and the project picker. Their sessions ({sessions}) stay in Recent and search. Folders on disk are not touched.",
+  "projectManagement.confirm.remoteNote":
+    "Removed from this computer only. They stay on {device} for its other clients.",
+  "projectManagement.confirm.remoteNoteOne":
+    "Removed from this computer only. It stays on {device} for its other clients.",
+  "projectManagement.confirm.restoreLocal":
+    "Projects on this computer can be restored later from Removed projects on this page.",
+  "projectManagement.confirm.restoreRemote":
+    "To bring back a remote project later, add it again from its device.",
+  "projectManagement.confirm.title": "Remove {count} projects?",
+  "projectManagement.confirm.titleOne": "Remove 1 project?",
+  "projectManagement.data.deletedToast": "Deleted the data of {count} projects · freed {size}",
+  "projectManagement.data.deletedToastOne": "Deleted the data of 1 project · freed {size}",
+  "projectManagement.data.progress": "Deleting data of {count} projects…",
+  "projectManagement.data.progressAmount": "{done} of {total}",
+  "projectManagement.data.progressOne": "Deleting data of 1 project…",
+  "projectManagement.data.removedToast": "Removed {count} projects · freed {size}",
+  "projectManagement.data.removedToastOne": "Removed 1 project · freed {size}",
+  "projectManagement.dismiss": "Dismiss",
+  "projectManagement.empty": "No projects yet",
+  "projectManagement.failure.purge":
+    "The data of {count} projects wasn’t deleted: {name} — {reason}",
+  "projectManagement.failure.purgeOne": "The data of 1 project wasn’t deleted: {name} — {reason}",
+  "projectManagement.failure.remove": "{count} projects weren’t removed: {name} — {reason}",
+  "projectManagement.failure.removeOne": "1 project wasn’t removed: {name} — {reason}",
+  "projectManagement.failure.restore": "Couldn’t restore {name} — {reason}",
+  "projectManagement.failure.restoreOne": "Couldn’t restore {name} — {reason}",
+  "projectManagement.failure.undo": "{count} projects couldn’t be restored: {name} — {reason}",
+  "projectManagement.failure.undoOne": "1 project couldn’t be restored: {name} — {reason}",
+  "projectManagement.filter.all": "All projects",
+  "projectManagement.filter.unused": "Looks unused · {count}",
+  "projectManagement.filterLabel": "Show",
+  "projectManagement.intro":
+    "Removing a project takes it out of the sidebar and the project picker. Its sessions stay in Recent and search, and nothing on disk is touched.",
+  "projectManagement.loadFailed": "Could not load projects",
+  "projectManagement.loading": "Loading projects…",
+  "projectManagement.manage": "Manage projects…",
+  "projectManagement.moreRoots": "{count} more folders",
+  "projectManagement.moreRootsOne": "1 more folder",
+  "projectManagement.nav": "Projects",
+  "projectManagement.never": "Never",
+  "projectManagement.noResults": "No matching projects",
+  "projectManagement.noUnused": "Nothing looks unused right now",
+  "projectManagement.ofShown": "of {count} shown",
+  "projectManagement.offline": "Device offline",
+  "projectManagement.pinned": "Pinned",
+  "projectManagement.projectsCount": "{count} projects",
+  "projectManagement.projectsCountOne": "1 project",
+  "projectManagement.reason.empty": "No sessions",
+  "projectManagement.reason.idle": "Idle {months} months",
+  "projectManagement.reason.missing": "Folder missing",
+  "projectManagement.removeOne": "Remove…",
+  "projectManagement.removeSelected": "Remove {count} projects",
+  "projectManagement.removeSelectedOne": "Remove 1 project",
+  "projectManagement.removed.title": "Removed projects",
+  "projectManagement.removed.when": "Removed {time}",
+  "projectManagement.removedToast": "Removed {count} projects",
+  "projectManagement.removedToastOne": "Removed 1 project",
+  "projectManagement.restore": "Restore",
+  "projectManagement.restoredToast": "Restored {count} projects",
+  "projectManagement.restoredToastOne": "Restored 1 project",
+  "projectManagement.retry": "Retry",
+  "projectManagement.review": "Review {count}",
+  "projectManagement.rowActions": "Actions for {name}",
+  "projectManagement.search": "Search projects, folders or devices",
+  "projectManagement.selectAll": "Select all",
+  "projectManagement.selectProject": "Select {name}",
+  "projectManagement.selected": "{count} selected",
+  "projectManagement.sessionsCount": "{count} sessions",
+  "projectManagement.sessionsCountOne": "1 session",
+  "projectManagement.showMore": "Show {count} more",
+  "projectManagement.sort.lastActive": "Last active",
+  "projectManagement.sort.name": "Name",
+  "projectManagement.sort.sessions": "Sessions",
+  "projectManagement.sortLabel": "Sort by",
+  "projectManagement.suggestion.empty": "{count} have no sessions",
+  "projectManagement.suggestion.emptyOne": "1 has no sessions",
+  "projectManagement.suggestion.idle": "{count} idle for 90+ days",
+  "projectManagement.suggestion.idleOne": "1 idle for 90+ days",
+  "projectManagement.suggestion.missing": "{count} have a missing folder",
+  "projectManagement.suggestion.missingOne": "1 has a missing folder",
+  "projectManagement.suggestion.title": "{count} projects look unused",
+  "projectManagement.suggestion.titleOne": "1 project looks unused",
+  "projectManagement.undo": "Undo",
+  "projectManagement.unremovable": "This project can’t be removed here",
+  "remote.action.downgrade-server": "Switch remote to {version}",
+  "remote.downgradeConfirm": "Switch",
+  "remote.downgradeConfirmDescription":
+    "The remote ZCode service will switch from {current} to {version}, the same version as this desktop app. Devices that still use the newer desktop app must update the remote again when they connect. The older version may not fully show content that the newer version wrote.",
+  "remote.downgradeConfirmTitle": "Switch the remote to {version}?",
+  "remote.downgradedHint":
+    "An older desktop app switched this remote from {from} to the current version. The remote updates only after you confirm.",
+  "remote.error.authenticationUnsupported": "Server requires additional verification",
+  "remote.error.authenticationUnsupported.reason":
+    "After the password, this server asks for more verification (for example a one-time code). Only password, private key, and SSH agent sign-in are supported. Use a private key instead.",
+  "remote.error.platformUnsupported": "This device's system is not supported",
+  "remote.error.platformUnsupported.reason":
+    "Remote connections support Linux and macOS on x64 and arm64. On Windows, connect through WSL or use a Linux device.",
+  "remote.error.sourceServerControlUnresponsive": "The remote service isn't responding",
+  "remote.error.sourceServerControlUnresponsive.reason":
+    "The remote service didn't answer the request. Sign in to the device to check it, then try again.",
+  "remote.error.sourceServerDowngradeUnconfirmed":
+    "The remote device was updated to a newer version. This operation did not downgrade it.",
+  "remote.error.sourceServerDowngradeUnconfirmed.reason":
+    "Reconnect to read the latest version of the remote device.",
+  "remote.error.sourceServerStopFailed": "The remote service didn't stop",
+  "remote.error.sourceServerStopFailed.reason":
+    "The remote service didn't exit cleanly. Try again later, or sign in to the device to check it.",
+  "remote.error.workspaceDirectoryUnresponsive":
+    "The remote device did not respond for 30 seconds while reading the project folder",
+  "remote.error.workspaceDirectoryUnresponsive.reason":
+    "If the remote device is a Mac, check the Mac for a folder access prompt. If the folder is on a network or external drive, make sure the drive is available. Then retry.",
+  "remote.phase.workspace": "Open project folder",
+  "remote.phaseSub.workspaceReading": "Reading {path}",
+  "remoteSync.action.clear": "Clear selection",
+  "remoteSync.action.close": "Close",
+  "remoteSync.action.connect": "Connect",
+  "remoteSync.action.connecting": "Connecting…",
+  "remoteSync.action.migrate": "Migrate data",
+  "remoteSync.action.open": "Sync configuration",
+  "remoteSync.action.pushAll": "Push all",
+  "remoteSync.action.pushCategory": "Push {category}",
+  "remoteSync.action.retry": "Retry",
+  "remoteSync.action.stop": "Stop",
+  "remoteSync.action.transferAgain": "Sync again",
+  "remoteSync.action.transferredAll": "All synced",
+  "remoteSync.action.transferring": "Syncing…",
+  "remoteSync.action.transferringAll": "Syncing all…",
+  "remoteSync.blocked.compatDirectory":
+    "The remote item is in the ~/.agents compatibility directory and cannot be overwritten",
+  "remoteSync.blocked.containsSymlink": "Contains a symbolic link and cannot be synced",
+  "remoteSync.blocked.crossMarketplaceDependency":
+    "Depends on a plugin from another marketplace. Mirroring does not support cross-marketplace dependencies",
+  "remoteSync.blocked.externalDirectory":
+    "The remote plugin with the same name is outside ~/.zcode/plugins (for example a development checkout) and cannot be updated",
+  "remoteSync.blocked.remoteLatestMismatch":
+    "The latest version from the remote source differs from the version on this device",
+  "remoteSync.blocked.sizeLimit": "Exceeds the size limit and cannot be synced",
+  "remoteSync.blocked.sourceRemoved": "The source was removed and cannot be synced",
+  "remoteSync.blocked.targetCompatConfig":
+    "The remote device uses the ~/.agents compatibility config; pushing would disable it",
+  "remoteSync.blocked.targetSymlink":
+    "The remote item is a symbolic link and cannot be overwritten",
+  "remoteSync.blocked.unsupportedSource": "This source type cannot be synced",
+  "remoteSync.category.commands": "Commands",
+  "remoteSync.category.empty": "No items on this device to sync",
+  "remoteSync.category.hooks": "Hooks",
+  "remoteSync.category.loadFailed": "Failed to load: {error}",
+  "remoteSync.category.mcp": "MCP Servers",
+  "remoteSync.category.overview": "Overview",
+  "remoteSync.category.plugins": "Plugins",
+  "remoteSync.category.providers": "Model providers",
+  "remoteSync.category.providers.warning":
+    "This device's model configuration is the source of truth and syncs to the remote automatically after you save. API keys and sign-in state sync with it.",
+  "remoteSync.category.skills": "Skills",
+  "remoteSync.category.subagents": "Subagents",
+  "remoteSync.dependency.groupSeparator": "; ",
+  "remoteSync.dependency.missingMcp": "Missing MCP on remote: {names}",
+  "remoteSync.dependency.missingSkills": "Missing skills on remote: {names}",
+  "remoteSync.dependency.nameSeparator": ", ",
+  "remoteSync.description": "Sync local configuration to remote devices.",
+  "remoteSync.device.lastSynced": "Synced {time}",
+  "remoteSync.device.lastSynced.today": "Synced today at {time}",
+  "remoteSync.device.neverSynced": "Not synced yet",
+  "remoteSync.device.status.connecting": "Connecting…",
+  "remoteSync.device.status.failed": "Last sync failed",
+  "remoteSync.device.status.offline": "Not connected",
+  "remoteSync.device.status.online": "Connected",
+  "remoteSync.dialog.categories": "Sync content",
+  "remoteSync.dialog.offline":
+    "The device is offline, so actions are disabled. The list refreshes automatically when the device is back online.",
+  "remoteSync.dialog.title": "Data sync",
+  "remoteSync.difference.changes": "{count} changes",
+  "remoteSync.difference.matching": "Identical",
+  "remoteSync.empty.connect": "Connect remote device",
+  "remoteSync.empty.description":
+    "Connect an SSH, WSL, or Docker device to push this device's configuration to its ~/.zcode directory.",
+  "remoteSync.empty.title": "No connected devices",
+  "remoteSync.error.offline": "The device disconnected during the push. The push did not finish.",
+  "remoteSync.error.preflightTimeout":
+    "Checking remote write access timed out. Nothing was written.",
+  "remoteSync.error.pushFailed": "Push failed: {error}",
+  "remoteSync.item.conflict": "The remote item changed. Refresh and try again.",
+  "remoteSync.item.failed": "Sync failed: {error}",
+  "remoteSync.item.stopped": "Stopped",
+  "remoteSync.item.unknownError": "Unknown error",
+  "remoteSync.operation.difference": "Difference",
+  "remoteSync.operation.push": "Push",
+  "remoteSync.operation.synced": "Synced",
+  "remoteSync.operation.update": "Update",
+  "remoteSync.overview.autoSync": "Auto sync",
+  "remoteSync.overview.column.category": "Category",
+  "remoteSync.overview.column.local": "Local",
+  "remoteSync.overview.column.remote": "Remote",
+  "remoteSync.overview.description":
+    "Review configuration differences between this device and the target.",
+  "remoteSync.overview.loadFailed": "Failed to load",
+  "remoteSync.overview.loading": "Loading…",
+  "remoteSync.overview.syncFailed": "Sync failed",
+  "remoteSync.providers.apiKey": "API key {key}",
+  "remoteSync.providers.empty": "No custom model providers on this device",
+  "remoteSync.providers.error.capabilityUnavailable":
+    "The remote version does not support model configuration sync",
+  "remoteSync.providers.error.hostExecutionFailed": "The sync could not run on this device",
+  "remoteSync.providers.error.sessionUnavailable": "The remote connection is no longer available",
+  "remoteSync.providers.error.sourceReadFailed": "Could not read the local model configuration",
+  "remoteSync.providers.error.targetApplyFailed":
+    "The remote device could not apply the configuration",
+  "remoteSync.providers.error.targetCallFailed": "Could not reach the remote sync service",
+  "remoteSync.providers.error.targetCommitFailed":
+    "The remote device could not record the sync result",
+  "remoteSync.providers.error.targetRefreshFailed":
+    "The remote device could not reload the model configuration",
+  "remoteSync.providers.error.targetWriteFailed":
+    "The remote device could not write the configuration",
+  "remoteSync.providers.error.unknown": "Unknown error",
+  "remoteSync.providers.status.failed": "Automatic sync failed {time}: {reason}",
+  "remoteSync.providers.status.loadFailed": "Could not read the automatic sync status",
+  "remoteSync.providers.status.never": "Not synced automatically yet",
+  "remoteSync.providers.status.noLane":
+    "Syncs automatically after you open a project on this device",
+  "remoteSync.providers.status.running": "Syncing automatically…",
+  "remoteSync.providers.status.success": "Synced automatically {time}",
+  "remoteSync.rules.description": "Only adds or updates items. Remote-only content is preserved.",
+  "remoteSync.rules.title": "Sync rules",
+  "remoteSync.selection.empty": "No items selected",
+  "remoteSync.selection.failed": "{count} failed",
+  "remoteSync.selection.selectAll": "Select all",
+  "remoteSync.selection.summary": "{count} items to sync",
+  "remoteSync.title": "Data sync",
+  "remoteSync.version.contentDiffers": "Content differs",
+  "remoteSync.version.pushSourceOlder": "Local version is older",
+  "settings.mcp.failure.adviceTitle": "Suggested steps",
+  "settings.mcp.failure.errorDetails": "Error details",
+  "settings.mcp.failureAdvice.coding_plan_required":
+    "In model settings, check the account’s Coding Plan and selected team or project. Refresh after confirming access is active.",
+  "settings.mcp.failureAdvice.config_invalid":
+    "Check the MCP command, arguments, server address, and environment variables. Correct the configuration, then refresh the status.",
+  "settings.mcp.failureAdvice.connection_failed":
+    "Use the error below to check that the server is running and the configuration and network are correct. Correct the issue, then refresh the status.",
+  "settings.mcp.failureAdvice.connection_timeout":
+    "Confirm the server is running, check the network and proxy, and review server logs. If startup is slow, check the configured connection timeout.",
+  "settings.mcp.failureAdvice.network_unreachable":
+    "Check that the device running MCP can reach the server address. Review proxy, VPN, firewall, and port settings.",
+  "settings.mcp.failureAdvice.not_authenticated":
+    "Sign in to ZCode, then refresh the MCP status. If the account still appears signed in, sign in again and retry.",
+  "settings.mcp.failureAdvice.oauth_authorization_failed":
+    "Open this MCP server’s authorization link again. Complete browser authorization, then return to ZCode and refresh the status.",
+  "settings.mcp.failureAdvice.official_origin_untrusted":
+    "Check that the plugin and server address come from trusted configuration. Do not disable security checks or enter login credentials for an unknown address.",
+  "settings.mcp.failureAdvice.process_start_failed":
+    "On the device running this MCP, check the startup command, working directory, script paths, and execute permissions. Install Python dependencies from the plugin’s requirements file (such as requirements.txt), using the interpreter or virtual environment of that command. For Node MCPs, check Node.js and package dependencies. Refresh after fixing the environment.",
+  "settings.mcp.failureAdvice.protocol_error":
+    "Check the client and server MCP versions and review protocol errors in server logs. Update the plugin or server if needed.",
+  "settings.mcp.failureAdvice.protocol_negotiation_failed":
+    "Check the MCP versions supported by the server. For an older server, try Legacy mode in its configuration. Make sure ordinary logs are not written to protocol output.",
+  "settings.mcp.failureAdvice.rate_limited":
+    "Pause repeated retries. Refresh after the rate limit clears and check the account’s request limits.",
+  "settings.mcp.failureAdvice.runtime_unavailable":
+    "On the device running this MCP, install or configure its required runtime and make sure ZCode can find the startup command.",
+  "settings.mcp.failureAdvice.server_internal_error":
+    "Try again later. If the problem continues, share the error below and its request ID, if present, with the service provider.",
+  "settings.mcp.failureAdvice.server_not_found":
+    "Check the server address, path, and plugin version. If the address comes from a plugin, check for updates or contact the plugin provider.",
+  "settings.mcp.failureAdvice.server_unavailable":
+    "Refresh the status later. If the problem continues, share the error below and its request ID, if present, with the service provider.",
+  "settings.mcp.failureAdvice.status_unavailable":
+    "Refresh the status. If it remains unavailable, restart the Agent and check logs on the corresponding device.",
+  "settings.mcp.failureAdvice.tool_list_failed":
+    "Review server logs and confirm tools/list returns a valid MCP tool list, then refresh the status.",
+  "settings.mcp.failureAdvice.unexpected_disconnect":
+    "Review the error below and server logs. Check whether the process exited, a dependency is missing, or the connection was interrupted, then refresh the status.",
+  "settings.mcp.trust.action": "Trust",
+  "settings.mcp.trust.description":
+    "Connections may run code or send data. Trust does not enable MCP. Existing chats keep their authorization. Changes apply to new or restarted chats.",
+  "settings.mcp.trust.failed":
+    "The declaration changed or trust is unavailable. Refresh and try again.",
+  "settings.mcp.trust.pending": "Current declaration awaits trust",
+  "settings.mcp.trust.revoke": "Revoke trust",
+  "settings.mcp.trust.revokeTitle": "Revoke workspace MCP trust: {name}",
+  "settings.mcp.trust.title": "Trust workspace MCP: {name}",
+  "settings.mcp.trust.trusted": "Current declaration trusted",
+  "settings.personalization.description":
+    "Add custom instructions to personalize Agent responses. Instructions apply to future conversations of the local Agent; remote devices need separate configuration.",
+  "settings.personalization.editorLabel": "Custom instructions editor",
+  "settings.personalization.loadFailed": "Failed to load custom instructions. Check the logs",
+  "settings.personalization.localOnly":
+    "Custom instructions can only be edited on the local desktop. Open Settings → Personalization in the desktop app.",
+  "settings.personalization.placeholder": "Add custom instructions...",
+  "settings.personalization.saveFailed": "Failed to save. Check the logs",
+  "settings.personalization.saved": "Saved; effective for new conversations",
+  "settings.personalization.sizeCount": "{used} / {limit}",
+  "settings.personalization.sizeOverLimit":
+    "Content exceeds the 100 KB limit the Agent reads; anything beyond it is ignored. Trim before saving.",
+  "settings.personalization.title": "Personalization",
+  "settings.personalization.unsaved": "Unsaved changes",
+  "settings.plugins.marketplaces.riskAcknowledgement":
+    "I understand the risks, have verified the source, and have taken precautions.",
+  "settings.plugins.marketplaces.riskWarning":
+    "Unofficial plugin marketplaces may contain malicious plugins that can harm your device. Verify the source and take precautions before adding.",
+  "settings.plugins.updateAll": "Update all ({count})",
+  "settings.plugins.updateAll.aborted":
+    "Update all stopped because the plugin scope changed; updated {count} plugin(s)",
+  "settings.plugins.updateAll.done": "Updated {count} plugin(s)",
+  "settings.plugins.updateAll.partial": "Updated {succeeded}, failed {failed}: {plugins}",
+  "settings.scope.deviceConnecting": "Connecting to {device}…",
+  "settings.scope.deviceOffline":
+    "{device} is offline. Its configuration cannot be read or changed until it reconnects.",
+  "settings.scope.localDevice": "This computer",
+  "settings.scope.noMatchingProjects": "No matching projects",
+  "settings.scope.projects": "Projects",
+  "settings.scope.searchProjects": "Search projects",
+  "settings.source.error.credentials-required":
+    "Couldn't get the SSH credentials automatically. Connect to this device once first.",
+  "settings.source.error.source-server-control-unresponsive":
+    "The remote service isn't responding. Sign in to the device to check it, then try again.",
+  "settings.source.error.source-server-operation-in-progress":
+    "Another operation is in progress on this device. Try again later.",
+  "settings.source.error.source-server-stop-failed":
+    "The remote service didn't stop. Try again later, or sign in to the device to check it.",
+  "settings.source.hideProjectDeviceNames": "Hide device names in project rows",
+  "settings.source.hideProjectDeviceNamesDescription":
+    "Hide remote device names in task list project rows. Hover to view them.",
+  "settings.source.preferences": "Preferences",
+  "settings.source.reinstallRemoteService": "Reinstall remote service",
+  "settings.source.reinstallRemoteServiceConfirm": "Reinstall",
+  "settings.source.reinstallRemoteServiceDescription":
+    "ZCode Server {version} will be reinstalled on {source}. Damaged program files are replaced. Projects, tasks, settings, and sign-in information are kept.",
+  "settings.source.reinstallRemoteServiceHint":
+    "Uses this computer's version. Projects and tasks are kept.",
+  "settings.source.reinstallRemoteServiceTitle": "Reinstall the remote service?",
+  "settings.source.remoteServiceInterruptionDescription":
+    "This interrupts all running tasks on this device. They won't resume automatically.",
+  "settings.source.remoteServiceNoRunningTasks": "No tasks are running on this device right now.",
+  "settings.source.remoteServiceOtherClientsNotice":
+    "If ZCode on another computer is connected to this device, it may start the remote service again.",
+  "settings.source.remoteServiceRunningTasksUnavailable": "The device didn't provide a task list.",
+  "settings.source.remoteServiceUpdateRequired": "Available after updating the remote service",
+  "settings.source.restartRemoteService": "Restart remote service",
+  "settings.source.restartRemoteServiceTitle": "Restart the remote service?",
+  "settings.source.searchEmpty": "No devices match “{query}”",
+  "settings.source.searchPlaceholder": "Search devices, addresses, or projects",
+  "settings.source.stopRemoteService": "Stop remote service",
+  "settings.source.stopRemoteServiceStartupReconnectNotice":
+    "“Reconnect automatically at startup” is on, so the remote service will start again the next time you open ZCode.",
+  "settings.source.stopRemoteServiceTitle": "Stop the remote service?",
+  "sidePane.launcher.sites": "View sites, deployments, and usage.",
+  "sidePane.sites": "Sites",
+  "sourceServer.reinstallCompletedToast": "{source} was reinstalled and reconnected.",
+  "sourceServer.reinstallFailedToast":
+    "{source} could not be reinstalled. Review the log under Remote devices and try again.",
+  "sourceServer.restartCompletedToast": "Restarted the remote service on {source} and reconnected.",
+  "sourceServer.restartFailedToast":
+    "Couldn't restart the remote service on {source}. View details.",
+  "sourceServer.stopCompletedToast": "Stopped the remote service on {source}.",
+  "sourceServer.stopFailedToast": "Couldn't stop the remote service on {source}. View details.",
+  "taskList.noUnreadTasks": "No unread tasks",
+  "taskList.recoverWorkspace": "Restart Agent process",
+  "taskList.recoverWorkspaceDescription":
+    "Task resources could not be safely released. Continuing stops every task sharing this Agent process, including tasks in other workspaces. Conversation history is kept.",
+  "taskList.restart": "Restart task",
+  "taskList.restartFailed": "Restart failed. Check the task status and try again.",
+  "taskList.restartUnsupported":
+    "This Agent version does not support restarting tasks. Update it first.",
+  "taskList.restarting": "Restarting task…",
+  "webRemoteControl.pullMobileLogs": "Pull mobile logs",
+  "workspaceHeader.help.copyDeviceMid": "Copy device MID",
+  "workspaceHeader.help.deviceMidCopied": "Device MID copied",
+  "workspaceHeader.help.deviceMidCopyFailed":
+    "Could not copy device MID. Check clipboard access and try again.",
+  "zcode.error.offPeakTicketExpired":
+    "This idle-time task can no longer continue. Create a new idle-time task.",
+  "zcode.error.providerBusiness.3106":
+    "This run exceeded the maximum single-run time. Create a new idle-time task to continue.",
   ...requestSecurityMessagesEnUS,
 };
 

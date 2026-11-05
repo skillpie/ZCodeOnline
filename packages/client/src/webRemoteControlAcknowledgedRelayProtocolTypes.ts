@@ -10,7 +10,9 @@ import {
 export const ACKNOWLEDGED_WEB_REMOTE_CONTROL_RELAY_LIMITS = {
   saturationHighWaterMarkBytes: 1024 * 1024,
   saturationLowWaterMarkBytes: 256 * 1024,
-  replayBufferMaxBytes: 8 * 1024 * 1024,
+  // 原 8 MiB 按 Base64/JSON 外壳计量，合法的 16 MiB RPC 在发送前就会被误拒并触发重建。
+  // 预算随单消息上限推导，容纳约 21.35 MiB 编码批次及原有 8 MiB 在途余量，仍保持硬上限。
+  replayBufferMaxBytes: 2 * WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxMessageBytes,
   replayBufferGraceMs: 45_000,
   assemblyTimeoutMs: WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.assemblyTimeoutMs,
 } as const;
@@ -28,6 +30,8 @@ export interface AcknowledgedWebRemoteControlRelayProtocolOptions extends WebRem
 
 export interface AcknowledgedWebRemoteControlRelayProtocolAdapter extends ConnectionFlowControl {
   readonly protocol: IMessagePassingProtocol;
+  /** 仅在 bridge 终结时撤销；短断线与同 bridge replay 不结束 RPC。 */
+  readonly signal: AbortSignal;
   readonly onDegraded: Event<WebRemoteControlRpcTransportFault>;
   acceptPayload(payload: unknown): boolean;
   flushPendingFrames(): boolean;

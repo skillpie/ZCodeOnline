@@ -3,7 +3,7 @@ import type { MentionItem } from "./mentionTypes.js";
 const LINK_MENTION_MARKDOWN_PATTERN =
   /\[((?:\\.|[^\\\]])*)\]\((?:<((?:\\.|[^>])*?)>|((?:\\.|[^)])*))\)/g;
 const INLINE_MENTION_TOKEN_PATTERN =
-  /(^|\s)(\$[a-zA-Z0-9._-]+|\/[a-zA-Z0-9._-]+|@[a-zA-Z0-9._-]+|#sess_[a-zA-Z0-9._-]+)(?=$|\s)/g;
+  /(^|\s)(\$[a-zA-Z0-9._-]+|\/[a-zA-Z0-9._-]+|@[a-zA-Z0-9._-]+|#(?:sess|session)_[a-zA-Z0-9._-]+)(?=$|\s)/g;
 
 function escapeMarkdownLabel(label: string): string {
   return label.replaceAll("\\", "\\\\").replaceAll("[", "\\[").replaceAll("]", "\\]");
@@ -225,7 +225,8 @@ export function parseMentionMarkdown(content: string): MentionTextPart[] {
     if (matchStart > cursor) {
       parts.push(...parseInlineMentionTokens(content.slice(cursor, matchStart)));
     }
-    if (/^#sess_[a-zA-Z0-9._-]+$/.test(destination)) {
+    // 旧 session_ 引用必须继续显示为会话；按 sess_ 单前缀判断会误落入文件分支。
+    if (/^#(?:sess|session)_[a-zA-Z0-9._-]+$/.test(destination)) {
       parts.push({ type: "session", label: label.startsWith("#") ? label.slice(1) : label });
     } else if (destination.startsWith("plugin://")) {
       // Plugin 引用链接绝不能落入 file 分支或被当外链处理；

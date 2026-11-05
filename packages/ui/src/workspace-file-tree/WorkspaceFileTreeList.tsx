@@ -145,6 +145,8 @@ export function WorkspaceFileTreeList({
       installedEditors={editorState.installedEditors}
       isRemoteWorkspaceFileTree={editorState.isRemoteWorkspaceFileTree}
       remoteTarget={editorState.remoteTarget}
+      // 官方 v3.17 新增远端会话标识；fork 的重命名/删除/下载动作 props 一并保留。
+      workspaceRemoteSessionId={editorState.workspaceRemoteSessionId}
       renaming={renamingPath !== null && areWorkspaceFilePathsEqual(renamingPath, row.path)}
       canStartRename={canStartRename}
       onRenameStart={onRenameStart}

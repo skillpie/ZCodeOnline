@@ -201,7 +201,8 @@ describe("Browser Use Desktop IAB 全链 E2E", () => {
     expect(guest.status).toBe(SUBMITTED_TEXT);
     expect(guest.width).toBe(375);
     expect(guest.height).toBe(667);
-    expect(guest.devicePixelRatio).toBe(1);
+    // 轮尾会释放 CDP，Retina 自然 DPR 随之恢复；DPR=1 由真实工具结果的
+    // ACTIONABILITY_OK 条件验证，空闲阶段继续验证 CSS 尺寸与页面状态。
     expect((await readV4ComposerSnapshot()).text).toBe("");
 
     // 模型主动 setViewportSize 的布局收敛期不应误报；最后一个 Browser command

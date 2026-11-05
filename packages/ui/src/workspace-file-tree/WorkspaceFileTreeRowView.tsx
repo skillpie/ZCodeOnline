@@ -3,7 +3,16 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import type { EditorInfo, OpenInEditorRemoteTarget } from "@zcode/shared";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronRight,
+  CopyIcon,
+  FolderOpenIcon,
+  GlobeIcon,
+  LoaderCircle,
+  MessageSquarePlusIcon,
+  PanelRightIcon,
+} from "lucide-react";
 import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared/test-ids";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -11,12 +20,14 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu.js";
 import { toast } from "@/components/ui/toast.js";
+import {
+  FileApplicationChoices,
+  FileSaveAsMenuItem,
+  useFileApplications,
+} from "@/file-menu/index.js";
 import { useFileContextActions } from "@/hooks/useFileContextActions.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { FileDisplayIcon, resolveFileDisplayDescriptor } from "@/lib/fileDisplay.js";
@@ -74,6 +85,7 @@ export function WorkspaceFileTreeRowView({
   onDownloadFile,
   workspacePath,
   workspaceIdentity,
+  workspaceRemoteSessionId,
   style,
   onSelect,
   onToggleDirectory,
@@ -100,6 +112,7 @@ export function WorkspaceFileTreeRowView({
   onDownloadFile?: (row: WorkspaceFileTreeRow) => void;
   workspacePath: string;
   workspaceIdentity?: string;
+  workspaceRemoteSessionId?: string;
   style: CSSProperties;
   onSelect: (path: string) => void;
   onToggleDirectory: (row: WorkspaceFileTreeRow) => void;
@@ -108,6 +121,12 @@ export function WorkspaceFileTreeRowView({
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>, row: WorkspaceFileTreeRow) => void;
 }) {
   const platform = usePlatform();
+  const fileApplications = useFileApplications(
+    row.type === "file" ? { path: row.path, pathKind: "file", workspaceIdentity } : null,
+    isRemoteWorkspaceFileTree,
+  );
+  const openApps =
+    row.type === "file" && !isRemoteWorkspaceFileTree ? fileApplications.apps : installedEditors;
   const { isDragging, setIsDragging } = useWorkspaceFileTreeRowDragState();
   const fileActions = useFileContextActions({
     canOpenLocalFileManager,
@@ -423,42 +442,76 @@ export function WorkspaceFileTreeRowView({
       className={cn(layout === "absolute" ? "absolute left-0 top-0 w-full px-1" : "w-full")}
       style={rowStyle}
     >
-      <ContextMenu>
+      <ContextMenu
+        onOpenChange={(open) => {
+          if (open && !isDeletedFile) void fileApplications.load();
+        }}
+      >
         <ContextMenuTrigger asChild>{rowElement}</ContextMenuTrigger>
-        <ContextMenuContent className="w-52">
+        <ContextMenuContent className="w-64 max-w-[calc(100vw-1rem)]">
           <ContextMenuItem disabled={!canOpenPrimary} onSelect={handleOpenPrimary}>
             {/* 修复：第一项之前复用了默认外部应用文案，Finder/Explorer 置顶后会显示成“在 Finder 中打开”。
                 这里改为复用行主动作：文件打开预览，目录走当前行的展开/收起逻辑。 */}
+            {isDirectory ? (
+              <FolderOpenIcon aria-hidden="true" className="size-4" />
+            ) : (
+              <PanelRightIcon aria-hidden="true" className="size-4" />
+            )}
             {contextMenuLabels.open}
           </ContextMenuItem>
-          <ContextMenuSub>
-            <ContextMenuSubTrigger disabled={isDeletedFile || installedEditors.length === 0}>
-              {contextMenuLabels.openWith}
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-44">
-              {installedEditors.map((editor) => (
-                <ContextMenuItem key={editor.id} onSelect={() => void handleOpenInEditor(editor)}>
-                  {editor.name}
-                </ContextMenuItem>
-              ))}
-            </ContextMenuSubContent>
-          </ContextMenuSub>
+          <FileApplicationChoices
+            variant="context"
+            applications={[...openApps]}
+            loading={fileApplications.loading}
+            disabled={isDeletedFile}
+            onOpenDefault={
+              !isDirectory &&
+              !isRemoteWorkspaceFileTree &&
+              platform.canOpenLocalFiles &&
+              platform.openExternalFile
+                ? () => void fileApplications.openDefault()
+                : undefined
+            }
+            onSelect={(editor) => {
+              if (isDirectory || isRemoteWorkspaceFileTree)
+                void handleOpenInEditor({ ...editor, iconDataUrl: editor.iconDataUrl ?? "" });
+              else
+                void fileApplications.open({
+                  ...editor,
+                  isDefault: "isDefault" in editor && Boolean(editor.isDefault),
+                });
+            }}
+          />
           {canOpenInBrowser ? (
             <ContextMenuItem onSelect={handleOpenInBrowser}>
+              <GlobeIcon aria-hidden="true" className="size-4" />
               {contextMenuLabels.openInBrowser}
             </ContextMenuItem>
           ) : null}
+          {!isDirectory && (
+            <FileSaveAsMenuItem
+              variant="context"
+              disabled={isDeletedFile}
+              path={row.path}
+              workspacePath={workspacePath}
+              workspaceIdentity={workspaceIdentity}
+              workspaceRemoteSessionId={workspaceRemoteSessionId}
+            />
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem
             disabled={!canRevealInFileManager}
             onSelect={() => void handleRevealInFileManager()}
           >
+            <FolderOpenIcon aria-hidden="true" className="size-4" />
             {contextMenuLabels.reveal}
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => void handleCopyAbsolutePath()}>
+            <CopyIcon aria-hidden="true" className="size-4" />
             {contextMenuLabels.copyAbsolutePath}
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => void handleCopyRelativePath()}>
+            <CopyIcon aria-hidden="true" className="size-4" />
             {contextMenuLabels.copyRelativePath}
           </ContextMenuItem>
           {/* 下载只对真实存在的文件开放：目录要打包是另一个功能，git deleted 虚拟行没有字节可下。 */}
@@ -478,6 +531,7 @@ export function WorkspaceFileTreeRowView({
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onSelect={() => dispatchWorkspaceFileAddToChat(workspaceFilePayload)}>
+            <MessageSquarePlusIcon aria-hidden="true" className="size-4" />
             {contextMenuLabels.addToChat}
           </ContextMenuItem>
         </ContextMenuContent>

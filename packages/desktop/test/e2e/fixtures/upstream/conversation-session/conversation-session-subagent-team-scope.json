@@ -4,6 +4,29 @@
   "spec": "./test/e2e/conversation-session/conversation-session-subagent-team-scope.test.ts",
   "fixtures": [
     {
+      "id": "conversation-session-subagent-team-scope-title-sidecar",
+      "description": "本例标题旁路响应。",
+      "metadata": {
+        "kind": "common",
+        "source": "synthetic",
+        "timingPolicy": "fast-text",
+        "syntheticReason": "运行时证据显示标题旁路缺少响应；在本例显式登记固定标题，避免依赖 legacy fixture 或触发后台网络重试。"
+      },
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "bodyIncludes": ["Generate a concise title"]
+      },
+      "response": {
+        "statusCode": 200,
+        "statusMessage": "OK",
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"id\":\"upstream-e2e-title-fixture\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"deepseek-v4-flash\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"title\\\":\\\"Upstream E2E Fixture\\\"}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"usage\":{\"input_tokens\":125,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":24,\"service_tier\":\"standard\"}}"
+      }
+    },
+    {
       "id": "subagent-team-scope-parent-agent",
       "description": "父请求触发 Team scope 缺失的 custom Agent。",
       "metadata": {
@@ -22,7 +45,7 @@
           "E2E_SUBAGENT_TEAM_SCOPE_CHILD"
         ],
         "bodyExcludes": [
-          "E2E_SUBAGENT_TEAM_SCOPE_PARENT_DONE",
+          "toolu_e2e_subagent_team_scope",
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY"
         ]
@@ -52,7 +75,11 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_SUBAGENT_TEAM_SCOPE_PARENT", "E2E_SUBAGENT_TEAM_SCOPE_PARENT_DONE"],
+        "bodyIncludes": [
+          "E2E_SUBAGENT_TEAM_SCOPE_PARENT",
+          "toolu_e2e_subagent_team_scope",
+          "tool_result"
+        ],
         "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
       },
       "response": {

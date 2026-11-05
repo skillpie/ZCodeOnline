@@ -151,8 +151,13 @@ export function getToolCallDiagnostics(
         document.querySelectorAll<HTMLElement>(`[data-testid^="${toolBlockPrefix}-"]`),
       ).map((block) => ({
         exists: true,
-        hasEditAction: Boolean(block.querySelector(`[data-testid^="${editButtonPrefix}-"]`)),
-        hasForkAction: Boolean(block.querySelector(`[data-testid^="${forkButtonPrefix}-"]`)),
+        hasEditAction: Boolean(
+          // V4 消息操作已换前缀；负向断言必须检查现行入口，不能仅检查退役节点。
+          block.querySelector(`[data-testid^="${editButtonPrefix}-"], [data-testid^="v4-edit-"]`),
+        ),
+        hasForkAction: Boolean(
+          block.querySelector(`[data-testid^="${forkButtonPrefix}-"], [data-testid^="v4-fork-"]`),
+        ),
         status: block.getAttribute("data-status"),
         testId: block.getAttribute("data-testid") ?? "",
         text: normalizeText(block.innerText),

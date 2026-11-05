@@ -20,6 +20,7 @@ import { useDeleteWorktreeProject } from "@/git-branch-switcher/useDeleteWorktre
 import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
 import { toast } from "@/components/ui/toast.js";
 import { logger } from "@/logger.js";
+import { useZCodeStoreWithDefault } from "@/store/StoreProvider.js";
 
 export function runProjectAction(body: () => Promise<void>) {
   void body().catch((cause) => {
@@ -76,6 +77,11 @@ export const ProjectSidebarNode = memo(
     const tabStore = useTabStoreApi();
     const msg = (id: string) => intl.formatMessage({ id: `project.${id}` });
     const sourceServerId = projectSourceServerId(project);
+    // 本机偏好只控制桌面行内标签，手机与完整身份详情仍保留设备名。
+    const hideDeviceName = useZCodeStoreWithDefault(
+      (state) => Boolean(isDesktop) && state.hideProjectDeviceNames,
+      false,
+    );
     const { refresh, availability } = display;
     // fork 语义：`.worktrees/` 下的项目是 git worktree，删除项目时要同步移除磁盘
     // 目录与副本分支，否则 worktree 会堆积在电脑里（非 worktree 项目保持官方语义）。
@@ -88,10 +94,19 @@ export const ProjectSidebarNode = memo(
         {...display}
         project={project}
         remoteHost={remoteHost}
+        hideDeviceName={hideDeviceName}
         onOpenDeviceSettings={
           isDesktop && sourceServerId
             ? () => {
                 setPendingSettingsSectionIntent("remoteDevices", { sourceServerId });
+                tabStore.getState().openSettingsTab();
+              }
+            : undefined
+        }
+        onManageProjects={
+          isDesktop
+            ? () => {
+                setPendingSettingsSectionIntent("projects");
                 tabStore.getState().openSettingsTab();
               }
             : undefined

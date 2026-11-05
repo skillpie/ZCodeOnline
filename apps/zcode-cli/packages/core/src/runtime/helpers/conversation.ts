@@ -1,3 +1,6 @@
+import { getConversationModelOnlyTurnTriggerSource } from "@zcode/shared";
+import type { GenUiModelContext } from "@zcode/shared/gen-ui";
+import { attachGenUiContext } from "../../agent/message-history.js";
 import { activeSessionMessages, modelMessageContentToText } from "../deps.js";
 import { buildPromptAttachmentBlocks } from "../../system-reminder/prompt-attachment.js";
 import {
@@ -17,6 +20,21 @@ import type {
 } from "../deps.js";
 import type { ResolvedTurnAttachment, RunModelTextRequestOptions } from "../types.js";
 
+/**
+ * 隐藏提醒记录：公告、批次提示、中断标记等只给模型看的 system_reminder 记录。它是模型上下文，
+ * 不是对话消息：rewind 锚点回溯、turnNumber、对话指针和 fork 选型回退都跳过它
+ * （meta-user-context.md）。会开启一轮的 model-only 输入（goal continuation 等）不算。
+ */
+export function isHiddenReminderMessage(message: MessageWithParts): boolean {
+  const semantics = message.info.semantics;
+  return (
+    message.info.role === "user" &&
+    semantics?.kind === "system_reminder" &&
+    semantics.uiVisibility === "hidden" &&
+    getConversationModelOnlyTurnTriggerSource(message) === null
+  );
+}
+
 export function getLatestActiveSessionMessageId(
   messages: MessageWithParts[],
   options: {
@@ -33,6 +51,8 @@ export function getLatestActiveSessionMessageId(
 
   for (let index = activeMessages.length - 1; index >= 0; index--) {
     const message = activeMessages[index]!;
+    // 与 live 一致：隐藏提醒不移动对话指针。
+    if (isHiddenReminderMessage(message)) continue;
     if (message.info.role === "user" || message.info.role === "assistant") {
       return message.info.id;
     }
@@ -111,15 +131,18 @@ export function buildRuntimeUserEntriesFromTurn(
   attachments: ResolvedTurnAttachment[],
   options: {
     browserAmbientContext?: { tabCount: number; currentUrl?: string };
+    genUiContext?: GenUiModelContext;
     /** 本轮开启评审模式：在用户输入后追加 review_mode 系统提醒（随轮持久）。 */
     reviewMode?: boolean;
   } = {},
 ): RuntimeMessageEntry[] {
+  const [userEntry, ...attachmentEntries] = buildUserMessageEntries(
+    input.length > 0 ? formatBrowserAmbientUserInput(input, options.browserAmbientContext) : input,
+    attachments,
+  );
   return [
-    ...buildUserMessageEntries(
-      input.length > 0 ? formatBrowserAmbientUserInput(input, options.browserAmbientContext) : input,
-      attachments,
-    ),
+    attachGenUiContext(userEntry, options.genUiContext),
+    ...attachmentEntries,
     // 评审指令排在附件之后：它约束整个 turn 的行为阶段，不是用户提供的资料。
     ...(options.reviewMode
       ? [

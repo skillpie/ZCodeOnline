@@ -89,6 +89,7 @@ export function WorkspaceFileTreeStickyFolders({
               installedEditors={editorState.installedEditors}
               isRemoteWorkspaceFileTree={editorState.isRemoteWorkspaceFileTree}
               remoteTarget={editorState.remoteTarget}
+              workspaceRemoteSessionId={editorState.workspaceRemoteSessionId}
               renaming={renamingPath !== null && areWorkspaceFilePathsEqual(renamingPath, row.path)}
               canStartRename={canStartRename}
               onRenameStart={onRenameStart}

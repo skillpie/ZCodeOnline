@@ -215,6 +215,8 @@ export const queueItemSchema = conversationInputIntentSchema.extend({
   dispatch: conversationInputDispatchSchema.extend({
     state: z.enum(["queued", "reserved", "promoting"]),
   }),
+  /** Host 准入注入的可信 automation 身份；只允许队列提升原样回放。 */
+  automationId: z.string().min(1).optional(),
   toolDisallowlist: z.array(z.string().min(1)).optional(),
   // 会话级数据源绑定（specs/data-source.md §7）：QueueItem 同时是提升执行的输入，
   // sendQueuedNow 重放时必须随行透传，避免提升轮回退全局 activeId。
@@ -477,6 +479,13 @@ export const workspaceHookAdmissionStateSchema = z.object({
 });
 export type WorkspaceHookAdmissionSnapshotState = z.infer<typeof workspaceHookAdmissionStateSchema>;
 
+export const workspaceMcpAdmissionStateSchema = z.object({
+  pendingCount: z.number().int().nonnegative(),
+  bundleDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+  workspaceIdentity: z.string().min(1).optional(),
+});
+export type WorkspaceMcpAdmissionSnapshotState = z.infer<typeof workspaceMcpAdmissionStateSchema>;
+
 // 冷历史可读不代表 runtime 已可执行；缺席兼容旧发送端。
 export const runtimeInitializationSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("initializing"), attemptId: z.string().min(1) }),
@@ -527,6 +536,8 @@ export const conversationSnapshotSchema = z.object({
   // 旧快照/旧发送端不携带此字段 → 解析得 null,不破坏兼容性(遵守冻结规则)。
   // pendingCount === 0 时投影层置 null(提示条消失)。
   workspaceHookAdmission: workspaceHookAdmissionStateSchema.nullable().default(null),
+  // 旧发送端可缺席；null 或缺席均无 MCP 待审核提示。
+  workspaceMcpAdmission: workspaceMcpAdmissionStateSchema.nullable().optional(),
   // （2026-09-12）：原 additive 字段 pluginUiSurfaces 已删除，插件面板 widgetState 只留在
   // 宿主 renderer 内存。
   // B 区

@@ -20,9 +20,9 @@
 
 fault spec 在正式目录前可以先以 `manual-review/pending` 形式登记；pending 仍算 `missing`，不能计入 `covered`。
 
-| 缩写 | Spec                                                                                                                           |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------ |
-| NQ   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-turn-error-queue-preserved.test.ts` |
+| 缩写 | Spec                                                                                                     |
+| ---- | -------------------------------------------------------------------------------------------------------- |
+| NQ   | `packages/desktop/test/e2e/conversation-session/conversation-session-turn-error-queue-preserved.test.ts` |
 
 ## 当前统计
 
@@ -33,7 +33,7 @@ fault spec 在正式目录前可以先以 `manual-review/pending` 形式登记�
 | missing accepted fault |    4 |
 | covered                |    0 |
 | failing probe          |    0 |
-| partial                |    0 |
+| partial                |    1 |
 | ignored                |    0 |
 | invalid                |    0 |
 | 自动化缩写             |    1 |
@@ -43,17 +43,17 @@ fault spec 在正式目录前可以先以 `manual-review/pending` 形式登记�
 
 ## N. 模型/API 请求故障
 
-| ID  | 覆盖状态        | 自动化 | 备注                                                                                     |
-| --- | --------------- | ------ | ---------------------------------------------------------------------------------------- |
-| N01 | decision-needed |        | 主模型请求返回 401/403                                                                   |
-| N02 | decision-needed |        | provider 未配置或 API Key 缺失                                                           |
-| N03 | decision-needed |        | 主模型请求返回 429                                                                       |
-| N04 | decision-needed |        | 主模型请求返回 502/503                                                                   |
-| N05 | missing         | NQ     | 主模型请求返回 500 JSON error；错误终态保留 queue 并暂停自动消费，待 pending case review |
-| N06 | decision-needed |        | DNS/connection refused，未拿到响应头                                                     |
-| N07 | decision-needed |        | 请求超时，长时间无响应头                                                                 |
-| N08 | decision-needed |        | 200 但响应不是合法模型 JSON/SSE                                                          |
-| N09 | decision-needed |        | title/sidecar 请求失败                                                                   |
+| ID  | 覆盖状态        | 自动化 | 备注                                                                                                                                  |
+| --- | --------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| N01 | decision-needed |        | 主模型请求返回 401/403                                                                                                                |
+| N02 | decision-needed |        | provider 未配置或 API Key 缺失                                                                                                        |
+| N03 | decision-needed |        | 主模型请求返回 429                                                                                                                    |
+| N04 | decision-needed |        | 主模型请求返回 502/503                                                                                                                |
+| N05 | partial         | NQ     | 正式隔离与默认回放均通过：500 后保留 queue、暂停自动消费、显式继续后恢复；尚未独立断言 provider message/code 与错误卡片，不计完整覆盖 |
+| N06 | decision-needed |        | DNS/connection refused，未拿到响应头                                                                                                  |
+| N07 | decision-needed |        | 请求超时，长时间无响应头                                                                                                              |
+| N08 | decision-needed |        | 200 但响应不是合法模型 JSON/SSE                                                                                                       |
+| N09 | decision-needed |        | title/sidecar 请求失败                                                                                                                |
 
 ## S. SSE 流式故障
 

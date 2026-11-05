@@ -287,3 +287,12 @@ spec/manifest/fixture 路径失败，而不是只给汇总数字。
 | Completion gate decision-needed                |            37 |
 
 以后新增产品语义时，必须先进入 catalog，再让本 audit 报出新的缺口；对应 E2E 或产品决策补齐后，再更新覆盖矩阵。只要某条 case 还不能写稳定断言，它必须同时出现在 decision backlog，方便产品 review 和剪枝。
+
+## App 单测退役证据检查
+
+审计同时扫描 `docs/testing/*coverage*matrix*.md` 的正文、任意长度自动化别名与状态行。
+App 业务单测必须逐处标为 `retired:原路径`；仅有退役证据的条目不能保持
+`unit`、`covered`、`covered-unit` 或 `partial`。顶部说明不能替代逐处更新。
+CLI、CUA、浏览器验收、桌面 E2E 和工程清单内的测试继续作为现行证据；planned E2E
+路径仍是计划，不因缺文件而被本退役检查误判。主路径 formal admission 的原有检查保持有效。
+回归命令：`node --test scripts/test/retired-app-unit-evidence.test.mjs scripts/test/conversation-session-formal-admission-audit.test.mjs`。

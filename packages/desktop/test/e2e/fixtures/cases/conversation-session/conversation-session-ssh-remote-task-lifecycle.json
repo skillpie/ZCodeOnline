@@ -14,7 +14,7 @@
       "kind": "common",
       "source": "synthetic",
       "timingPolicy": "fast-text",
-      "syntheticReason": "标题不属于 lifecycle 断言，只需稳定 task row。"
+      "syntheticReason": "标题内容不属于 lifecycle 断言，只需稳定 task row。"
     },
     {
       "id": "ssh-task-lifecycle-a-first",

@@ -21,13 +21,16 @@
 
 ```
 点击输入框 focus ─► recordComposerFocus()      只写 inputStartTime 到内存，不上报
-输入首字符      ─► recordComposerTextChange()  只写 inputFirstCharTime 到内存，不上报
-点击发送/Enter  ─► submit() 冻结 sendTime      无事件
+输入首字符      ─► recordComposerInputStart() 只写 inputFirstCharTime 到内存，不上报
+正文发布/普通输入 ─► recordComposerTextChange() 兼容旧入口，不覆盖已记录时间
+点击发送/Enter  ─► submit() 冻结 sendTime + input timing，无事件
                      │
                      └─► sendCommand(envelope) 等 ACK
                            accepted  ─► acceptPromptSeed() ─► 上报 send_btn（/event/report）
                            其余 ACK / 抛异常 ─► 完全静默
 ```
+
+**IME 与程序化更新口径**：`input_first_char_time` 取本轮首次真实用户 dirty update。IME 在候选阶段只发无正文 timing 信号，不等待 composition 提交；程序化草稿恢复、外部预填和 Prompt History 导航不计入。用户手动清空正文但输入框仍聚焦时重置 first-char，随后重新输入记录新的时间；程序化发送清空不重置。focus 起点保持不变。点击发送时把本轮 timing 冻结进 telemetry seed 并开启下一轮输入周期，程序化清空、ACK 等待和下一条正文不能改写本次 payload。
 
 三个缺口：
 
@@ -68,7 +71,7 @@
 点击输入框（用户真实 focus）
    └─► ARMS send_input_focus                    ← 新增
 输入内容…
-点击发送 / Enter（通过发送门禁，冻结 sendTime + send_click_id）
+点击发送 / Enter（通过发送门禁，冻结 sendTime + input timing + send_click_id）
    └─► ARMS send_click                          ← 新增
         │
         ├─ 附件预传二次门禁失败 ──────────────────► send_result status=fail  reason_code=attachment_not_ready

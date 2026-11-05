@@ -188,8 +188,8 @@ export function PluginStoreListView({
 
       {!keyword && uiItems.length > 0 ? (
         <section data-testid="plugin-store-ui-section">
-          <div className="pb-2">
-            <h2 className="text-ui-lg font-semibold">
+          <div className="px-2 pb-2">
+            <h2 className="text-ui-lg font-medium">
               {intl.formatMessage({ id: "settings.plugins.store.ui.title" })}
             </h2>
           </div>
@@ -307,8 +307,8 @@ function StoreSection({
 }) {
   return (
     <section className={className}>
-      <div className="pb-2">
-        <h2 className={cn("text-ui-lg font-semibold", titleClassName ?? "text-foreground")}>
+      <div className="px-2 pb-2">
+        <h2 className={cn("text-ui-lg font-medium", titleClassName ?? "text-foreground")}>
           {title}
         </h2>
       </div>

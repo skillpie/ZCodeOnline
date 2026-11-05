@@ -201,6 +201,15 @@ it("routes every foreign project operation to its existing owner and never falls
     readTree: vi.fn(async () => ({ projects: [], tasks: [] })),
     saveProject: vi.fn(async () => ({ id: "remote-p" }) as VirtualProject),
     deleteProject: vi.fn(async () => {}),
+    restoreProject: vi.fn(async () => ({ id: "remote-p" }) as VirtualProject),
+    measureProjectData: vi.fn(async () => ({ projects: [] })),
+    deleteProjectData: vi.fn(async () => ({
+      freedBytes: 0,
+      deletedSessions: 0,
+      runningSessions: 0,
+      referencedSessions: 0,
+      failed: 0,
+    })),
     moveTask: vi.fn(async () => {}),
     reorderProjects: vi.fn(async () => {}),
     prepareSession: vi.fn(async () => ({

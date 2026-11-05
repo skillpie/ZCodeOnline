@@ -74,9 +74,19 @@ ZCode 需要把 schema gating 做成能力协商结果，而不是在 tool 内�
 
 模型可见序列化不是原样 JSON：
 
-- 同步完成时把 `content` 直接交给父 agent，再追加 `agentId` 和 `<usage>` trailer。
-- `Explore`、`Plan` 这类 one-shot 内建 agent 如果没有 worktree 信息，会省略 `agentId` 和 usage trailer，降低 token 成本。
-- 后台启动时明确告诉父 agent 不要重复做同一份工作，并给出 output file。只有父 agent 拥有 `Read` 或 `Bash` 时才提示可以读或 tail output file。
+- 同步完成时把 `content` 直接交给父 agent，再追加 `agentId` 和 `<usage>` trailer。`agentId` 行：
+  `(use SendMessage with to: '<id>', summary: '<5-10 word recap>' to continue this agent)`。usage 缺失时不输出 `subagent_tokens` 行。
+- `Explore` 可以用 SendMessage 继续，所以同步结果同样带 `agentId` 和 usage trailer。
+- 同步报告：先输出 `[Subagent hand-back]` 说明段（报告是模型输出，不代表用户授权），再输出报告；报告先把 `\r\n`、`\r`、`\u2028` 等换行变体统一成 `\n`，再逐行缩进两格，报告里顶格的伪造框架行因此可以识别。空报告用 "(Subagent completed but returned no output.)"，同样套框架。框架只按返回路径决定：后台运行（含前台超时转后台）完成时，task-notification 的 `<result>` 是原始报告，不套框架、不缩进；默认前台还是后台不影响这条规则。这段文本只给模型：父对话里的 Agent 卡片只有单行摘要、不展开，过程和输出从右侧 tab / 手机抽屉按 child session 查看，所以框架前缀不出现在界面上。
+- 后台启动文案：首行带 "(This tool result is internal metadata — never quote or paste any part of it, including the agentId below, into a user-facing reply.)"，第三行说明结果到达前不得报告或猜测；无 output file 时以 "In your own words, briefly tell the user what you launched — do not echo this tool result. …" 结尾。有 output file 时给出 `output_file` 和不读取提示；提示不提 transcript，因为输出文件是子代理输出文本，不是 JSONL transcript。只有父 agent 拥有 `Read` 或 `Bash` 时才提示 output file。App 按 "Async agent launched successfully." 前缀等四个片段识别后台启动，新文案仍满足。
+- 后台终态通知（`<task-notification>`）：每个字段单独一行，顺序是 `task-id`、`tool-use-id`、`output-file`、`status`、`summary`、`note`、`result`、`usage`。只转义 `& < >`，引号和撇号原样保留。
+  - `status` 只有 `completed`、`failed`、`killed` 三个值。
+  - summary：completed 是 `Agent "<description>" finished`；failed 是 `Agent "<description>" failed: <原因>`，原因为空或只有空白时写 `Unknown error`（结构化 error 相同）；killed 按停止者区分：模型用 TaskStop 停止是 `Agent "<description>" was stopped by ZCode`，用户在 App 里停止是 `… was stopped by user`，系统停止（rewind、闲时任务收尾等）是 `… was stopped`。
+  - `<note>` 每条都有，固定文字：`A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.` child 结束时封存自己的后台通知，不会自己恢复，所以 completed 且还有后台子任务时也用这一句。
+  - `<result>` 只在 completed 时出现，内容是原始报告。failed 和 killed 不带 `<result>`（暂不采集子 agent 已输出的部分文字）。
+  - `<usage>` 只在 completed 时出现：`<usage><subagent_tokens>N</subagent_tokens><tool_uses>N</tool_uses><duration_ms>N</duration_ms></usage>`，缺的字段不输出。
+  - 不再输出 `<error>`。终态和失败原因另由通知命令的 `originMeta.subagentResult`（`{ status, error? }`，error 只在 failed 时出现，与 summary 里的原因同一字符串；超过 2000 字符时截到 2000 字符并以 `…` 结尾，summary 不截断）结构化下发，随通知消息的 metadata 持久化。App 读状态和失败原因以它为准，不解析 summary；旧会话没有它，读 `<status>` / `<error>`。多条通知合并成一轮时，合成的 originMeta 只保留基字段，不带 subagentResult，失败详情退回该任务自己的整句 summary。App 按 `<task-notification>` 块逐条解析：每块只读块内的标签，按各自的 `tool-use-id` 更新对应的行；只有一个块时才使用 `originMeta.subagentResult`。跨块读取会把下一条通知的 `<result>` 当成前一条失败任务的原因，后面的任务也得不到终态。
+  - 整条通知超过 120 000 字符时截断（防止单条通知过长）。
 - remote 启动时提示父 agent 简短告知用户已启动，然后结束本轮。
 - 子 agent 的结果不会自动展示给最终用户，父 agent 必须负责总结或继续执行。
 
@@ -105,7 +115,7 @@ agent definition 的核心字段：
 | `disallowedTools` | 在允许全集上再次剔除 |
 | `model` | agent 默认模型，`inherit` 表示继承父模型 |
 | `effort` | 推理 effort 覆盖 |
-| `permissionMode` | agent 内部工具权限模式。普通 worker 默认使用 `acceptEdits` |
+| `permissionMode` | agent 内部工具权限模式。ZCode 省略时继承父会话模式与 Plan 状态（内置 Explore 相同）；父为 guarded 时，yolo（含 `bypassPermissions`、`dontAsk`）一律收紧为 guarded。用户级 profile 按声明生效，项目级 profile 忽略，插件 profile 只能收紧，见「ZCode 当前实现」 |
 | `maxTurns` | agent 内部 query loop 最大轮数 |
 | `skills` | 启动时预加载的 prompt skill |
 | `mcpServers` | child 可见的 parent MCP server 范围；设计上可支持引用或 inline config，ZCode 当前只接受 parent server name 列表 |
@@ -135,23 +145,32 @@ child runtime 只接收父 runtime `contextSourceSnapshot.userInstructions` 的�
 父 runtime 已解析的 userInstructions
               |
               v
-child system messages（现有 4 段，保持不变）
-meta-user context_prefix
-  |- # agentsMd + AGENTS.md（允许注入且内容非空时）
-  `- currentDate
-真实 child task
+child initial system（产品 prefix；专用 prompt + 启动方消息段 + Notes）
+MCS 开：user [context_prefix, child task] -> system [environment, model, skills, date]
+MCS 关：user [environment, model, skills, context_prefix, date, child task]
 ```
 
-AGENTS.md 不得拼入 agent-specific prompt、common Notes 或 environment system message；child 也不继承 Main 的 Project Context 或 Project Memory。Settings 的 user custom agent 表单在 system prompt 编辑器下方以单行“注入 AGENTS.md”开关展示该字段，文案与 Switch 垂直居中，不显示辅助说明；修改在下一次 runtime/profile 加载时生效，不增加热刷新链路。
-`# agentsMd` 标题与 Main 共用同一 formatter，并按聚合 request-user-context 是否非空渲染一次。
+context_prefix 只在允许注入且 AGENTS.md 非空时出现。child task 由 coordinator 以
+`coordinator_input` 提交（首轮任务和恢复终态 child 的新任务），投影位置等同 Main 的真实用户
+prompt：请求前的公告排到它之前，它前面紧挨的 user 文本以换行结尾。它的身份仍不是真实用户。
+
+AGENTS.md 不得拼入 agent-specific prompt、common Notes 或 environment announcement；child 也不继承 Main 的 Project Context 或 Project Memory。Settings 的 user custom agent 表单在 system prompt 编辑器下方以单行“注入 AGENTS.md”开关展示该字段，文案与 Switch 垂直居中，不显示辅助说明；修改在下一次 runtime/profile 加载时生效，不增加热刷新链路。
+指令正文与 Main 共用同一 formatter，并按聚合 request-user-context 是否非空渲染一次。
+环境与当前执行模型共用 `buildEnvironmentSections`，通过各自会话的动态公告历史下发，
+不再放入 child 初始 system；普通 custom child 的专用正文不触发 Main 的 custom-system 跳过规则。
 child 不继承 Main Project Memory，因此在 child 链路中实际判断仍等价于父 snapshot 是否包含非空
 AGENTS.md；Explore、显式关闭注入的 custom agent 以及父 snapshot 没有 AGENTS.md 时均不渲染。
+
+child 的初始 context snapshot 只由父级传下的配置组成（envInfo、日期、指令快照），初始化时不调用
+`resolveContextSources`，不重新查找 project root，也不探测 Project Context。child 仍持有父级的
+`ContextSourcePort`，只用于 child 内 cwd 变化后、以及 child 冷恢复后第一次环境公告的
+`resolveEnvironment`（见 `meta-user-context.md`）。
 
 ## Tool Pool
 
 子 agent 不是简单继承父工具。普通 subagent 使用：
 
-1. 用 agent 的 `permissionMode` 生成 worker permission context，默认 `acceptEdits`。
+1. 用 agent 的 `permissionMode` 生成 worker permission context。ZCode 省略时继承父会话模式，按来源的规则见「ZCode 当前实现」。
 2. 按 worker permission context 和当前 MCP tools 组装候选工具。
 3. 应用 agent 的 `tools`、`disallowedTools` 和全局 subagent 过滤（区分同步与后台 agent）。
 4. agent 专属 MCP server 初始化后，其 MCP tools 与 resolved tools 合并并按 name 去重。
@@ -212,8 +231,8 @@ background subagent：
 4. 后台 lifecycle 消费 child 消息流，持续更新 progress。
 5. 完成后先把 task 标记为 completed，避免 output 读取方被 classifier 或 worktree cleanup 卡住。
 6. 通过 `<task-notification>` 把 status、summary、output file、usage、worktree 信息重新送进主会话。
-7. AbortError 标记 killed，并尽量返回 partial result；其他异常标记 failed。failed notification 必须从异常 cause 链取最接近 provider 的原始 message：`<error>` 保存同一原文，summary 保留既有 `Agent <type> task "<description>" failed.` 前缀并在其后直接追加该原文，不翻译、不映射错误码，也不把失败伪装成 `<result>`。
-8. 父侧 Agent 工具最初的 `completed` 只表示后台任务已成功启动；匹配 `tool-use-id` 的 failed notification 才能覆盖 launch ACK。live event 与 snapshot/restore 都必须用 notification 的 `failed + error` 覆盖，保证现有“执行失败”状态文案和 hover 错误详情在切换任务后不丢失；stopped/killed 等其它恢复语义不在本次变更范围内。
+7. 停止标记 killed，通知带停止者（`SubagentStopOptions.initiator`：TaskStop 传 `model`，App 停止传 `user`，系统路径不传）；其他异常标记 failed。failed notification 必须从异常 cause 链取最接近 provider 的原始 message：summary 写成 `Agent "<description>" failed: <原文>`，不翻译、不映射错误码，也不把失败伪装成 `<result>`。
+8. 父侧 Agent 工具最初的 `completed` 只表示后台任务已成功启动；匹配 `tool-use-id` 的 failed notification 才能覆盖 launch ACK。live event 与 snapshot/restore 都必须用 notification 的 failed 状态和失败原因覆盖，保证现有“执行失败”状态文案和 hover 错误详情在切换任务后不丢失。失败原因取自 `originMeta.subagentResult.error`（旧会话读 `<error>`）；单条通知的轮次 hover 只显示原文，不带 `Agent "…" failed:` 前缀；多条通知合并成一轮时没有结构化原因，hover 显示该任务自己的整句 summary（见上文后台终态通知）。V4 投影（桌面、Web、手机）把 `killed` 和旧会话的 `stopped` 都显示为已停止；legacy 快照路径（bots 的 `getTaskSnapshot`、`zcodeSessionProjection`）只用 failed 覆盖 launch ACK，killed 仍显示为完成。
 
 sync 转 background：
 
@@ -296,6 +315,7 @@ ZCode 建议拆成两层声明：
 - auto mode 下直接 allow。
 - 子 agent 不应自动继承父 agent 的 tool 限制；它通过自己的 tool pool 和 permission mode 重新组装。
 - 但当父权限模式是 `bypassPermissions`、`acceptEdits` 或 `auto` 时，子 agent 会继承该能力边界，不允许 agent definition 覆盖成更低权限。这是高风险点。
+- ZCode 当前规则与上一条不同：子会话模式按 profile 来源决定，插件声明只能收紧，见「ZCode 当前实现」。
 - async agent 默认避免弹权限 prompt，除非 permission mode 是 `bubble` 或显式允许显示 prompt。
 - `AskUserQuestion` 在 subagent 内默认不可用，避免子 agent 直接向用户发起交互。
 
@@ -344,9 +364,9 @@ ZCode 应把 hook/MCP/skill 都视为外部 I/O 或扩展边界，必须带 trac
 - child 运行完成后没有 assistant message，结果收尾阶段报错。
 - sync agent AbortError。
 - sync agent 中途异常但已有 assistant message，尽量返回 partial finalized result。
-- async agent AbortError，标记 killed 并返回 partial result。
+- async agent AbortError，标记 killed；通知不带 `<result>`（暂不采集已输出的部分文字，见上文后台终态通知）。
 - async agent 普通异常，标记 failed。
-- async agent 普通异常的 provider 原始 message 必须同时进入 task notification summary、`<error>`、runtime task error 和 `SubagentStopped.payload.error`；外层 `Turn execution failed` 只能作为 detail 保留，不能覆盖父模型或 Agent 卡片看到的失败原因。
+- async agent 普通异常的 provider 原始 message 必须同时进入 task notification summary、runtime task error 和 `SubagentStopped.payload.error`；外层 `Turn execution failed` 只能作为 detail 保留，不能覆盖父模型或 Agent 卡片看到的失败原因。
 - worktree cleanup 失败或 worktree 已被外部删除，resume 时回退到 parent cwd。
 - classifier 不可用或判定 handoff 危险，需要把 warning 插入父 agent 可见结果。
 - session store 中 child history 缺失，resume 失败。
@@ -378,8 +398,8 @@ ZCode 应把 hook/MCP/skill 都视为外部 I/O 或扩展边界，必须带 trac
   broad file/code search。Windows CMD 或 legacy shell fallback 无法注入 Bash function 时，
   才回到 non-embedded/direct 分支并暴露 `Glob/Grep`。
 - child tool pool 按 embedded search branch 切换：默认为 `Bash`、`Read`、`WebFetch`、`WebSearch`、`TodoWrite`；direct fallback branch 额外包含 `Glob`、`Grep`。它始终显式排除 `Agent`、`Write`、`Edit`、`ApplyPatch`、`Skill`、`AskUserQuestion` 等递归、写入或用户交互能力。
-- `Agent` 自身声明为编排层 read-only、`sideEffectScope: session`、不需要审批；实际文件读取仍由 child 的 read-only tool 走各自 schema、权限和 trace。`Bash` 是 child tool pool 中唯一可能产生副作用的入口，其只读约束由 Explore system prompt 的 read-only 禁令和缺失文件写工具共同承担。
-- child runtime 使用 `yolo` mode 和专用 Explore system prompt；`plan` mode 会因 Bash 非 read-only 而拦截 Explore 的只读 shell 查询，因此该阶段通过 tool allowlist 和 Explore system prompt 约束只读语义。业务代码通过 `SubagentPort` 调度，不直接依赖 runtime 内部实现。
+- `Agent` 自身声明为编排层 read-only、`sideEffectScope: session`、不需要审批；实际文件读取仍由 child 的 read-only tool 走各自 schema、权限和 trace。`Bash` 是 child tool pool 中唯一可能产生副作用的入口；它的只读约束由权限层（继承父会话模式与 Plan 状态，shell AST 判定只读，见下一条）、Explore system prompt 的 read-only 禁令和缺失文件写工具共同承担。
+- child runtime 继承父会话的权限模式、Plan 状态和权限服务（allowedTools、disallowedTools、会话内授权），配专用 Explore system prompt。Bash 是否只读由 shell AST 判定：只读命令放行；非只读命令在父会话 build/edit 下请求审批（代理回父会话），在 Plan 下拒绝，在 yolo 下放行，在 guarded 下命中危险命令规则时单次确认、其余放行；WebFetch 同样按父会话模式判定。修复原因：Explore 曾固定以 yolo 和独立权限服务运行，只靠 prompt 约束只读，提示注入后模型可经 `Agent(Explore)` 在 build 或 Plan 父会话下免审批执行任意 Bash。业务代码通过 `SubagentPort` 调度，不直接依赖 runtime 内部实现。
 
 后台 subagent 的原始设计来源见 [Background Subagent 第一版实施规划（历史）](./07-subagent-background-plan.md)。该文档用于解释第一版 lifecycle 取舍，不覆盖本节和 `RespondToCoordinator` 当前契约。
 
@@ -397,7 +417,9 @@ ZCode 应把 hook/MCP/skill 都视为外部 I/O 或扩展边界，必须带 trac
 - 模型可见工具名仍为 `Agent`；`subagent_type` 省略时默认 `general-purpose`，显式值通过当前 runtime 已加载的 agent profile 解析。
 - profile-backed agent 支持同步运行和 `run_in_background: true`。后台任务继续使用 `RuntimeTaskRegistry`、child session、completion notification 和 runtime command queue，不建立第二套任务状态。
 - runtime 仅在 `SubagentPort.sendMessage` 可用时注册模型可见 `SendMessage`；当前 profile-backed child 固定关闭 subagent 能力且不注入该 port，因此不会注册 `SendMessage`。若未来 child 提供该 port，tool allowlist/disallowlist 仍会继续过滤模型可见工具。
-- 内建 agent 包含默认的 `general-purpose` 和只读搜索用的 `Explore`；project/user profile 可以覆盖 system prompt、tool policy、model、permission mode、skills 和 background 设置。profile 的 `tools: ["*"]` 仍需经过全局 child tool filter、profile `disallowedTools` 和 runtime allow/disallow 规则收敛。
+- 内建 agent 包含默认的 `general-purpose` 和只读搜索用的 `Explore`；project/user profile 可以覆盖 system prompt、tool policy、model、skills 和 background 设置，permission mode 见下一条。profile 的 `tools: ["*"]` 仍需经过全局 child tool filter、profile `disallowedTools` 和 runtime allow/disallow 规则收敛。
+- 子会话权限模式：profile 省略 `permissionMode` 时继承父会话模式与 Plan 状态，内置 Explore 相同；父为 guarded 时，任何来源的 yolo（含 `bypassPermissions`、`dontAsk`）都收紧为 guarded。用户级 profile 按声明生效；项目级 profile 的声明在解析时剥离；插件 profile（官方与第三方同一规则）只在比父会话模式更严格时生效，严格程度从严到宽为 plan、build、edit、guarded、yolo，`auto` 未实现，按继承处理。规则与威胁边界见 [项目配置信任边界](../../../../../../docs/security/deep-link-project-trust-boundary.md)。
+- 用 `SendMessage` 恢复已结束的子会话时，按父会话**当前**的模式与 Plan 状态重新计算子会话模式（规则同上），覆盖子会话落盘时的执行状态。修复原因：恢复路径曾沿用子会话落盘的模式，父会话从 yolo 改为 build 后恢复的子会话仍以 yolo 运行，升级前落盘为 yolo 的 Explore 与插件 bypass 子会话也不受上述规则约束，父会话开启 Plan 后恢复的子会话也不在 Plan。
 - provider-visible `TaskStop` 可以停止当前 runtime 中已经 background 的 `local_agent` / `local_bash`；`local_agent` 的 result `command` 使用短 `description`，不得回退为完整 `prompt`。
 
 ### Built-in Explore 身份边界
@@ -435,6 +457,11 @@ Child finish    -> no parent MCP cleanup
 - `to` 必须是当前 runtime `RuntimeTaskRegistry` 中仍可寻址的 `local_agent` task/agent id。当前不支持名称 alias、跨 runtime 投递，也不会在 task 已从 registry evict 后仅凭磁盘 artifact 重新发现目标。
 - provider-visible description 和字段说明只覆盖 local-agent 子集；teammate mailbox、shutdown、
   plan approval 等 ZCode 未支持的 team protocol 不进入工具说明。
+- 输入 schema（不支持跨会话消息）：`required` 为 `["to","message"]`；`summary` 可选，
+  描述为 `A 5-10 word summary shown as a one-line preview in the UI. Defaults to the first line of a plain-text message; longer summaries are truncated to 200 characters rather than rejected.`，
+  provider schema 声明 `maxLength: 200`，运行时超长不拒绝：超过 200 个 UTF-16 码元时保留前 199 个码元
+  （末尾是高位代理时再去掉它，不切断 emoji 等代理对）并加 `…`；`message` 描述保持 `Plain text message content`。
+  交付给 child 的只有 message（无论是否带 summary；summary 只用于预览），只有空白的 message 在 PreToolUse hook 与权限之前判为输入错误，模型收到 `<tool_use_error>message must not be empty</tool_use_error>`，不触发 PostToolUseFailure；resume 终态 child 时沿用原 task 描述，summary 不改描述；App 的 SendMessage 卡片标题用 message 的第一个非空行（与描述里的 "Defaults to the first line" 一致）。`to` 的描述与长度限制不变；不支持名称、teammate 和 `"main"`。
 - running agent 有 active message sink 时直接投递到当前 turn，返回 `steered` 或 `queued`；没有 sink 或 sink 投递失败时进入该 task 的 pending message queue。
 - terminal agent 仍保留 profile 和 child session id 时，`SendMessage` 复用原 child session 并在后台恢复；目标、profile 或 child session metadata 缺失时返回结构化失败。
 - queued 和 terminal resume 的模型可见成功文案分别固定为：

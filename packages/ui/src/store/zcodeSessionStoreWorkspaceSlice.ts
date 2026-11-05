@@ -1,3 +1,4 @@
+import type { DraftPluginUiOpenRequest } from "@/plugin-ui/contract.js";
 import type { SessionCreateSource } from "@zcode/shared";
 /* eslint-disable max-lines -- workspace 级状态动作集中在同一 slice，先保持收口便于维护。 */
 import {
@@ -276,6 +277,8 @@ export function createWorkspaceSlice(set: SetFn) {
               taskUnreadByTaskId: restTaskUnreadByTaskId,
               optimisticTaskListByTaskId: nextOptimisticTaskListByTaskId,
               activeTaskId: id,
+              // 导航和首发提升共用此入口；配置版本不变也必须取消原草稿的待打开请求。
+              pluginUiOpenRequest: id ? null : current.pluginUiOpenRequest,
               // 用户扩展：grouped 的 New task 草稿行只是当前草稿态锚点。
               // 一旦用户选中真实 task，就代表离开这个临时实体，必须立刻清掉，避免侧栏留下不可操作的假行。
               groupedDraftTask: id ? null : current.groupedDraftTask,
@@ -411,7 +414,44 @@ export function createWorkspaceSlice(set: SetFn) {
             ...current,
             // 预热会话只存在于 V4 pane 内；递增版本让 owner 回收并重建能力快照。
             draftRuntimeInvalidationVersion: current.draftRuntimeInvalidationVersion + 1,
+            pluginUiOpenRequest: null,
           }),
+          workspaceIdentity,
+        ),
+      );
+    },
+
+    requestPluginUiOpen: (request: DraftPluginUiOpenRequest) => {
+      set((state) =>
+        updateWorkspaceState(
+          state,
+          request.workspacePath,
+          (current) => ({
+            ...current,
+            pluginUiOpenVersion: current.pluginUiOpenVersion + 1,
+            pluginUiOpenRequest: {
+              ...request,
+              requestId: current.pluginUiOpenVersion + 1,
+              invalidationVersion: current.draftRuntimeInvalidationVersion,
+            },
+          }),
+          request.workspaceIdentity,
+        ),
+      );
+    },
+    clearPluginUiOpenRequest: (
+      workspacePath: string,
+      requestId: number,
+      workspaceIdentity?: string,
+    ) => {
+      set((state) =>
+        updateWorkspaceState(
+          state,
+          workspacePath,
+          (current) =>
+            current.pluginUiOpenRequest?.requestId === requestId
+              ? { ...current, pluginUiOpenRequest: null }
+              : current,
           workspaceIdentity,
         ),
       );
@@ -629,6 +669,8 @@ export function createWorkspaceSlice(set: SetFn) {
             return {
               ...current,
               activeTaskId: null,
+              // 同项目重入不会递增失效版本；新打开请求由调用方在进入草稿之后投递。
+              pluginUiOpenRequest: null,
               groupedDraftTask: nextGroupedDraftTask,
               composerInitialization: undefined,
               draftProjectId: options?.projectId,

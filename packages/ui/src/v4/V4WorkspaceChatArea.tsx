@@ -56,6 +56,7 @@ export interface V4WorkspaceChatAreaProps {
   /** Prompt 模板埋点当前仅覆盖 Desktop；Web / 手机远控保留 UI 行为但不触发该事件。 */
   isDesktop?: boolean;
   readOnly?: boolean;
+  readOnlyReason?: string;
   allowEscapeStopOutsidePane?: boolean;
   /** Settings 等覆盖层打开时为 false，隐藏 Pane 不得消费一次性 Composer 请求。 */
   foregroundEnabled?: boolean;
@@ -128,6 +129,7 @@ export function V4WorkspaceChatArea({
   workspaceIdentity,
   isDesktop = false,
   readOnly = false,
+  readOnlyReason,
   allowEscapeStopOutsidePane = false,
   foregroundEnabled = true,
   remoteSessionId,
@@ -254,6 +256,7 @@ export function V4WorkspaceChatArea({
       isDesktop,
       compactForRemoteControl,
       readOnly,
+      readOnlyReason,
       allowEscapeStopOutsidePane,
       sessionId: primaryPaneSessionId,
       // primaryPaneSessionId 在 active task 被 split pane 接管时会刻意置空，
@@ -302,6 +305,7 @@ export function V4WorkspaceChatArea({
       isDesktop,
       compactForRemoteControl,
       readOnly,
+      readOnlyReason,
       allowEscapeStopOutsidePane,
       primaryPaneSessionId,
       activeSelectionSideChatSessionId,

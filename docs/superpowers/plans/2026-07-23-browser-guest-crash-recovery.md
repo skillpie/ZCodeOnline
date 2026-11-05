@@ -152,7 +152,7 @@ Expected: 三个文件全部通过。
 
 **Files:**
 
-- Modify: `docs/testing/browser-use-codex-parity-coverage-matrix.md`
+- Modify: `docs/testing/browser-use-coverage-matrix.md`
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
 
 **Interfaces:**

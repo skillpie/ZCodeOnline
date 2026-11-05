@@ -145,7 +145,11 @@ export {
   IWindowProjectChangesService,
   type WindowProjectDirectoryServices,
 } from "#src/window-project-directory/contract.js";
-export { createWindowProjectChangesService } from "#src/window-project-directory/index.js";
+export {
+  createWebRemoteProjectTreeActivityBridge,
+  createWindowProjectChangesService,
+  type WebRemoteProjectTask,
+} from "#src/window-project-directory/index.js";
 export type {
   WindowHostControllerFrame,
   WindowHostControllerMutation,
@@ -186,6 +190,7 @@ export type {
   ZCodeAgentRuntimePolicy,
   ZCodeAgentReadSessionParams,
   ZCodeAgentRespondProviderRuntimeHeadersParams,
+  ZCodeAgentProviderRuntimeHeadersRequest,
   ZCodeAgentResumeSessionParams,
   ZCodeAgentRunAutomationNowResult,
   ZCodeAgentSavedWorkflowTarget,
@@ -280,6 +285,9 @@ export type { OffPeakUpdateTaskParams } from "./session/offPeakTask.js";
 export { ISkillsService } from "./skills/skills.js";
 export { ISkillSyncService } from "./skill-sync/skillSync.js";
 export { ISkillMarketService } from "./skill-market/skillMarket.js";
+export { IDeviceSyncStateService, IUserConfigSyncService } from "./data-sync/index.js";
+export type { IDataSyncCategoryService } from "./data-sync/index.js";
+export { IProviderProvisioningStatusService } from "./provider-provisioning-status/index.js";
 export { IMcpSyncService } from "./mcp-sync/mcpSync.js";
 export { IPluginSyncService } from "./plugin-sync/pluginSync.js";
 export {

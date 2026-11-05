@@ -230,3 +230,41 @@ export function stripGenUiModelContext(content: string): string {
     return content;
   }
 }
+
+// ===== 以下为官方 v3.17.2 新增的 Gen UI 模型上下文选择/校验（附加式并入 fork 版 contract）=====
+
+/** 官方 DataSync 通道：按大小上限挑选参与模型上下文的 Gen UI 条目并校验。 */
+export function selectGenUiModelContext(entries: readonly GenUiStateEntry[]): GenUiModelContext {
+  const selected = [...entries]
+    .sort((left, right) => left.path.localeCompare(right.path))
+    .slice(0, GEN_UI_STATE_MAX_ENTRIES)
+    .map((entry) => ({ path: entry.path, state: entry.state }));
+  return genUiModelContextSchema.parse(selected);
+}
+
+export const genUiModelContextSchema = z
+  .array(z.object({ path: genUiPathSchema, state: z.unknown() }).strict())
+  .max(GEN_UI_STATE_MAX_ENTRIES)
+  .transform((entries, context) => {
+    try {
+      const serialized = serializeJson(entries);
+      if (
+        new TextEncoder().encode(serialized).byteLength > GEN_UI_CONTEXT_MAX_BYTES ||
+        entries.some(
+          (entry) =>
+            new TextEncoder().encode(serializeJson(entry.state)).byteLength >
+            GEN_UI_STATE_MAX_BYTES,
+        )
+      ) {
+        throw new Error("Gen UI model context exceeds its size limit");
+      }
+      return JSON.parse(serialized) as Array<{ path: string; state: unknown }>;
+    } catch (error) {
+      context.addIssue({
+        code: "custom",
+        message: error instanceof Error ? error.message : "Invalid Gen UI model context",
+      });
+      return z.NEVER;
+    }
+  });
+export type GenUiModelContext = z.infer<typeof genUiModelContextSchema>;

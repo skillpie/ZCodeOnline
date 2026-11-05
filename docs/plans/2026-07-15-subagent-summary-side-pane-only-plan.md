@@ -418,9 +418,9 @@ interface OpenSubagentSideTabRequest {
 
 **Files:**
 
-- Modify: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-subagent-side-tabs.test.ts`
+- Modify: `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-side-tabs.test.ts`
 - Modify: `packages/desktop/test/e2e/conversation-session/conversation-session-background-subagent-rate-limit.test.ts`
-- Modify: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-error-surface.test.ts`
+- Modify: `packages/desktop/test/e2e/conversation-session/conversation-session-tool-error-surface.test.ts`
 - Modify/create case-local fixtures and manifests only as required by the changed assertions
 
 **SAT manual-review steps:**

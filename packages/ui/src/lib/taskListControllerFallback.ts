@@ -72,8 +72,11 @@ export async function listTaskListViaPartitionRpc(params: {
   query: ZCodeTaskListQuery;
 }): Promise<WindowHostControllerTaskListResult> {
   const { query, zcodeTaskService } = params;
+  // host 范围由 tasks-index owner 全量决定，没有具体 workspace 分区可逐项展开；
+  // 分区 RPC 回退无法承载（与 useGlobalTaskList 的约定一致：host 查询放弃回退，返回空结果）。
+  const workspaceScopes = query.workspaceScopes === "host" ? [] : query.workspaceScopes;
   const lists = await Promise.all(
-    query.workspaceScopes.map((scope) => {
+    workspaceScopes.map((scope: ZCodeTaskListWorkspaceScope) => {
       const scopeQuery = buildFallbackScopeParams(scope);
       if (query.kind === "pinned") {
         return zcodeTaskService.listPinnedTasks(scopeQuery);

@@ -40,7 +40,8 @@ export function ProjectSidebarNavigation({
         disabled={Boolean(props.workspaceReadOnlyReason)}
         disabledReason={props.workspaceReadOnlyReason ?? undefined}
       />
-      {props.onOpenAutomations ? (
+      {/* 远控主视图会把自动化和插件市场重置为聊天；入口必须一同隐藏，避免点击无效。 */}
+      {!props.isWebRemoteControl && props.onOpenAutomations ? (
         <Button
           variant="ghost"
           size="lg"
@@ -54,19 +55,22 @@ export function ProjectSidebarNavigation({
           {intl.formatMessage({ id: "workspace.openScheduledSettings" })}
         </Button>
       ) : null}
-      <Button
-        variant="ghost"
-        size="lg"
-        className={`w-full justify-start gap-2 ${props.pluginStoreActive ? "bg-selected text-foreground" : ""}`}
-        aria-pressed={props.pluginStoreActive ?? false}
-        data-testid="plugin-store-sidebar-open"
-        onClick={() => props.onOpenPluginStore?.()}
-      >
-        <Blocks className="size-4" />
-        {intl.formatMessage({ id: "workspace.openPluginsSettings" })}
-      </Button>
-      {/* fork 能力：技能市场入口，与插件市场入口同构；官方 ProjectSidebar 无此入口。 */}
-      {props.onOpenSkillMarket ? (
+      {!props.isWebRemoteControl ? (
+        <Button
+          variant="ghost"
+          size="lg"
+          className={`w-full justify-start gap-2 ${props.pluginStoreActive ? "bg-selected text-foreground" : ""}`}
+          aria-pressed={props.pluginStoreActive ?? false}
+          data-testid="plugin-store-sidebar-open"
+          onClick={() => props.onOpenPluginStore?.()}
+        >
+          <Blocks className="size-4" />
+          {intl.formatMessage({ id: "workspace.openPluginsSettings" })}
+        </Button>
+      ) : null}
+      {/* fork 能力：技能市场入口，与插件市场入口同构；官方 ProjectSidebar 无此入口。
+          远控主视图同样会把该入口重置为聊天，与插件市场一起按 !isWebRemoteControl 隐藏。 */}
+      {!props.isWebRemoteControl && props.onOpenSkillMarket ? (
         <Button
           variant="ghost"
           size="lg"

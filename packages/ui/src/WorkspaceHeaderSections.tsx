@@ -1,3 +1,4 @@
+import { useSessionRuntimeRestart } from "@/app-shell/useWorkspaceSessionReload.js";
 import { useOptionalProjectDirectory } from "@/project-sidebar/index.js";
 import { resolveWorkspaceRemoteSessionId } from "@/lib/workspaceServiceResolver.js";
 import { RemoteConnectionStateIcon } from "@/remote-connection/RemoteConnectionStateIcon.js";
@@ -127,6 +128,13 @@ export function WorkspaceHeaderTitleSection({
   const confirmDialog = useConfirmDialog();
   const services = useWorkspaceServices(workspaceAbsPath, remoteSessionId, workspaceIdentity);
   const baseServices = useBaseWorkspaceServices();
+  // 官方 v3.17.2：任务菜单里的会话运行时重启入口；与 fork 的远端同步菜单并存。
+  const taskRestart = useSessionRuntimeRestart(
+    workspaceAbsPath,
+    activeSessionId,
+    remoteSessionId,
+    workspaceIdentity,
+  );
   const removeTaskState = useZCodeSessionStore((state) => state.removeTaskState);
   const upsertOptimisticTaskListItem = useZCodeSessionStore(
     (state) => state.upsertOptimisticTaskListItem,
@@ -554,17 +562,17 @@ export function WorkspaceHeaderTitleSection({
         </ControlHintTooltip>
       ) : null}
       {!isDraftNewTask ? (
-      <h1
-        data-testid={TID_WORKSPACE_TITLE}
-        className={cn(
-          "flex min-w-12 max-w-100 shrink items-center gap-2 truncate font-semibold text-foreground @max-[560px]/workspace-header:max-w-[30vw] @max-[420px]/workspace-header:max-w-[22vw]",
-          simplifyForNarrowRemote && "max-md:max-w-[42vw]",
-          compact ? "text-[0.92rem]" : "text-ui-base",
-        )}
-        title={activeTaskTitle}
-      >
-        <span className="min-w-0 truncate">{activeTaskTitle}</span>
-        {/* {activeTaskChangeSummary ? (
+        <h1
+          data-testid={TID_WORKSPACE_TITLE}
+          className={cn(
+            "flex min-w-12 max-w-100 shrink items-center gap-2 truncate font-semibold text-foreground @max-[560px]/workspace-header:max-w-[30vw] @max-[420px]/workspace-header:max-w-[22vw]",
+            simplifyForNarrowRemote && "max-md:max-w-[42vw]",
+            compact ? "text-[0.92rem]" : "text-ui-base",
+          )}
+          title={activeTaskTitle}
+        >
+          <span className="min-w-0 truncate">{activeTaskTitle}</span>
+          {/* {activeTaskChangeSummary ? (
           <>
             {activeTaskChangeSummary.added > 0 ? (
               <span className="text-diff-added">
@@ -578,7 +586,7 @@ export function WorkspaceHeaderTitleSection({
             ) : null}
           </>
         ) : null} */}
-      </h1>
+        </h1>
       ) : null}
       <div className="flex min-w-0 shrink-0 items-center gap-1">
         {!isDraftNewTask ? (
@@ -623,6 +631,14 @@ export function WorkspaceHeaderTitleSection({
                 hideMobileUnsupportedActions={simplifyForNarrowRemote}
                 Item={DropdownMenuItem}
                 Separator={DropdownMenuSeparator}
+                onRestartTask={
+                  activeSessionId && !readOnlyReason
+                    ? () => {
+                        void taskRestart.restart();
+                      }
+                    : undefined
+                }
+                restartPending={taskRestart.pending}
                 onTogglePinTask={() => {
                   if (!resolvedTaskActionTaskId) {
                     return;
@@ -857,7 +873,6 @@ export function WorkspaceHeaderTitleSection({
           onPluginsSynced={async () => {
             await refreshWorkspacePluginCapabilitiesAfterRemoteSync({
               commandsService: services.commandsService,
-              mcpSyncService: services.mcpSyncService,
               reason: "header-remote-plugin-sync",
               skillsService: services.skillsService,
               workspaceIdentity,

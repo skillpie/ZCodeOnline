@@ -1,5 +1,7 @@
 # SSH 远端 Plugin 同步设计
 
+> **被取代（2026-10，票 14）**：插件同步已并入[数据同步规格](../../remote/data-sync.md)。本文的「UI 行为」「数据流」中的旧弹窗部分和同名一律跳过的冲突策略已被取代：旧的插件同步弹窗、`listRemoteUserPluginStatuses` / `exportPluginsArchive` / `importPluginsArchive` 等旧方法已删除；inline 插件走 `pluginSyncService` 的统一同步形状，marketplace 插件的 add / install 编排、安全 options 子集、按行「停止」（`cancelPluginOperation`）已迁入数据同步弹窗的适配层（`packages/ui/src/data-sync/app/marketplacePluginSync.ts`）。builtin 插件不同步、远端资源归档的权限约束仍然有效。
+
 ## 修订记录
 
 - 2026-07-06：V1 支持用户级 inline plugin，通过 archive 复制目录到 SSH 远端。

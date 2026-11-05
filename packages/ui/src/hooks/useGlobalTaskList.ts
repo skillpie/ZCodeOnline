@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type {
   WindowHostControllerTaskListResult,
   WindowHostControllerTaskListItem,
-  ZCodeTaskListKind,
+  ZCodeTaskListQuery,
   ZCodeTaskListWorkspaceScope,
 } from "@zcode/services";
 import { logger } from "@/logger.js";
@@ -44,7 +44,9 @@ function buildWorkspaceScopes(workspaceTabs: WorkspaceTabState[]): ZCodeTaskList
 }
 
 export function useGlobalTaskList(params: {
-  kind: ZCodeTaskListKind;
+  kind: ZCodeTaskListQuery["kind"];
+  scope?: "host";
+  enabled?: boolean;
   workspaceTabs: WorkspaceTabState[];
   sortBy: "created" | "updated";
   searchQuery: string;
@@ -59,8 +61,12 @@ export function useGlobalTaskList(params: {
   );
   const controllerRevision = useSyncExternalStore(
     controllerRegistry?.subscribe ?? subscribeToNothing,
-    controllerRegistry?.getRevision ?? zeroRevision,
-    controllerRegistry?.getRevision ?? zeroRevision,
+    (params.scope === "host"
+      ? controllerRegistry?.getDirectoryRevision
+      : controllerRegistry?.getRevision) ?? zeroRevision,
+    (params.scope === "host"
+      ? controllerRegistry?.getDirectoryRevision
+      : controllerRegistry?.getRevision) ?? zeroRevision,
   );
   const workspaceSignature = JSON.stringify(
     params.workspaceTabs
@@ -90,10 +96,11 @@ export function useGlobalTaskList(params: {
       ),
   );
   const workspaceScopes = useMemo(
-    () => buildWorkspaceScopes(params.workspaceTabs),
+    () =>
+      params.scope === "host" ? ("host" as const) : buildWorkspaceScopes(params.workspaceTabs),
     // workspaceSignature 是标准化后的 scope 值签名，避免父组件重建 tabs 数组时重复查询。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [workspaceSignature],
+    [workspaceSignature, params.scope],
   );
   const taskListVersionSignature = useZCodeSessionStore((state) =>
     JSON.stringify(
@@ -148,7 +155,7 @@ export function useGlobalTaskList(params: {
   const load = useCallback(
     async (version: WindowControllerTaskListVersion) => {
       const requestSerial = ++requestSerialRef.current;
-      if (workspaceScopes.length === 0) {
+      if (params.enabled === false || workspaceScopes.length === 0) {
         setItems([]);
         itemsRef.current = [];
         setTotal(0);
@@ -220,6 +227,11 @@ export function useGlobalTaskList(params: {
         setFallbackActive(true);
       }
 
+      // host 范围查询没有具体 workspace 分区；分区 RPC 回退（listTaskListViaPartitionRpc）
+      // 按 workspaceScopes 逐项展开，遇到 "host" 字面量无法拆分，只能放弃回退保留空结果。
+      if (workspaceScopes === "host") {
+        return;
+      }
       setLoading(true);
       try {
         const result = await listTaskListViaPartitionRpc({
@@ -237,7 +249,7 @@ export function useGlobalTaskList(params: {
         }
       }
     },
-    [controller, controllerRegistry, params.kind, query, queryKey, workspaceScopes],
+    [controller, controllerRegistry, params.enabled, params.kind, query, queryKey, workspaceScopes],
   );
 
   const refresh = useCallback(async () => {
@@ -272,7 +284,11 @@ export function useGlobalTaskList(params: {
         void refreshRef.current();
       }, delayMs);
     };
-    const disposables = workspaceScopes.map((scope) =>
+    // fork 回退路径按 workspace 订阅事件；host 范围查询没有具体 scope 列表
+    // （workspaceScopes 是 "host" 字面量），只靠 revision/manual refresh 触发重查。
+    const fallbackScopes: ZCodeTaskListWorkspaceScope[] =
+      workspaceScopes === "host" ? [] : workspaceScopes;
+    const disposables = fallbackScopes.map((scope) =>
       taskService.onDynamicWorkspaceEvent(buildFallbackScopeParams(scope))((event) => {
         if (event.type !== "workspace_task_list_changed") {
           return;
@@ -300,7 +316,7 @@ export function useGlobalTaskList(params: {
         disposable.dispose();
       }
     };
-  }, [fallbackActive, workspaceScopes]);
+  }, [fallbackActive, workspaceScopes, params.scope]);
 
   useEffect(() => {
     // 远程 workspace 从断开占位恢复为在线 session 时 identity/path 不变，

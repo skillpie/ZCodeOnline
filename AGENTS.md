@@ -8,7 +8,7 @@
 ## 技术栈
 
 **运行时**: Node 24.14.0（`mise.toml` 锁定）| pnpm 10.33.2 | TypeScript ^6.0.2
-**桌面**: Electron 41.0.3 | electron-builder ^26.8.1
+**桌面**: Electron 44.7.0 | electron-builder ^26.8.1
 **前端**: React 19.2.7（根 `pnpm.overrides` 锁定）| Zustand ^5.0.12 | Tailwind CSS ^4.2.2 | Vite | SWR | Radix UI / shadcn
 **服务端**: Hono | ws | node-pty
 **测试**: Vitest（根 `vitest.config.ts`，入口 `pnpm test:unit`）；少数自洽包仍用 `node:test`（zcode-relay、zcode-cli 的 cli/tui 包）
@@ -29,6 +29,7 @@
 | 桌面开发                                 | `pnpm dev:desktop`（`ZCODE_ENV=production`）                                                             |
 | 桌面测试环境                             | `pnpm dev:desktop:test`（`ZCODE_ENV=test`）；隔离数据目录用 `mise run dev`                               |
 | Web 开发                                 | `pnpm dev:web`                                                                                           |
+| 提交前检查                               | `pnpm verify:pre-push`（工作区、Lint、schema 与架构检查）                                                |
 | 架构检查                                 | `pnpm architecture:check --changed`                                                                      |
 | 模块阅读包                               | `pnpm architecture:context <module-id>`                                                                  |
 | 未使用依赖与导出                         | `pnpm knip`                                                                                              |
@@ -45,7 +46,7 @@
 - 部署脚本只上传静态 Web / relay / 发行包，不重建本机宿主 daemon；改动 `apps/zcode-cli` 或 `packages/zcode-server-cli` 后必须手动执行 `./install_cli.sh` 重建并重启，否则 zcode.skillpie.cn 的网页会话仍运行旧 Agent 产物。daemon 有运行中任务时先 `./install_cli.sh --no-restart` 只构建，任务结束后再 `./install_cli.sh --skip-build` 重启。
 - 桌面版安装包自包含 Agent 运行时：`packages/desktop/scripts/prepare-agent-node-bundle.mjs` 把 `zcode.cjs` 打进安装包 `bundled-agents/`，由 Electron 内置 Node（`ELECTRON_RUN_AS_NODE`）执行，`packages/desktop/src/main/desktopRuntimeEnv.ts` 的 `resolveBundledZCodeAgentBinaryPath` 打包态只从 `process.resourcesPath` 解析入口、不查 PATH——用户只装桌面版不需要 CLI，不要让桌面版依赖外部安装的 `zcode`。
 - CLI 发行包与桌面安装包受众互不覆盖：`./deploy_cli.sh` 的用户经 `catalog.json` 空闲自动更新，`./deploy_desktop.sh` 的用户需重新下载安装包；同一修复同时影响两端时必须各发一版，只发一端则另一端停留在旧版。
-- 测试统一跑 Vitest：`pnpm test:unit`（全量，走根 `vitest.config.ts`）或 `pnpm test:unit <文件路径>` 定向；packages 下的包级 `pnpm --filter <pkg> test` 也已统一走根配置（脚本 `cd ../.. && vitest run packages/<pkg>/test`）。仍为 `node:test` 的自洽例外：`apps/zcode-relay`、zcode-cli 的 cli/tui 包、plugin-creator-plugin。`apps/zcode-cli/packages/core` 的 `test` 目录（本地用例）与 `tests` 目录（官方用例）都由其包级脚本执行；core 官方 `tests/` 存在 12 个合并带入的存量失败，未修。
+- 测试分两套入口：fork 业务单测走 `pnpm test:unit`（根 `vitest.config.ts` 的 `unit` project，发现各包 `test/` 目录）或 `pnpm test:unit <文件路径>` 定向；官方工程门禁测试走 `pnpm test:engineering <文件>`，push 自动运行 `pnpm test:engineering:affected --scope push`（清单 `scripts/engineering-test-files.json`）。packages 下的包级 `pnpm --filter <pkg> test` 统一走根配置。仍为 `node:test` 的自洽例外：`apps/zcode-relay`、zcode-cli 的 cli/tui 包、plugin-creator-plugin。`apps/zcode-cli/packages/core` 的 `test` 目录（本地用例）与 `tests` 目录（官方用例）都由其包级脚本执行。
 - `pnpm architecture:context` 的 `<module-id>` 取自 `architecture-policy.yaml`（rpc、shared、provider、provider-node、services、session、storage、client、server、zcode-server-cli、ui、web、desktop、formal-proof、zcode-cli、zcode-relay）。
 
 仓库结构：
@@ -67,7 +68,7 @@
 - 代码改动使用 `.agents/skills/architecture-governance/SKILL.md`，先运行架构检查，再读取目标模块的受控上下文。
 - 可执行架构策略在 `architecture-policy.yaml`，不在本文件重复其规则；`pnpm architecture:baseline:update` 仅在评审通过、有意接受基线变化时使用，CI 不会自动刷新基线。
 - 避免重复状态和多条写入路径。明确唯一所有者、接口、依赖方向、事件顺序与幂等边界，不能用超时掩盖同步问题。
-- 有行为改动时先补充对应测试；交互改动需要 E2E 场景。检查测试与实现是否一致，并实际执行可用的验证。未执行或环境受限时如实说明。
+- App 行为改动先更新 spec，确定 E2E、浏览器验收或可重复运行时场景；交互改动先维护 E2E 再改实现。工程工具、CLI/CUA 先补其回归测试。实际执行必要验证，未执行或环境受限时如实说明。
 - 修复 bug 时用中文注释说明原因和修复依据。发现设计缺陷时先与用户对齐，不不断增加兜底分支。
 - PR 描述须说明背景、设计意图与修改前后行为；包含 bugfix 时逐项说明触发场景、根因证据、修复机制及回归验证，并尽量关联已有工单链接。未确认的根因或引入提交如实标注，不根据模块或时间接近推断归因。
 - 涉及状态、时序、远端或异步同步的方案，用图展示所有者及事件顺序。
