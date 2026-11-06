@@ -7,7 +7,6 @@
     "./globals": "./src/globals.d.ts"
   },
   "scripts": {
-    "test": "cd ../.. && vitest run packages/client/test",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix"
   },

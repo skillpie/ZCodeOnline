@@ -11,7 +11,7 @@
 **桌面**: Electron 44.7.0 | electron-builder ^26.8.1
 **前端**: React 19.2.7（根 `pnpm.overrides` 锁定）| Zustand ^5.0.12 | Tailwind CSS ^4.2.2 | Vite | SWR | Radix UI / shadcn
 **服务端**: Hono | ws | node-pty
-**测试**: Vitest（根 `vitest.config.ts`，入口 `pnpm test:unit`）；少数自洽包仍用 `node:test`（zcode-relay、zcode-cli 的 cli/tui 包）
+**测试**: Vitest（根 `vitest.config.ts`，入口 `pnpm test:engineering`，清单 `scripts/engineering-test-files.json`）；App 业务单测已退役，少数自洽包仍用 `node:test`（zcode-relay、zcode-cli 的 cli/tui 包）
 **质量工具**: oxlint | oxfmt | knip | architecture-check
 
 ## 命令与仓库结构
@@ -46,7 +46,8 @@
 - 部署脚本只上传静态 Web / relay / 发行包，不重建本机宿主 daemon；改动 `apps/zcode-cli` 或 `packages/zcode-server-cli` 后必须手动执行 `./install_cli.sh` 重建并重启，否则 zcode.skillpie.cn 的网页会话仍运行旧 Agent 产物。daemon 有运行中任务时先 `./install_cli.sh --no-restart` 只构建，任务结束后再 `./install_cli.sh --skip-build` 重启。
 - 桌面版安装包自包含 Agent 运行时：`packages/desktop/scripts/prepare-agent-node-bundle.mjs` 把 `zcode.cjs` 打进安装包 `bundled-agents/`，由 Electron 内置 Node（`ELECTRON_RUN_AS_NODE`）执行，`packages/desktop/src/main/desktopRuntimeEnv.ts` 的 `resolveBundledZCodeAgentBinaryPath` 打包态只从 `process.resourcesPath` 解析入口、不查 PATH——用户只装桌面版不需要 CLI，不要让桌面版依赖外部安装的 `zcode`。
 - CLI 发行包与桌面安装包受众互不覆盖：`./deploy_cli.sh` 的用户经 `catalog.json` 空闲自动更新，`./deploy_desktop.sh` 的用户需重新下载安装包；同一修复同时影响两端时必须各发一版，只发一端则另一端停留在旧版。
-- 测试分两套入口：fork 业务单测走 `pnpm test:unit`（根 `vitest.config.ts` 的 `unit` project，发现各包 `test/` 目录）或 `pnpm test:unit <文件路径>` 定向；官方工程门禁测试走 `pnpm test:engineering <文件>`，push 自动运行 `pnpm test:engineering:affected --scope push`（清单 `scripts/engineering-test-files.json`）。packages 下的包级 `pnpm --filter <pkg> test` 统一走根配置。仍为 `node:test` 的自洽例外：`apps/zcode-relay`、zcode-cli 的 cli/tui 包、plugin-creator-plugin。`apps/zcode-cli/packages/core` 的 `test` 目录（本地用例）与 `tests` 目录（官方用例）都由其包级脚本执行。
+- App 业务单测已按官方 2026-10-26 决定退役（`docs/testing/unit-test-quality.md`）：packages 各业务包不再维护业务 test/spec 与源码旁 `contract.test.ts`，删除范围含 ui/services/shared/web/server/client/rpc 及 desktop 非 E2E 部分。保留桌面 E2E（`packages/desktop/test/e2e/`，含 fork 自有用例）、浏览器验收（`packages/ui/test/browser/`）、web E2E、工程门禁测试、relay 的 node:test 与 CLI/CUA 自有测试；工程测试按被测对象判断，不因位于 `packages/*/test` 就当作业务测试。
+- 工程 Vitest 走 `pnpm test:engineering <文件>`（清单 `scripts/engineering-test-files.json`），push 自动运行 `pnpm test:engineering:affected --scope push`。App 行为改动先更新 spec，用既有 E2E、浏览器验收或可重复运行时场景验证；不为退役的单测逐条补建 E2E，覆盖矩阵中退役证据按官方规格标 `retired:原路径`。仍为 `node:test` 的自洽例外：`apps/zcode-relay`、zcode-cli 的 cli/tui 包、plugin-creator-plugin；`apps/zcode-cli/packages/core` 的 `test`/`tests` 目录由其包级脚本执行。
 - `pnpm architecture:context` 的 `<module-id>` 取自 `architecture-policy.yaml`（rpc、shared、provider、provider-node、services、session、storage、client、server、zcode-server-cli、ui、web、desktop、formal-proof、zcode-cli、zcode-relay）。
 
 仓库结构：

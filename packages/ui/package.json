@@ -22,8 +22,7 @@
   },
   "scripts": {
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix",
-    "test": "cd ../.. && vitest run packages/ui/test"
+    "lint:fix": "oxlint --fix"
   },
   "dependencies": {
     "@aiden0z/pptx-renderer": "1.2.4",

@@ -52,7 +52,6 @@
     "postinstall": "node scripts/node-pty-rebuild.mjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "test": "cd ../.. && vitest run packages/desktop/test",
     "test:e2e:retention": "tsx --test test/e2e/conversation-session/manual-review/pending/conversation-session-snapshot-retention.test.ts"
   },
   "dependencies": {

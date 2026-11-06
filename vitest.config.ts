@@ -53,25 +53,9 @@ export default defineConfig({
     hookTimeout: 30_000,
     maxWorkers: 4,
     testTimeout: 30_000,
-    // 工程测试使用明确清单；不再发现 App 业务单测。真实子进程测试串行运行。
+    // 工程测试使用明确清单；根配置只注册工程测试和 CUA，不再发现 App 业务单测
+    // （对齐官方 2026-10-26 退役决定，docs/testing/unit-test-quality.md）。真实子进程测试串行运行。
     projects: [
-      {
-        extends: true,
-        test: {
-          // fork 保留的业务单测入口：官方 v3.17 起根配置不再自动发现各包 test/，
-          // 但 fork 在 ui/services/shared 等包维护了大规模自有单测（pnpm test:unit），
-          // 需要 unit project 才能继续运行；desktop e2e 归 engineering 清单管，不在此发现。
-          name: "unit",
-          include: [
-            "packages/*/test/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-            "apps/zcode-relay/test/**/*.{test,spec}.?(c|m)[jt]s?(x)",
-          ],
-          exclude: [
-            ...configDefaults.exclude,
-            "packages/desktop/test/e2e/**",
-          ],
-        },
-      },
       {
         extends: true,
         test: {
