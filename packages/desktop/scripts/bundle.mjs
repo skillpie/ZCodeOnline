@@ -176,7 +176,13 @@ function resolveDefaultElectronBuilderBinariesMirror(env = process.env) {
   try {
     return `${resolveIntranetDepsBaseUrl(env)}/electron-builder-binaries/`;
   } catch {
-    return OFFICIAL_ELECTRON_BUILDER_BINARIES_MIRROR;
+    // Fork 适配：官方回退的 GitHub release 直链在国内网络对 26.17 签名后并发下载的
+    // 7zip@1.0.0 / dmg-builder@1.2.5 工具归档 ETIMEDOUT（2026-11-06 install_desktop.sh
+    // 实况，builder 挂起 189s 后 connect ETIMEDOUT 20.205.243.166:443）。npmmirror
+    // binary 镜像对这两个归档有完整同步，字节与 SHA-256 与
+    // scripts/electron-builder-binaries-macos.json 逐字一致（已实测校验），故 fork 的
+    // 开源构建回退默认改走 npmmirror；需要官方源时用 env ELECTRON_BUILDER_BINARIES_MIRROR 显式覆盖。
+    return NPMMIRROR_ELECTRON_BUILDER_BINARIES_MIRROR;
   }
 }
 
