@@ -5,7 +5,7 @@
 # 平滑发布：relay 产物与 unit 内容未变化时自动跳过重启（restart 会断开所有隧道 WS），
 # nginx conf 一致时同样跳过；只有内容真正变化才重启。
 # 用法：
-#   ./deploy_web.sh            # 完整部署
+#   ./deploy_web.sh            # 完整部署（含终端用户 CLI 发行包：自动检测变更，有变化才发布）
 #   ./deploy_web.sh --web      # 仅更新静态 Web
 #   ./deploy_web.sh --relay    # 仅更新 relay（上传 + 重启服务）
 #   ./deploy_web.sh --ng       # 仅上传 nginx conf 并 reload
@@ -15,10 +15,16 @@
 #                             # 的 DESKTOP_DOWNLOAD_PATHS 一致；带文件参数时按扩展名归类，
 #                             # 缺省自动取 packages/desktop/dist 里最新的 mac-arm64 dmg 与 win-x64 exe；
 #                             # 某平台产物缺失时跳过该平台，一个都找不到才报错）
+#   ./deploy_web.sh --cli [target ...]
+#                             # 仅处理终端用户 CLI 发行包（server-cli 归档 + catalog + install.sh/ps1/cmd，
+#                             # 上传到 $DL_DIR，供 curl 安装与已装宿主自动更新；target 缺省
+#                             # darwin-arm64 + win32-x64，等价 RELEASE_TARGETS 环境变量）
 #   ./deploy_web.sh --check    # 只做部署后验证
 #
-# 终端用户 CLI 发行包发布（server-cli 归档 + catalog + 安装脚本）已拆分到
-# ./deploy_cli.sh，与本脚本互不依赖。
+# CLI 发行包发布（原 ./deploy_cli.sh，已并入本脚本）：完整部署与 --cli 模式会先 stage 构建
+# 各 target 归档，再与服务器上同名产物做联合 MD5 比对（含 catalog 与三个安装脚本），完全一致
+# 则整段跳过上传——与下方 relay / nginx conf 的无变化跳过同策略，避免每次完整部署重复传输
+# 上百 MB 归档；细粒度模式（--web / --relay / --ng / --desktop / --check）不触发 CLI 段。
 #
 # 服务器与站点信息不写入本文件（本文件曾因此出库）：从
 # apps/zcode-relay/deploy/deploy.env 读取（SERVER_HOST / SERVER_USER / SITE_URL，
@@ -55,9 +61,15 @@ BUILD_RELAY=true
 UPLOAD_NGINX=false
 CHECK_ONLY=false
 DESKTOP_RELEASE=false
-# --desktop 之后的参数全部视为待上传安装包文件（按扩展名归类）；该模式不构建、不重启服务。
+CLI_ONLY=false
+# --desktop / --cli 之后的参数分别视为待上传安装包文件与发布平台；这两种模式不构建 Web、不重启服务。
 if [ "${1:-}" = "--desktop" ]; then
   DESKTOP_RELEASE=true
+  BUILD_WEB=false
+  BUILD_RELAY=false
+  shift
+elif [ "${1:-}" = "--cli" ]; then
+  CLI_ONLY=true
   BUILD_WEB=false
   BUILD_RELAY=false
   shift
@@ -69,8 +81,26 @@ case "${1:-}" in
   --ng)    BUILD_WEB=false; BUILD_RELAY=false; UPLOAD_NGINX=true ;;
   --check) BUILD_WEB=false; BUILD_RELAY=false; CHECK_ONLY=true ;;
 esac
+# CLI 发行包段只在完整部署（无任何模式参数）与 --cli 模式运行；其余细粒度模式一律跳过。
+CLI_ENABLED=false
+if [ "$CLI_ONLY" = true ]; then
+  CLI_ENABLED=true
+elif [ -z "${1:-}" ] && [ "$DESKTOP_RELEASE" = false ]; then
+  CLI_ENABLED=true
+fi
 
 step() { printf '\n\033[0;34m========== %s ==========\033[0m\n' "$1"; }
+
+if [ "$CLI_ENABLED" = true ]; then
+  # 发布平台：--cli 位置参数 > RELEASE_TARGETS 环境变量 > 默认（darwin-arm64 + win32-x64）。
+  # darwin-x64 / linux / win32-arm64 当前无宿主用户，默认不发；需要时显式传参补发。
+  CLI_RELEASE_TARGETS="${*:-${RELEASE_TARGETS:-darwin-arm64 win32-x64}}"
+  # fork 禁区护栏（原 deploy_cli.sh 首步）：发行包含 agent 运行时（apps/zcode-cli），
+  # 基线外的新增禁区改动直接终止发布。基线只减不增，例外走 scripts/fork-diff-baseline.json
+  # 的评审更新（scripts/check-fork-diff.mjs）。
+  step "fork diff 检查"
+  (cd "$PROJECT_ROOT" && node scripts/check-fork-diff.mjs)
+fi
 
 if [ "$BUILD_WEB" = true ]; then
   step "构建静态 Web（隧道默认入口）"
@@ -132,6 +162,53 @@ if [ "$DESKTOP_RELEASE" = true ]; then
     echo "[desktop]   sha256: $(shasum -a 256 "$WIN_SRC" | awk '{print $1}')"
   else
     echo "[desktop] 未提供 Windows 安装包，跳过（站点保留旧文件）"
+  fi
+fi
+
+# 终端用户 CLI 发行包（原 deploy_cli.sh，specs/web-tunnel.md）：stage 构建各 target 归档 +
+# catalog.json（宿主自动更新源）+ install.sh/ps1/cmd 上传到 $DL_DIR。发布前把全部产物做
+# 联合 MD5 与服务器比对（顺序固定，任一文件不一致或服务器缺文件即视为有变化），完全一致
+# 则整段跳过上传。stage 每跑一个 target 就把条目按 target 合并进本地 catalog，最后整体上传。
+if [ "$CLI_ENABLED" = true ]; then
+  step "构建并检测终端用户 CLI 发行包（targets: $CLI_RELEASE_TARGETS）"
+  # stageCli 只做归档打包，server-cli 自身的 tsup 产物（dist/server-cli.js）需要先构建。
+  (cd "$PROJECT_ROOT" && pnpm --filter @zcode/server-cli build)
+  CATALOG_FILE="$PROJECT_ROOT/packages/zcode-server-cli/dist-release/catalog.json"
+  CLI_FILES=()
+  CLI_REMOTE_NAMES=()
+  for target in $CLI_RELEASE_TARGETS; do
+    (cd "$PROJECT_ROOT" && pnpm --filter @zcode/server-cli exec tsx src/packaging/stageCli.ts \
+      --target "$target" --catalog "$CATALOG_FILE" --catalog-archive-base-url "$SITE_URL/dl")
+    archive="$PROJECT_ROOT/packages/zcode-server-cli/dist-release/zcode-server-$target.tar.gz"
+    [ -f "$archive" ] || { echo "archive missing: $archive" >&2; exit 1; }
+    CLI_FILES+=("$archive")
+    CLI_REMOTE_NAMES+=("zcode-server-$target.tar.gz")
+  done
+  [ -f "$CATALOG_FILE" ] || { echo "catalog missing: $CATALOG_FILE" >&2; exit 1; }
+  CLI_FILES+=("$CATALOG_FILE" \
+    "$DEPLOY_ASSETS_DIR/install-zcode-server.sh" \
+    "$DEPLOY_ASSETS_DIR/install-zcode-server.ps1" \
+    "$DEPLOY_ASSETS_DIR/install.cmd")
+  CLI_REMOTE_NAMES+=("catalog.json" "install.sh" "install.ps1" "install.cmd")
+
+  # 联合 MD5（macOS md5 与 Linux md5sum 对同一字节流结果一致）。
+  CLI_LOCAL_MD5=$(cat "${CLI_FILES[@]}" | md5 -q 2>/dev/null || cat "${CLI_FILES[@]}" | md5sum | awk '{print $1}')
+  CLI_REMOTE_LIST=""
+  for name in "${CLI_REMOTE_NAMES[@]}"; do
+    CLI_REMOTE_LIST+=" $DL_DIR/$name"
+  done
+  CLI_REMOTE_MD5=$(ssh "$SERVER_USER@$SERVER_HOST" "cat${CLI_REMOTE_LIST} 2>/dev/null | md5sum | awk '{print \$1}'" || echo "")
+  if [ "$CLI_LOCAL_MD5" = "$CLI_REMOTE_MD5" ]; then
+    echo "[release] CLI 发行包无变化，跳过上传（catalog：$SITE_URL/dl/catalog.json）"
+  else
+    ssh "$SERVER_USER@$SERVER_HOST" "mkdir -p $DL_DIR"
+    CLI_INDEX=0
+    for name in "${CLI_REMOTE_NAMES[@]}"; do
+      rsync -av "${CLI_FILES[$CLI_INDEX]}" "$SERVER_USER@$SERVER_HOST:$DL_DIR/$name"
+      CLI_INDEX=$((CLI_INDEX + 1))
+    done
+    echo "[release] zcode-server-*.tar.gz / catalog.json / install.sh|ps1|cmd 已发布"
+    echo "[release] 宿主自动更新源：$SITE_URL/dl/catalog.json"
   fi
 fi
 
@@ -203,5 +280,11 @@ ssh "$SERVER_USER@$SERVER_HOST" "systemctl is-active zcode-relay && curl -s -o /
 ssh "$SERVER_USER@$SERVER_HOST" "systemctl is-active zcode-daily-report.timer 2>/dev/null || echo '日报 timer 未启用（跑一次 ./deploy_web.sh 或 --relay 后生效）'" || true
 curl -s -o /dev/null -w "$SITE_URL 首页: %{http_code}\n" "$SITE_URL/" || true
 curl -s -o /dev/null -w "$SITE_URL/relay 控制面: %{http_code}\n" -X POST "$SITE_URL/relay/api/v1/pair" -H 'content-type: application/json' -d '{}' || true
+# CLI 发行包公网拉取验证（原 deploy_cli.sh 末段）。失败只提示不中断——下载由 nginx 直出，
+# 这里不可达也可能是本机网络问题，不应据此回滚已上传的产物。
+if [ "$CLI_ENABLED" = true ]; then
+  curl -s -o /dev/null -w "$SITE_URL/dl/catalog.json: %{http_code}\n" "$SITE_URL/dl/catalog.json" || true
+  curl -s -o /dev/null -w "$SITE_URL/install.sh: %{http_code}\n" "$SITE_URL/install.sh" || true
+fi
 echo ""
 echo "完成。宿主接入：zcode tunnel-enable --relay-url wss://$SITE_HOST_NO_SCHEME/relay"

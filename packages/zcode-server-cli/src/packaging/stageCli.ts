@@ -272,7 +272,7 @@ async function main(): Promise<void> {
     componentArchives: !argv.includes("--skip-component-archives"),
   });
 
-  // 自动更新（specs/web-tunnel.md 更新器 M4）：deploy_cli.sh 发布循环里每个 target 调一次，
+  // 自动更新（specs/web-tunnel.md 更新器 M4）：deploy_web.sh 的 CLI 发布循环里每个 target 调一次，
   // 条目按 target 覆盖合并进同一份 catalog.json，最后 rsync 上服务器。
   const catalogIndex = argv.indexOf("--catalog");
   if (catalogIndex >= 0) {

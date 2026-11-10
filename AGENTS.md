@@ -36,16 +36,16 @@
 | 导出引用查询                             | `pnpm dep:refs --list-exports <file>`                                                                    |
 | 桌面端打包并重装本机（macOS）            | `./install_desktop.sh`（`--skip-build` 只重装）                                                          |
 | 桌面端打包并安装本机（Windows）          | `.\install_desktop.ps1`（`-SkipBuild` 只安装）                                                           |
-| Web 隧道部署                             | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库）                 |
-| 终端用户 CLI 发行包发布                  | `./deploy_cli.sh`（server-cli 归档 + catalog + 安装脚本；默认 darwin-arm64 + win32-x64，可传参覆盖） |
+| Web 隧道部署                             | `./deploy_web.sh`（读取 `apps/zcode-relay/deploy/deploy.env`，该文件含服务器信息不入库；完整部署自动检测 CLI 发行包变更，有变化才发布） |
+| 终端用户 CLI 发行包发布                  | `./deploy_web.sh --cli`（server-cli 归档 + catalog + 安装脚本；默认 darwin-arm64 + win32-x64，可传参覆盖） |
 | 桌面版两端构建并发布                     | `./deploy_desktop.sh`（正式身份构建 mac-arm64 + win-x64 并上传，`--mac` / `--win` 单端）                 |
 | 宿主 daemon 重建并重启（网页会话 Agent） | `./install_cli.sh`（`--skip-build` 只重启，`--no-restart` 只构建）                                       |
 | 宿主 daemon 重建并重启（Windows）        | `.\install_cli.ps1`（`-SkipBuild` 只重启，`-NoRestart` 只构建）                                          |
 
-- 提交不触发自动部署：Web 隧道部署、CLI 发行包发布（`./deploy_cli.sh`，默认 darwin-arm64 + win32-x64，其余平台传参指定，如 `./deploy_cli.sh linux-x64`）均需手动执行。
+- 提交不触发自动部署：`./deploy_web.sh` 需手动执行；完整部署会 stage 构建 CLI 归档并与服务器产物做联合 MD5 比对，CLI 无变化时自动跳过上传（其余平台传参指定，如 `./deploy_web.sh --cli linux-x64`）。
 - 部署脚本只上传静态 Web / relay / 发行包，不重建本机宿主 daemon；改动 `apps/zcode-cli` 或 `packages/zcode-server-cli` 后必须手动执行 `./install_cli.sh` 重建并重启，否则 zcode.skillpie.cn 的网页会话仍运行旧 Agent 产物。daemon 有运行中任务时先 `./install_cli.sh --no-restart` 只构建，任务结束后再 `./install_cli.sh --skip-build` 重启。
 - 桌面版安装包自包含 Agent 运行时：`packages/desktop/scripts/prepare-agent-node-bundle.mjs` 把 `zcode.cjs` 打进安装包 `bundled-agents/`，由 Electron 内置 Node（`ELECTRON_RUN_AS_NODE`）执行，`packages/desktop/src/main/desktopRuntimeEnv.ts` 的 `resolveBundledZCodeAgentBinaryPath` 打包态只从 `process.resourcesPath` 解析入口、不查 PATH——用户只装桌面版不需要 CLI，不要让桌面版依赖外部安装的 `zcode`。
-- CLI 发行包与桌面安装包受众互不覆盖：`./deploy_cli.sh` 的用户经 `catalog.json` 空闲自动更新，`./deploy_desktop.sh` 的用户需重新下载安装包；同一修复同时影响两端时必须各发一版，只发一端则另一端停留在旧版。
+- CLI 发行包与桌面安装包受众互不覆盖：`./deploy_web.sh` 发布的 CLI 用户经 `catalog.json` 空闲自动更新，`./deploy_desktop.sh` 的用户需重新下载安装包；同一修复同时影响两端时必须各发一版，只发一端则另一端停留在旧版。
 - App 业务单测已按官方 2026-10-26 决定退役（`docs/testing/unit-test-quality.md`）：packages 各业务包不再维护业务 test/spec 与源码旁 `contract.test.ts`，删除范围含 ui/services/shared/web/server/client/rpc 及 desktop 非 E2E 部分。保留桌面 E2E（`packages/desktop/test/e2e/`，含 fork 自有用例）、浏览器验收（`packages/ui/test/browser/`）、web E2E、工程门禁测试、relay 的 node:test 与 CLI/CUA 自有测试；工程测试按被测对象判断，不因位于 `packages/*/test` 就当作业务测试。
 - 工程 Vitest 走 `pnpm test:engineering <文件>`（清单 `scripts/engineering-test-files.json`），push 自动运行 `pnpm test:engineering:affected --scope push`。App 行为改动先更新 spec，用既有 E2E、浏览器验收或可重复运行时场景验证；不为退役的单测逐条补建 E2E，覆盖矩阵中退役证据按官方规格标 `retired:原路径`。仍为 `node:test` 的自洽例外：`apps/zcode-relay`、zcode-cli 的 cli/tui 包、plugin-creator-plugin；`apps/zcode-cli/packages/core` 的 `test`/`tests` 目录由其包级脚本执行。
 - `pnpm architecture:context` 的 `<module-id>` 取自 `architecture-policy.yaml`（rpc、shared、provider、provider-node、services、session、storage、client、server、zcode-server-cli、ui、web、desktop、formal-proof、zcode-cli、zcode-relay）。
@@ -74,7 +74,7 @@
 - PR 描述须说明背景、设计意图与修改前后行为；包含 bugfix 时逐项说明触发场景、根因证据、修复机制及回归验证，并尽量关联已有工单链接。未确认的根因或引入提交如实标注，不根据模块或时间接近推断归因。
 - 涉及状态、时序、远端或异步同步的方案，用图展示所有者及事件顺序。
 - 必须执行 `pnpm typecheck` 和 `pnpm lint`，报告真实结果，不将已有失败写成通过。
-- 每次改动后在总结末尾用一行汇报影响面与待执行脚本（CLI=`apps/zcode-cli`/`packages/zcode-server-cli`→`sh install_cli.sh`，WEB=`packages/web`/`packages/server`/`apps/zcode-relay`→`sh deploy_web.sh`，DESKTOP=`packages/ui`/`packages/desktop`→`sh install_desktop.sh`，`packages/ui` 同属 WEB+DESKTOP）；`deploy_cli`/`deploy_desktop` 发版由用户自行决定，不在汇报中列；三端均未涉及写「无需部署」。
+- 每次改动后在总结末尾用一行汇报影响面与待执行脚本（CLI=`apps/zcode-cli`/`packages/zcode-server-cli`→`sh install_cli.sh`，WEB=`packages/web`/`packages/server`/`apps/zcode-relay`→`sh deploy_web.sh`，DESKTOP=`packages/ui`/`packages/desktop`→`sh install_desktop.sh`，`packages/ui` 同属 WEB+DESKTOP）；`deploy_desktop` 发版由用户自行决定，不在汇报中列；CLI 发行包由 `deploy_web.sh` 完整部署自动检测发布，不在汇报中单列；三端均未涉及写「无需部署」。
 - 使用异步文件和网络 IO；跨包导入使用公开入口，遵守现有路径别名。
 - 禁止 UI 直接调用 Repo、Service 引用 Runtime 具体实现、跨域导入实现细节及循环依赖。
 

@@ -138,7 +138,7 @@ sudo xattr -rd com.apple.quarantine /Applications/ZCodeOnline.app
 
 ```bash
 ./deploy_web.sh    # 构建 Web 与 relay，rsync 上传并重启服务；--web / --relay / --ng / --check 为细粒度入口
-./deploy_cli.sh    # 发布终端用户 CLI 发行包（server-cli 归档 + catalog + 安装脚本），独立于 Web 隧道部署
+                   # 完整部署含终端用户 CLI 发行包（server-cli 归档 + catalog + 安装脚本），自动检测变更、有变化才发布；--cli [target ...] 单独发布
 ./deploy_desktop.sh  # 构建并发布桌面安装包两端（mac-arm64 + win-x64，--mac / --win 单端）
 ```
 
